@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Modal } from "@/components/ui/Modal";
 import { FieldRow, Input, Select } from "@/components/ui/Field";
 import { FormSection, FormFieldGrid } from "@/components/forms/FormSection";
@@ -99,7 +100,7 @@ function UserForm({
   const [emailVerified, setEmailVerified] = useState(user?.emailVerified ?? false);
   const effectiveTenantId = lockToApp && tenantId ? tenantId : user?.tenantId ?? tenantId ?? "";
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (user) setEmailVerified(user.emailVerified);
   }, [user?.id, user?.emailVerified]);
 

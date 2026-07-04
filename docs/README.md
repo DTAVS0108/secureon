@@ -46,6 +46,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **Flyway migration SQL** | **[18 — Flyway migration files](18-flyway-migration-files.md)** |
 | Security practices | [07 — Security](07-security.md) |
 | Delivery phases | [08 — Roadmap](08-roadmap.md) |
+| **Pending / backlog implementation** | **[21 — Pending implementation guide](21-pending-implementation-guide.md)** |
 | **Local install & smoke tests** | **[09 — Installation](09-installation.md)** |
 | **Run stack, migrations & schedulers** | **[16 — Environment & operations](16-environment-setup-and-operations.md)** · **[17 — Schemas & tables](17-database-schemas-and-tables.md)** · **[18 — Flyway SQL](18-flyway-migration-files.md)** |
 | Enterprise features (phased) | [10 — Enterprise](10-enterprise.md) |
@@ -54,6 +55,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | Platform settings & governance | [10 — Settings governance](10-settings-governance.md) |
 | Application RBAC (groups/roles) | [14 — Application RBAC](14-application-rbac-management.md) |
 | **Applications vs OAuth clients** | **[15 — Applications & OAuth clients](15-applications-and-oauth-clients.md)** |
+| **Verification, OTP & phone auth** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Architecture decisions (ADRs) | [decisions/](decisions/README.md) |
 | Diagrams (draw.io + Mermaid) | [diagrams/](diagrams/README.md) |
 
@@ -81,7 +83,8 @@ Everything needed to **integrate a product** (your app) with SecureOne: OAuth, l
 
 | Topic | Where |
 |-------|--------|
-| **Start here — auth UI modes** | [13 — Auth UI integration](13-auth-ui-integration.md) |
+| Auth UI modes, OAuth, session login | [13 — Auth UI integration](13-auth-ui-integration.md) |
+| **OTP signup/login, phone, verification policy** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Register product + OAuth client | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | OpenAPI (all endpoints) | [12 — API Documentation](12-api-documentation.md) + Swagger |
 | Sample SPA client | [../samples/external-test-client/README.md](../samples/external-test-client/README.md) |
@@ -108,7 +111,10 @@ This is the closest thing to **per-application Confluence** today — it is **dy
 | `GET /api/v1/applications/{id}` | Public manifest (auth methods, branding, account endpoint URLs) |
 | `GET/POST …/signup` | Self-registration |
 | `POST …/account/password/forgot` | Password reset request |
-| `POST …/auth/session/login` | Native UI session login |
+| `POST …/account/verify/otp/confirm` | Confirm signup verification (OTP) |
+| `POST …/auth/otp/request` | Login OTP request (email/SMS) |
+| `POST …/auth/otp/verify` | Login OTP verify → session |
+| `POST …/auth/session/login` | Native UI session login (`identifier` = email or phone) |
 | OAuth `/oauth2/authorize`, `/oauth2/token` | Hosted OIDC + PKCE |
 
 Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and rendered in the Integration settings tab.
@@ -140,7 +146,8 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 
 1. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) — register product + client
 2. [13 — Auth UI integration](13-auth-ui-integration.md) — hosted vs native
-3. Admin → **your app → Settings → Integration** — checklist + API reference
+3. [19 — Verification & OTP](19-verification-and-otp.md) — signup/login OTP, phone, magic link session
+4. Admin → **your app → Settings → Integration** — checklist + API reference
 4. [samples/external-test-client](../samples/external-test-client/README.md) — working SPA
 5. http://localhost:9000/docs — try OAuth and account APIs
 

@@ -5,16 +5,18 @@ import java.util.Map;
 /** Maps application_setting keys to platform exposure section keys. */
 public final class SettingsSectionKeys {
 
-    private static final Map<String, String> SETTING_TO_EXPOSURE = Map.of(
-            "notifications", "notifications",
-            "email", "email",
-            "auth_methods", "auth-methods",
-            "password_policy", "password-policy",
-            "feature_flags", "feature-flags",
-            "appearance", "appearance",
-            "user_directory", "user-directory",
-            "public_manifest", "public-manifest",
-            "token_policy", "token-policy");
+    private static final Map<String, String> SETTING_TO_EXPOSURE = Map.ofEntries(
+            Map.entry("notifications", "notifications"),
+            Map.entry("email", "email"),
+            Map.entry("auth_methods", "auth-methods"),
+            Map.entry("password_policy", "password-policy"),
+            Map.entry("feature_flags", "feature-flags"),
+            Map.entry("appearance", "appearance"),
+            Map.entry("user_directory", "user-directory"),
+            Map.entry("public_manifest", "public-manifest"),
+            Map.entry("token_policy", "token-policy"),
+            Map.entry("verification_policy", "verification-policy"),
+            Map.entry("sms", "sms"));
 
     private SettingsSectionKeys() {}
 

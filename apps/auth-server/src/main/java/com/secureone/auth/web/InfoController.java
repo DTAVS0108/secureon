@@ -1,5 +1,6 @@
 package com.secureone.auth.web;
 
+import com.secureone.auth.config.SecureOneEnvironmentProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.LinkedHashMap;
@@ -16,9 +17,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class InfoController {
 
     private final String adminWebUrl;
+    private final SecureOneEnvironmentProperties environment;
 
-    public InfoController(@Value("${secureone.admin-web-url:http://localhost:3001}") String adminWebUrl) {
+    public InfoController(
+            @Value("${secureone.admin-web-url:http://localhost:3001}") String adminWebUrl,
+            SecureOneEnvironmentProperties environment) {
         this.adminWebUrl = adminWebUrl.endsWith("/") ? adminWebUrl.substring(0, adminWebUrl.length() - 1) : adminWebUrl;
+        this.environment = environment;
     }
 
     @Operation(summary = "Service info", description = "Public metadata including links to OpenAPI documentation.")
@@ -28,6 +33,8 @@ public class InfoController {
         out.put("name", "SecureOne Auth Server");
         out.put("status", "UP");
         out.put("version", "0.0.1-SNAPSHOT");
+        out.put("environment", environment.getEnvironment());
+        out.put("features", featureFlags());
         out.put("openapi", "/v3/api-docs");
         out.put("swaggerUi", "/swagger-ui/index.html");
         out.put("docs", "/docs");
@@ -35,5 +42,12 @@ public class InfoController {
         out.put("confluenceApi", adminWebUrl + "/api/confluence");
         out.put("confluenceDiscovery", "/api/v1/confluence");
         return out;
+    }
+
+    private Map<String, Object> featureFlags() {
+        Map<String, Object> features = new LinkedHashMap<>();
+        features.put("swagger", environment.isSwaggerEnabled());
+        features.put("devAuth", environment.isDevAuthEnabled());
+        return features;
     }
 }

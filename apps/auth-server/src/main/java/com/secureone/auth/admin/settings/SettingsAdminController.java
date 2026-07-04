@@ -1,12 +1,15 @@
 package com.secureone.auth.admin.settings;
 
 import com.secureone.auth.application.TokenPolicyDefaults;
+import com.secureone.auth.mfa.MfaPolicyDefaults;
 import com.secureone.auth.notify.EmailNotificationService;
 import com.secureone.auth.notify.PlatformMailSenderProvider;
+import com.secureone.auth.notify.PlatformSmsSettingsService;
 import com.secureone.auth.notify.PlatformSmtpSettingsService;
 import com.secureone.auth.platform.AuthSettingsService;
 import com.secureone.auth.platform.PlatformSettingsService;
 import com.secureone.auth.platform.SettingsExposureService;
+import com.secureone.auth.platform.VerificationPolicyService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,8 @@ public class SettingsAdminController {
     private final PlatformMailSenderProvider mailSenderProvider;
     private final AuthSettingsService authSettings;
     private final SettingsExposureService exposure;
+    private final VerificationPolicyService verificationPolicy;
+    private final PlatformSmsSettingsService smsSettings;
 
     public SettingsAdminController(
             EmailNotificationService emailService,
@@ -38,13 +43,17 @@ public class SettingsAdminController {
             PlatformSmtpSettingsService platformSmtp,
             PlatformMailSenderProvider mailSenderProvider,
             AuthSettingsService authSettings,
-            SettingsExposureService exposure) {
+            SettingsExposureService exposure,
+            VerificationPolicyService verificationPolicy,
+            PlatformSmsSettingsService smsSettings) {
         this.emailService = emailService;
         this.platformSettings = platformSettings;
         this.platformSmtp = platformSmtp;
         this.mailSenderProvider = mailSenderProvider;
         this.authSettings = authSettings;
         this.exposure = exposure;
+        this.verificationPolicy = verificationPolicy;
+        this.smsSettings = smsSettings;
     }
 
     /** Which setting sections applications may customize (platform super admin). */
@@ -151,5 +160,50 @@ public class SettingsAdminController {
     @PutMapping("/token-policy")
     public Map<String, Object> updateTokenPolicy(@RequestBody Map<String, Object> body) {
         return platformSettings.saveMap("token_policy", TokenPolicyDefaults.sanitizeForSave(body));
+    }
+
+    @GetMapping("/verification-policy")
+    public Map<String, Object> getVerificationPolicy() {
+        return verificationPolicy.getPlatformPolicy();
+    }
+
+    @PutMapping("/verification-policy")
+    public Map<String, Object> updateVerificationPolicy(@RequestBody Map<String, Object> body) {
+        return verificationPolicy.savePlatformPolicy(body);
+    }
+
+    @GetMapping("/sms")
+    public Map<String, Object> getSms() {
+        return smsSettings.getPublicSettings();
+    }
+
+    @PutMapping("/sms")
+    public Map<String, Object> updateSms(@RequestBody Map<String, Object> body) {
+        return smsSettings.save(body);
+    }
+
+    @GetMapping("/mfa-policy")
+    public Map<String, Object> getMfaPolicy() {
+        Map<String, Object> stored = platformSettings.get("mfa_policy");
+        if (stored == null || stored.isEmpty()) {
+            return MfaPolicyDefaults.platformDefaults();
+        }
+        return new HashMap<>(stored);
+    }
+
+    @PutMapping("/mfa-policy")
+    public Map<String, Object> updateMfaPolicy(@RequestBody Map<String, Object> body) {
+        return platformSettings.saveMap("mfa_policy", MfaPolicyDefaults.sanitizeForSave(body));
+    }
+
+    public record TestSmsRequest(String to) {}
+
+    @PostMapping("/sms/test")
+    public Map<String, String> sendTestSms(@RequestBody TestSmsRequest request) {
+        if (request.to() == null || request.to().isBlank()) {
+            throw new IllegalArgumentException("to is required");
+        }
+        smsSettings.resolveProvider().send(request.to(), "SecureOne platform SMS test message.");
+        return Map.of("status", "sent", "to", request.to());
     }
 }

@@ -351,6 +351,66 @@ public class ApplicationScopedAdminController {
         settings.clearOverride(applicationId, "password_policy");
     }
 
+    @GetMapping("/settings/verification-policy")
+    public Map<String, Object> getVerificationPolicy(@PathVariable UUID applicationId) {
+        return settings.getVerificationPolicy(applicationId);
+    }
+
+    @PutMapping("/settings/verification-policy")
+    public Map<String, Object> updateVerificationPolicy(
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
+        return settings.saveVerificationPolicy(applicationId, body);
+    }
+
+    @DeleteMapping("/settings/verification-policy")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetVerificationPolicy(@PathVariable UUID applicationId) {
+        settings.clearOverride(applicationId, "verification_policy");
+    }
+
+    @GetMapping("/settings/mfa-policy")
+    public Map<String, Object> getMfaPolicy(@PathVariable UUID applicationId) {
+        return settings.getMfaPolicy(applicationId);
+    }
+
+    @PutMapping("/settings/mfa-policy")
+    public Map<String, Object> updateMfaPolicy(
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
+        return settings.saveMfaPolicy(applicationId, body);
+    }
+
+    @DeleteMapping("/settings/mfa-policy")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetMfaPolicy(@PathVariable UUID applicationId) {
+        settings.clearOverride(applicationId, "mfa_policy");
+    }
+
+    @GetMapping("/settings/sms")
+    public Map<String, Object> getSms(@PathVariable UUID applicationId) {
+        return settings.getSms(applicationId);
+    }
+
+    @PutMapping("/settings/sms")
+    public Map<String, Object> updateSms(
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
+        return settings.saveSms(applicationId, body);
+    }
+
+    @DeleteMapping("/settings/sms")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetSms(@PathVariable UUID applicationId) {
+        settings.clearOverride(applicationId, "sms");
+    }
+
+    public record TestSmsRequest(@NotBlank String to) {}
+
+    @PostMapping("/settings/sms/test")
+    public Map<String, String> sendTestSms(
+            @PathVariable UUID applicationId, @RequestBody TestSmsRequest request) {
+        settings.sendTestSms(applicationId, request.to());
+        return Map.of("status", "sent", "to", request.to());
+    }
+
     @GetMapping("/settings/feature-flags")
     public List<Map<String, Object>> getFeatureFlags(@PathVariable UUID applicationId) {
         return settings.getFeatureFlags(applicationId);

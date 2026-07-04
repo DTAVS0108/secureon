@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { FieldRow, Input, Textarea } from "@/components/ui/Field";
@@ -32,11 +33,11 @@ export function CreateTenantCustomRoleDialog({
   const [applicationIds, setApplicationIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open) return;
     setName("");
     setDescription("");

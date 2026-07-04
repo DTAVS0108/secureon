@@ -23,7 +23,14 @@ public final class FeatureFlagDefaults {
         flags.add(flag(
                 "self_service_recovery",
                 "Self-service Recovery",
-                "Application-scoped forgot-password (POST .../password/forgot)",
+                "Application-scoped forgot-password (link or OTP per verification policy)",
+                true,
+                100,
+                "identity"));
+        flags.add(flag(
+                "recovery_otp",
+                "Recovery OTP",
+                "Allow password reset via email/SMS OTP (requires verification policy + SMS for phone)",
                 true,
                 100,
                 "identity"));

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-auth-server
+  labels:
+    app.kubernetes.io/name: secureone-auth-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.authServer.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: secureone-auth-server
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: secureone-auth-server
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.metrics.prometheusScrape }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+        prometheus.io/port: {{ .Values.authServer.service.port | quote }}
+      {{- end }}
+    spec:
+      containers:
+        - name: auth-server
+          image: "{{ .Values.authServer.image.repository }}:{{ .Values.authServer.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.authServer.service.port }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.authServer.existingSecret }}
+          env:
+            {{- range $key, $value := .Values.authServer.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if not .Values.postgres.enabled }}
+            - name: SECUREONE_DB_URL
+              value: {{ .Values.postgres.url | quote }}
+            {{- end }}
+            {{- if not .Values.redis.enabled }}
+            - name: SECUREONE_REDIS_URL
+              value: {{ .Values.redis.url | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.authServer.resources | nindent 12 }}

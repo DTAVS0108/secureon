@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
@@ -34,7 +35,7 @@ export function ApplicationTokenTabGate({
     }
   }, [applicationId, onTabEnabledChange, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     load();
   }, [load]);
 

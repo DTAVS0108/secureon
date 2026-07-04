@@ -4,11 +4,16 @@ import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.notify.EmailNotificationService;
 import com.secureone.auth.notify.EmailTemplateService;
 import com.secureone.auth.notify.PlatformMailSenderProvider;
+import com.secureone.auth.notify.PlatformSmsSettingsService;
+import com.secureone.auth.notify.SmsNotificationService;
 import com.secureone.auth.notify.SmtpSettingsService;
+import com.secureone.auth.notify.sms.ApplicationSmsSettingsService;
+import com.secureone.auth.mfa.MfaPolicyDefaults;
 import com.secureone.auth.platform.AuthSettingsService;
 import com.secureone.auth.platform.FeatureFlagMerge;
 import com.secureone.auth.platform.PlatformSettingsService;
 import com.secureone.auth.platform.SettingsExposureService;
+import com.secureone.auth.platform.VerificationPolicyDefaults;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -29,6 +34,9 @@ public class ApplicationSettingsService {
     private final AuthSettingsService authSettings;
     private final EmailNotificationService emailService;
     private final SmtpSettingsService smtpSettings;
+    private final ApplicationSmsSettingsService applicationSmsSettings;
+    private final PlatformSmsSettingsService platformSmsSettings;
+    private final SmsNotificationService smsNotification;
     private final EmailTemplateService emailTemplates;
     private final PlatformMailSenderProvider mailSenderProvider;
     private final SettingsExposureService exposure;
@@ -40,6 +48,9 @@ public class ApplicationSettingsService {
             AuthSettingsService authSettings,
             EmailNotificationService emailService,
             SmtpSettingsService smtpSettings,
+            ApplicationSmsSettingsService applicationSmsSettings,
+            PlatformSmsSettingsService platformSmsSettings,
+            SmsNotificationService smsNotification,
             EmailTemplateService emailTemplates,
             PlatformMailSenderProvider mailSenderProvider,
             SettingsExposureService exposure) {
@@ -49,6 +60,9 @@ public class ApplicationSettingsService {
         this.authSettings = authSettings;
         this.emailService = emailService;
         this.smtpSettings = smtpSettings;
+        this.applicationSmsSettings = applicationSmsSettings;
+        this.platformSmsSettings = platformSmsSettings;
+        this.smsNotification = smsNotification;
         this.emailTemplates = emailTemplates;
         this.mailSenderProvider = mailSenderProvider;
         this.exposure = exposure;
@@ -168,6 +182,14 @@ public class ApplicationSettingsService {
         Map<String, Object> platform = platformSettings.get("token_policy");
         if (platform == null || platform.isEmpty()) {
             return TokenPolicyDefaults.platformDefaults();
+        }
+        return platform;
+    }
+
+    private Map<String, Object> platformMfaPolicy() {
+        Map<String, Object> platform = platformSettings.get("mfa_policy");
+        if (platform == null || platform.isEmpty()) {
+            return MfaPolicyDefaults.platformDefaults();
         }
         return platform;
     }
@@ -357,6 +379,31 @@ public class ApplicationSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public Map<String, Object> getSms(UUID applicationId) {
+        requireExposed("sms");
+        requireApplication(applicationId);
+        if (hasOverride(applicationId, "sms")) {
+            return applicationSmsSettings.getPublicSettings(applicationId);
+        }
+        Map<String, Object> platform = new HashMap<>(platformSmsSettings.getPublicSettings());
+        platform.put("scope", "application");
+        platform.put("inheritsPlatformDefaults", true);
+        return platform;
+    }
+
+    public Map<String, Object> saveSms(UUID applicationId, Map<String, Object> body) {
+        requireExposed("sms");
+        requireApplication(applicationId);
+        return applicationSmsSettings.save(applicationId, body);
+    }
+
+    public void sendTestSms(UUID applicationId, String toE164) {
+        requireExposed("sms");
+        requireApplication(applicationId);
+        smsNotification.sendTest(applicationId, toE164);
+    }
+
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getAuthMethods(UUID applicationId) {
         requireExposed("auth-methods");
         requireApplication(applicationId);
@@ -415,6 +462,52 @@ public class ApplicationSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public Map<String, Object> getMfaPolicy(UUID applicationId) {
+        requireApplication(applicationId);
+        Map<String, Object> merged = resolveMfaPolicy(applicationId);
+        merged.put("scope", "application");
+        merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "mfa_policy"));
+        return merged;
+    }
+
+    public Map<String, Object> saveMfaPolicy(UUID applicationId, Map<String, Object> body) {
+        requireApplication(applicationId);
+        saveAppMap(applicationId, "mfa_policy", MfaPolicyDefaults.sanitizeForSave(body));
+        return getMfaPolicy(applicationId);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> resolveMfaPolicy(UUID applicationId) {
+        requireApplication(applicationId);
+        Map<String, Object> platform = platformSettings.get("mfa_policy");
+        if (platform == null || platform.isEmpty()) {
+            platform = MfaPolicyDefaults.platformDefaults();
+        }
+        return MfaPolicyDefaults.merge(platform, getAppMap(applicationId, "mfa_policy").orElse(Map.of()));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getVerificationPolicy(UUID applicationId) {
+        requireExposed("verification-policy");
+        requireApplication(applicationId);
+        boolean inherits = !hasOverride(applicationId, "verification_policy");
+        Map<String, Object> merged = inherits
+                ? new HashMap<>(VerificationPolicyDefaults.platformDefaults())
+                : new HashMap<>(VerificationPolicyDefaults.sanitizeForSave(
+                        getAppMap(applicationId, "verification_policy").orElse(Map.of())));
+        merged.put("scope", "application");
+        merged.put("inheritsPlatformDefaults", inherits);
+        return merged;
+    }
+
+    public Map<String, Object> saveVerificationPolicy(UUID applicationId, Map<String, Object> body) {
+        requireExposed("verification-policy");
+        requireApplication(applicationId);
+        saveAppMap(applicationId, "verification_policy", VerificationPolicyDefaults.sanitizeForSave(body));
+        return getVerificationPolicy(applicationId);
+    }
+
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getFeatureFlags(UUID applicationId) {
         requireExposed("feature-flags");
         requireApplication(applicationId);
@@ -466,6 +559,7 @@ public class ApplicationSettingsService {
         sections.put("token-policy", "token_policy");
         sections.put("notifications", "notifications");
         sections.put("email", "email");
+        sections.put("sms", "sms");
         for (var entry : sections.entrySet()) {
             if (exposure.isExposed(entry.getKey())) {
                 sources.put(entry.getKey(), policySource(applicationId, entry.getValue()));
@@ -568,6 +662,9 @@ public class ApplicationSettingsService {
                         settingKey,
                         ApplicationNotificationDefaults.sanitizeEmail(effective));
             }
+            case "sms" -> saveAppRaw(
+                    applicationId, settingKey, new HashMap<>(platformSmsSettings.snapshotForApplicationOverride()));
+            case "mfa_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>(platformMfaPolicy()));
             default -> throw new IllegalArgumentException("Unsupported setting key: " + settingKey);
         }
     }
@@ -588,6 +685,9 @@ public class ApplicationSettingsService {
         cleaned.remove("scope");
         cleaned.remove("inheritsPlatformDefaults");
         cleaned.remove("smtpConfigured");
+        cleaned.remove("smsConfigured");
+        cleaned.remove("configured");
+        cleaned.remove("availableProviders");
         cleaned.remove("platformExposed");
         saveAppRaw(applicationId, key, cleaned);
     }
@@ -687,6 +787,20 @@ public class ApplicationSettingsService {
     }
 
     @Transactional(readOnly = true)
+    public Map<String, Object> resolveVerificationPolicy(UUID applicationId) {
+        requireApplication(applicationId);
+        if (hasOverride(applicationId, "verification_policy")) {
+            return VerificationPolicyDefaults.sanitizeForSave(
+                    getAppMap(applicationId, "verification_policy").orElse(Map.of()));
+        }
+        Map<String, Object> platform = platformSettings.get("verification_policy");
+        if (platform == null || platform.isEmpty()) {
+            return VerificationPolicyDefaults.platformDefaults();
+        }
+        return VerificationPolicyDefaults.sanitizeForSave(platform);
+    }
+
+    @Transactional(readOnly = true)
     public Map<String, Object> resolveAppearance(UUID applicationId) {
         requireApplication(applicationId);
         return ClientAppearanceDefaults.merge(
@@ -707,6 +821,7 @@ public class ApplicationSettingsService {
         Map<String, String> urls = new LinkedHashMap<>();
         urls.put("forgotPassword", "");
         urls.put("passwordReset", "");
+        urls.put("magicLink", "");
         return urls;
     }
 
@@ -715,10 +830,18 @@ public class ApplicationSettingsService {
         checklist.put("redirectUris", false);
         checklist.put("publicManifest", false);
         checklist.put("smtpConfigured", false);
+        checklist.put("smsConfigured", false);
         checklist.put("authMethodsReviewed", false);
         checklist.put("signupReviewed", false);
         checklist.put("passwordResetTested", false);
+        checklist.put("recoveryOtpTested", false);
         checklist.put("loginFlowTested", false);
+        checklist.put("oauthPkceTested", false);
+        checklist.put("mfaStepUpTested", false);
+        checklist.put("sessionRevokeTested", false);
+        checklist.put("magicLinkTested", false);
+        checklist.put("federationTested", false);
+        checklist.put("passkeyTested", false);
         return checklist;
     }
 
@@ -779,5 +902,12 @@ public class ApplicationSettingsService {
             }
         }
         return merged;
+    }
+
+    /** Non-empty client URL overrides exposed on the public manifest. */
+    public Map<String, String> publicClientUrls(UUID applicationId) {
+        Map<String, String> urls = mergeClientUrls(getClientIntegration(applicationId).get("clientUrls"));
+        urls.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isBlank());
+        return urls;
     }
 }

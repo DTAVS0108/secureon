@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -29,13 +30,13 @@ export function UserImportExportMenu({
   const [importSource, setImportSource] = useState<UserDirectorySourceKey>("csv");
   const [ldapFeatureEnabled, setLdapFeatureEnabled] = useState(false);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     fetchApplicationFeatureFlags(applicationId)
       .then((raw) => setLdapFeatureEnabled(isFeatureEnabled(normalizeFeatureFlags(raw), "ldap")))
       .catch(() => setLdapFeatureEnabled(false));
   }, [applicationId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (importSource === "ldap" && !ldapFeatureEnabled) {
       setImportSource("csv");
     }

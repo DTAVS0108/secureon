@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { getPermission } from "@/lib/api/permissions";
 import { PermissionRoleMatrix } from "@/components/permissions/PermissionRoleMatrix";
 import type { PermissionDetail, Role } from "@/lib/types";
@@ -50,7 +51,7 @@ export function PermissionsWorkspace({
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(permissions[0]?.id ?? null);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     try {
       const created = sessionStorage.getItem("permissions:lastCreated");
       if (created && permissions.some((p) => p.id === created)) {
@@ -213,7 +214,7 @@ function PermissionDetailPanel({
   const [detail, setDetail] = useState<PermissionDetail | null>(null);
   const [tab, setTab] = useState<"details" | "roles">("roles");
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     getPermission(applicationId, permission.id)
       .then(setDetail)
       .catch(() => setDetail({ ...permission, roles: [], roleCount: permission.roleCount ?? 0 }));

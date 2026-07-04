@@ -163,6 +163,40 @@ export async function resetApplicationPasswordPolicy(appId: string): Promise<voi
   await apiFetch<void>(`${base(appId)}/password-policy`, scoped(appId, { method: "DELETE" }));
 }
 
+export async function fetchApplicationVerificationPolicy(
+  appId: string,
+): Promise<import("@/lib/api/verification-settings").VerificationPolicy> {
+  return apiFetch(`${base(appId)}/verification-policy`, scoped(appId));
+}
+
+export async function saveApplicationVerificationPolicy(
+  appId: string,
+  body: import("@/lib/api/verification-settings").VerificationPolicy,
+): Promise<import("@/lib/api/verification-settings").VerificationPolicy> {
+  return apiFetch(`${base(appId)}/verification-policy`, scoped(appId, { method: "PUT", body: JSON.stringify(body) }));
+}
+
+export async function resetApplicationVerificationPolicy(appId: string): Promise<void> {
+  await apiFetch<void>(`${base(appId)}/verification-policy`, scoped(appId, { method: "DELETE" }));
+}
+
+export async function fetchApplicationMfaPolicy(
+  appId: string,
+): Promise<import("@/lib/api/mfa-policy").MfaPolicy> {
+  return apiFetch(`${base(appId)}/mfa-policy`, scoped(appId));
+}
+
+export async function saveApplicationMfaPolicy(
+  appId: string,
+  body: import("@/lib/api/mfa-policy").MfaPolicy,
+): Promise<import("@/lib/api/mfa-policy").MfaPolicy> {
+  return apiFetch(`${base(appId)}/mfa-policy`, scoped(appId, { method: "PUT", body: JSON.stringify(body) }));
+}
+
+export async function resetApplicationMfaPolicy(appId: string): Promise<void> {
+  await apiFetch<void>(`${base(appId)}/mfa-policy`, scoped(appId, { method: "DELETE" }));
+}
+
 export async function fetchApplicationFeatureFlags(appId: string): Promise<FeatureFlag[]> {
   return apiFetch<FeatureFlag[]>(`${base(appId)}/feature-flags`, scoped(appId));
 }
@@ -238,15 +272,24 @@ export type IntegrationChecklist = {
   redirectUris: boolean;
   publicManifest: boolean;
   smtpConfigured: boolean;
+  smsConfigured: boolean;
   authMethodsReviewed: boolean;
   signupReviewed: boolean;
   passwordResetTested: boolean;
+  recoveryOtpTested: boolean;
   loginFlowTested: boolean;
+  oauthPkceTested: boolean;
+  mfaStepUpTested: boolean;
+  sessionRevokeTested: boolean;
+  magicLinkTested: boolean;
+  federationTested: boolean;
+  passkeyTested: boolean;
 };
 
 export type ClientIntegrationUrls = {
   forgotPassword?: string;
   passwordReset?: string;
+  magicLink?: string;
 };
 
 export type ClientIntegrationConfig = {

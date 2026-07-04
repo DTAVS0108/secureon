@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
+import { OperatorSecurityPanel } from "@/components/profile/OperatorSecurityPanel";
 import {
   changeOperatorPassword,
   fetchOperatorProfile,
@@ -35,7 +37,7 @@ export function OperatorProfilePanel({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     let cancelled = false;
     setLoading(true);
     fetchOperatorProfile()
@@ -231,6 +233,13 @@ export function OperatorProfilePanel({
           <p className="mt-0.5 text-xs text-muted">{passwordDescription}</p>
           <div className="mt-4">{passwordSection}</div>
         </section>
+        <section className="border-t border-ui pt-6">
+          <h3 className="text-sm font-medium text-ui">Multi-factor authentication</h3>
+          <p className="mt-0.5 text-xs text-muted">Enroll TOTP or passkeys for your tenant user account.</p>
+          <div className="mt-4">
+            <OperatorSecurityPanel platformSuperAdmin={readOnly} variant="modal" />
+          </div>
+        </section>
       </div>
     );
   }
@@ -251,6 +260,13 @@ export function OperatorProfilePanel({
       <Card>
         <CardHeader title="Password" description={passwordDescription} />
         {passwordSection}
+      </Card>
+      <Card className="lg:col-span-2">
+        <CardHeader
+          title="Multi-factor authentication"
+          description="Enroll TOTP or passkeys for your tenant user account."
+        />
+        <OperatorSecurityPanel platformSuperAdmin={readOnly} variant="page" />
       </Card>
     </div>
   );

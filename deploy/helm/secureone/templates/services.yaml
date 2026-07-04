@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-auth-server
+  labels:
+    app.kubernetes.io/name: secureone-auth-server
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: secureone-auth-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.authServer.service.port }}
+      targetPort: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-admin-web
+  labels:
+    app.kubernetes.io/name: secureone-admin-web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: secureone-admin-web
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.adminWeb.service.port }}
+      targetPort: http

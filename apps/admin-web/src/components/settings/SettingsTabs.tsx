@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ApplicationAppearanceSettings } from "@/components/settings/ApplicationAppearanceSettings";
 import { AppExposureSettings } from "@/components/settings/AppExposureSettings";
@@ -9,8 +10,10 @@ import { NotificationsSettings } from "@/components/settings/NotificationsSettin
 import { PlatformNotificationsSettings } from "@/components/settings/PlatformNotificationsSettings";
 import { ApplicationIntegrationSettings } from "@/components/settings/ApplicationIntegrationSettings";
 import { PublicManifestSettings } from "@/components/settings/PublicManifestSettings";
+import { ScimSettingsPanel } from "@/components/settings/ScimSettingsPanel";
 import { SettingsScopeBanner } from "@/components/settings/SettingsScopeBanner";
 import { TokenPolicySettings } from "@/components/settings/TokenPolicySettings";
+import { VerificationSettingsPanel } from "@/components/settings/VerificationSettingsPanel";
 import { UserDirectorySettings } from "@/components/settings/UserDirectorySettings";
 import { loadApplicationExposureAction } from "@/lib/actions/app-exposure";
 import {
@@ -24,6 +27,9 @@ import {
   loadApplicationExposureDeduped,
 } from "@/lib/application-exposure-cache";
 import { coerceAppSettingsExposure } from "@/lib/settings-exposure";
+import { useAdminContext } from "@/components/AdminContextProvider";
+
+export type AuthSubTabId = "login" | "verification" | "mfa" | "password";
 
 export type SettingsTabId =
   | "integration"
@@ -36,9 +42,35 @@ export type SettingsTabId =
   | "users"
   | "public-api"
   | "tokens"
+  | "verification"
   | "apps";
 
 type Tab = SettingsTabId;
+
+/** Legacy top-level tab ids that now live under Authentication. */
+const AUTH_NESTED_TAB_IDS: SettingsTabId[] = ["verification", "mfa", "password"];
+
+function toAuthSubTab(tab: SettingsTabId): AuthSubTabId {
+  if (tab === "verification") return "verification";
+  if (tab === "mfa") return "mfa";
+  if (tab === "password") return "password";
+  return "login";
+}
+
+function resolveInitialTabState(initialTab?: SettingsTabId): { tab: Tab; authSubTab: AuthSubTabId } {
+  const resolved = initialTab ?? "notifications";
+  if (resolved === "auth" || AUTH_NESTED_TAB_IDS.includes(resolved)) {
+    return { tab: "auth", authSubTab: toAuthSubTab(resolved) };
+  }
+  return { tab: resolved, authSubTab: "login" };
+}
+
+const AUTH_SUB_TABS: { id: AuthSubTabId; label: string; exposureKeys: string[] | null; requiresMfaTab?: boolean }[] = [
+  { id: "login", label: "Sign-in methods", exposureKeys: ["auth-methods"] },
+  { id: "verification", label: "Verification & OTP", exposureKeys: ["verification-policy", "sms"] },
+  { id: "mfa", label: "MFA", exposureKeys: ["auth-methods"], requiresMfaTab: true },
+  { id: "password", label: "Password policy", exposureKeys: ["password-policy"] },
+];
 
 export type SettingsScope =
   | { mode: "platform" }
@@ -52,9 +84,7 @@ const TAB_META: {
   { id: "integration", label: "Integration", exposureKeys: null },
   { id: "notifications", label: "Notifications", exposureKeys: ["notifications", "email"] },
   { id: "appearance", label: "Appearance", exposureKeys: ["appearance"] },
-  { id: "auth", label: "Authentication", exposureKeys: ["auth-methods"] },
-  { id: "mfa", label: "MFA", exposureKeys: ["auth-methods"] },
-  { id: "password", label: "Password policy", exposureKeys: ["password-policy"] },
+  { id: "auth", label: "Authentication", exposureKeys: null },
   { id: "flags", label: "Feature flags", exposureKeys: ["feature-flags"] },
   { id: "users", label: "User directory", exposureKeys: ["user-directory"] },
   { id: "public-api", label: "Public API", exposureKeys: ["public-manifest"] },
@@ -64,6 +94,25 @@ const TAB_META: {
 
 /** Configured per app under Platform → For applications; not shown on platform settings. */
 const APPLICATION_ONLY_TABS: Tab[] = ["integration", "users", "public-api", "tokens"];
+
+function isAuthSubTabVisible(
+  subTab: AuthSubTabId,
+  scope: SettingsScope,
+  exposure: AppSettingsExposure,
+  exposureReady: boolean,
+  exposureError: string | undefined,
+  mfaTabEnabled: boolean,
+): boolean {
+  if (scope.mode === "platform") return true;
+  if (!exposureReady || exposureError) return false;
+  const meta = AUTH_SUB_TABS.find((t) => t.id === subTab);
+  if (!meta?.exposureKeys?.length) return true;
+  const platformAllows = meta.exposureKeys.some((key) => Boolean(exposure[key]));
+  if (subTab === "mfa") {
+    return platformAllows && mfaTabEnabled;
+  }
+  return platformAllows;
+}
 
 function isTabVisible(
   tab: Tab,
@@ -76,6 +125,13 @@ function isTabVisible(
 ): boolean {
   if (tab === "apps") return scope.mode === "platform";
   if (tab === "integration") return scope.mode === "application";
+  if (tab === "auth") {
+    if (scope.mode === "platform") return true;
+    if (!exposureReady || exposureError) return false;
+    return AUTH_SUB_TABS.some((sub) =>
+      isAuthSubTabVisible(sub.id, scope, exposure, exposureReady, exposureError, mfaTabEnabled),
+    );
+  }
   if (scope.mode === "platform") return !APPLICATION_ONLY_TABS.includes(tab);
   if (!exposureReady || exposureError) return false;
   const meta = TAB_META.find((t) => t.id === tab);
@@ -83,9 +139,6 @@ function isTabVisible(
   const platformAllows = meta.exposureKeys.some((key) => Boolean(exposure[key]));
   if (tab === "tokens") {
     return platformAllows && tokenTabEnabled;
-  }
-  if (tab === "mfa") {
-    return platformAllows && mfaTabEnabled;
   }
   return platformAllows;
 }
@@ -99,8 +152,11 @@ export function SettingsTabs({
 }) {
   const scopeMode = scope.mode;
   const scopedApplicationId = scope.mode === "application" ? scope.applicationId : undefined;
+  const adminContext = useAdminContext();
 
-  const [tab, setTab] = useState<Tab>(initialTab ?? "notifications");
+  const initial = resolveInitialTabState(initialTab);
+  const [tab, setTab] = useState<Tab>(initial.tab);
+  const [authSubTab, setAuthSubTab] = useState<AuthSubTabId>(initial.authSubTab);
   const [exposure, setExposure] = useState<AppSettingsExposure>({});
   const [exposureReady, setExposureReady] = useState(scopeMode === "platform");
   const [exposureError, setExposureError] = useState<string | undefined>();
@@ -112,7 +168,7 @@ export function SettingsTabs({
   const platformExposesTokens = Boolean(exposure["token-policy"]);
   const loadedExposureAppRef = useRef<string | null>(null);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (scopeMode !== "application" || !scopedApplicationId) {
       loadedExposureAppRef.current = null;
       setExposureReady(true);
@@ -219,7 +275,44 @@ export function SettingsTabs({
     [scopeMode, scopedApplicationId, exposure, exposureReady, exposureError, tokenTabEnabled, mfaTabEnabled],
   );
 
-  useEffect(() => {
+  const visibleAuthSubTabs = useMemo(
+    () =>
+      AUTH_SUB_TABS.filter((sub) =>
+        isAuthSubTabVisible(
+          sub.id,
+          scopeMode === "application"
+            ? { mode: "application", applicationId: scopedApplicationId! }
+            : { mode: "platform" },
+          exposure,
+          exposureReady,
+          exposureError,
+          mfaTabEnabled,
+        ),
+      ),
+    [scopeMode, scopedApplicationId, exposure, exposureReady, exposureError, mfaTabEnabled],
+  );
+
+  const openTab = useCallback(
+    (next: SettingsTabId, subTab?: AuthSubTabId) => {
+      if (next === "auth" || AUTH_NESTED_TAB_IDS.includes(next)) {
+        setTab("auth");
+        setAuthSubTab(subTab ?? toAuthSubTab(next));
+        return;
+      }
+      setTab(next);
+    },
+    [],
+  );
+
+  useDeferredEffect(() => {
+    if (tab !== "auth") return;
+    if (scopeMode === "application" && !exposureReady) return;
+    if (!visibleAuthSubTabs.some((sub) => sub.id === authSubTab)) {
+      setAuthSubTab(visibleAuthSubTabs[0]?.id ?? "login");
+    }
+  }, [tab, authSubTab, visibleAuthSubTabs, scopeMode, exposureReady]);
+
+  useDeferredEffect(() => {
     if (scopeMode === "application" && !exposureReady) return;
     if (!visibleTabs.some((t) => t.id === tab)) {
       setTab(visibleTabs[0]?.id ?? "notifications");
@@ -227,7 +320,8 @@ export function SettingsTabs({
   }, [visibleTabs, tab, scopeMode, exposureReady]);
 
   const applicationId = scopedApplicationId;
-  const authTab = tab === "auth" || tab === "mfa" || tab === "password" || tab === "flags";
+  const authPanelTab =
+    authSubTab === "mfa" ? "mfa" : authSubTab === "password" ? "password" : "auth";
 
   if (scopeMode === "application" && exposureReady && visibleTabs.length === 0) {
     return (
@@ -285,7 +379,7 @@ export function SettingsTabs({
       </div>
 
       {tab === "integration" && applicationId && (
-        <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={setTab} />
+        <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={openTab} />
       )}
       {tab === "notifications" && scopeMode === "platform" && <PlatformNotificationsSettings />}
       {tab === "notifications" && applicationId && (
@@ -308,19 +402,60 @@ export function SettingsTabs({
       {exposureReady && tab === "tokens" && tokenTabEnabled && (
         <TokenPolicySettings applicationId={applicationId} />
       )}
-      {tab === "apps" && scopeMode === "platform" && <AppExposureSettings />}
-      {exposureReady && authTab && (tab !== "mfa" || scopeMode === "platform" || mfaTabEnabled) && (
+      {tab === "auth" && exposureReady && (
+        <>
+          <div className="mb-6 flex flex-wrap gap-1 border-b border-ui">
+            {visibleAuthSubTabs.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setAuthSubTab(sub.id)}
+                className={cn(
+                  "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                  authSubTab === sub.id
+                    ? "border-ui-primary text-brand"
+                    : "border-transparent text-muted hover:text-ui",
+                )}
+              >
+                {sub.label}
+              </button>
+            ))}
+          </div>
+          {authSubTab === "verification" && (
+            <VerificationSettingsPanel applicationId={applicationId} />
+          )}
+          {authSubTab !== "verification" && (
+            <AuthenticationSettingsPanel
+              applicationId={applicationId}
+              tab={authPanelTab}
+              platformExposesAuthMethods={
+                scopeMode === "application" && Boolean(exposure["auth-methods"])
+              }
+              mfaTabEnabled={scopeMode === "platform" ? true : mfaTabEnabled}
+              onMfaTabEnabledChange={(enabled) => {
+                setMfaTabEnabled(enabled);
+                if (enabled) setAuthSubTab("mfa");
+              }}
+              platformExposesOAuthTokens={
+                scopeMode === "application" && Boolean(exposure["token-policy"])
+              }
+              oauthTokensTabEnabled={tokenTabEnabled}
+              onOAuthTokensTabEnabledChange={(enabled) => {
+                setTokenTabEnabled(enabled);
+                if (enabled) setTab("tokens");
+              }}
+            />
+          )}
+        </>
+      )}
+      {exposureReady && tab === "flags" && (
         <AuthenticationSettingsPanel
           applicationId={applicationId}
-          tab={tab === "mfa" ? "mfa" : tab === "password" ? "password" : tab === "flags" ? "flags" : "auth"}
+          tab="flags"
           platformExposesAuthMethods={
             scopeMode === "application" && Boolean(exposure["auth-methods"])
           }
           mfaTabEnabled={scopeMode === "platform" ? true : mfaTabEnabled}
-          onMfaTabEnabledChange={(enabled) => {
-            setMfaTabEnabled(enabled);
-            if (enabled) setTab("mfa");
-          }}
           platformExposesOAuthTokens={
             scopeMode === "application" && Boolean(exposure["token-policy"])
           }
@@ -330,6 +465,12 @@ export function SettingsTabs({
             if (enabled) setTab("tokens");
           }}
         />
+      )}
+      {tab === "apps" && scopeMode === "platform" && (
+        <div className="space-y-6">
+          <AppExposureSettings />
+          {adminContext.platformSuperAdmin && <ScimSettingsPanel />}
+        </div>
       )}
     </div>
   );

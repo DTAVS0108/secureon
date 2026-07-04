@@ -14,6 +14,7 @@ import {
 import type { AdminRecipientOption, RecipientUserOption } from "@/lib/actions/settings";
 import type { EmailSettings, NotificationSettings, SmtpSettings } from "@/lib/api/settings";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 
 export type PlatformNotificationSettings = Pick<
   NotificationSettings,
@@ -43,7 +44,9 @@ function serializeDraft(
 export function PlatformNotificationsSettings() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
-  toastRef.current = toast;
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [notifications, setNotifications] = useState<PlatformNotificationSettings>({});
   const [email, setEmail] = useState<EmailSettings>({});
   const [smtp, setSmtp] = useState<SmtpSettings>({});
@@ -58,11 +61,13 @@ export function PlatformNotificationsSettings() {
   const notificationsRef = useRef(notifications);
   const emailRef = useRef(email);
   const selectedEmailsRef = useRef(selectedEmails);
-  notificationsRef.current = notifications;
-  emailRef.current = email;
-  selectedEmailsRef.current = selectedEmails;
-
   useEffect(() => {
+    notificationsRef.current = notifications;
+    emailRef.current = email;
+    selectedEmailsRef.current = selectedEmails;
+  }, [notifications, email, selectedEmails]);
+
+  useDeferredEffect(() => {
     let cancelled = false;
 
     async function load() {
@@ -139,7 +144,7 @@ export function PlatformNotificationsSettings() {
     setSaving(false);
   }, []);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!loaded || baselineSnapshotRef.current === null) return;
     const snapshot = serializeDraft(notifications, email, selectedEmails);
     if (snapshot === baselineSnapshotRef.current) return;

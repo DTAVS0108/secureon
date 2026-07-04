@@ -29,8 +29,11 @@ Dev admin API auth: HTTP Basic `admin` / `admin` (`SECUREONE_DEV_USER` / `SECURE
 | `spring.flyway.locations` | `classpath:db/migration/postgresql` |
 | `secureone.issuer` | OIDC issuer URL |
 | `secureone.admin-web-url` | Base URL for Confluence links in `/api/info` and `/api/v1/confluence` (default `http://localhost:3001`) |
+| `secureone.otp.pepper` | Server secret for OTP code hashing (`SECUREONE_OTP_PEPPER`) |
 
-Environment overrides: `SECUREONE_DB_URL`, `SECUREONE_REDIS_URL`, `SECUREONE_ISSUER_URL`, `SECUREONE_ADMIN_WEB_URL`, `SECUREONE_PORT`.
+Environment overrides: `SECUREONE_DB_URL`, `SECUREONE_REDIS_URL`, `SECUREONE_ISSUER_URL`, `SECUREONE_ADMIN_WEB_URL`, `SECUREONE_PORT`, `SECUREONE_OTP_PEPPER`.
+
+Sessions and OTP challenges use **Redis** (`spring.session.store-type: redis`).
 
 ## Database
 
@@ -39,6 +42,7 @@ Environment overrides: `SECUREONE_DB_URL`, `SECUREONE_REDIS_URL`, `SECUREONE_ISS
 ```
 src/main/resources/db/migration/postgresql/
 ├── V1__…sql … V45__platform_schema_oauth_client.sql
+├── V46__otp_verification_and_phone.sql
 └── R__z_repair_catalog.sql
 ```
 
@@ -75,6 +79,7 @@ See [Database strategy](../../docs/06-database.md) and [Applications & OAuth cli
 
 - [Installation](../../docs/09-installation.md)
 - [Environment & operations](../../docs/16-environment-setup-and-operations.md)
+- [Verification & OTP](../../docs/19-verification-and-otp.md)
 - [API documentation](../../docs/12-api-documentation.md)
 - [SecureOne Confluence](../../docs/README.md#secureone-confluence-in-app-ui) (in-app docs on admin-web)
 - [ADR 0010 — Platform and app schemas](../../docs/decisions/0010-platform-and-app-schemas.md)

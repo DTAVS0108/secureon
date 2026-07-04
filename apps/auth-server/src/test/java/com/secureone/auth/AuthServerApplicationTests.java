@@ -2,6 +2,7 @@ package com.secureone.auth;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import com.secureone.auth.config.SecureOneEnvironmentProperties;
 import com.secureone.auth.web.InfoController;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,10 @@ class AuthServerApplicationTests {
 
     @Test
     void infoEndpointReturnsStatus() {
-        InfoController controller = new InfoController("http://localhost:3001");
+        SecureOneEnvironmentProperties env = new SecureOneEnvironmentProperties();
+        env.setEnvironment("development");
+        InfoController controller = new InfoController("http://localhost:3001", env);
         assertNotNull(controller.info().get("status"));
+        assertNotNull(controller.info().get("environment"));
     }
 }

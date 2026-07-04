@@ -6,7 +6,9 @@ export type PublicManifestSections = {
   authMethods?: boolean;
   featureFlags?: boolean;
   passwordPolicy?: boolean;
+  verificationPolicy?: boolean;
   appearance?: boolean;
+  federation?: boolean;
 };
 
 export type PublicManifestConfig = {

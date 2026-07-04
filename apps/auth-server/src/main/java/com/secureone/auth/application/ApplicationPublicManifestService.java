@@ -1,6 +1,8 @@
 package com.secureone.auth.application;
 
 import com.secureone.auth.admin.ResourceNotFoundException;
+import com.secureone.auth.account.AccountVerificationService;
+import com.secureone.auth.federation.IdentityProviderService;
 import com.secureone.auth.platform.SettingsExposureService;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +25,8 @@ public class ApplicationPublicManifestService {
     private final com.secureone.auth.platform.PlatformSettingsService platformSettings;
     private final SettingsExposureService exposure;
     private final ApplicationTenantResolver tenantResolver;
+    private final AccountVerificationService accountVerification;
+    private final IdentityProviderService federationProviders;
 
     public ApplicationPublicManifestService(
             ApplicationRepository applications,
@@ -30,13 +34,17 @@ public class ApplicationPublicManifestService {
             ApplicationSettingsService settings,
             com.secureone.auth.platform.PlatformSettingsService platformSettings,
             SettingsExposureService exposure,
-            ApplicationTenantResolver tenantResolver) {
+            ApplicationTenantResolver tenantResolver,
+            AccountVerificationService accountVerification,
+            IdentityProviderService federationProviders) {
         this.applications = applications;
         this.appSettings = appSettings;
         this.settings = settings;
         this.platformSettings = platformSettings;
         this.exposure = exposure;
         this.tenantResolver = tenantResolver;
+        this.accountVerification = accountVerification;
+        this.federationProviders = federationProviders;
     }
 
     @Transactional(readOnly = true)
@@ -125,14 +133,29 @@ public class ApplicationPublicManifestService {
                     com.secureone.auth.account.PasswordPolicyRules.publicPolicy(
                             settings.resolvePasswordPolicy(applicationId)));
         }
+        if (Boolean.TRUE.equals(sections.get("verificationPolicy"))) {
+            response.put("verification", accountVerification.verificationOptions(applicationId));
+        }
         if (Boolean.TRUE.equals(sections.get("appearance"))) {
             response.put("appearance", sanitizeAppearance(settings.resolveAppearance(applicationId)));
+        }
+        if (Boolean.TRUE.equals(sections.get("federation"))) {
+            response.put("federation", buildFederationBlock(applicationId, app.getTenantId()));
         }
         response.put("signup", buildSignupBlock(applicationId, app));
         response.put(
                 "account",
-                ApplicationAccountEndpoints.manifestBlock(applicationId));
+                ApplicationAccountEndpoints.manifestBlock(applicationId, settings.publicClientUrls(applicationId)));
         return response;
+    }
+
+    private Map<String, Object> buildFederationBlock(UUID applicationId, UUID tenantId) {
+        Map<String, Object> block = new LinkedHashMap<>();
+        block.put(
+                "providersEndpoint",
+                "/api/v1/auth/federation/providers?applicationId=" + applicationId);
+        block.put("providers", federationProviders.listPublic(tenantId, applicationId));
+        return block;
     }
 
     private Map<String, Object> buildSignupBlock(UUID applicationId, Application app) {

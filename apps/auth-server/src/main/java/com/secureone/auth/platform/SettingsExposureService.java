@@ -18,7 +18,9 @@ public class SettingsExposureService {
             "appearance",
             "user-directory",
             "public-manifest",
-            "token-policy");
+            "token-policy",
+            "verification-policy",
+            "sms");
 
     private final PlatformSettingsService platformSettings;
 

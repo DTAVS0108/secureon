@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { useRouter } from "next/navigation";
 import { RoleLabelBadge } from "@/components/roles/RoleLabelBadge";
 import { RoleDetailPanel } from "@/components/roles/RoleDetailPanel";
@@ -61,7 +62,7 @@ export function RolesWorkspace({
   const [query, setQuery] = useState("");
   const [labelFilter, setLabelFilter] = useState<RoleLabel | "ALL">("ALL");
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     try {
       const created = sessionStorage.getItem("roles:lastCreated");
       if (created && roles.some((r) => r.id === created)) {

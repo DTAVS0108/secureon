@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { UserDetailPanel } from "@/components/users/UserDetailPanel";
 import { UserImportExportMenu } from "@/components/users/UserImportExportMenu";
@@ -154,11 +146,11 @@ export function UsersWorkspace({
     [reloadUsers, openUser, router],
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setUsers(filterUsersForOperatorList(initialUsers, listViewer));
   }, [initialUsers, listViewer]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     let cancelled = false;
     void listUsers(tenantId, applicationId)
       .then((rows) => {
@@ -172,18 +164,18 @@ export function UsersWorkspace({
     };
   }, [tenantId, applicationId, listViewer]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     registerRefreshHandler?.(handleUserCreated);
     return () => registerRefreshHandler?.(() => {});
   }, [registerRefreshHandler, handleUserCreated]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     fetchUserDirectorySettings(applicationId)
       .then(setDirectory)
       .catch(() => setDirectory(null));
   }, [applicationId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     try {
       const created = sessionStorage.getItem("users:lastCreated");
       if (created && users.some((u) => u.id === created) && selectedId !== created) {
@@ -197,7 +189,7 @@ export function UsersWorkspace({
     }
   }, [users, selectedId, searchParams, pathname, router]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (selectedId && !users.some((u) => u.id === selectedId)) {
       let pendingCreated: string | null = null;
       try {

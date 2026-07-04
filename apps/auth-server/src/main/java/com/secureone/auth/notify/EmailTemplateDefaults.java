@@ -42,6 +42,48 @@ public final class EmailTemplateDefaults {
                 If you did not create this account, you can safely ignore this email.""",
                 htmlVerifyEmail(),
                 List.of("userName", "userEmail", "actionLink", "tenantName", "appName")));
+        templates.put("verify_email_otp", template(
+                "Verify email (OTP)",
+                "Email verification using a one-time code",
+                "Your {{appName}} verification code",
+                """
+                Hello {{userName}},
+
+                Your verification code is: {{otpCode}}
+
+                This code expires in {{otpTtlMinutes}} minutes.
+
+                If you did not create this account, you can safely ignore this email.""",
+                "<p>Hello {{userName}},</p><p>Your verification code is: <strong>{{otpCode}}</strong></p><p>Expires in {{otpTtlMinutes}} minutes.</p>",
+                List.of("userName", "userEmail", "otpCode", "otpTtlMinutes", "tenantName", "appName")));
+        templates.put("login_otp_email", template(
+                "Sign-in code",
+                "Passwordless email OTP at login",
+                "Your {{appName}} sign-in code",
+                """
+                Hello {{userName}},
+
+                Your sign-in code is: {{otpCode}}
+
+                This code expires in {{otpTtlMinutes}} minutes.
+
+                If you did not request this code, you can safely ignore this email.""",
+                "<p>Hello {{userName}},</p><p>Your sign-in code is: <strong>{{otpCode}}</strong></p><p>Expires in {{otpTtlMinutes}} minutes.</p>",
+                List.of("userName", "userEmail", "otpCode", "otpTtlMinutes", "tenantName", "appName")));
+        templates.put("password_reset_otp", template(
+                "Password reset (OTP)",
+                "Forgot-password using a one-time code",
+                "Your {{appName}} password reset code",
+                """
+                Hello {{userName}},
+
+                Your password reset code is: {{otpCode}}
+
+                This code expires in {{otpTtlMinutes}} minutes.
+
+                If you did not request a password reset, ignore this email or contact your administrator.""",
+                "<p>Hello {{userName}},</p><p>Your password reset code is: <strong>{{otpCode}}</strong></p><p>Expires in {{otpTtlMinutes}} minutes.</p>",
+                List.of("userName", "userEmail", "otpCode", "otpTtlMinutes", "tenantName", "appName")));
         templates.put("password_reset", template(
                 "Password reset",
                 "Forgot-password and admin-initiated reset",

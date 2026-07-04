@@ -37,7 +37,9 @@ export function ThemeProvider({
 }) {
   const { toast } = useToast();
   const toastRef = useRef(toast);
-  toastRef.current = toast;
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [prefs, setPrefsState] = useState<UiPreferences>(DEFAULT_UI_PREFERENCES);
   const prevPrefs = useRef<UiPreferences | null>(null);
   const [ready, setReady] = useState(false);

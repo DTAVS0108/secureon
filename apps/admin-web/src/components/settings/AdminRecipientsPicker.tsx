@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -143,9 +144,9 @@ export function AdminRecipientsPicker({
               {adminOptions.length === 0 ? (
                 <p className="px-2 py-2 text-xs text-muted">
                   No admin-role users yet.{" "}
-                  <a href="/users" className="link-brand">
+                  <Link href="/users" className="link-brand">
                     Assign an admin role
-                  </a>{" "}
+                  </Link>{" "}
                   or add a custom email below.
                 </p>
               ) : (

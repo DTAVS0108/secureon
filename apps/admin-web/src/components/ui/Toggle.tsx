@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { cn } from "@/lib/cn";
 
 export function Toggle({
@@ -20,7 +21,7 @@ export function Toggle({
   const controlled = checked !== undefined;
   const [on, setOn] = useState(controlled ? checked : defaultOn);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (controlled) setOn(checked);
   }, [controlled, checked]);
 

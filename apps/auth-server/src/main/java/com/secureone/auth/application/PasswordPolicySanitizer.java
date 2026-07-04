@@ -14,7 +14,10 @@ public final class PasswordPolicySanitizer {
             "requireSymbol",
             "expiryDays",
             "historyCount",
-            "hashAlgorithm");
+            "hashAlgorithm",
+            "maxFailedAttempts",
+            "lockoutDurationMinutes",
+            "breachCheck");
 
     private PasswordPolicySanitizer() {}
 
@@ -27,6 +30,9 @@ public final class PasswordPolicySanitizer {
         out.put("expiryDays", 0);
         out.put("historyCount", 5);
         out.put("hashAlgorithm", "bcrypt");
+        out.put("maxFailedAttempts", 5);
+        out.put("lockoutDurationMinutes", 15);
+        out.put("breachCheck", false);
         return out;
     }
 
@@ -40,7 +46,24 @@ public final class PasswordPolicySanitizer {
         out.put("expiryDays", clampInt(body, "expiryDays", intValue(defaults, "expiryDays", 0), 0, 3650));
         out.put("historyCount", clampInt(body, "historyCount", intValue(defaults, "historyCount", 5), 0, 24));
         out.put("hashAlgorithm", normalizeHashAlgorithm(body != null ? body.get("hashAlgorithm") : null));
+        out.put("maxFailedAttempts", clampInt(body, "maxFailedAttempts", intValue(defaults, "maxFailedAttempts", 5), 3, 20));
+        out.put(
+                "lockoutDurationMinutes",
+                clampInt(body, "lockoutDurationMinutes", intValue(defaults, "lockoutDurationMinutes", 15), 1, 1440));
+        out.put("breachCheck", bool(body, "breachCheck", boolValue(defaults, "breachCheck", false)));
         return out;
+    }
+
+    public static boolean breachCheckEnabled(Map<String, Object> policy) {
+        return bool(policy, "breachCheck", false);
+    }
+
+    public static int maxFailedAttempts(Map<String, Object> policy) {
+        return clampInt(policy, "maxFailedAttempts", 5, 3, 20);
+    }
+
+    public static int lockoutDurationMinutes(Map<String, Object> policy) {
+        return clampInt(policy, "lockoutDurationMinutes", 15, 1, 1440);
     }
 
     public static String normalizeHashAlgorithm(Object raw) {

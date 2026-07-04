@@ -21,12 +21,31 @@ public class TenantUserDetailsService implements UserDetailsService {
     private final UserAccountRepository users;
     private final TenantRepository tenants;
     private final UserCredentialRepository credentials;
+    private final AccountLockoutService lockout;
 
     public TenantUserDetailsService(
-            UserAccountRepository users, TenantRepository tenants, UserCredentialRepository credentials) {
+            UserAccountRepository users,
+            TenantRepository tenants,
+            UserCredentialRepository credentials,
+            AccountLockoutService lockout) {
         this.users = users;
         this.tenants = tenants;
         this.credentials = credentials;
+        this.lockout = lockout;
+    }
+
+    public UserDetails buildSessionPrincipal(String tenantSlug, UserAccount account) {
+        if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
+            throw new UsernameNotFoundException("Account is not active");
+        }
+        lockout.assertNotLocked(account);
+        String username = tenantSlug + ":" + account.getEmail();
+        boolean hasPassword =
+                credentials.findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(account.getId()).isPresent();
+        return User.withUsername(username)
+                .password(hasPassword ? "{noop}placeholder" : "")
+                .roles("USER")
+                .build();
     }
 
     @Override
@@ -46,6 +65,7 @@ public class TenantUserDetailsService implements UserDetailsService {
         if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
             throw new UsernameNotFoundException("Account is not active");
         }
+        lockout.assertNotLocked(account);
         if (!account.isEmailVerified()) {
             throw new UsernameNotFoundException(
                     "Email address is not verified. Open the link from your inbox or ask an administrator to verify your account.");

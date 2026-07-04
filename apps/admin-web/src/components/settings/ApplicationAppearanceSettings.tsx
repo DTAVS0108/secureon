@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceThemeEditor } from "@/components/settings/appearance/AppearanceThemeEditor";
 import { ClientThemePreview, WidgetColorFields } from "@/components/settings/appearance/appearance-shared";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,7 +41,7 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
     }
   }, [applicationId, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
   }, [reload]);
 
@@ -79,7 +80,7 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
     [scheduleSave],
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };

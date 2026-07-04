@@ -4,6 +4,7 @@ import com.secureone.auth.admin.AdminAccessService;
 import com.secureone.auth.admin.AdminOperatorService;
 import com.secureone.auth.admin.OperatorListVisibilityService;
 import com.secureone.auth.admin.application.ApplicationUserAdminService;
+import com.secureone.auth.admin.impersonation.AdminImpersonationService;
 import com.secureone.auth.admin.user.UserAdminDtos.UserCreateRequest;
 import com.secureone.auth.admin.user.UserAdminDtos.UserResponse;
 import com.secureone.auth.admin.user.UserAdminDtos.UserUpdateRequest;
@@ -40,18 +41,21 @@ public class UserAdminController {
     private final AdminAccessService access;
     private final AdminOperatorService operators;
     private final OperatorListVisibilityService listVisibility;
+    private final AdminImpersonationService impersonation;
 
     public UserAdminController(
             UserAdminService service,
             ApplicationUserAdminService applicationUsers,
             AdminAccessService access,
             AdminOperatorService operators,
-            OperatorListVisibilityService listVisibility) {
+            OperatorListVisibilityService listVisibility,
+            AdminImpersonationService impersonation) {
         this.service = service;
         this.applicationUsers = applicationUsers;
         this.access = access;
         this.operators = operators;
         this.listVisibility = listVisibility;
+        this.impersonation = impersonation;
     }
 
     @GetMapping
@@ -246,6 +250,27 @@ public class UserAdminController {
         requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
         service.sendSetPasswordInviteEmail(id);
         return Map.of("status", "sent", "message", "Set-password email sent to the user.");
+    }
+
+    @PostMapping("/{id}/impersonate")
+    public AdminImpersonationService.ImpersonationTokenResponse impersonate(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body) {
+        UserResponse existing = service.get(id);
+        requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
+        String reason = body != null ? String.valueOf(body.get("reason")) : null;
+        UUID applicationId = null;
+        if (body != null && body.get("applicationId") != null) {
+            applicationId = UUID.fromString(String.valueOf(body.get("applicationId")));
+            access.requireApplicationAccess(authentication, actAsEmail, applicationId);
+        }
+        String adminPrincipal = authentication.getName();
+        if (actAsEmail != null && !actAsEmail.isBlank()) {
+            adminPrincipal = actAsEmail.trim();
+        }
+        return impersonation.createToken(id, adminPrincipal, reason, applicationId);
     }
 
     private void requirePlatformOrTenantWrite(

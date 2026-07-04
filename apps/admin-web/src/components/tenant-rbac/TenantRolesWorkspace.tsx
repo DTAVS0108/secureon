@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -163,7 +164,7 @@ export function TenantRolesWorkspace({
     consoleCatalog.features,
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (selected.kind === "console" && consoleRole) {
       setEditConsoleFeatures(consoleRole.defaultFeatures);
     }
@@ -178,7 +179,7 @@ export function TenantRolesWorkspace({
     setPermissions(perms);
   }
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (selected.kind !== "custom") {
       setCustomDetail(null);
       return;

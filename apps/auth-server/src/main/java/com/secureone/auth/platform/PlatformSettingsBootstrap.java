@@ -1,6 +1,8 @@
 package com.secureone.auth.platform;
 
+import com.secureone.auth.application.PasswordPolicySanitizer;
 import com.secureone.auth.application.PublicManifestDefaults;
+import com.secureone.auth.config.SecureOneEnvironmentProperties;
 import com.secureone.auth.application.TokenPolicyDefaults;
 import com.secureone.auth.application.UserDirectoryDefaults;
 import java.util.LinkedHashMap;
@@ -15,9 +17,12 @@ import org.springframework.stereotype.Component;
 public class PlatformSettingsBootstrap {
 
     private final PlatformSettingRepository settings;
+    private final SecureOneEnvironmentProperties environment;
 
-    public PlatformSettingsBootstrap(PlatformSettingRepository settings) {
+    public PlatformSettingsBootstrap(
+            PlatformSettingRepository settings, SecureOneEnvironmentProperties environment) {
         this.settings = settings;
+        this.environment = environment;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -31,7 +36,14 @@ public class PlatformSettingsBootstrap {
         ensure("feature_flags", FeatureFlagDefaults.platformCatalog());
         ensure("user_directory", UserDirectoryDefaults.platformDefaults());
         ensure("public_manifest_defaults", PublicManifestDefaults.platformDefaults());
-        ensure("token_policy", TokenPolicyDefaults.platformDefaults());
+        ensure(
+                "token_policy",
+                environment.isProduction()
+                        ? TokenPolicyDefaults.productionDefaults()
+                        : TokenPolicyDefaults.platformDefaults());
+        ensure("verification_policy", VerificationPolicyDefaults.platformDefaults());
+        ensure("mfa_policy", defaultMfaPolicy());
+        ensure("sms", defaultSms());
         ensure("appearance", Map.of());
         ensure("app_settings_exposure", defaultExposure());
     }
@@ -57,15 +69,7 @@ public class PlatformSettingsBootstrap {
     }
 
     private static Map<String, Object> defaultPasswordPolicy() {
-        Map<String, Object> policy = new LinkedHashMap<>();
-        policy.put("minLength", 12);
-        policy.put("requireUppercase", true);
-        policy.put("requireNumber", true);
-        policy.put("requireSymbol", true);
-        policy.put("expiryDays", 0);
-        policy.put("historyCount", 5);
-        policy.put("hashAlgorithm", "bcrypt");
-        return policy;
+        return new LinkedHashMap<>(PasswordPolicySanitizer.platformDefaults());
     }
 
     private static List<Map<String, Object>> defaultAuthMethods() {
@@ -73,9 +77,9 @@ public class PlatformSettingsBootstrap {
                 authMethod("m_password", "Password", "Username + password", true, "primary", true),
                 authMethod("m_passkey", "Passkeys (WebAuthn)", "Phishing-resistant sign-in", true, "primary", false),
                 authMethod("m_magic", "Magic Link", "Email passwordless login", true, "primary", true),
-                authMethod("m_totp", "TOTP Authenticator", "Authenticator app codes", true, "mfa", false),
-                authMethod("m_sms", "SMS OTP", "SMS one-time codes", false, "mfa", false),
-                authMethod("m_email_otp", "Email OTP", "Email one-time codes at login", true, "mfa", false),
+                authMethod("m_totp", "TOTP Authenticator", "Authenticator app codes", true, "mfa", true),
+                authMethod("m_sms", "SMS OTP", "SMS one-time codes", false, "mfa", true),
+                authMethod("m_email_otp", "Email OTP", "Email one-time codes at login", true, "mfa", true),
                 authMethod("m_push", "Push Notification", "Approve on device", false, "mfa", false),
                 authMethod("m_google", "Google", "Google OIDC", true, "federation", false),
                 authMethod("m_github", "GitHub", "GitHub OAuth", true, "federation", false),
@@ -93,6 +97,25 @@ public class PlatformSettingsBootstrap {
         row.put("category", category);
         row.put("implemented", implemented);
         return row;
+    }
+
+    private static Map<String, Object> defaultSms() {
+        Map<String, Object> sms = new LinkedHashMap<>();
+        sms.put("provider", "log");
+        sms.put("enabled", false);
+        sms.put("twilioAccountSid", "");
+        sms.put("twilioAuthToken", "");
+        sms.put("twilioFromNumber", "");
+        return sms;
+    }
+
+    private static Map<String, Object> defaultMfaPolicy() {
+        Map<String, Object> policy = new LinkedHashMap<>();
+        policy.put("stepUpAfterPassword", true);
+        policy.put("recoveryCodesPerEnrollment", 10);
+        policy.put("challengeTtlSeconds", 300);
+        policy.put("maxChallengeAttempts", 5);
+        return policy;
     }
 
     private static Map<String, Object> defaultExposure() {

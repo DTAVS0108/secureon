@@ -73,9 +73,19 @@ public class ApplicationPublicController {
     }
 
     @PostMapping("/{applicationId}/account/password/forgot")
-    public Map<String, String> forgotPassword(
-            @PathVariable UUID applicationId, @Valid @RequestBody EmailRequest body) {
-        return account.forgotPassword(applicationId, body.email());
+    public Map<String, Object> forgotPassword(
+            @PathVariable UUID applicationId, @Valid @RequestBody ApplicationAccountDtos.ForgotPasswordRequest body) {
+        String identifier = body.resolveIdentifier();
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("email or identifier is required");
+        }
+        return account.forgotPassword(applicationId, identifier, body.mode(), body.channel());
+    }
+
+    @PostMapping("/{applicationId}/account/password/reset/otp")
+    public Map<String, String> resetPasswordOtp(
+            @PathVariable UUID applicationId, @Valid @RequestBody ApplicationAccountDtos.ResetPasswordOtpRequest body) {
+        return account.resetPasswordOtp(applicationId, body.challengeId(), body.code(), body.password());
     }
 
     @PostMapping("/{applicationId}/account/email/resend-verification")
@@ -90,12 +100,34 @@ public class ApplicationPublicController {
         return account.requestMagicLink(applicationId, body.email());
     }
 
+    @PostMapping("/{applicationId}/auth/otp/request")
+    public Map<String, Object> requestLoginOtp(
+            @PathVariable UUID applicationId, @Valid @RequestBody ApplicationAccountDtos.OtpLoginRequest body) {
+        return account.requestLoginOtp(applicationId, body.identifier(), body.channel());
+    }
+
+    @PostMapping("/{applicationId}/auth/otp/verify")
+    public ResponseEntity<?> verifyLoginOtp(
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody ApplicationAccountDtos.OtpVerifyRequest body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        return account.verifyLoginOtp(applicationId, body.challengeId(), body.code(), request, response);
+    }
+
+    @PostMapping("/{applicationId}/account/verify/otp/confirm")
+    public Map<String, Object> confirmSignupOtp(
+            @PathVariable UUID applicationId, @Valid @RequestBody ApplicationAccountDtos.OtpVerifyRequest body) {
+        return account.confirmSignupOtp(
+                applicationId, body.challengeId(), body.code(), body.channel() != null ? body.channel() : "email");
+    }
+
     @PostMapping("/{applicationId}/auth/session/login")
     public ResponseEntity<?> sessionLogin(
             @PathVariable UUID applicationId,
             @Valid @RequestBody SessionLoginRequest body,
             HttpServletRequest request,
             HttpServletResponse response) {
-        return account.sessionLogin(applicationId, body.email(), body.password(), request, response);
+        return account.sessionLogin(applicationId, body.identifier(), body.password(), request, response);
     }
 }

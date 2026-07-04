@@ -1,12 +1,15 @@
 package com.secureone.auth.application;
 
 import com.secureone.auth.account.AccountNotificationService;
+import com.secureone.auth.account.AccountVerificationService;
+import com.secureone.auth.account.PhoneNormalizer;
 import com.secureone.auth.account.UserPasswordService;
 import com.secureone.auth.admin.ConflictException;
 import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.audit.AuditService;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
+import com.secureone.auth.webhook.UserLifecycleWebhookPublisher;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -29,7 +32,9 @@ public class ApplicationSignupService {
     private final UserPasswordService passwords;
     private final ApplicationEffectiveSettingsService effectiveSettings;
     private final AccountNotificationService accountNotifications;
+    private final AccountVerificationService accountVerification;
     private final AuditService auditService;
+    private final UserLifecycleWebhookPublisher userLifecycleWebhooks;
     private final String publicBaseUrl;
 
     public ApplicationSignupService(
@@ -39,7 +44,9 @@ public class ApplicationSignupService {
             UserPasswordService passwords,
             ApplicationEffectiveSettingsService effectiveSettings,
             AccountNotificationService accountNotifications,
+            AccountVerificationService accountVerification,
             AuditService auditService,
+            UserLifecycleWebhookPublisher userLifecycleWebhooks,
             @Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl) {
         this.applications = applications;
         this.users = users;
@@ -47,7 +54,9 @@ public class ApplicationSignupService {
         this.passwords = passwords;
         this.effectiveSettings = effectiveSettings;
         this.accountNotifications = accountNotifications;
+        this.accountVerification = accountVerification;
         this.auditService = auditService;
+        this.userLifecycleWebhooks = userLifecycleWebhooks;
         this.publicBaseUrl =
                 publicBaseUrl.endsWith("/") ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1) : publicBaseUrl;
     }
@@ -69,6 +78,7 @@ public class ApplicationSignupService {
                         effectiveSettings.passwordPolicy(applicationId)));
         out.put("loginEmailHint", "your@email.com");
         out.put("account", ApplicationAccountEndpoints.manifestBlock(applicationId));
+        out.put("verification", accountVerification.verificationOptions(applicationId));
         return out;
     }
 
@@ -88,6 +98,17 @@ public class ApplicationSignupService {
         user.setUsername(resolveUsername(email));
         user.setDisplayName(resolveDisplayName(request.firstName(), request.lastName(), request.displayName(), email));
         user.setEmailVerified(false);
+        user.setPhoneVerified(false);
+        if (request.phone() != null && !request.phone().isBlank()) {
+            String phone = PhoneNormalizer.toE164(request.phone(), "US");
+            if (phone == null) {
+                throw new IllegalArgumentException("Invalid phone number.");
+            }
+            users.findByTenantIdAndPhone(app.getTenantId(), phone).ifPresent(phoneTaken -> {
+                throw new ConflictException("An account with this phone number already exists.");
+            });
+            user.setPhone(phone);
+        }
         user.setStatus("ACTIVE");
         user.setType("USER");
         users.saveAndFlush(user);
@@ -96,7 +117,9 @@ public class ApplicationSignupService {
 
         memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
 
-        accountNotifications.sendVerificationEmail(applicationId, user, "signup");
+        Map<String, Object> verification = accountVerification.sendSignupVerification(
+                applicationId, user, "signup", request.verificationMode(), request.verificationChannel());
+
         auditService.record(
                 app.getTenantId(),
                 applicationId,
@@ -107,14 +130,21 @@ public class ApplicationSignupService {
                 email,
                 true);
 
+        userLifecycleWebhooks.userCreated(user, applicationId, "self_registration");
+
         Map<String, Object> response = new LinkedHashMap<>();
         response.put(
                 "message",
-                "Account created. Check your inbox for a verification link, then sign in with your email and password.");
+                "otp".equals(verification.get("mode"))
+                        ? "Account created. Enter the verification code sent to your "
+                                + verification.getOrDefault("channel", "email")
+                                + "."
+                        : "Account created. Check your inbox for a verification link, then sign in with your email and password.");
         response.put("userId", user.getId().toString());
         response.put("loginEmail", email);
         response.put("emailVerificationRequired", true);
-        response.put("verificationEmailSent", true);
+        response.put("verificationSent", true);
+        response.putAll(verification);
         response.put(
                 "devMailInboxHint",
                 "Local dev: open http://localhost:8025 (MailHog) if the message is not in your real inbox.");

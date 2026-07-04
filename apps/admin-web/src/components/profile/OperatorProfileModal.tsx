@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { OperatorProfilePanel } from "./OperatorProfilePanel";
@@ -14,11 +15,11 @@ export function OperatorProfileModal({
 }) {
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -43,7 +44,7 @@ export function OperatorProfileModal({
         aria-modal="true"
         aria-labelledby="operator-profile-title"
         className={cn(
-          "relative z-[10000] my-4 flex max-h-[min(90vh,40rem)] w-full max-w-lg flex-col",
+          "relative z-[10000] my-4 flex max-h-[min(90vh,48rem)] w-full max-w-lg flex-col",
           "rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl",
         )}
       >
@@ -52,7 +53,7 @@ export function OperatorProfileModal({
             <h2 id="operator-profile-title" className="text-base font-semibold text-ui">
               My profile
             </h2>
-            <p className="mt-0.5 text-xs text-muted">Account details and password</p>
+            <p className="mt-0.5 text-xs text-muted">Account details, password, and MFA</p>
           </div>
           <button
             type="button"

@@ -243,6 +243,7 @@ export type PasswordPolicy = {
   expiryDays: number;
   historyCount: number;
   hashAlgorithm: string;
+  breachCheck?: boolean;
   requirements?: PasswordRequirement[];
   inheritsPlatformDefaults?: boolean;
 };

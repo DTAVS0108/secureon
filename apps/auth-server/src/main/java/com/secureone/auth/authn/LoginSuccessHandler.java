@@ -1,12 +1,15 @@
 package com.secureone.auth.authn;
 
 import com.secureone.auth.application.ApplicationMembershipService;
+import com.secureone.auth.mfa.MfaLoginService;
+import com.secureone.auth.mfa.MfaLoginService.MfaChallengeResponse;
 import com.secureone.auth.application.UserApplicationRepository;
 import com.secureone.auth.logging.AuthRequestContext;
 import com.secureone.auth.session.LoginHistoryService;
 import com.secureone.auth.tenant.TenantRepository;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
+import com.secureone.auth.webhook.WebhookEventPublisher;
 import java.util.UUID;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +18,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.savedrequest.RequestCache;
@@ -35,6 +41,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final UserApplicationRepository userApplications;
     private final ApplicationMembershipService memberships;
     private final TenantRepository tenants;
+    private final AccountLockoutService lockout;
+    private final MfaLoginService mfaLogin;
+    private final ObjectProvider<WebhookEventPublisher> webhookPublisher;
 
     public LoginSuccessHandler(
             RequestCache requestCache,
@@ -43,7 +52,10 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             LoginHistoryService loginHistory,
             UserApplicationRepository userApplications,
             ApplicationMembershipService memberships,
-            TenantRepository tenants) {
+            TenantRepository tenants,
+            AccountLockoutService lockout,
+            MfaLoginService mfaLogin,
+            ObjectProvider<WebhookEventPublisher> webhookPublisher) {
         this.requestCache = requestCache;
         this.userDetailsService = userDetailsService;
         this.users = users;
@@ -51,6 +63,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         this.userApplications = userApplications;
         this.memberships = memberships;
         this.tenants = tenants;
+        this.lockout = lockout;
+        this.mfaLogin = mfaLogin;
+        this.webhookPublisher = webhookPublisher;
         setDefaultTargetUrl("/login.html?signedIn=1");
     }
 
@@ -84,6 +99,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         int sep = username.indexOf(':');
         UserAccount account =
                 userDetailsService.resolveAccount(username.substring(0, sep), username.substring(sep + 1));
+        lockout.recordSuccess(account.getId());
+        account.setFailedLoginCount(0);
+        account.setLockedUntil(null);
         account.setLastLoginAt(Instant.now());
         users.save(account);
         UUID applicationId = resolveApplicationId(request, account);
@@ -100,10 +118,27 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
                 "—",
                 AuthRequestContext.resolveSessionId(request),
                 null);
+        AuthContextAttributes.recordPasswordAuth(request);
         log.info(
                 "Form login succeeded [sess={}] for {}",
                 AuthRequestContext.formatSessionRef(request),
                 username);
+        publishLoginSucceededWebhook(account, applicationId, request);
+    }
+
+    private void publishLoginSucceededWebhook(UserAccount account, UUID applicationId, HttpServletRequest request) {
+        webhookPublisher.ifAvailable(publisher -> {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("userId", account.getId().toString());
+            payload.put("email", account.getEmail());
+            payload.put("tenantId", account.getTenantId().toString());
+            if (applicationId != null) {
+                payload.put("applicationId", applicationId.toString());
+            }
+            payload.put("ipAddress", request.getRemoteAddr());
+            payload.put("userAgent", request.getHeader("User-Agent"));
+            publisher.publish(account.getTenantId(), applicationId, "user.login.succeeded", payload);
+        });
     }
 
     private UUID resolveApplicationId(HttpServletRequest request, UserAccount account) {
@@ -125,7 +160,34 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     public void onAuthenticationSuccess(
             HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException, ServletException {
+        UUID applicationId = parseApplicationId(request);
+        if (applicationId != null && mfaLogin.shouldChallengeFormLogin(authentication, applicationId, request)) {
+            int sep = authentication.getName().indexOf(':');
+            UserAccount account = userDetailsService.resolveAccount(
+                    authentication.getName().substring(0, sep), authentication.getName().substring(sep + 1));
+            MfaChallengeResponse challenge = mfaLogin.issueChallenge(
+                    account, authentication.getName().substring(0, sep).trim().toLowerCase(), applicationId);
+            mfaLogin.clearSession(request, response);
+            String mfaUrl = "/login.html?mfa=1&mfaChallengeId="
+                    + URLEncoder.encode(challenge.mfaChallengeId().toString(), StandardCharsets.UTF_8)
+                    + "&applicationId="
+                    + URLEncoder.encode(applicationId.toString(), StandardCharsets.UTF_8);
+            getRedirectStrategy().sendRedirect(request, response, mfaUrl);
+            return;
+        }
         recordSuccessfulLogin(request, authentication);
         finishLogin(request, response, authentication);
+    }
+
+    private static UUID parseApplicationId(HttpServletRequest request) {
+        String raw = request.getParameter("applicationId");
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

@@ -14,7 +14,9 @@ public final class PublicManifestDefaults {
         sections.put("authMethods", true);
         sections.put("featureFlags", true);
         sections.put("passwordPolicy", true);
+        sections.put("verificationPolicy", true);
         sections.put("appearance", false);
+        sections.put("federation", true);
 
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("enabled", false);

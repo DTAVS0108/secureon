@@ -1,0 +1,32 @@
+# Production profile — Swagger and dev auth off; fail-fast checks run at startup.
+secureone:
+  environment: ${SECUREONE_ENV:production}
+  swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:false}
+  dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:false}
+  mail:
+    log-links-when-smtp-unavailable: ${SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE:false}
+  rate-limit:
+    login-per-minute: 10
+    token-per-minute: 30
+    forgot-password-per-minute: 3
+    otp-request-per-minute: 5
+    admin-login-per-minute: 5
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

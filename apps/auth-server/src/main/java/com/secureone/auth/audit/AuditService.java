@@ -1,8 +1,11 @@
 package com.secureone.auth.audit;
 
+import com.secureone.auth.logging.ClientIpResolver;
+import com.secureone.auth.logging.RequestContext;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,11 +47,23 @@ public class AuditService {
         log.setAction(action);
         log.setTargetType(targetType);
         log.setTargetId(targetId);
-        log.setIp("127.0.0.1");
+        log.setIp(ClientIpResolver.fromMdcOrUnknown());
+        String userAgent = MDC.get(RequestContext.USER_AGENT);
+        if (userAgent != null && !userAgent.isBlank()) {
+            log.setUserAgent(userAgent);
+        }
         Map<String, Object> meta = new HashMap<>();
         meta.put("result", success ? "success" : "failure");
         meta.put("actorEmail", actorEmail != null ? actorEmail : "admin");
         meta.put("targetLabel", targetLabel);
+        String principal = MDC.get(RequestContext.PRINCIPAL);
+        if (principal != null && !principal.isBlank()) {
+            meta.put("actorPrincipal", principal);
+        }
+        String requestId = MDC.get(RequestContext.REQUEST_ID);
+        if (requestId != null && !requestId.isBlank()) {
+            meta.put("requestId", requestId);
+        }
         log.setMetadata(meta);
         repository.save(log);
     }

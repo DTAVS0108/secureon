@@ -37,9 +37,14 @@ public class RequestContextFilter extends OncePerRequestFilter {
             MDC.put(RequestContext.SESSION_ID, sessionId);
         }
 
-        String clientIp = request.getRemoteAddr();
+        String clientIp = ClientIpResolver.resolve(request);
         if (clientIp != null) {
             MDC.put(RequestContext.CLIENT_IP, clientIp);
+        }
+
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent != null && !userAgent.isBlank()) {
+            MDC.put(RequestContext.USER_AGENT, userAgent.trim());
         }
 
         String applicationHeader = request.getHeader("X-Application-Id");

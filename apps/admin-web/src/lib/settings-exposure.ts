@@ -11,6 +11,8 @@ export const APP_SETTINGS_EXPOSURE_KEYS = [
   "user-directory",
   "public-manifest",
   "token-policy",
+  "verification-policy",
+  "sms",
 ] as const;
 
 /** Used when auth-server has no app-exposure API yet (restart required for V10+). */
@@ -24,6 +26,8 @@ export const DEFAULT_APP_SETTINGS_EXPOSURE: AppSettingsExposure = {
   "user-directory": true,
   "public-manifest": true,
   "token-policy": true,
+  "verification-policy": true,
+  sms: true,
 };
 
 export function resolveAppSettingsExposure(

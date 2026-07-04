@@ -32,6 +32,19 @@ flowchart TD
 | `user-directory` | `user_directory` | User directory |
 | `public-manifest` | `public_manifest` | Public API |
 | `token-policy` | `token_policy` | OAuth tokens (TTL, refresh rotation) — requires per-app `tabEnabled` |
+| `verification-policy` | `verification_policy` | Verification (signup link vs OTP, OTP TTL, SMS) |
+
+### Verification & OTP
+
+**Platform → Settings → Verification** (and per-app when exposed):
+
+| Setting | Effect |
+|---------|--------|
+| Default mode | `link` (email URL) or `otp` (numeric code) for signup |
+| OTP length / TTL / max attempts | Code format and security |
+| SMS provider | Platform-only: `log` (dev) or Twilio |
+
+Enable **email OTP login** (`m_email_otp`) and **SMS OTP login** (`m_sms`) under Authentication → MFA. Full API reference: [19 — Verification & OTP](19-verification-and-otp.md).
 
 ### OAuth tokens (two-step enable)
 

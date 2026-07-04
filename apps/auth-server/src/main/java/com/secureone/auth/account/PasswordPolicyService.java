@@ -1,5 +1,6 @@
 package com.secureone.auth.account;
 
+import com.secureone.auth.application.PasswordPolicySanitizer;
 import com.secureone.auth.application.ApplicationEffectiveSettingsService;
 import com.secureone.auth.platform.AuthSettingsService;
 import com.secureone.auth.user.UserCredential;
@@ -20,15 +21,19 @@ public class PasswordPolicyService {
     private final UserCredentialRepository credentials;
     private final PasswordEncoder passwordEncoder;
 
+    private final LeakedPasswordService leakedPasswords;
+
     public PasswordPolicyService(
             AuthSettingsService authSettings,
             ApplicationEffectiveSettingsService effectiveSettings,
             UserCredentialRepository credentials,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            LeakedPasswordService leakedPasswords) {
         this.authSettings = authSettings;
         this.effectiveSettings = effectiveSettings;
         this.credentials = credentials;
         this.passwordEncoder = passwordEncoder;
+        this.leakedPasswords = leakedPasswords;
     }
 
     public void validate(String password) {
@@ -46,6 +51,7 @@ public class PasswordPolicyService {
             List<UserCredential> previous = credentials.findByUserIdOrderByCreatedAtDescIdDesc(userId);
             PasswordPolicyRules.validateNotInHistory(password, previous, passwordEncoder, policy);
         }
+        leakedPasswords.assertNotLeaked(password, PasswordPolicySanitizer.breachCheckEnabled(policy));
     }
 
     public void assertNotExpired(UserCredential credential) {

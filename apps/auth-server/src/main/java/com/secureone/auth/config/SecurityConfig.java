@@ -1,5 +1,7 @@
 package com.secureone.auth.config;
 
+import com.secureone.auth.oauth.OAuthTokenExchangeStubFilter;
+import com.secureone.auth.serviceaccount.ApiKeyAuthenticationFilter;
 import com.secureone.auth.admin.AdminBasicAuthenticationFilter;
 import com.secureone.auth.admin.AdminCredentialAuthenticationFilter;
 import com.secureone.auth.application.ApplicationOAuthClientResolver;
@@ -9,12 +11,16 @@ import com.secureone.auth.authn.LoginSuccessHandler;
 import com.secureone.auth.authn.OAuthAwareLoginEntryPoint;
 import com.secureone.auth.authn.TenantLoginUsernameFilter;
 import com.secureone.auth.authn.TenantPasswordAuthenticationProvider;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.oidc.authenticat
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -60,7 +67,8 @@ public class SecurityConfig {
             JwtDecoder jwtDecoder,
             RequestCache requestCache,
             OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint,
-            Function<OidcUserInfoAuthenticationContext, OidcUserInfo> oidcUserInfoMapper)
+            Function<OidcUserInfoAuthenticationContext, OidcUserInfo> oidcUserInfoMapper,
+            OAuthTokenExchangeStubFilter tokenExchangeStubFilter)
             throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServer =
                 new OAuth2AuthorizationServerConfigurer();
@@ -73,6 +81,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionFixation(fix -> fix.migrateSession()))
                 .with(authorizationServer, server -> server.oidc(oidc -> oidc.userInfoEndpoint(
                         userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))))
+                .addFilterBefore(tokenExchangeStubFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
@@ -94,7 +103,10 @@ public class SecurityConfig {
     @Order(2)
     SecurityFilterChain bearerApiSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
         http
-                .securityMatcher("/api/v1/account/profile", "/api/v1/account/password/change")
+                .securityMatcher(
+                        "/api/v1/account/profile",
+                        "/api/v1/account/password/change",
+                        "/api/v1/account/privacy/**")
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -105,13 +117,30 @@ public class SecurityConfig {
 
     @Bean
     AuthenticationManager authenticationManager(
-            DevAdminAuthenticationProvider devAdminProvider,
+            ObjectProvider<DevAdminAuthenticationProvider> devAdminProvider,
             TenantPasswordAuthenticationProvider tenantPasswordProvider) {
-        return new ProviderManager(devAdminProvider, tenantPasswordProvider);
+        List<AuthenticationProvider> providers = new ArrayList<>();
+        devAdminProvider.ifAvailable(providers::add);
+        providers.add(tenantPasswordProvider);
+        return new ProviderManager(providers);
     }
 
     @Bean
     @Order(3)
+    SecurityFilterChain m2mSecurityFilterChain(HttpSecurity http, ApiKeyAuthenticationFilter apiKeyAuthenticationFilter)
+            throws Exception {
+        http
+                .securityMatcher("/api/v1/m2m/**")
+                .cors(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("M2M"))
+                .addFilterBefore(apiKeyAuthenticationFilter, AbstractPreAuthenticatedProcessingFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    @Order(4)
     SecurityFilterChain defaultSecurityFilterChain(
             HttpSecurity http,
             RequestCache requestCache,
@@ -144,10 +173,18 @@ public class SecurityConfig {
                                 "/api/v1/account/password/reset",
                                 "/api/v1/account/set-password",
                                 "/api/v1/account/email/**",
+                                "/api/v1/account/verify/**",
                                 "/api/v1/account/magic-link/**",
                                 "/api/v1/auth/methods",
                                 "/api/v1/auth/session/login",
+                                "/api/v1/auth/mfa/**",
+                                "/api/v1/auth/federation/**",
+                                "/api/v1/auth/impersonation/consume",
+                                "/api/v1/auth/passkey/**",
+                                "/scim/v2/**",
                                 "/api/v1/applications/**",
+                                "/oauth2/par",
+                                "/oauth2/backchannel-logout",
                                 "/account/**",
                                 "/login",
                                 "/login.html")
@@ -161,6 +198,11 @@ public class SecurityConfig {
                         "/api/v1/auth/methods",
                         "/api/v1/auth/me",
                         "/api/v1/auth/session/login",
+                        "/api/v1/auth/mfa/**",
+                        "/api/v1/auth/federation/**",
+                        "/api/v1/auth/impersonation/consume",
+                        "/api/v1/auth/passkey/**",
+                        "/scim/v2/**",
                         "/api/v1/applications/**",
                         "/login"))
                 .httpBasic(Customizer.withDefaults())

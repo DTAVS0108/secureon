@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
@@ -74,7 +75,7 @@ export function TokenPolicySettings({
     }
   }, [applicationId, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
   }, [reload]);
 

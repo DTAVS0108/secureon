@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { assignRolePermissionApi, removeRolePermissionApi } from "@/lib/api/roles";
 import type { Permission, Role } from "@/lib/types";
@@ -25,7 +26,7 @@ export function PermissionRoleMatrix({
   const [busyRoleId, setBusyRoleId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setSelected(assignedRoleIds);
   }, [assignedRoleIds]);
 

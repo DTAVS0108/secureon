@@ -1,4 +1,4 @@
-﻿# 16 â€” Environment Setup & Operations
+# 16 â€” Environment Setup & Operations
 
 End-to-end guide for **running SecureOne locally**, configuring environment variables, understanding **Flyway migrations**, **startup bootstrap**, and **scheduled background jobs**.
 
@@ -330,6 +330,9 @@ SECUREONE_DB_PASSWORD=change-me
 
 # ---- Redis ----
 SECUREONE_REDIS_URL=redis://localhost:6379
+
+# ---- OTP (signup/login verification codes) ----
+SECUREONE_OTP_PEPPER=change-me-in-production
 
 # ---- OIDC / JWT ----
 SECUREONE_ISSUER_URL=http://localhost:9000

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
@@ -91,7 +92,7 @@ export function TenantRosterAccessDialog({
 
   const needsGrantApp = grantRoleType !== "TENANT_SUPER_ADMIN";
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user) return;
     setTab(initialTab);
     const first = memberApps[0]?.id ?? applications[0]?.id ?? "";
@@ -100,7 +101,7 @@ export function TenantRosterAccessDialog({
     setGrantRoleType("APPLICATION_ADMIN");
   }, [open, user?.id, memberApps, applications, initialTab]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user) return;
     let cancelled = false;
     void loadTenantConsoleRolesCatalog(tenantId)
@@ -120,7 +121,7 @@ export function TenantRosterAccessDialog({
     };
   }, [open, tenantId, user?.id]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user) return;
     let cancelled = false;
     setLoadingTenantRoles(true);
@@ -149,7 +150,7 @@ export function TenantRosterAccessDialog({
     };
   }, [open, user?.id, tenantId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user) return;
     let cancelled = false;
     setLoadingCaps(true);
@@ -180,7 +181,7 @@ export function TenantRosterAccessDialog({
     };
   }, [open, user?.id, tenantId, consoleAssignments.length]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !appId) {
       setRoles([]);
       setRoleDetails(new Map());
@@ -209,7 +210,7 @@ export function TenantRosterAccessDialog({
     };
   }, [open, appId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user || !appId) {
       setRoleIds([]);
       return;

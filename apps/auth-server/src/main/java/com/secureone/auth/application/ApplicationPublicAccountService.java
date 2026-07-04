@@ -1,7 +1,11 @@
 package com.secureone.auth.application;
 
 import com.secureone.auth.account.AccountNotificationService;
+import com.secureone.auth.account.PasswordRecoveryService;
+import com.secureone.auth.account.AccountVerificationService;
+import com.secureone.auth.authn.AuthOtpService;
 import com.secureone.auth.authn.AuthSessionService;
+import com.secureone.auth.user.UserAccount;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
@@ -15,24 +19,39 @@ import org.springframework.transaction.annotation.Transactional;
 public class ApplicationPublicAccountService {
 
     private final AccountNotificationService accounts;
+    private final PasswordRecoveryService passwordRecovery;
+    private final AccountVerificationService verification;
+    private final AuthOtpService authOtp;
     private final AuthSessionService sessions;
     private final ApplicationTenantResolver tenants;
     private final ApplicationMembershipService memberships;
 
     public ApplicationPublicAccountService(
             AccountNotificationService accounts,
+            PasswordRecoveryService passwordRecovery,
+            AccountVerificationService verification,
+            AuthOtpService authOtp,
             AuthSessionService sessions,
             ApplicationTenantResolver tenants,
             ApplicationMembershipService memberships) {
         this.accounts = accounts;
+        this.passwordRecovery = passwordRecovery;
+        this.verification = verification;
+        this.authOtp = authOtp;
         this.sessions = sessions;
         this.tenants = tenants;
         this.memberships = memberships;
     }
 
-    public Map<String, String> forgotPassword(UUID applicationId, String email) {
+    public Map<String, Object> forgotPassword(
+            UUID applicationId, String identifier, String mode, String channel) {
         tenants.requireActiveApplication(applicationId);
-        return accounts.requestPasswordResetForApplication(applicationId, email);
+        return passwordRecovery.requestRecovery(applicationId, identifier, mode, channel);
+    }
+
+    public Map<String, String> resetPasswordOtp(UUID applicationId, String challengeId, String code, String password) {
+        tenants.requireActiveApplication(applicationId);
+        return passwordRecovery.completeRecoveryOtp(applicationId, UUID.fromString(challengeId), code, password);
     }
 
     public Map<String, String> resendVerification(UUID applicationId, String email) {
@@ -47,12 +66,39 @@ public class ApplicationPublicAccountService {
         return accounts.requestMagicLinkForApplication(applicationId, email);
     }
 
-    public ResponseEntity<?> sessionLogin(
-            UUID applicationId, String email, String password, HttpServletRequest request, HttpServletResponse response) {
+    public Map<String, Object> requestLoginOtp(UUID applicationId, String identifier, String channel) {
         tenants.requireActiveApplication(applicationId);
-        tenants.findUserByEmail(applicationId, email)
+        tenants.findUserByIdentifier(applicationId, identifier)
                 .ifPresent(user -> memberships.ensureMemberWithDefaultRole(applicationId, user.getId()));
+        return authOtp.requestLoginOtp(applicationId, identifier, channel);
+    }
+
+    public ResponseEntity<?> verifyLoginOtp(
+            UUID applicationId,
+            String challengeId,
+            String code,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        tenants.requireActiveApplication(applicationId);
+        return authOtp.verifyLoginOtp(applicationId, UUID.fromString(challengeId), code, request, response);
+    }
+
+    public Map<String, Object> confirmSignupOtp(UUID applicationId, String challengeId, String code, String channel) {
+        tenants.requireActiveApplication(applicationId);
+        var user = "phone".equalsIgnoreCase(channel) || "sms".equalsIgnoreCase(channel)
+                ? verification.confirmPhoneOtp(UUID.fromString(challengeId), code)
+                : verification.confirmEmailOtp(UUID.fromString(challengeId), code);
+        memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
+        return Map.of("verified", true, "email", user.getEmail());
+    }
+
+    public ResponseEntity<?> sessionLogin(
+            UUID applicationId, String identifier, String password, HttpServletRequest request, HttpServletResponse response) {
+        tenants.requireActiveApplication(applicationId);
+        UserAccount user = tenants.findUserByIdentifier(applicationId, identifier)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
+        memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
         String tenantSlug = tenants.requireTenantSlug(applicationId);
-        return sessions.sessionLogin(tenantSlug, email, password, request, response);
+        return sessions.sessionLogin(tenantSlug, user.getEmail(), password, applicationId, request, response);
     }
 }

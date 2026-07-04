@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 export function Card({
   children,
@@ -26,15 +27,20 @@ export function CardHeader({
   title,
   description,
   action,
+  info,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  info?: string;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-ui px-5 py-4">
       <div>
-        <h2 className="text-sm font-semibold text-[var(--ui-text)]">{title}</h2>
+        <h2 className="flex items-center text-sm font-semibold text-[var(--ui-text)]">
+          {title}
+          {info && <InfoTip content={info} />}
+        </h2>
         {description && (
           <p className="mt-0.5 text-xs text-muted">{description}</p>
         )}

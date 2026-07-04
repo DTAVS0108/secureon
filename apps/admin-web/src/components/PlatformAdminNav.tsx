@@ -29,7 +29,7 @@ export function PlatformAdminNav({
       <nav className="flex flex-col gap-0.5">
         <SidebarNavGroup
           label={tenantGroup.label}
-          children={tenantGroup.children}
+          items={tenantGroup.children}
           pathname={pathname}
         />
       </nav>
@@ -55,7 +55,7 @@ export function PlatformAdminNav({
       )}
       <SidebarNavGroup
         label={tenantGroup.label}
-        children={tenantGroup.children}
+        items={tenantGroup.children}
         pathname={pathname}
       />
       {rest.map((item) => (

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { GroupFormModal } from "@/components/groups/GroupFormModal";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -205,7 +206,7 @@ function GroupDetailPanel({
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("overview");
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setLoading(true);
     getGroup(applicationId, groupId)
       .then(setDetail)

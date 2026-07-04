@@ -21,8 +21,8 @@ Swagger UI opens **All APIs** by default (every endpoint). Use the **Select a de
 |-------|----------|
 | **all** | Every REST endpoint plus OAuth/OIDC protocol paths |
 | **public** | `GET /api/info`, `GET /api/v1/auth/methods` |
-| **account** | Password reset, email verification, magic link |
-| **applications** | Public manifest and self-service sign-up |
+| **account** | Password reset, email verification (link + OTP), magic link (session on verify) |
+| **applications** | Public manifest, sign-up, OTP login, session login |
 | **admin-platform** | Tenants, platform settings, audit, sessions, platform RBAC |
 | **admin-applications** | Application products, OAuth clients, per-application users/settings/RBAC, **isolate** |
 
@@ -59,10 +59,14 @@ Obtain an access token from `POST /oauth2/token`, then **Authorize** → **beare
 
 Public flows do not require Swagger authorization:
 
-- `GET /api/v1/applications/{applicationId}` — client manifest (appearance, auth methods, signup block)
+- `GET /api/v1/applications/{applicationId}` — client manifest (auth methods, feature flags, password policy, **verification** policy, signup/account endpoints)
 - `GET/POST /api/v1/applications/{applicationId}/signup` — self-registration when **Self Registration** is enabled
+- `POST /api/v1/applications/{applicationId}/auth/otp/request` + `…/auth/otp/verify` — email/SMS OTP login
+- `POST /api/v1/applications/{applicationId}/account/verify/otp/confirm` — signup verification (OTP mode)
+- `POST /api/v1/applications/{applicationId}/account/password/forgot` — password reset link or OTP
+- `POST /api/v1/applications/{applicationId}/account/password/reset/otp` — complete recovery with OTP
 
-See [Settings governance — Self-registration](10-settings-governance.md#self-registration-application-end-users) and [Authentication UI integration](13-auth-ui-integration.md) (hosted vs custom UI, magic link, OAuth, session login).
+See [19 — Verification & OTP](19-verification-and-otp.md) and [Authentication UI integration](13-auth-ui-integration.md).
 
 ## Swagger UI: "No API definition provided"
 

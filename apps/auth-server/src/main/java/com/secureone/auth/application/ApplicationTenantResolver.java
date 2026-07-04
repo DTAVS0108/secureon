@@ -1,5 +1,6 @@
 package com.secureone.auth.application;
 
+import com.secureone.auth.authn.IdentifierResolver;
 import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.tenant.Tenant;
 import com.secureone.auth.tenant.TenantRepository;
@@ -19,12 +20,17 @@ public class ApplicationTenantResolver {
     private final ApplicationRepository applications;
     private final TenantRepository tenants;
     private final UserAccountRepository users;
+    private final IdentifierResolver identifiers;
 
     public ApplicationTenantResolver(
-            ApplicationRepository applications, TenantRepository tenants, UserAccountRepository users) {
+            ApplicationRepository applications,
+            TenantRepository tenants,
+            UserAccountRepository users,
+            IdentifierResolver identifiers) {
         this.applications = applications;
         this.tenants = tenants;
         this.users = users;
+        this.identifiers = identifiers;
     }
 
     public Application requireActiveApplication(UUID applicationId) {
@@ -56,6 +62,17 @@ public class ApplicationTenantResolver {
         }
         UUID tenantId = requireTenantId(applicationId);
         return users.findByTenantIdAndEmail(tenantId, email.trim().toLowerCase(Locale.ROOT));
+    }
+
+    public Optional<UserAccount> findUserByIdentifier(UUID applicationId, String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        return identifiers.resolve(requireTenantId(applicationId), identifier);
+    }
+
+    public Optional<UserAccount> findUserById(UUID userId) {
+        return users.findById(userId);
     }
 
     public String loginUsername(UUID applicationId, String email) {

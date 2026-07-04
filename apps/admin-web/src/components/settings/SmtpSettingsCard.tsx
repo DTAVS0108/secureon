@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input, Select } from "@/components/ui/Field";
@@ -32,7 +33,7 @@ export function SmtpSettingsCard(props: SmtpSettingsCardProps) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setDraft(smtp);
   }, [smtp]);
 

@@ -1,0 +1,63 @@
+# Default values for SecureOne Helm chart.
+# Override in environment-specific values files or --set flags.
+
+global:
+  imagePullPolicy: IfNotPresent
+
+authServer:
+  replicaCount: 2
+  image:
+    repository: secureone/auth-server
+    tag: latest
+  service:
+    port: 9000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env:
+    SPRING_PROFILES_ACTIVE: prod
+    SECUREONE_ENV: production
+    SECUREONE_SWAGGER_ENABLED: "false"
+    SECUREONE_DEV_AUTH_ENABLED: "false"
+  # Set via external secrets in production
+  existingSecret: secureone-auth-server
+
+adminWeb:
+  replicaCount: 2
+  image:
+    repository: secureone/admin-web
+    tag: latest
+  service:
+    port: 3001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    NEXT_PUBLIC_SECUREONE_ENV: production
+
+ingress:
+  enabled: false
+  className: nginx
+  host: auth.example.com
+  tlsSecretName: secureone-tls
+
+postgres:
+  # When false, set authServer.env SECUREONE_DB_URL to external database
+  enabled: false
+  url: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+
+redis:
+  enabled: false
+  url: redis://redis:6379
+
+metrics:
+  prometheusScrape: true
+  path: /actuator/prometheus

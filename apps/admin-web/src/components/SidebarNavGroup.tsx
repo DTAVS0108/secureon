@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { cn } from "@/lib/cn";
 import type { SidebarNavChild } from "./nav";
 
@@ -12,19 +13,19 @@ function childActive(pathname: string, child: SidebarNavChild): boolean {
 
 export function SidebarNavGroup({
   label,
-  children,
+  items,
   pathname,
   defaultOpen,
 }: {
   label: string;
-  children: SidebarNavChild[];
+  items: SidebarNavChild[];
   pathname: string;
   defaultOpen?: boolean;
 }) {
-  const groupActive = children.some((child) => childActive(pathname, child));
+  const groupActive = items.some((child) => childActive(pathname, child));
   const [open, setOpen] = useState(defaultOpen ?? groupActive);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (groupActive) setOpen(true);
   }, [groupActive]);
 
@@ -52,7 +53,7 @@ export function SidebarNavGroup({
       </button>
       {open && (
         <div className="ml-3 flex flex-col gap-0.5 border-l border-ui pl-2">
-          {children.map((child) => {
+          {items.map((child) => {
             const active = childActive(pathname, child);
             return (
               <Link

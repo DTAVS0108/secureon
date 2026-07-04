@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
@@ -19,7 +20,11 @@ import {
   setApplicationTokenTabEnabled,
 } from "@/lib/api/application-settings";
 import { ApiError } from "@/lib/api/http";
+import { IS_PROD } from "@/lib/config";
 import type { AuthMethod, FeatureFlag, PasswordPolicy } from "@/lib/types";
+import { FederationProvidersPanel } from "@/components/settings/FederationProvidersPanel";
+import { MfaPolicySettingsPanel } from "@/components/settings/MfaPolicySettingsPanel";
+import { useAdminContext } from "@/components/AdminContextProvider";
 
 type Tab = "auth" | "mfa" | "password" | "flags";
 
@@ -52,6 +57,7 @@ export function AuthenticationSettingsPanel({
   onOAuthTokensTabEnabledChange?: (enabled: boolean) => void;
 }) {
   const { toast } = useToast();
+  const adminContext = useAdminContext();
   const [authMethods, setAuthMethods] = useState<AuthMethod[]>([]);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [passwordPolicy, setPasswordPolicy] = useState<PasswordPolicy | null>(null);
@@ -76,7 +82,7 @@ export function AuthenticationSettingsPanel({
     }
   }, [applicationId, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
   }, [reload]);
 
@@ -116,6 +122,9 @@ export function AuthenticationSettingsPanel({
   const primary = authMethods.filter((m) => m.category === "primary");
   const mfa = authMethods.filter((m) => m.category === "mfa");
   const federation = authMethods.filter((m) => m.category === "federation");
+  const federationImplemented = federation.some(
+    (m) => m.enabled && (m as AuthMethod & { implemented?: boolean }).implemented !== false,
+  );
 
   return (
     <div className={!loaded ? "pointer-events-none opacity-60" : ""}>
@@ -132,7 +141,7 @@ export function AuthenticationSettingsPanel({
             <Card padded={false}>
               <CardHeader
                 title="Multi-factor authentication"
-                description="When enabled, the MFA tab appears so you can configure multi-factor methods for this application."
+                description="When enabled, the MFA sub-tab appears so you can configure multi-factor methods for this application."
               />
               <MfaTabToggle
                 applicationId={applicationId}
@@ -153,7 +162,7 @@ export function AuthenticationSettingsPanel({
           />
           <MethodSection
             title="Identity federation"
-            description="Social and enterprise SSO (stored for policy; full SSO in later phases)"
+            description="Google, GitHub, and external OIDC sign-in. Configure OAuth credentials below when enabled."
             methods={federation}
             onToggle={(next) => {
               const merged = [...primary, ...mfa, ...next];
@@ -161,20 +170,29 @@ export function AuthenticationSettingsPanel({
               scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
             }}
           />
+          {federationImplemented && (
+            <FederationProvidersPanel
+              applicationId={applicationId}
+              tenantId={adminContext.tenantId}
+            />
+          )}
         </div>
       )}
 
       {tab === "mfa" && (
-        <MethodSection
-          title="Multi-factor methods"
-          description="Enable factors for future enrollment. TOTP/passkey enrollment coming in Phase 2."
-          methods={mfa}
-          onToggle={(next) => {
-            const merged = [...primary, ...next, ...federation];
-            setAuthMethods(merged);
-            scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
-          }}
-        />
+        <div className="space-y-6">
+          <MethodSection
+            title="Multi-factor methods"
+            description="TOTP, recovery codes, and SMS/email OTP at login when policy requires MFA."
+            methods={mfa}
+            onToggle={(next) => {
+              const merged = [...primary, ...next, ...federation];
+              setAuthMethods(merged);
+              scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
+            }}
+          />
+          <MfaPolicySettingsPanel applicationId={applicationId} />
+        </div>
       )}
 
       {tab === "password" && applicationId && passwordPolicy && (
@@ -272,6 +290,15 @@ export function AuthenticationSettingsPanel({
                   scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
                 }}
               />
+              <PolicyToggle
+                label="Block leaked passwords (Have I Been Pwned)"
+                on={passwordPolicy.breachCheck ?? false}
+                onChange={(v) => {
+                  const next = { ...passwordPolicy, breachCheck: v };
+                  setPasswordPolicy(next);
+                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
+                }}
+              />
             </div>
           </div>
         </Card>
@@ -344,7 +371,7 @@ function MfaTabToggle({
       <div>
         <p className="text-sm font-medium text-ui">Enable MFA</p>
         <p className="text-xs text-muted">
-          Show the <strong>MFA</strong> settings tab to configure TOTP, passkeys, and other factors.
+          Show the <strong>MFA</strong> sub-tab under Authentication to configure TOTP, passkeys, and other factors.
         </p>
       </div>
       <Toggle
@@ -527,13 +554,13 @@ function MethodSection({
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-ui">{m.name}</p>
-                  {!implemented && <Badge tone="warning">Coming soon</Badge>}
+                  {!implemented && !IS_PROD && <Badge tone="warning">Coming soon</Badge>}
                 </div>
                 <p className="text-xs text-muted">{m.description}</p>
               </div>
               <Toggle
                 checked={m.enabled}
-                disabled={readOnly}
+                disabled={readOnly || (IS_PROD && !implemented)}
                 onChange={(enabled) => {
                   const next = methods.map((x, i) => (i === idx ? { ...x, enabled } : x));
                   onToggle(next);

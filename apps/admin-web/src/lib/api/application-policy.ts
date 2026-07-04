@@ -12,7 +12,9 @@ export type SettingsExposureKey =
   | "appearance"
   | "user-directory"
   | "public-manifest"
-  | "token-policy";
+  | "token-policy"
+  | "verification-policy"
+  | "sms";
 
 const base = (appId: string) => `/api/admin/v1/applications/${appId}/settings`;
 

@@ -65,6 +65,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         file: "15-applications-and-oauth-clients.md",
         description: "Products, schemas, isolate",
       },
+      {
+        slug: "verification-otp",
+        title: "Verification & OTP",
+        file: "19-verification-and-otp.md",
+        description: "Signup/login OTP, phone, SMS",
+      },
     ],
   },
   {
@@ -98,6 +104,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         title: "Auth UI integration",
         file: "13-auth-ui-integration.md",
         description: "Hosted vs native login",
+      },
+      {
+        slug: "verification-otp",
+        title: "Verification & OTP",
+        file: "19-verification-and-otp.md",
+        description: "Signup/login OTP, phone, SMS",
       },
       {
         slug: "application-integration",

@@ -65,5 +65,31 @@ export async function runIntegrationHealthChecks(
       if (res.status === 404) return res;
       return new Response(await res.text(), { status: 200, statusText: "Route reachable" });
     }),
+    probe("jwks", "JWKS endpoint", () => fetch(`${base}/oauth2/jwks`)),
+    probe("account-sessions", "Account sessions API", async () => {
+      const res = await fetch(`${base}/api/v1/account/sessions`, { credentials: "omit" });
+      if (res.status === 401) {
+        return new Response("Unauthorized (route reachable)", { status: 200 });
+      }
+      return res;
+    }),
+    probe("federation-providers", "Federation providers API", async () => {
+      const res = await fetch(`${base}/api/v1/auth/federation/providers?applicationId=${applicationId}`);
+      if (res.ok || res.status === 400) {
+        return new Response(await res.text(), { status: 200, statusText: "Route reachable" });
+      }
+      return res;
+    }),
+    probe("passkey-options", "Passkey sign-in API", async () => {
+      const res = await fetch(`${base}/api/v1/auth/passkey/options`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ applicationId }),
+      });
+      if (res.ok || res.status === 400 || res.status === 500) {
+        return new Response(await res.text(), { status: 200, statusText: "Route reachable" });
+      }
+      return res;
+    }),
   ]);
 }

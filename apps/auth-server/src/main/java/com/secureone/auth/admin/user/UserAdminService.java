@@ -24,11 +24,13 @@ import com.secureone.auth.rbac.Role;
 import com.secureone.auth.rbac.RoleRepository;
 import com.secureone.auth.rbac.UserRole;
 import com.secureone.auth.rbac.UserRoleRepository;
+import com.secureone.auth.tenant.TenantQuotaService;
 import com.secureone.auth.tenant.TenantRepository;
 import com.secureone.auth.tenant.TenantUserRosterService;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.user.UserInviteContext;
+import com.secureone.auth.webhook.UserLifecycleWebhookPublisher;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -56,6 +58,8 @@ public class UserAdminService {
     private final UserApplicationRepository userApplications;
     private final ApplicationSettingsService applicationSettings;
     private final TenantUserRosterService tenantUserRoster;
+    private final TenantQuotaService tenantQuotas;
+    private final UserLifecycleWebhookPublisher userLifecycleWebhooks;
 
     public UserAdminService(
             UserAccountRepository userRepository,
@@ -70,7 +74,9 @@ public class UserAdminService {
             ApplicationRepository applicationRepository,
             UserApplicationRepository userApplications,
             ApplicationSettingsService applicationSettings,
-            TenantUserRosterService tenantUserRoster) {
+            TenantUserRosterService tenantUserRoster,
+            TenantQuotaService tenantQuotas,
+            UserLifecycleWebhookPublisher userLifecycleWebhooks) {
         this.userRepository = userRepository;
         this.tenantRepository = tenantRepository;
         this.userRoleRepository = userRoleRepository;
@@ -84,6 +90,8 @@ public class UserAdminService {
         this.userApplications = userApplications;
         this.applicationSettings = applicationSettings;
         this.tenantUserRoster = tenantUserRoster;
+        this.tenantQuotas = tenantQuotas;
+        this.userLifecycleWebhooks = userLifecycleWebhooks;
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +216,7 @@ public class UserAdminService {
         if (existing.isPresent()) {
             return grantExistingUserToApplication(existing.get(), request);
         }
+        tenantQuotas.assertCanCreateUser(tenantId);
         UserAccount user = new UserAccount();
         user.setTenantId(tenantId);
         user.setEmail(email);
@@ -229,6 +238,7 @@ public class UserAdminService {
             tenantUserRoster.addToRoster(tenantId, user.getId());
         }
         auditService.record(user.getTenantId(), "admin", "user.created", "user_account", user.getId(), user.getEmail(), true);
+        userLifecycleWebhooks.userCreated(user, request.applicationId(), "admin");
         accountNotifications.onUserInvited(request.applicationId(), user);
         return toResponse(user);
     }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { FieldRow, Select } from "@/components/ui/Field";
@@ -35,11 +36,11 @@ export function AssignTenantAdminDialog({
   const [loadingAppUsers, setLoadingAppUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -50,7 +51,7 @@ export function AssignTenantAdminDialog({
     };
   }, [open, onClose]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !applicationId || userSource !== "application") {
       setAppUsers([]);
       return;
@@ -77,7 +78,7 @@ export function AssignTenantAdminDialog({
     [userSource, appUsers, tenantUsers],
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!selectableUsers.some((u) => u.id === userId)) {
       setUserId("");
     }

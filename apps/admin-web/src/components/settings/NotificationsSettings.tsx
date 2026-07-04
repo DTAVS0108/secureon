@@ -30,6 +30,7 @@ import {
   type NotificationsBundle,
 } from "@/lib/settings-notifications-cache";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 
 const EMPTY_RECIPIENT_GROUPS: RecipientGroups = { security: [], operations: [] };
 
@@ -83,7 +84,9 @@ export function NotificationsSettings({
 }) {
   const { toast } = useToast();
   const toastRef = useRef(toast);
-  toastRef.current = toast;
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [notifications, setNotifications] = useState<NotificationSettings>({});
   const [email, setEmail] = useState<EmailSettings>({});
   const [smtp, setSmtp] = useState<SmtpSettings>({});
@@ -101,16 +104,18 @@ export function NotificationsSettings({
   const notificationsRef = useRef(notifications);
   const emailRef = useRef(email);
   const selectedEmailsRef = useRef(selectedEmails);
-  notificationsRef.current = notifications;
-  emailRef.current = email;
-  selectedEmailsRef.current = selectedEmails;
+  useEffect(() => {
+    notificationsRef.current = notifications;
+    emailRef.current = email;
+    selectedEmailsRef.current = selectedEmails;
+  }, [notifications, email, selectedEmails]);
 
   const recipientGroups = useMemo(
     () => notifications.recipientGroups ?? EMPTY_RECIPIENT_GROUPS,
     [notifications.recipientGroups],
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     const loadId = ++loadGenerationRef.current;
     let cancelled = false;
 
@@ -223,7 +228,7 @@ export function NotificationsSettings({
     setSaving(false);
   }, [applicationId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!loaded || !settingsReady || baselineSnapshotRef.current === null) return;
     const snapshot = serializeNotificationsDraft(notifications, email, selectedEmails);
     if (snapshot === baselineSnapshotRef.current) return;

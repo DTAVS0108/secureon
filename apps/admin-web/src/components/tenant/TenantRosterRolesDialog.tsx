@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Select } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { getRole, listRoles } from "@/lib/api/roles";
@@ -35,13 +36,13 @@ export function TenantRosterRolesDialog({
     [applications, user?.applicationIds],
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user) return;
     const first = memberApps[0]?.id ?? applications[0]?.id ?? "";
     setAppId(first);
   }, [open, user?.id, memberApps, applications]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !appId) {
       setRoles([]);
       setRoleDetails(new Map());
@@ -72,7 +73,7 @@ export function TenantRosterRolesDialog({
     };
   }, [open, appId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open || !user || !appId) {
       setRoleIds([]);
       return;

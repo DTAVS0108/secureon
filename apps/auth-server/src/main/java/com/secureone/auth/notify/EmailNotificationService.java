@@ -174,6 +174,36 @@ public class EmailNotificationService {
         sendUserTemplate(appId, user, "verify_email", verifyLink);
     }
 
+    public void sendVerifyEmailOtp(UUID applicationId, UserAccount user, String code, int ttlSeconds) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        ensureUserTransactionalEmailEnabled(appId);
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        Map<String, String> vars = userVariables(ctx, user, null);
+        vars.put("otpCode", code);
+        vars.put("otpTtlMinutes", String.valueOf(Math.max(1, ttlSeconds / 60)));
+        sendTemplated(ctx, user.getEmail(), "verify_email_otp", vars, List.of(), List.of());
+    }
+
+    public void sendLoginOtp(UUID applicationId, UserAccount user, String code, int ttlSeconds) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        ensureUserTransactionalEmailEnabled(appId);
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        Map<String, String> vars = userVariables(ctx, user, null);
+        vars.put("otpCode", code);
+        vars.put("otpTtlMinutes", String.valueOf(Math.max(1, ttlSeconds / 60)));
+        sendTemplated(ctx, user.getEmail(), "login_otp_email", vars, List.of(), List.of());
+    }
+
+    public void sendPasswordResetOtp(UUID applicationId, UserAccount user, String code, int ttlSeconds) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        ensureUserTransactionalEmailEnabled(appId);
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        Map<String, String> vars = userVariables(ctx, user, null);
+        vars.put("otpCode", code);
+        vars.put("otpTtlMinutes", String.valueOf(Math.max(1, ttlSeconds / 60)));
+        sendTemplated(ctx, user.getEmail(), "password_reset_otp", vars, List.of(), List.of());
+    }
+
     public void sendPasswordReset(UUID applicationId, UserAccount user, String resetLink) {
         UUID appId = emailContext.resolveApplicationId(applicationId, user);
         ensureUserTransactionalEmailEnabled(appId);

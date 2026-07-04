@@ -1,6 +1,7 @@
 package com.secureone.auth.authn;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
  * treated as platform admin, not tenant users.
  */
 @Component
+@ConditionalOnProperty(prefix = "secureone", name = "dev-auth-enabled", havingValue = "true", matchIfMissing = true)
 public class DevAdminAuthenticationProvider implements AuthenticationProvider {
 
     private final PasswordEncoder passwordEncoder;

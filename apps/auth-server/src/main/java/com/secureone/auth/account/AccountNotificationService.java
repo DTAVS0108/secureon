@@ -110,6 +110,7 @@ public class AccountNotificationService {
         UserAccount user = users.findById(token.getUserId()).orElseThrow();
         emailTokens.consume(token);
         user.setLastLoginAt(java.time.Instant.now());
+        user.setEmailVerified(true);
         if ("PENDING".equalsIgnoreCase(user.getStatus())) {
             user.setStatus("ACTIVE");
         }
@@ -261,8 +262,30 @@ public class AccountNotificationService {
 
     public void sendMagicLinkEmail(UUID applicationId, UserAccount user) {
         String raw = emailTokens.issue(user, EmailTokenType.MAGIC_LINK).rawToken();
-        String link = publicBaseUrl + "/account/magic-link.html?token=" + raw;
+        String link = magicLinkUrl(applicationId, raw);
         mail.sendMagicLink(applicationId, user, link);
+    }
+
+    private String magicLinkUrl(UUID applicationId, String rawToken) {
+        String base = publicBaseUrl + "/account/magic-link.html";
+        if (applicationId != null) {
+            Object urls = applicationSettings.getClientIntegration(applicationId).get("clientUrls");
+            if (urls instanceof Map<?, ?> map) {
+                Object configured = map.get("magicLink");
+                if (configured != null && !configured.toString().isBlank()) {
+                    base = configured.toString().trim();
+                    if (base.endsWith("/")) {
+                        base = base.substring(0, base.length() - 1);
+                    }
+                }
+            }
+        }
+        String sep = base.contains("?") ? "&" : "?";
+        String link = base + sep + "token=" + rawToken;
+        if (applicationId != null) {
+            link += "&applicationId=" + applicationId;
+        }
+        return link;
     }
 
     public void sendSetPasswordEmail(UserAccount user) {
@@ -320,6 +343,19 @@ public class AccountNotificationService {
         users.save(user);
         mail.sendAdminSecurityAlert(
                 applicationId, user, "Email marked verified", "Admin verified email for " + user.getEmail() + ".");
+    }
+
+    public void onEmailVerified(UserAccount user, UUID applicationId) {
+        mail.sendAdminSecurityAlert(
+                applicationId, user, "Email verified", "User " + user.getEmail() + " verified their email address.");
+    }
+
+    public void sendAdminVerificationAlert(UUID applicationId, UserAccount user, String channel) {
+        mail.sendAdminSecurityAlert(
+                applicationId,
+                user,
+                "Verification OTP sent",
+                "Admin resent " + channel + " verification OTP to " + user.getEmail() + ".");
     }
 
     private String passwordResetLink(UUID applicationId, String rawToken) {

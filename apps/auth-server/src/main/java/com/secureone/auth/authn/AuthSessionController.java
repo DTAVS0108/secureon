@@ -47,7 +47,8 @@ public class AuthSessionController {
             HttpServletResponse response) {
         if (body.applicationId() != null) {
             String tenantSlug = applicationTenants.requireTenantSlug(body.applicationId());
-            return sessions.sessionLogin(tenantSlug, body.email(), body.password(), request, response);
+            return sessions.sessionLogin(
+                    tenantSlug, body.email(), body.password(), body.applicationId(), request, response);
         }
         if (body.tenantSlug() == null || body.tenantSlug().isBlank()) {
             throw new IllegalArgumentException("applicationId or tenantSlug is required");

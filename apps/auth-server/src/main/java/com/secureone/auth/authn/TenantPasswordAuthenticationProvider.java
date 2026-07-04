@@ -22,18 +22,21 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
     private final PasswordEncoder passwordEncoder;
     private final AuthSettingsService authSettings;
     private final PasswordExpiryService passwordExpiry;
+    private final AccountLockoutService lockout;
 
     public TenantPasswordAuthenticationProvider(
             TenantUserDetailsService userDetailsService,
             UserCredentialRepository credentials,
             PasswordEncoder passwordEncoder,
             AuthSettingsService authSettings,
-            PasswordExpiryService passwordExpiry) {
+            PasswordExpiryService passwordExpiry,
+            AccountLockoutService lockout) {
         this.userDetailsService = userDetailsService;
         this.credentials = credentials;
         this.passwordEncoder = passwordEncoder;
         this.authSettings = authSettings;
         this.passwordExpiry = passwordExpiry;
+        this.lockout = lockout;
     }
 
     @Override
@@ -58,6 +61,7 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
                 .findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(account.getId())
                 .orElseThrow(() -> new BadCredentialsException("No password credential on file"));
         if (!passwordEncoder.matches(password, cred.getPasswordHash())) {
+            lockout.recordFailedAttempt(account.getId());
             throw new BadCredentialsException("Password does not match");
         }
         passwordExpiry.enforceLoginAllowed(account, cred, null);

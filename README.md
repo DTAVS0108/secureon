@@ -17,7 +17,8 @@ The monorepo includes a working **auth-server** (Spring Boot + Spring Authorizat
 - OAuth 2.1 and OpenID Connect (OIDC)
 - JWT access tokens + refresh tokens
 - MFA/2FA roadmap — passkeys-first (WebAuthn/FIDO2) with TOTP and OTP fallbacks
-- Password reset & email verification
+- Password reset & email verification (link or OTP)
+- Email/SMS OTP login, phone signup, Redis sessions
 - Audit logs & login history
 - Admin dashboard
 - OpenAPI / Swagger UI on auth-server

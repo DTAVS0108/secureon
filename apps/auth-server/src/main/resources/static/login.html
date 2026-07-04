@@ -16,13 +16,18 @@
       .panel { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #e5e7eb; background: #f9fafb; font-size: 0.875rem; }
       .panel pre { margin: 0.5rem 0 0; padding: 0.5rem; background: #111827; color: #f9fafb; border-radius: 6px; overflow: auto; font-size: 11px; }
       #tenant-wrap { display: none; }
+      #federation { margin-top: 1.25rem; display: none; }
+      #federation p { font-size: 0.875rem; margin: 0 0 0.5rem; color: #374151; }
+      .fed-btn { display: block; width: 100%; padding: 0.55rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; font-weight: 600; cursor: pointer; }
+      .fed-btn:hover { background: #f3f4f6; }
+      .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.25rem 0; color: #6b7280; font-size: 0.75rem; }
+      .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e5e7eb; }
     </style>
   </head>
   <body>
     <h1 id="title">Sign in</h1>
     <p id="subtitle" hidden></p>
     <div id="banner" class="banner" hidden role="alert"></div>
-    <p id="methods"></p>
     <form method="post" action="/login" id="login-form">
       <div id="tenant-wrap">
         <label for="tenant">Tenant slug</label>
@@ -37,6 +42,31 @@
       <input id="password" name="password" type="password" required autocomplete="current-password" />
       <button type="submit">Sign in with password</button>
     </form>
+    <div id="federation">
+      <div class="divider">or continue with</div>
+      <div id="federation-buttons"></div>
+    </div>
+    <div id="passkey-wrap" style="margin-top: 0.75rem; display: none">
+      <button type="button" id="passkey-signin" class="fed-btn">Sign in with passkey</button>
+    </div>
+    <div id="mfa-panel" class="panel" hidden>
+      <strong>Two-factor authentication</strong>
+      <p style="margin: 0.35rem 0 0.75rem">Enter the 6-digit code from your authenticator app.</p>
+      <label for="mfa-code">Authenticator code</label>
+      <input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" />
+      <button type="button" id="mfa-submit" style="margin-top: 0.75rem">Verify and continue</button>
+      <p style="margin: 0.75rem 0 0">
+        <button type="button" id="mfa-recovery-toggle" style="width: auto; padding: 0; background: none; color: #4f46e5; font-weight: 500">
+          Use a recovery code
+        </button>
+      </p>
+      <div id="mfa-recovery-wrap" hidden>
+        <label for="mfa-recovery">Recovery code</label>
+        <input id="mfa-recovery" autocomplete="off" />
+        <button type="button" id="mfa-recovery-submit" style="margin-top: 0.75rem">Verify recovery code</button>
+      </div>
+    </div>
+    <p id="methods"></p>
     <div id="session-panel" class="panel" hidden>
       <strong>Session signed in</strong>
       <p id="session-hint" style="margin: 0.35rem 0 0"></p>
@@ -88,6 +118,50 @@
         }
 
         const banner = document.getElementById("banner");
+        const mfaChallengeId = params.get("mfaChallengeId");
+        if (params.get("mfa") === "1" && mfaChallengeId) {
+          document.getElementById("login-form").hidden = true;
+          document.getElementById("mfa-panel").hidden = false;
+          document.getElementById("title").textContent = "Verify your identity";
+          if (banner) {
+            banner.textContent = "Password accepted. Complete sign-in with your authenticator.";
+            banner.className = "banner success";
+            banner.hidden = false;
+          }
+          async function submitMfa(path, code) {
+            const res = await fetch(path, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({ mfaChallengeId: mfaChallengeId, code: code }),
+            });
+            if (res.status === 204) {
+              const next = new URL(location.href);
+              next.searchParams.delete("mfa");
+              next.searchParams.delete("mfaChallengeId");
+              next.searchParams.set("signedIn", "1");
+              location.replace(next.toString());
+              return;
+            }
+            const body = await res.json().catch(() => ({}));
+            if (banner) {
+              banner.textContent = body.detail || "Verification failed. Try again.";
+              banner.className = "banner error";
+              banner.hidden = false;
+            }
+          }
+          document.getElementById("mfa-submit").addEventListener("click", () => {
+            const code = document.getElementById("mfa-code").value.trim();
+            if (code) submitMfa("/api/v1/auth/mfa/totp/verify", code);
+          });
+          document.getElementById("mfa-recovery-toggle").addEventListener("click", () => {
+            document.getElementById("mfa-recovery-wrap").hidden = false;
+          });
+          document.getElementById("mfa-recovery-submit").addEventListener("click", () => {
+            const code = document.getElementById("mfa-recovery").value.trim();
+            if (code) submitMfa("/api/v1/auth/mfa/recovery/verify", code);
+          });
+        }
         if (banner) {
           if (params.has("signedIn")) {
             if (continueUrl && continueUrl.includes("/oauth2/authorize")) {
@@ -184,6 +258,7 @@
               }
             })
             .catch(() => undefined);
+          loadFederationProviders();
         }
 
         if (!appId && !continueUrl) {
@@ -216,12 +291,190 @@
         tenantInput.addEventListener("input", syncUsername);
         document.getElementById("email").addEventListener("input", syncUsername);
 
+        function federationQuery() {
+          const q = new URLSearchParams();
+          const app = document.getElementById("applicationId").value.trim();
+          if (app) {
+            q.set("applicationId", app);
+          } else {
+            const slug = tenantInput.value.trim();
+            if (slug) q.set("tenantSlug", slug);
+          }
+          return q;
+        }
+
+        function federationContinueParam() {
+          const cont = document.getElementById("continue").value.trim();
+          return cont ? "&continue=" + encodeURIComponent(cont) : "";
+        }
+
+        function renderFederationProviders(providers) {
+          const wrap = document.getElementById("federation");
+          const buttons = document.getElementById("federation-buttons");
+          if (!providers || !providers.length) {
+            wrap.style.display = "none";
+            return;
+          }
+          buttons.innerHTML = "";
+          providers.forEach((p) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "fed-btn";
+            btn.textContent = "Continue with " + (p.displayName || p.alias);
+            btn.addEventListener("click", () => {
+              const q = federationQuery();
+              if (!q.has("applicationId") && !q.has("tenantSlug")) {
+                if (banner) {
+                  banner.textContent = isAppScoped()
+                    ? "Unable to start federation login for this application."
+                    : "Enter your tenant slug before using social sign-in.";
+                  banner.className = "banner error";
+                  banner.hidden = false;
+                }
+                return;
+              }
+              location.href =
+                "/api/v1/auth/federation/" +
+                encodeURIComponent(p.alias) +
+                "/start?" +
+                q.toString() +
+                federationContinueParam();
+            });
+            buttons.appendChild(btn);
+          });
+          wrap.style.display = "block";
+        }
+
+        function loadFederationProviders() {
+          const q = federationQuery();
+          if (!q.has("applicationId") && !q.has("tenantSlug")) {
+            renderFederationProviders([]);
+            return;
+          }
+          fetch("/api/v1/auth/federation/providers?" + q.toString())
+            .then((r) => (r.ok ? r.json() : []))
+            .then(renderFederationProviders)
+            .catch(() => renderFederationProviders([]));
+        }
+
+        tenantInput.addEventListener("input", loadFederationProviders);
+
+        function passkeyContext() {
+          const app = document.getElementById("applicationId").value.trim();
+          const email = document.getElementById("email").value.trim().toLowerCase();
+          const body = {};
+          if (app) body.applicationId = app;
+          if (!app) {
+            const slug = tenantInput.value.trim();
+            if (slug) body.tenantSlug = slug;
+          }
+          if (email) body.email = email;
+          return body;
+        }
+
+        function bufferToBase64url(buffer) {
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          bytes.forEach((b) => (binary += String.fromCharCode(b)));
+          return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        }
+
+        function credentialToJson(credential) {
+          const response = credential.response;
+          const out = {
+            id: credential.id,
+            rawId: bufferToBase64url(credential.rawId),
+            type: credential.type,
+            response: {
+              clientDataJSON: bufferToBase64url(response.clientDataJSON),
+              authenticatorData: bufferToBase64url(response.authenticatorData),
+              signature: bufferToBase64url(response.signature),
+              userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null,
+            },
+            clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+          };
+          return JSON.stringify(out);
+        }
+
+        async function signInWithPasskey() {
+          const ctx = passkeyContext();
+          if (!ctx.applicationId && !ctx.tenantSlug) {
+            if (banner) {
+              banner.textContent = isAppScoped()
+                ? "Unable to start passkey sign-in for this application."
+                : "Enter your tenant slug or open this page from your application.";
+              banner.className = "banner error";
+              banner.hidden = false;
+            }
+            return;
+          }
+          if (!window.PublicKeyCredential) {
+            if (banner) {
+              banner.textContent = "Passkeys are not supported in this browser.";
+              banner.className = "banner error";
+              banner.hidden = false;
+            }
+            return;
+          }
+          try {
+            const optsRes = await fetch("/api/v1/auth/passkey/options", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify(ctx),
+            });
+            if (!optsRes.ok) {
+              throw new Error("Passkey sign-in is unavailable.");
+            }
+            const optsBody = await optsRes.json();
+            const publicKey = JSON.parse(optsBody.publicKey);
+            publicKey.challenge = Uint8Array.from(atob(publicKey.challenge.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+              c.charCodeAt(0)
+            );
+            if (publicKey.allowCredentials) {
+              publicKey.allowCredentials = publicKey.allowCredentials.map((cred) => ({
+                ...cred,
+                id: Uint8Array.from(atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)),
+              }));
+            }
+            const assertion = await navigator.credentials.get({ publicKey });
+            const verifyRes = await fetch("/api/v1/auth/passkey/verify", {
+              method: "POST",
+              credentials: "same-origin",
+              headers: { "Content-Type": "application/json", Accept: "application/json" },
+              body: JSON.stringify({
+                requestId: optsBody.requestId,
+                credential: credentialToJson(assertion),
+                applicationId: ctx.applicationId || null,
+              }),
+            });
+            if (verifyRes.status === 204) {
+              const next = new URL(location.href);
+              next.searchParams.set("signedIn", "1");
+              location.replace(next.toString());
+              return;
+            }
+            const err = await verifyRes.json().catch(() => ({}));
+            throw new Error(err.detail || "Passkey verification failed.");
+          } catch (e) {
+            if (banner) {
+              banner.textContent = e && e.message ? e.message : "Passkey sign-in failed.";
+              banner.className = "banner error";
+              banner.hidden = false;
+            }
+          }
+        }
+
+        document.getElementById("passkey-signin").addEventListener("click", signInWithPasskey);
+
         fetch("/api/v1/auth/methods")
           .then((r) => r.json())
           .then((methods) => {
             const available = methods.filter((m) => m.available).map((m) => m.name);
             document.getElementById("methods").textContent =
               "Available: " + (available.length ? available.join(", ") : "none");
+            const passkeyOn = methods.some((m) => m.id === "m_passkey" && m.available);
+            document.getElementById("passkey-wrap").style.display = passkeyOn ? "block" : "none";
           })
           .catch(() => {
             document.getElementById("methods").textContent = "";

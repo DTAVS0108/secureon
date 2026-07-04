@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { CopyValue } from "@/components/ui/CopyValue";
@@ -85,7 +86,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
     if (s.createdClientSecret) setNewSecret(s.createdClientSecret);
   });
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     const t = TEMPLATE_BY_TYPE[clientType];
     setGrantTypes(t.grantTypes);
     setScopes(t.scopes);

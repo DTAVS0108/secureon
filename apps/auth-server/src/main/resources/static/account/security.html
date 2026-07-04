@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Account security · SecureOne</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 36rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #111;
+      }
+      h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+      .muted { color: #666; font-size: 0.875rem; }
+      section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
+      button {
+        padding: 0.5rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.primary { background: #4f46e5; color: #fff; border-color: transparent; }
+      .banner { margin: 1rem 0; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; }
+      .banner.error { background: #fef2f2; color: #991b1b; }
+      .banner.ok { background: #ecfdf5; color: #065f46; }
+      ul.factors { list-style: none; padding: 0; margin: 0.75rem 0; }
+      ul.factors li { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; }
+      input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; margin: 0.5rem 0; }
+      img.qr { width: 10rem; height: 10rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
+      code { font-size: 0.8rem; word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <h1>Account security</h1>
+    <p class="muted">Manage MFA factors and active sessions. You must be signed in.</p>
+    <div id="banner" class="banner" hidden></div>
+
+    <section>
+      <h2>MFA factors</h2>
+      <ul id="factors" class="factors"></ul>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;">
+        <button type="button" id="enroll-totp">Add authenticator app</button>
+        <button type="button" id="enroll-passkey">Add passkey</button>
+      </div>
+      <div id="totp-panel" hidden>
+        <p class="muted">Scan with your authenticator app:</p>
+        <img id="totp-qr" class="qr" alt="TOTP QR" />
+        <p><code id="totp-secret"></code></p>
+        <input id="totp-code" inputmode="numeric" placeholder="6-digit code" maxlength="8" />
+        <button type="button" class="primary" id="confirm-totp">Confirm</button>
+      </div>
+      <div id="recovery-panel" hidden>
+        <p class="muted">Save these recovery codes:</p>
+        <ul id="recovery-codes"></ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Sessions</h2>
+      <ul id="sessions" class="factors"></ul>
+      <button type="button" id="revoke-others">Sign out other devices</button>
+    </section>
+
+    <section>
+      <h2>Privacy</h2>
+      <p class="muted">Export requires an OAuth access token from your integrated app.</p>
+      <p><a id="login-link" href="/login.html">Sign in</a> · <a href="/account/forgot-password.html">Forgot password</a></p>
+    </section>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const applicationId = params.get("applicationId");
+      let totpFactorId = null;
+
+      function showBanner(text, ok) {
+        const el = document.getElementById("banner");
+        el.textContent = text;
+        el.className = "banner " + (ok ? "ok" : "error");
+        el.hidden = false;
+      }
+
+      async function api(path, init) {
+        const res = await fetch(path, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          ...init,
+        });
+        if (res.status === 401) throw new Error("Sign in required.");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || body.message || "Request failed");
+        }
+        if (res.status === 204) return null;
+        return res.json();
+      }
+
+      function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (const b of bytes) binary += String.fromCharCode(b);
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+
+      function decodeCreationOptions(publicKeyJson) {
+        const parsed = JSON.parse(publicKeyJson);
+        parsed.challenge = Uint8Array.from(atob(parsed.challenge.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+        parsed.user.id = Uint8Array.from(atob(parsed.user.id.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+        if (parsed.excludeCredentials) {
+          parsed.excludeCredentials = parsed.excludeCredentials.map((cred) => ({
+            ...cred,
+            id: Uint8Array.from(atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)),
+          }));
+        }
+        return parsed;
+      }
+
+      async function loadFactors() {
+        const rows = await api("/api/v1/account/mfa/factors");
+        const ul = document.getElementById("factors");
+        ul.innerHTML = "";
+        rows.filter((f) => f.type !== "recovery").forEach((f) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span>${f.label || f.type} <small>(${f.verified ? "verified" : "pending"})</small></span>`;
+          if (f.type !== "recovery") {
+            const btn = document.createElement("button");
+            btn.textContent = "Remove";
+            btn.onclick = async () => {
+              const path = f.type === "passkey"
+                ? `/api/v1/account/mfa/passkey/${f.id}`
+                : `/api/v1/account/mfa/totp/${f.id}`;
+              await api(path, { method: "DELETE" });
+              await loadFactors();
+            };
+            li.appendChild(btn);
+          }
+          ul.appendChild(li);
+        });
+      }
+
+      async function loadSessions() {
+        const data = await api("/api/v1/account/sessions");
+        const ul = document.getElementById("sessions");
+        ul.innerHTML = "";
+        (data.sessions || []).forEach((s) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span>${s.current ? "Current session" : "Session"} · ${s.lastAccessedAt || s.createdAt}</span>`;
+          if (!s.current) {
+            const btn = document.createElement("button");
+            btn.textContent = "Revoke";
+            btn.onclick = async () => {
+              await api(`/api/v1/account/sessions/${s.id}`, { method: "DELETE" });
+              await loadSessions();
+            };
+            li.appendChild(btn);
+          }
+          ul.appendChild(li);
+        });
+      }
+
+      document.getElementById("enroll-totp").onclick = async () => {
+        try {
+          const res = await api("/api/v1/account/mfa/totp/enroll", { method: "POST", body: "{}" });
+          totpFactorId = res.factorId;
+          document.getElementById("totp-qr").src = res.qrCodeDataUrl;
+          document.getElementById("totp-secret").textContent = res.secret;
+          document.getElementById("totp-panel").hidden = false;
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("confirm-totp").onclick = async () => {
+        try {
+          const code = document.getElementById("totp-code").value.trim();
+          const res = await api("/api/v1/account/mfa/totp/confirm", {
+            method: "POST",
+            body: JSON.stringify({ factorId: totpFactorId, code }),
+          });
+          document.getElementById("totp-panel").hidden = true;
+          const ul = document.getElementById("recovery-codes");
+          ul.innerHTML = "";
+          (res.recoveryCodes || []).forEach((c) => {
+            const li = document.createElement("li");
+            li.textContent = c;
+            ul.appendChild(li);
+          });
+          document.getElementById("recovery-panel").hidden = false;
+          await loadFactors();
+          showBanner("Authenticator enrolled.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("enroll-passkey").onclick = async () => {
+        if (!window.PublicKeyCredential) {
+          showBanner("Passkeys not supported in this browser.", false);
+          return;
+        }
+        try {
+          const opts = await api("/api/v1/account/mfa/passkey/register/options", { method: "POST", body: "{}" });
+          const publicKey = decodeCreationOptions(opts.publicKey);
+          const cred = await navigator.credentials.create({ publicKey });
+          const response = cred.response;
+          const credential = JSON.stringify({
+            id: cred.id,
+            rawId: bufferToBase64url(cred.rawId),
+            type: cred.type,
+            response: {
+              clientDataJSON: bufferToBase64url(response.clientDataJSON),
+              attestationObject: bufferToBase64url(response.attestationObject),
+              transports: response.getTransports ? response.getTransports() : [],
+            },
+            clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+          });
+          await api("/api/v1/account/mfa/passkey/register/verify", {
+            method: "POST",
+            body: JSON.stringify({ requestId: opts.requestId, credential }),
+          });
+          await loadFactors();
+          showBanner("Passkey added.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("revoke-others").onclick = async () => {
+        try {
+          await api("/api/v1/account/sessions", { method: "DELETE" });
+          await loadSessions();
+          showBanner("Other sessions revoked.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      if (applicationId) {
+        const login = document.getElementById("login-link");
+        login.href = `/login.html?applicationId=${encodeURIComponent(applicationId)}`;
+      }
+
+      Promise.all([loadFactors(), loadSessions()]).catch((e) => showBanner(e.message, false));
+    </script>
+  </body>
+</html>

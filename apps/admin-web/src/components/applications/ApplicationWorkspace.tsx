@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -139,7 +140,7 @@ export function UsersPanel({
     }
   }, [app.id, app.tenantId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
   }, [reload]);
 

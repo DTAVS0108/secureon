@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input, Select, Textarea } from "@/components/ui/Field";
@@ -84,7 +85,7 @@ export function EmailTemplatesSettings({
 
   const dirty = isDraftDirty(draft, saved);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (keys.length === 0) return;
     if (!keys.includes(selectedKey)) {
       const nextKey = keys[0];
@@ -93,7 +94,7 @@ export function EmailTemplatesSettings({
     }
   }, [keys, selectedKey, templates]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setDraft(templates[selectedKey] ?? {});
   }, [selectedKey, templates]);
 

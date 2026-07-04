@@ -38,6 +38,9 @@ The `account` block lists application-scoped endpoints (no `tenantSlug` required
 | `magicLinkRequestEndpoint` | `POST /api/v1/applications/{id}/account/magic-link/request` |
 | `forgotPasswordEndpoint` | `POST /api/v1/applications/{id}/account/password/forgot` |
 | `sessionLoginEndpoint` | `POST /api/v1/applications/{id}/auth/session/login` |
+| `otpLoginRequestEndpoint` | `POST /api/v1/applications/{id}/auth/otp/request` |
+| `otpLoginVerifyEndpoint` | `POST /api/v1/applications/{id}/auth/otp/verify` |
+| `verifyOtpConfirmEndpoint` | `POST /api/v1/applications/{id}/account/verify/otp/confirm` |
 | `passwordResetEndpoint` | `POST /api/v1/account/password/reset` |
 | `setPasswordEndpoint` | `POST /api/v1/account/set-password` |
 | `loginUsernameFormat` | `tenantSlug:email` (e.g. `acme:user@example.com`) |
@@ -89,10 +92,35 @@ When `authUiMode` is **native**, build your own screens and call the same APIs d
 POST /api/v1/applications/{applicationId}/auth/session/login
 Content-Type: application/json
 
-{ "email": "user@example.com", "password": "…" }
+{ "identifier": "user@example.com", "password": "…" }
 ```
 
-On success, the auth-server sets a **session cookie** (`JSESSIONID`) on the auth-server origin. This works when your UI is same-origin with the auth-server or when you have configured cookies/CORS correctly for cross-origin use. For most SPAs, **OAuth Authorization Code + PKCE** is the recommended path instead.
+`identifier` accepts **email** or **phone** (E.164). Legacy clients that sent `email` must migrate to `identifier`.
+
+On success, the auth-server sets a **session cookie** (`JSESSIONID`) stored in **Redis** (Spring Session). This works when your UI is same-origin with the auth-server or when you have configured cookies/CORS correctly for cross-origin use. For most SPAs, **OAuth Authorization Code + PKCE** is the recommended path instead.
+
+### OTP login (email or SMS)
+
+See **[19 — Verification & OTP](19-verification-and-otp.md)** for full examples.
+
+```http
+POST /api/v1/applications/{applicationId}/auth/otp/request
+{ "identifier": "user@example.com", "channel": "email" }
+
+POST /api/v1/applications/{applicationId}/auth/otp/verify
+{ "challengeId": "…", "code": "123456" }
+```
+
+Requires `m_email_otp` or `m_sms` enabled. Success returns `204` and a session cookie.
+
+### Signup verification (link or OTP)
+
+Signup accepts optional `verificationMode` (`link` | `otp`) and `phone`. Policy defaults are in **Platform/Application → Settings → Verification**. OTP confirm:
+
+```http
+POST /api/v1/applications/{applicationId}/account/verify/otp/confirm
+{ "challengeId": "…", "code": "123456" }
+```
 
 ### Password reset (custom landing pages)
 
@@ -126,13 +154,15 @@ Response is always a generic success message (anti-enumeration), whether or not 
 
 There is **no** `clientUrls.magicLink` override yet (unlike password reset). For a fully native magic-link landing page, you would need a future setting or have users complete verification on the hosted page and redirect back to your app.
 
-**Verify:**
+**Verify (HTML or JSON):**
 
 ```http
 GET /api/v1/account/magic-link/verify?token=…
+POST /api/v1/account/magic-link/verify
+{ "token": "…" }
 ```
 
-Returns **HTML** (success or error page), not JSON. Hosted `magic-link.html` redirects here automatically. A custom page can read `?token=` from your URL and redirect to the same verify endpoint.
+HTML returns a success page. JSON returns `{ "signedIn": true, "email": "…", "loginUsername": "tenant:email" }` and **creates a session cookie** (`JSESSIONID` in Redis). Also sets `emailVerified=true`.
 
 ## Magic link flow (all UI types)
 
@@ -151,12 +181,12 @@ flowchart TB
     CUSTOM["Custom: your page redirects to same verify URL"]
   end
 
-  subgraph result [4. After verify today]
-    HTML["HTML success page\nUpdates lastLoginAt\nDoes NOT issue session cookie or OAuth token"]
+  subgraph result [4. After verify]
+    SESSION["Session cookie (Redis) + emailVerified\nHTML or JSON API"]
   end
 
-  API --> MAIL --> HOSTED --> HTML
-  MAIL --> CUSTOM --> HTML
+  API --> MAIL --> HOSTED --> SESSION
+  MAIL --> CUSTOM --> SESSION
 ```
 
 ### Requirements
@@ -170,25 +200,16 @@ flowchart TB
 
 ### After magic link verify
 
-Magic link verification **confirms identity** and updates login metadata but **does not**:
-
-- Create an HTTP session (`JSESSIONID`), or
-- Return OAuth access / refresh tokens.
-
-To establish a full login session or token:
-
-- **OAuth:** redirect to `/oauth2/authorize` (user may still need password on hosted login today), or
-- **Session API:** `POST …/auth/session/login` if the user has a password, or
-- **Future work:** wire magic-link completion into OAuth or session issuance.
+Magic link verification **creates an HTTP session** (`JSESSIONID` in Redis), sets `emailVerified=true`, and updates login metadata. For OAuth access tokens, redirect to `/oauth2/authorize` with PKCE after verify (session is already established).
 
 ## Comparison by flow
 
 | Flow | Hosted UI | Custom UI | OAuth redirect |
 |------|-----------|-----------|----------------|
-| Password login | `/login.html` | Session API or your form → session API | `/oauth2/authorize` → `/login.html` |
-| Magic link request | `/account/magic-link.html` | Your form → app-scoped API | N/A (separate path) |
-| Magic link email destination | Auth-server hosted page | Same today | N/A |
-| Magic link verify | Hosted redirect → verify URL | Your page → same verify URL | N/A |
+| Password login | `/login.html` | Session API (`identifier` + password) | `/oauth2/authorize` → `/login.html` |
+| OTP login | N/A | `POST …/auth/otp/request` + `verify` | After session → `/oauth2/authorize` |
+| Magic link verify | Hosted redirect → verify URL | `POST /api/v1/account/magic-link/verify` (JSON) | Session cookie → OAuth |
+| Signup verify | Email link or hosted | OTP confirm API | N/A |
 | Get access token | Code exchange after OAuth | OAuth PKCE (recommended) or session cookie | Primary path |
 | Forgot password | `/account/forgot-password.html` | Your page + forgot API | N/A |
 | Reset password email link | Hosted or `clientUrls.passwordReset` | `clientUrls.passwordReset` | N/A |
@@ -212,14 +233,16 @@ Integration settings (OAuth client ID, application UUID, API catalog, `authUiMod
 | `clientUrls.passwordReset` | Application → Integration (native) | Reset email link base URL |
 | `SECUREONE_PUBLIC_BASE_URL` | auth-server env | Base for all email links (default `http://localhost:9000`) |
 | Public API exposure | Platform + application settings | Whether `GET /api/v1/applications/{id}` is available unauthenticated |
-| Auth methods | Platform + application Authentication | Which methods (password, magic link, etc.) are enabled |
+| Auth methods | Platform + application Authentication | Password, magic link, email OTP, SMS OTP (`m_email_otp`, `m_sms`) |
+| Verification policy | Platform/Application → **Verification** tab | Signup mode link vs OTP, TTL, attempts |
 | Application SMTP | Application → Notifications | Required for magic link, reset, verification emails to end users |
 
 ## Known gaps (as of current implementation)
 
 1. **Magic link email URL** — always hosted; no `clientUrls.magicLink` override.
-2. **Magic link verify** — HTML only; no JSON API for SPA token handoff.
-3. **Post-verify session** — verify does not create session or OAuth tokens; separate login step required.
-4. **`login.html` magic link link** — default link omits `applicationId`; use `/account/magic-link.html?applicationId={id}` explicitly for app-scoped requests.
+2. **Password reset via OTP** — policy field exists; flow still uses email link only.
+3. **TOTP / passkey MFA** — not wired at login (admin can list factors only).
+4. **Session list/revoke** — admin session view exists; end-user revoke-all API not yet exposed.
+5. **`login.html` magic link link** — default link omits `applicationId`; use `/account/magic-link.html?applicationId={id}` explicitly for app-scoped requests.
 
-These are intentional documentation of current behavior; extend the platform if product requirements need fully native magic-link login with automatic token issuance.
+Full OTP/signup/login reference: **[19 — Verification & OTP](19-verification-and-otp.md)**.

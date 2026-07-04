@@ -25,6 +25,7 @@ public final class PasswordPolicyRules {
         out.put("expiryDays", expiryDays(policy));
         out.put("historyCount", historyCount(policy));
         out.put("hashAlgorithm", hashAlgorithm(policy));
+        out.put("breachCheck", breachCheck(policy));
         out.put("requirements", requirements(policy));
         return out;
     }
@@ -57,6 +58,9 @@ public final class PasswordPolicyRules {
         int history = historyCount(policy);
         if (history > 0) {
             rules.add(rule("history", "Must not match your last " + history + " password(s)"));
+        }
+        if (breachCheck(policy)) {
+            rules.add(rule("breachCheck", "Must not appear in known data breaches"));
         }
         int expiry = expiryDays(policy);
         if (expiry > 0) {
@@ -175,6 +179,10 @@ public final class PasswordPolicyRules {
 
     public static int historyCount(Map<String, Object> policy) {
         return Math.max(0, number(policy, "historyCount", 0));
+    }
+
+    public static boolean breachCheck(Map<String, Object> policy) {
+        return PasswordPolicySanitizer.breachCheckEnabled(policy);
     }
 
     public static String hashAlgorithm(Map<String, Object> policy) {

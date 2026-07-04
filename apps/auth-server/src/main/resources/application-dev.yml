@@ -1,0 +1,17 @@
+# Local development defaults — activated when SPRING_PROFILES_ACTIVE=dev (default).
+secureone:
+  environment: ${SECUREONE_ENV:development}
+  swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:true}
+  dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:true}
+  mail:
+    log-links-when-smtp-unavailable: ${SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE:true}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug

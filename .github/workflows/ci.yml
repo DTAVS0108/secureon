@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth-server:
+    name: auth-server (Gradle test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: secureone
+          POSTGRES_PASSWORD: secureone
+          POSTGRES_DB: secureone
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U secureone -d secureone"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SECUREONE_DB_URL: jdbc:postgresql://localhost:5432/secureone?currentSchema=platform
+      SECUREONE_DB_USERNAME: secureone
+      SECUREONE_DB_PASSWORD: secureone
+      SECUREONE_REDIS_URL: redis://localhost:6379
+      SECUREONE_OTP_PEPPER: ci-test-pepper-not-default
+      SPRING_PROFILES_ACTIVE: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        working-directory: apps/auth-server
+        run: chmod +x gradlew
+
+      - name: Run unit tests
+        working-directory: apps/auth-server
+        run: ./gradlew test --no-daemon
+
+  admin-web:
+    name: admin-web (build + lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/admin-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/admin-web
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/admin-web
+        run: npm run lint
+
+      - name: Build
+        working-directory: apps/admin-web
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SECUREONE_ENV: development
+          NEXT_PUBLIC_AUTH_SERVER_URL: http://localhost:9000

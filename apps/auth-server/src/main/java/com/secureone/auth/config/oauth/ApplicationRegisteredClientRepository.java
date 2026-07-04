@@ -2,6 +2,7 @@ package com.secureone.auth.config.oauth;
 
 import com.secureone.auth.application.Application;
 import com.secureone.auth.application.ApplicationRepository;
+import com.secureone.auth.application.ApplicationSettingsService;
 import com.secureone.auth.oauth.OAuthClient;
 import com.secureone.auth.oauth.OAuthClientRepository;
 import java.util.List;
@@ -13,8 +14,6 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
-import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
-import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,14 +24,17 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
 
     private final OAuthClientRepository oauthClients;
     private final ApplicationRepository applications;
+    private final ApplicationSettingsService applicationSettings;
     private final PasswordEncoder passwordEncoder;
 
     public ApplicationRegisteredClientRepository(
             OAuthClientRepository oauthClients,
             ApplicationRepository applications,
+            ApplicationSettingsService applicationSettings,
             PasswordEncoder passwordEncoder) {
         this.oauthClients = oauthClients;
         this.applications = applications;
+        this.applicationSettings = applicationSettings;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -131,9 +133,8 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
                 .requireAuthorizationConsent(false)
                 .requireProofKey(pkceRequired)
                 .build());
-        builder.tokenSettings(TokenSettings.builder()
-                .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                .build());
+        builder.tokenSettings(TokenSettingsMapper.toTokenSettings(
+                applicationSettings.resolveTokenPolicy(client.getApplicationId())));
 
         return builder.build();
     }

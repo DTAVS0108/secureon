@@ -13,11 +13,5 @@ export function SettingsScopeBanner({ scope }: { scope: SettingsScope }) {
       </div>
     );
   }
-  return (
-    <div className="mb-6 rounded-lg border border-ui bg-surface px-4 py-3 text-sm text-muted">
-      <strong className="text-ui">Application settings</strong> configure this app only — independent
-      from platform notification alerts. Sections appear when enabled under{" "}
-      <strong>Platform → For applications</strong>.
-    </div>
-  );
+  return null;
 }

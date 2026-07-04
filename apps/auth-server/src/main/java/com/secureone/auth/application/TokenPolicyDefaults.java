@@ -23,6 +23,15 @@ public final class TokenPolicyDefaults {
         return defaults;
     }
 
+    /** Shorter-lived access tokens for production deployments. */
+    public static Map<String, Object> productionDefaults() {
+        Map<String, Object> defaults = platformDefaults();
+        defaults.put("accessTokenTtlSeconds", 900);
+        defaults.put("idTokenTtlSeconds", 900);
+        defaults.put("clientCredentialsTtlSeconds", 900);
+        return defaults;
+    }
+
     @SuppressWarnings("unchecked")
     public static Map<String, Object> merge(Map<String, Object> platform, Map<String, Object> appOverride) {
         Map<String, Object> merged = new LinkedHashMap<>(platform != null ? platform : platformDefaults());

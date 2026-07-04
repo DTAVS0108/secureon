@@ -16,4 +16,10 @@ public final class AccountDtos {
             @NotBlank String token,
             @NotBlank @Size(min = 8, max = 128) String password,
             java.util.UUID applicationId) {}
+
+    public record ResetPasswordOtpRequest(
+            @NotBlank String challengeId,
+            @NotBlank @Size(min = 4, max = 8) String code,
+            @NotBlank @Size(min = 8, max = 128) String password,
+            java.util.UUID applicationId) {}
 }

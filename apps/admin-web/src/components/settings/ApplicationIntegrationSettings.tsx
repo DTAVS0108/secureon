@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CopyValue } from "@/components/ui/CopyValue";
@@ -22,7 +23,7 @@ import { useAdminContext } from "@/components/AdminContextProvider";
 import { AUTH_SERVER_URL } from "@/lib/config";
 import { buildIntegrationApiCatalog } from "@/lib/integration-api-catalog";
 import type { ApplicationProduct, OAuthClient } from "@/lib/types";
-import type { SettingsTabId } from "@/components/settings/SettingsTabs";
+import type { SettingsTabId, AuthSubTabId } from "@/components/settings/SettingsTabs";
 
 const DEFAULT_CONFIG: ClientIntegrationConfig = {
   authUiMode: "hosted",
@@ -30,10 +31,18 @@ const DEFAULT_CONFIG: ClientIntegrationConfig = {
     redirectUris: false,
     publicManifest: false,
     smtpConfigured: false,
+    smsConfigured: false,
     authMethodsReviewed: false,
     signupReviewed: false,
     passwordResetTested: false,
+    recoveryOtpTested: false,
     loginFlowTested: false,
+    oauthPkceTested: false,
+    mfaStepUpTested: false,
+    sessionRevokeTested: false,
+    magicLinkTested: false,
+    federationTested: false,
+    passkeyTested: false,
   },
   notes: "",
 };
@@ -62,6 +71,12 @@ const CHECKLIST_META: {
     tab: "notifications",
   },
   {
+    key: "smsConfigured",
+    label: "SMS provider configured",
+    hint: "SMS OTP login and signup require a provider (or log mode in dev).",
+    tab: "verification",
+  },
+  {
     key: "authMethodsReviewed",
     label: "Authentication methods reviewed",
     hint: "Password, MFA, and social providers match your product requirements.",
@@ -77,11 +92,52 @@ const CHECKLIST_META: {
     key: "passwordResetTested",
     label: "Password reset tested",
     hint: "Forgot-password email delivers and reset link works end-to-end.",
+    tab: "verification",
+  },
+  {
+    key: "recoveryOtpTested",
+    label: "Recovery OTP tested",
+    hint: "Forgot-password OTP via email or SMS completes with new password.",
+    tab: "verification",
   },
   {
     key: "loginFlowTested",
     label: "Login flow tested",
     hint: "Hosted redirect or native session login succeeds with a test user.",
+  },
+  {
+    key: "oauthPkceTested",
+    label: "OAuth PKCE tested",
+    hint: "Authorization code + PKCE token exchange returns access and refresh tokens.",
+  },
+  {
+    key: "mfaStepUpTested",
+    label: "MFA step-up tested",
+    hint: "Password login triggers TOTP step-up when policy requires MFA.",
+    tab: "auth",
+  },
+  {
+    key: "sessionRevokeTested",
+    label: "Session revoke tested",
+    hint: "GET/DELETE /api/v1/account/sessions lists and revokes browser sessions.",
+  },
+  {
+    key: "magicLinkTested",
+    label: "Magic link tested",
+    hint: "Magic link email delivers and completes sign-in.",
+    tab: "auth",
+  },
+  {
+    key: "federationTested",
+    label: "Federation sign-in tested",
+    hint: "Google, GitHub, or OIDC provider completes hosted login.",
+    tab: "auth",
+  },
+  {
+    key: "passkeyTested",
+    label: "Passkey sign-in tested",
+    hint: "WebAuthn registration and passwordless login succeed in a supported browser.",
+    tab: "auth",
   },
 ];
 
@@ -90,7 +146,7 @@ export function ApplicationIntegrationSettings({
   onOpenTab,
 }: {
   applicationId: string;
-  onOpenTab?: (tab: SettingsTabId) => void;
+  onOpenTab?: (tab: SettingsTabId, authSubTab?: AuthSubTabId) => void;
 }) {
   const { toast } = useToast();
   const adminContext = useAdminContext();
@@ -139,7 +195,7 @@ export function ApplicationIntegrationSettings({
     }
   }, [applicationId, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -201,16 +257,6 @@ export function ApplicationIntegrationSettings({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">
-        Configure how your application integrates with SecureOne: choose hosted vs native sign-in UI,
-        track setup tasks, and reference the APIs your client will call. OAuth client credentials
-        (client ID, secret, redirect URIs) are managed in the{" "}
-        <Link href={`/applications/${applicationId}`} className="text-brand hover:underline">
-          OAuth client registry
-        </Link>
-        .
-      </p>
-
       <Card padded={false}>
         <CardHeader
           title="Database schema"
@@ -330,6 +376,20 @@ export function ApplicationIntegrationSettings({
                   })
                 }
                 placeholder="http://localhost:5173/reset-password"
+              />
+            </FieldRow>
+            <FieldRow
+              label="Magic link landing page"
+              hint="Base URL for magic-link emails; SecureOne appends ?token=…&applicationId=…"
+            >
+              <Input
+                value={config.clientUrls?.magicLink ?? ""}
+                onChange={(e) =>
+                  updateConfig({
+                    clientUrls: { ...config.clientUrls, magicLink: e.target.value },
+                  })
+                }
+                placeholder="http://localhost:5173/magic-link"
               />
             </FieldRow>
           </div>

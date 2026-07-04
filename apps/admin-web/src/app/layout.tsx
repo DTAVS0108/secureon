@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConsoleProviders } from "@/components/ConsoleProviders";
+import { EnvironmentBanner } from "@/components/EnvironmentBanner";
 import { loadAdminContextSafe } from "@/lib/api/app-workspace";
 import type { AdminContext } from "@/lib/api/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -65,6 +66,7 @@ export default async function RootLayout({
       style={theme.style as CSSProperties}
     >
       <body className="min-h-full">
+        <EnvironmentBanner />
         <ToastProvider>
           <ConsoleProviders adminContext={ctx}>
             <ThemeProvider platformSettingsAccess={ctx.platformSuperAdmin}>{children}</ThemeProvider>

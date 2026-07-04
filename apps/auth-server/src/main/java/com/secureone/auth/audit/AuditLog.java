@@ -48,6 +48,9 @@ public class AuditLog {
     @Column(name = "ip")
     private String ip;
 
+    @Column(name = "user_agent")
+    private String userAgent;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> metadata = new HashMap<>();

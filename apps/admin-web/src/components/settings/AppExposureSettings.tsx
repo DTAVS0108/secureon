@@ -4,19 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { useToast } from "@/components/ui/Toast";
 import { loadAppExposureAction, saveAppExposureAction } from "@/lib/actions/app-exposure";
 import type { AppSettingsExposure } from "@/lib/api/app-exposure";
 import { coerceAppSettingsExposure, normalizeAppSettingsExposure } from "@/lib/settings-exposure";
+import { EXPOSURE_HELP } from "@/lib/verification-settings-help";
 
 const GROUPS: { title: string; keys: string[] }[] = [
   { title: "Messaging", keys: ["notifications", "email"] },
-  { title: "Authentication", keys: ["auth-methods", "password-policy", "feature-flags", "token-policy"] },
+  { title: "Authentication", keys: ["auth-methods", "password-policy", "feature-flags", "token-policy", "verification-policy", "sms"] },
   { title: "Experience & directory", keys: ["appearance", "user-directory"] },
   { title: "Client integration", keys: ["public-manifest"] },
 ];
 
-const SECTIONS: { key: string; label: string; description: string }[] = [
+const SECTIONS: { key: string; label: string; description: string; info?: string }[] = [
   {
     key: "notifications",
     label: "Notifications",
@@ -49,6 +51,18 @@ const SECTIONS: { key: string; label: string; description: string }[] = [
       "When on, each application can enable an OAuth tokens tab to manage access/refresh lifetimes and rotation.",
   },
   {
+    key: "verification-policy",
+    label: "Verification & OTP",
+    description: "Signup verification mode (link vs OTP), OTP TTL, and channel policy.",
+    info: EXPOSURE_HELP.verificationPolicy,
+  },
+  {
+    key: "sms",
+    label: "SMS provider",
+    description: "Per-application SMS provider (Twilio, AWS SNS, MSG91, or log) for OTP delivery.",
+    info: EXPOSURE_HELP.sms,
+  },
+  {
     key: "appearance",
     label: "Appearance",
     description: "Per-application branding (admin console theme stays platform-wide unless you enable this).",
@@ -68,7 +82,9 @@ const SECTIONS: { key: string; label: string; description: string }[] = [
 export function AppExposureSettings() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
-  toastRef.current = toast;
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [exposure, setExposure] = useState<AppSettingsExposure>({});
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,7 +175,10 @@ export function AppExposureSettings() {
                 return (
                   <li key={section.key} className="flex items-start justify-between gap-4 px-5 py-4">
                     <div>
-                      <p className="text-sm font-medium text-ui">{section.label}</p>
+                      <p className="flex items-center text-sm font-medium text-ui">
+                        {section.label}
+                        {section.info && <InfoTip content={section.info} />}
+                      </p>
                       <p className="text-xs text-muted">{section.description}</p>
                     </div>
                     <Toggle

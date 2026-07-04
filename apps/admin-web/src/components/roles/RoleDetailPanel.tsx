@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { RoleLabelBadge } from "@/components/roles/RoleLabelBadge";
 import { PermissionMatrix } from "@/components/roles/PermissionMatrix";
 import { RoleFormModal } from "@/components/forms/RoleFormModal";
@@ -72,7 +73,7 @@ export function RoleDetailPanel({
   const [permSaving, setPermSaving] = useState(false);
   const [permError, setPermError] = useState<string | null>(null);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setLoading(true);
     setLoadError(null);
     getRole(roleId, applicationId, roleSummary)
@@ -90,7 +91,7 @@ export function RoleDetailPanel({
       .finally(() => setLoading(false));
   }, [roleId, applicationId, roleSummary, permissions]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (tab !== "users") return;
     setUsersLoading(true);
     listRoleUsers(applicationId, roleId)

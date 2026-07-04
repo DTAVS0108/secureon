@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 
 const DRAWIO_EMBED_ORIGIN = "https://embed.diagrams.net";
 const DRAWIO_EMBED_URL = `${DRAWIO_EMBED_ORIGIN}/?embed=1&ui=min&spin=1&proto=json&noSaveBtn=1&noExitBtn=1`;
@@ -38,7 +39,7 @@ export function DrawioEmbed({ assetPath, title }: DrawioEmbedProps) {
     setStatus("ready");
   }, [title]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     let cancelled = false;
     loadedRef.current = false;
     readyRef.current = false;
@@ -73,7 +74,7 @@ export function DrawioEmbed({ assetPath, title }: DrawioEmbedProps) {
     };
   }, [assetPath, sendLoad]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== DRAWIO_EMBED_ORIGIN) return;
       if (event.source !== iframeRef.current?.contentWindow) return;

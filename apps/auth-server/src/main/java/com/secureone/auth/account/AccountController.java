@@ -1,8 +1,11 @@
 package com.secureone.auth.account;
 
+import com.secureone.auth.authn.MagicLinkAuthService;
 import jakarta.validation.Valid;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,9 +20,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountNotificationService accounts;
+    private final AccountVerificationService verification;
+    private final PasswordRecoveryService passwordRecovery;
+    private final MagicLinkAuthService magicLinkAuth;
 
-    public AccountController(AccountNotificationService accounts) {
+    public AccountController(
+            AccountNotificationService accounts,
+            AccountVerificationService verification,
+            PasswordRecoveryService passwordRecovery,
+            MagicLinkAuthService magicLinkAuth) {
         this.accounts = accounts;
+        this.verification = verification;
+        this.passwordRecovery = passwordRecovery;
+        this.magicLinkAuth = magicLinkAuth;
     }
 
     /**
@@ -34,6 +47,12 @@ public class AccountController {
         }
         requireTenantSlug(request.tenantSlug());
         return accounts.requestPasswordReset(request.tenantSlug(), request.email());
+    }
+
+    @PostMapping("/password/reset/otp")
+    public Map<String, String> resetPasswordOtp(@Valid @RequestBody AccountDtos.ResetPasswordOtpRequest request) {
+        return passwordRecovery.completeRecoveryOtp(
+                request.applicationId(), UUID.fromString(request.challengeId()), request.code(), request.password());
     }
 
     @PostMapping("/password/reset")
@@ -92,9 +111,12 @@ public class AccountController {
     }
 
     @GetMapping(value = "/magic-link/verify", produces = MediaType.TEXT_HTML_VALUE)
-    public String magicLinkVerifyHtml(@RequestParam String token) {
+    public String magicLinkVerifyHtml(
+            @RequestParam String token,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
         try {
-            var result = accounts.completeMagicLink(token);
+            var result = magicLinkAuth.completeAndCreateSession(token, request, response);
             return """
                     <!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">
                     <h1>Signed in</h1>
@@ -107,6 +129,38 @@ public class AccountController {
         } catch (Exception ex) {
             return "<html><body><h1>Invalid or expired magic link</h1></body></html>";
         }
+    }
+
+    @PostMapping("/magic-link/verify")
+    public ResponseEntity<?> magicLinkVerifyApi(
+            @RequestBody Map<String, String> body,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
+        String token = body.get("token");
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("token is required");
+        }
+        return magicLinkAuth.completeAndCreateSessionApi(token, request, response);
+    }
+
+    @PostMapping("/verify/otp/confirm")
+    public Map<String, Object> confirmVerificationOtp(@RequestBody Map<String, String> body) {
+        String challengeId = body.get("challengeId");
+        String code = body.get("code");
+        String channel = body.getOrDefault("channel", "email");
+        if (challengeId == null || code == null) {
+            throw new IllegalArgumentException("challengeId and code are required");
+        }
+        UUID id = UUID.fromString(challengeId);
+        var user = "phone".equalsIgnoreCase(channel) || "sms".equalsIgnoreCase(channel)
+                ? verification.confirmPhoneOtp(id, code)
+                : verification.confirmEmailOtp(id, code);
+        return Map.of("verified", true, "email", user.getEmail(), "phoneVerified", user.isPhoneVerified());
+    }
+
+    @GetMapping("/verify/options")
+    public Map<String, Object> verifyOptions(@RequestParam(required = false) UUID applicationId) {
+        return verification.verificationOptions(applicationId);
     }
 
     @PostMapping("/set-password")

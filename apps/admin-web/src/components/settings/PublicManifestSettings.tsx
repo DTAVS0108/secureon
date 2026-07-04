@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { LiveApiResponse } from "@/components/settings/LiveApiResponse";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
@@ -22,7 +23,9 @@ const DEFAULTS: PublicManifestConfig = {
     authMethods: true,
     featureFlags: true,
     passwordPolicy: true,
+    verificationPolicy: true,
     appearance: false,
+    federation: true,
   },
 };
 
@@ -48,9 +51,19 @@ const SECTION_META: { key: keyof PublicManifestSections; label: string; descript
     description: "Rules clients can use for password forms (length, complexity).",
   },
   {
+    key: "verificationPolicy",
+    label: "Verification & OTP",
+    description: "Signup, login, and password recovery modes (link vs OTP), channels, and OTP parameters.",
+  },
+  {
     key: "appearance",
     label: "Appearance",
     description: "Full client theme (colors, widgets, branding) from the application Appearance tab.",
+  },
+  {
+    key: "federation",
+    label: "Federation providers",
+    description: "Enabled social/OIDC sign-in buttons and the public providers list endpoint.",
   },
 ];
 
@@ -77,7 +90,7 @@ export function PublicManifestSettings({ applicationId }: { applicationId: strin
     }
   }, [applicationId, toast]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     reload();
   }, [reload]);
 

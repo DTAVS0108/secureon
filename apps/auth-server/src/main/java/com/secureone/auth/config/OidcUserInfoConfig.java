@@ -10,6 +10,7 @@ import java.util.function.Function;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -40,6 +41,15 @@ public class OidcUserInfoConfig {
         }
 
         OidcUserInfo.Builder builder = OidcUserInfo.builder().subject(subject);
+        if (principal instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            if (jwt.hasClaim("amr")) {
+                builder.claim("amr", jwt.getClaim("amr"));
+            }
+            if (jwt.hasClaim("acr")) {
+                builder.claim("acr", jwt.getClaim("acr"));
+            }
+        }
         resolveUser(subject, users, tenants).ifPresent(user -> {
             builder.email(user.getEmail());
             builder.emailVerified(user.isEmailVerified());

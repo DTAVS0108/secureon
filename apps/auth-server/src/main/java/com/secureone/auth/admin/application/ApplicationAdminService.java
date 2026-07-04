@@ -14,6 +14,7 @@ import com.secureone.auth.audit.AuditService;
 import com.secureone.auth.notify.EmailNotificationService;
 import com.secureone.auth.oauth.OAuthClientRepository;
 import com.secureone.auth.rbac.RbacBootstrapService;
+import com.secureone.auth.tenant.TenantQuotaService;
 import com.secureone.auth.tenant.TenantRepository;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +35,7 @@ public class ApplicationAdminService {
     private final AuditService auditService;
     private final EmailNotificationService emailService;
     private final RbacBootstrapService rbacBootstrap;
+    private final TenantQuotaService tenantQuotas;
 
     public ApplicationAdminService(
             ApplicationRepository applicationRepository,
@@ -44,7 +46,8 @@ public class ApplicationAdminService {
             ApplicationSchemaService schemaService,
             AuditService auditService,
             EmailNotificationService emailService,
-            RbacBootstrapService rbacBootstrap) {
+            RbacBootstrapService rbacBootstrap,
+            TenantQuotaService tenantQuotas) {
         this.applicationRepository = applicationRepository;
         this.oauthClients = oauthClients;
         this.tenantRepository = tenantRepository;
@@ -54,6 +57,7 @@ public class ApplicationAdminService {
         this.auditService = auditService;
         this.emailService = emailService;
         this.rbacBootstrap = rbacBootstrap;
+        this.tenantQuotas = tenantQuotas;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +83,7 @@ public class ApplicationAdminService {
 
     public ApplicationResponse create(ApplicationCreateRequest request) {
         requireTenant(request.tenantId());
+        tenantQuotas.assertCanCreateApplication(request.tenantId());
         String slug = slugify(request.slug() != null ? request.slug() : request.name());
         if (applicationRepository.findByTenantIdAndSlug(request.tenantId(), slug).isPresent()) {
             throw new ConflictException("Application slug already exists for tenant: " + slug);

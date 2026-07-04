@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { CONFLUENCE_CATEGORIES, type ConfluenceCategory } from "@/lib/confluence/catalog";
 import { cn } from "@/lib/cn";
 
@@ -15,7 +16,7 @@ function ConfluenceCategorySection({
   const categoryActive = category.pages.some((page) => page.slug === activeSlug);
   const [open, setOpen] = useState(categoryActive);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (categoryActive) setOpen(true);
   }, [categoryActive]);
 

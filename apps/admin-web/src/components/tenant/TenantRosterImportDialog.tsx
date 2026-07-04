@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
@@ -47,7 +48,7 @@ export function TenantRosterImportDialog({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!open) {
       setQuery("");
       setStatusFilter("ALL");

@@ -11,14 +11,19 @@ import org.springframework.security.oauth2.server.authorization.token.Delegating
 import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2AccessTokenGenerator;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 
 @Configuration
 public class OAuth2TokenGeneratorConfig {
 
     @Bean
-    OAuth2TokenGenerator<? extends OAuth2Token> oauth2TokenGenerator(JWKSource<SecurityContext> jwkSource) {
+    OAuth2TokenGenerator<? extends OAuth2Token> oauth2TokenGenerator(
+            JWKSource<SecurityContext> jwkSource,
+            OAuth2TokenCustomizer<JwtEncodingContext> jwtEncodingContextCustomizer) {
         JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(jwkSource));
+        jwtGenerator.setJwtCustomizer(jwtEncodingContextCustomizer);
         OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
         OAuth2RefreshTokenGenerator defaultRefreshGenerator = new OAuth2RefreshTokenGenerator();
         OAuth2TokenGenerator<OAuth2RefreshToken> refreshTokenGenerator =

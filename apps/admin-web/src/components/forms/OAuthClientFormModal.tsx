@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { CopyValue } from "@/components/ui/CopyValue";
@@ -119,7 +120,7 @@ function OAuthClientForm({
     }
   });
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (client) return;
     const t = TEMPLATE_BY_TYPE[clientType];
     setGrantTypes(t.grantTypes);

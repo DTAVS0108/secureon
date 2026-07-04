@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { UserFormModal } from "@/components/forms/UserFormModal";
 import { UserSecurityTab } from "@/components/users/UserSecurityTab";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +22,8 @@ import {
   unlockUserApi,
   updateUserAuthMethodsApi,
 } from "@/lib/api/users";
+import { impersonateUser } from "@/lib/api/service-accounts";
+import { AUTH_SERVER_URL } from "@/lib/config";
 import { listLoginEvents } from "@/lib/api/sessions";
 import { formatDate, formatDateTime, initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
@@ -97,7 +100,7 @@ export function UserDetailPanel({
   );
   const allowedAuth = user.allowedAuthMethods ?? {};
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setUser((prev) => {
       if (prev.id !== userSummary.id) return userSummary;
       return {
@@ -114,7 +117,7 @@ export function UserDetailPanel({
     });
   }, [userSummary]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setLoading(true);
     Promise.all([
       getApplicationUser(applicationId, userSummary.id).then((u) => u && setUser(u)),
@@ -134,7 +137,7 @@ export function UserDetailPanel({
     }
   }
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (tab === "mfa" && !showMfaTab) setTab("overview");
     if (tab === "auth" && !showAuthTab) setTab("overview");
   }, [tab, showMfaTab, showAuthTab]);
@@ -336,6 +339,35 @@ export function UserDetailPanel({
                   onClick={() => applyUserChange(() => unlockUserApi(user.id).then(() => undefined))}
                 >
                   Unlock account
+                </Button>
+              )}
+              {user.status === "active" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={actionBusy}
+                  onClick={async () => {
+                    const reason = window.prompt("Reason for impersonation (audited):");
+                    if (!reason?.trim()) return;
+                    setActionBusy(true);
+                    try {
+                      const res = await impersonateUser(user.id, {
+                        reason: reason.trim(),
+                        applicationId,
+                      });
+                      const url = res.consumeUrl.startsWith("http")
+                        ? res.consumeUrl
+                        : `${AUTH_SERVER_URL}${res.consumeUrl}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    } catch (e) {
+                      window.alert(e instanceof Error ? e.message : "Impersonation failed");
+                    } finally {
+                      setActionBusy(false);
+                    }
+                  }}
+                >
+                  Impersonate
                 </Button>
               )}
             </div>

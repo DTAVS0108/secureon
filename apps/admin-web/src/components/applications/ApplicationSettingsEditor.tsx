@@ -15,6 +15,7 @@ const TAB_QUERY_VALUES: SettingsTabId[] = [
   "users",
   "public-api",
   "tokens",
+  "verification",
 ];
 
 export function ApplicationSettingsEditor({ appId }: { appId: string }) {

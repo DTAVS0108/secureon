@@ -71,7 +71,11 @@ public class ConfluenceDiscoveryController {
                                         page(
                                                 "applications-oauth",
                                                 "Applications & OAuth clients",
-                                                "15-applications-and-oauth-clients.md"))),
+                                                "15-applications-and-oauth-clients.md"),
+                                        page(
+                                                "verification-otp",
+                                                "Verification & OTP",
+                                                "19-verification-and-otp.md"))),
                         category(
                                 "platform-reference",
                                 "Platform — reference",
@@ -90,6 +94,10 @@ public class ConfluenceDiscoveryController {
                                 "Developers wiring products into SecureOne",
                                 List.of(
                                         page("auth-ui-integration", "Auth UI integration", "13-auth-ui-integration.md"),
+                                        page(
+                                                "verification-otp",
+                                                "Verification & OTP",
+                                                "19-verification-and-otp.md"),
                                         page(
                                                 "application-integration",
                                                 "Application integration guide",

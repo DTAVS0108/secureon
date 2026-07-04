@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Modal } from "@/components/ui/Modal";
 import { FieldRow, Input, Textarea } from "@/components/ui/Field";
 import { FormActions, FormError, useCloseOnSuccess } from "@/components/forms/form-utils";
@@ -86,7 +87,7 @@ function GroupForm({
     () => new Set(group?.memberUserIds ?? []),
   );
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setSelectedRoles(new Set(group?.roleIds ?? []));
     setSelectedMembers(new Set(group?.memberUserIds ?? []));
   }, [group]);

@@ -12,7 +12,7 @@ VALUES
     ('app_settings_exposure', '{
       "notifications": true, "email": true, "auth-methods": true, "password-policy": true,
       "feature-flags": true, "appearance": false, "user-directory": true,
-      "public-manifest": true, "token-policy": true
+      "public-manifest": true, "token-policy": true, "verification-policy": true, "sms": true
     }'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
@@ -23,8 +23,8 @@ VALUES
       {"id":"m_passkey","name":"Passkeys (WebAuthn)","description":"Phishing-resistant sign-in","enabled":true,"category":"primary","implemented":false},
       {"id":"m_magic","name":"Magic Link","description":"Email passwordless login","enabled":true,"category":"primary","implemented":true},
       {"id":"m_totp","name":"TOTP Authenticator","description":"Authenticator app codes","enabled":true,"category":"mfa","implemented":false},
-      {"id":"m_sms","name":"SMS OTP","description":"SMS one-time codes","enabled":false,"category":"mfa","implemented":false},
-      {"id":"m_email_otp","name":"Email OTP","description":"Email one-time codes at login","enabled":true,"category":"mfa","implemented":false},
+      {"id":"m_sms","name":"SMS OTP","description":"SMS one-time codes","enabled":false,"category":"mfa","implemented":true},
+      {"id":"m_email_otp","name":"Email OTP","description":"Email one-time codes at login","enabled":true,"category":"mfa","implemented":true},
       {"id":"m_push","name":"Push Notification","description":"Approve on device","enabled":false,"category":"mfa","implemented":false},
       {"id":"m_google","name":"Google","description":"Google OIDC","enabled":true,"category":"federation","implemented":false},
       {"id":"m_github","name":"GitHub","description":"GitHub OAuth","enabled":true,"category":"federation","implemented":false},
@@ -36,7 +36,8 @@ VALUES
       "expiryDays": 0, "historyCount": 5, "hashAlgorithm": "bcrypt"
     }'::jsonb),
     ('feature_flags', '[
-      {"key":"self_service_recovery","name":"Self-service Recovery","description":"Application-scoped forgot-password","enabled":true,"rollout":100,"category":"identity"},
+      {"key":"self_service_recovery","name":"Self-service Recovery","description":"Application-scoped forgot-password (link or OTP per verification policy)","enabled":true,"rollout":100,"category":"identity"},
+      {"key":"recovery_otp","name":"Recovery OTP","description":"Password reset via email/SMS OTP codes","enabled":true,"rollout":100,"category":"identity"},
       {"key":"self_registration","name":"Self Registration","description":"Public user signup","enabled":false,"rollout":0,"category":"identity"},
       {"key":"ldap","name":"LDAP / AD","description":"LDAP user import","enabled":false,"rollout":0,"category":"identity"},
       {"key":"notification_email_test_ui","name":"Email test console","description":"SMTP test panel under Notifications","enabled":true,"rollout":100,"category":"notifications"}

@@ -11,7 +11,10 @@ public final class ApplicationSignupDtos {
     public record SignupRequest(
             @NotBlank @Email String email,
             @NotBlank @Size(min = 8, max = 128) String password,
+            String phone,
             String firstName,
             String lastName,
-            String displayName) {}
+            String displayName,
+            String verificationMode,
+            String verificationChannel) {}
 }

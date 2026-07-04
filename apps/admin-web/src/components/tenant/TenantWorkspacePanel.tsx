@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import {
   ADMIN_MIRROR_RBAC_ROLES,
   groupConsoleAccessByUser,
@@ -132,7 +133,7 @@ export function TenantWorkspacePanel({
 
   const apiTenantId = useOperatorWorkspace ? undefined : manageTenantId;
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (!importAppId) {
       setInviteRoles([]);
       return;
@@ -150,11 +151,11 @@ export function TenantWorkspacePanel({
     };
   }, [importAppId]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     setData((prev) => mergeTenantWorkspace(workspace, prev));
   }, [workspace]);
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (importAppId) void loadDirectory(importAppId);
   }, [importAppId]);
 
@@ -186,7 +187,7 @@ export function TenantWorkspacePanel({
     ? (tenantUsers.find((u) => u.id === accessUserId) ?? null)
     : null;
 
-  useEffect(() => {
+  useDeferredEffect(() => {
     if (accessUserId && !tenantUsers.some((u) => u.id === accessUserId)) {
       setAccessUserId(null);
     }

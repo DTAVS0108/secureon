@@ -121,6 +121,16 @@ public class TenantRbacRepository {
         return count != null && count > 0;
     }
 
+    public void grantUserRole(UUID userId, UUID roleId) {
+        Long count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM user_tenant_role WHERE user_id = ? AND role_id = ?", Long.class, userId, roleId);
+        if (count != null && count > 0) {
+            return;
+        }
+        jdbc.update(
+                "INSERT INTO user_tenant_role (id, user_id, role_id) VALUES (gen_random_uuid(), ?, ?)", userId, roleId);
+    }
+
     public void replaceUserRoles(UUID userId, List<UUID> roleIds) {
         jdbc.update("DELETE FROM user_tenant_role WHERE user_id = ?", userId);
         for (UUID roleId : new LinkedHashSet<>(roleIds)) {
