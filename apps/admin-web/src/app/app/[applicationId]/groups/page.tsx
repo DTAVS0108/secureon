@@ -9,7 +9,7 @@ import { resolveApplicationMeta } from "@/lib/api/app-workspace";
 import { listGroups, probeGroupsApi } from "@/lib/api/groups";
 import { listRoles } from "@/lib/api/roles";
 import { listUsers } from "@/lib/api/users";
-import { getApplication } from "@/lib/api/applications";
+import { getVisibleApplication } from "@/lib/api/operator-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +47,7 @@ export default async function AppGroupsPage({
     users = [];
   }
 
-  const app = await getApplication(applicationId);
+  const app = await getVisibleApplication(applicationId, appMeta);
 
   return (
     <div className="w-full min-w-0">

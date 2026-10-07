@@ -12,8 +12,8 @@ SecureOne adopts the modern, consolidated standards set so existing OAuth/OIDC c
 | **TOTP (RFC 6238)** | App-based 2FA fallback | 2 |
 | **SAML 2.0** | Enterprise SSO via a separate, feature-flagged IdP/brokering module | 3 |
 | **SCIM 2.0** | User provisioning/deprovisioning | 3 |
-| **Token Exchange (RFC 8693)** | Delegation / impersonation, service-to-service token swap | 2–3 |
-| **PAR (RFC 9126)** | Pushed Authorization Requests (tamper-proof request params) | 3 |
+| **Token Exchange (RFC 8693)** | Delegation / impersonation, service-to-service token swap | 2–3 (implemented) |
+| **PAR (RFC 9126)** | Pushed Authorization Requests (tamper-proof request params) | 3 (implemented) |
 | **DPoP (RFC 9449) / mTLS (RFC 8705)** | Sender-constrained (proof-of-possession) tokens | 3 |
 | **CIBA** | Decoupled / back-channel authentication | 3 |
 | **JARM** | Signed authorization responses | 3 |
@@ -31,7 +31,7 @@ See [Enterprise Capabilities](10-enterprise.md) for the full enterprise feature 
 | **Refresh Token (with rotation)** | Long-lived sessions |
 | **Device Authorization Grant** | CLIs / TVs (later) |
 | **CIBA** | Decoupled auth (approve on a second device) — Phase 3 |
-| **Token Exchange** | Delegation / impersonation between services — Phase 2–3 |
+| **Token Exchange** | Delegation / impersonation between services — implemented (`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`) |
 
 > The Authorization Code flow with PKCE is the default for all interactive clients. The legacy Implicit and Resource Owner Password grants are **not** supported.
 
@@ -51,10 +51,12 @@ For how integrated applications choose **hosted SecureOne pages vs a custom logi
 |---|---|
 | `/.well-known/openid-configuration` | Discovery |
 | `/oauth2/authorize` | Authorization (code flow) |
-| `/oauth2/token` | Token issuance/exchange/refresh |
+| `/oauth2/token` | Token issuance, refresh, **token exchange** (RFC 8693) |
 | `/oauth2/jwks` | Public signing keys |
 | `/oauth2/introspect` | Token introspection |
 | `/oauth2/revoke` | Token revocation |
+| `/oauth2/par` | Pushed Authorization Requests (RFC 9126); returns `request_uri` for `/oauth2/authorize` |
+| `/oauth2/backchannel-logout` | OIDC back-channel logout (ack stub; full validation pending) |
 | `/userinfo` | OIDC user claims |
 | `/connect/logout` | RP-initiated logout |
 

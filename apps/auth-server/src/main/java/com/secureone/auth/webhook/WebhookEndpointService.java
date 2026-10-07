@@ -19,14 +19,17 @@ public class WebhookEndpointService {
     private final WebhookEndpointRepository endpoints;
     private final WebhookDeliveryRepository deliveries;
     private final SecretProtector secrets;
+    private final WebhookTargetPolicy targets;
 
     public WebhookEndpointService(
             WebhookEndpointRepository endpoints,
             WebhookDeliveryRepository deliveries,
-            SecretProtector secrets) {
+            SecretProtector secrets,
+            WebhookTargetPolicy targets) {
         this.endpoints = endpoints;
         this.deliveries = deliveries;
         this.secrets = secrets;
+        this.targets = targets;
     }
 
     @Transactional(readOnly = true)
@@ -50,7 +53,7 @@ public class WebhookEndpointService {
     }
 
     public Map<String, Object> create(UUID tenantId, Map<String, Object> body) {
-        String url = requiredString(body.get("url"), "url");
+        String url = targets.validateForRegistration(requiredString(body.get("url"), "url"));
         WebhookEndpoint endpoint = new WebhookEndpoint();
         endpoint.setTenantId(tenantId);
         endpoint.setApplicationId(parseUuid(body.get("applicationId")));
@@ -68,7 +71,7 @@ public class WebhookEndpointService {
     public Map<String, Object> update(UUID tenantId, UUID id, Map<String, Object> body) {
         WebhookEndpoint endpoint = requireEndpoint(tenantId, id);
         if (body.containsKey("url")) {
-            endpoint.setUrl(requiredString(body.get("url"), "url"));
+            endpoint.setUrl(targets.validateForRegistration(requiredString(body.get("url"), "url")));
         }
         if (body.containsKey("applicationId")) {
             endpoint.setApplicationId(parseUuid(body.get("applicationId")));
@@ -129,6 +132,7 @@ public class WebhookEndpointService {
                     events.add(item.toString().trim());
                 }
             }
+            WebhookTargetPolicy.validateEvents(events);
             return events;
         }
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "events must be an array.");

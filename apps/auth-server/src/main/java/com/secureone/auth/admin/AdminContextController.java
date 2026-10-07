@@ -35,6 +35,7 @@ public class AdminContextController {
     private final OAuthClientRepository oauthClients;
     private final TenantRepository tenants;
     private final UserAccountRepository users;
+    private final AdminSessionService sessions;
 
     public AdminContextController(
             AdminAccessService access,
@@ -44,7 +45,8 @@ public class AdminContextController {
             ApplicationRepository applications,
             OAuthClientRepository oauthClients,
             TenantRepository tenants,
-            UserAccountRepository users) {
+            UserAccountRepository users,
+            AdminSessionService sessions) {
         this.access = access;
         this.permissions = permissions;
         this.consoleCapabilities = consoleCapabilities;
@@ -53,6 +55,7 @@ public class AdminContextController {
         this.oauthClients = oauthClients;
         this.tenants = tenants;
         this.users = users;
+        this.sessions = sessions;
     }
 
     public record ApplicationContextItem(
@@ -78,12 +81,16 @@ public class AdminContextController {
             String tenantName,
             UUID userId,
             long oauthClientCount,
-            List<ApplicationContextItem> applications) {}
+            List<ApplicationContextItem> applications,
+            boolean breakGlass,
+            java.time.Instant sessionExpiresAt,
+            long sessionIdleTimeoutSeconds) {}
 
     @GetMapping
     public AdminContextResponse context(
             Authentication authentication,
-            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail) {
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            jakarta.servlet.http.HttpServletRequest request) {
         boolean superAdmin = access.canAccessPlatformSettings(authentication, actAsEmail);
         String operatorTier = access.resolveOperatorTier(authentication, actAsEmail);
         String email = access.resolveOperatorEmail(authentication, actAsEmail);
@@ -147,7 +154,11 @@ public class AdminContextController {
                 tenantName,
                 userId,
                 oauthClients.count(),
-                items);
+                items,
+                access.isBreakGlass(authentication),
+                request.getAttribute(AdminCredentialAuthenticationFilter.SESSION_EXPIRES_AT_ATTR)
+                        instanceof java.time.Instant expiresAt ? expiresAt : null,
+                sessions.idleTimeoutSeconds());
     }
 
     private String resolveDisplayName(String email, Authentication authentication) {

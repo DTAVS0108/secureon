@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { AUTH_SERVER_URL, IS_PROD } from "@/lib/config";
-import { buildAdminAuthHeader } from "@/lib/auth/session-shared";
-import { getAdminSession } from "@/lib/auth/session-server";
+import { AUTH_SERVER_URL } from "@/lib/config";
+import { adminAuthHeader } from "@/lib/api/server-auth";
 
-const DEV_USER = process.env.SECUREONE_DEV_USER ?? "admin";
-const DEV_PASSWORD = process.env.SECUREONE_DEV_PASSWORD ?? "admin";
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
 
 async function forward(request: Request, pathSegments: string[]) {
-  const session = await getAdminSession();
-  let auth: string | null = null;
-  if (session) {
-    auth = buildAdminAuthHeader(session);
-  } else if (!IS_PROD) {
-    auth = `Basic ${Buffer.from(`${DEV_USER}:${DEV_PASSWORD}`).toString("base64")}`;
-  } else {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await adminAuthHeader();
+  if (!auth) {
+    return NextResponse.json({ detail: "Not signed in." }, { status: 401 });
   }
 
   const incoming = new URL(request.url);

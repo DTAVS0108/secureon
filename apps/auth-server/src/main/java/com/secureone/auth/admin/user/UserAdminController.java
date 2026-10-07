@@ -64,7 +64,22 @@ public class UserAdminController {
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestParam(required = false) UUID tenantId,
             @RequestParam(required = false) UUID applicationId,
-            @RequestParam(required = false) Boolean adminOnly) {
+            @RequestParam(required = false) Boolean adminOnly,
+            @RequestParam(required = false) String search) {
+        List<UserResponse> users = listScoped(authentication, actAsEmail, tenantId, applicationId, adminOnly);
+        if (search == null || search.isBlank()) {
+            return users;
+        }
+        // Case-insensitive match on email, username, first/last name.
+        String needle = search.trim().toLowerCase(java.util.Locale.ROOT);
+        return users.stream()
+                .filter(u -> java.util.stream.Stream.of(u.email(), u.username(), u.firstName(), u.lastName())
+                        .anyMatch(v -> v != null && v.toLowerCase(java.util.Locale.ROOT).contains(needle)))
+                .toList();
+    }
+
+    private List<UserResponse> listScoped(
+            Authentication authentication, String actAsEmail, UUID tenantId, UUID applicationId, Boolean adminOnly) {
         boolean platform = access.canAccessPlatformSettings(authentication, actAsEmail);
         if (applicationId != null) {
             access.requireApplicationAccess(authentication, actAsEmail, applicationId);

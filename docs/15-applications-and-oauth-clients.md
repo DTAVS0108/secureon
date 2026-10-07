@@ -72,7 +72,7 @@ The **Add OAuth client** form can leave “Application product” empty and auto
 
 ## API (platform super-admin)
 
-Base: `http://localhost:9000` · Auth: HTTP Basic (`admin` / `admin` in dev)
+Base: `http://localhost:9000` · Auth: console session token (`Authorization: SecureOne-Admin-Session <token>`, see below)
 
 ### Application products
 
@@ -99,13 +99,18 @@ Base: `http://localhost:9000` · Auth: HTTP Basic (`admin` / `admin` in dev)
 ### Example: create product + client via API
 
 ```bash
+# 0. Console session (break-glass admin in dev; named operators also send an authenticator code
+#    to /api/admin/v1/auth/mfa/verify with the returned mfaToken)
+TOKEN=$(curl -s -X POST http://localhost:9000/api/admin/v1/auth/login   -H "Content-Type: application/json"   -d '{"emailOrUsername":"admin","password":"admin"}' | jq -r .sessionToken)
+AUTH="Authorization: SecureOne-Admin-Session $TOKEN"
+
 # 1. Application (provisions schema automatically)
-curl -u admin:admin -X POST http://localhost:9000/api/admin/v1/applications \
+curl -H "$AUTH" -X POST http://localhost:9000/api/admin/v1/applications \
   -H "Content-Type: application/json" \
   -d '{"tenantId":"<uuid>","name":"My App","slug":"my-app","status":"active"}'
 
 # 2. OAuth client
-curl -u admin:admin -X POST http://localhost:9000/api/admin/v1/oauth-clients \
+curl -H "$AUTH" -X POST http://localhost:9000/api/admin/v1/oauth-clients \
   -H "Content-Type: application/json" \
   -d '{"applicationId":"<app-uuid>","clientId":"my-app-web","type":"web","status":"active",
        "grantTypes":["authorization_code","refresh_token"],"scopes":["openid","profile","email"],

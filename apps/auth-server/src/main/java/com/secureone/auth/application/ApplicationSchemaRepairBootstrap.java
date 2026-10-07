@@ -27,6 +27,8 @@ public class ApplicationSchemaRepairBootstrap {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void repairSchemas() {
+        // DDL needs the schema owner; only this transaction leaves secureone_app (see V63).
+        jdbc.execute("SET LOCAL ROLE NONE");
         List<String> migrations = List.of("db/migration/application-schema/V2__user_application_created_at.sql");
         for (ApplicationSchema schema : schemas.findAll()) {
             if (!"ACTIVE".equalsIgnoreCase(schema.getStatus())) {

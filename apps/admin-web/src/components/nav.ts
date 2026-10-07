@@ -39,6 +39,10 @@ export const TENANT_NAV_GROUP: SidebarNavGroupConfig = {
   ],
 };
 
+export function isAccessReviewNavActive(pathname: string): boolean {
+  return pathname === "/access-review" || /^\/tenants\/[^/]+\/access-review\/?$/.test(pathname);
+}
+
 /** Tenant super-admin: scoped links to their organization only. */
 export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConfig {
   return {
@@ -49,6 +53,11 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
         label: "Roles & Permissions",
         href: `/tenants/${tenantId}/roles`,
         isActive: isTenantRolesNavActive,
+      },
+      {
+        label: "Access review",
+        href: `/tenants/${tenantId}/access-review`,
+        isActive: isAccessReviewNavActive,
       },
     ],
   };
@@ -70,6 +79,12 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     openInNewTab: true,
   },
   { label: "Platform settings", href: "/settings", description: "Global defaults", superAdminOnly: true },
+  {
+    label: "Access review",
+    href: "/access-review",
+    description: "Platform operators and who holds privileged roles",
+    superAdminOnly: true,
+  },
 ];
 
 /** Tenant operator nav — application console + documentation. */

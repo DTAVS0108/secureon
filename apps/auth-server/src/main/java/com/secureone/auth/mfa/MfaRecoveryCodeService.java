@@ -79,6 +79,22 @@ public class MfaRecoveryCodeService {
         return false;
     }
 
+    /** Recovery codes the user can still use. */
+    public int remaining(UUID userId) {
+        int count = 0;
+        for (MfaFactor factor : factors.findByUserIdAndType(userId, "recovery")) {
+            Object codes = factor.isVerified() && factor.getMetadata() != null ? factor.getMetadata().get("codes") : null;
+            if (codes instanceof List<?> list) {
+                for (Object row : list) {
+                    if (row instanceof Map<?, ?> map && !Boolean.TRUE.equals(map.get("used"))) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
     public void revokeForUser(UUID userId) {
         factors.findByUserIdAndType(userId, "recovery").forEach(factors::delete);
     }

@@ -56,6 +56,8 @@ export function AdminConsoleAccessPanel({
   >([]);
 
   const needsApp = roleType !== "TENANT_SUPER_ADMIN";
+  /** Tenant super admins may grant application and tenant admin, not their own role. */
+  const canManageSuperAdmins = adminContext.platformSuperAdmin;
 
   useEffect(() => {
     if (!open) return;
@@ -203,7 +205,9 @@ export function AdminConsoleAccessPanel({
               <TD className="text-sm text-soft">{scopeLabel(group.entries)}</TD>
               <TD>
                 <div className="flex flex-col items-end gap-1">
-                  {group.entries.map((entry) => (
+                  {group.entries
+                    .filter((entry) => canManageSuperAdmins || entry.roleType !== "TENANT_SUPER_ADMIN")
+                    .map((entry) => (
                     <Button
                       key={entry.id}
                       variant="ghost"
@@ -264,7 +268,7 @@ export function AdminConsoleAccessPanel({
                 >
                   <option value="APPLICATION_ADMIN">Application Admin</option>
                   <option value="TENANT_ADMIN">Tenant Admin</option>
-                  <option value="TENANT_SUPER_ADMIN">Tenant Super Admin</option>
+                  {canManageSuperAdmins && <option value="TENANT_SUPER_ADMIN">Tenant Super Admin</option>}
                 </Select>
               </FieldRow>
               {needsApp && (

@@ -362,6 +362,10 @@ public class UserAdminService {
         if (applicationId != null) {
             requireUserInApplication(user, applicationId);
         }
+        if (user.isEmailVerified()) {
+            // Nothing would be sent; say so instead of reporting "sent".
+            throw new ConflictException("Email address is already verified.");
+        }
         accountNotifications.sendVerificationEmail(applicationId, user, "admin");
         recordUserAudit(
                 user,
@@ -742,8 +746,10 @@ public class UserAdminService {
             case "active" -> "ACTIVE";
             case "suspended" -> "SUSPENDED";
             case "disabled" -> "DISABLED";
-            case "invited" -> "PENDING";
-            default -> status.trim().toUpperCase(Locale.ROOT);
+            case "invited", "pending" -> "PENDING";
+            case "locked" -> "LOCKED";
+            default -> throw new IllegalArgumentException(
+                    "Unknown status '" + status.trim() + "'. Use active, suspended, disabled or pending.");
         };
     }
 

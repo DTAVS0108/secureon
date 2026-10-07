@@ -3,6 +3,7 @@ package com.secureone.auth.scim;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.webhook.UserLifecycleWebhookPublisher;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,11 +37,14 @@ public class ScimUserController {
     }
 
     @GetMapping
-    public Map<String, Object> list(@RequestParam(required = false) UUID tenantId) {
-        if (tenantId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tenantId filter is required.");
-        }
-        List<Map<String, Object>> resources = users.findByTenantIdOrderByCreatedAtDesc(tenantId).stream()
+    public Map<String, Object> list(
+            HttpServletRequest request,
+            @RequestParam(required = false) UUID tenantId,
+            @RequestParam(required = false) String filter) {
+        UUID scopeTenant = ScimScope.resolve(request, tenantId);
+        java.util.function.Predicate<UserAccount> matches = filterPredicate(filter);
+        List<Map<String, Object>> resources = users.findByTenantIdOrderByCreatedAtDesc(scopeTenant).stream()
+                .filter(matches)
                 .map(this::toScimUser)
                 .toList();
         Map<String, Object> out = new LinkedHashMap<>();
@@ -53,14 +57,13 @@ public class ScimUserController {
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> get(@PathVariable UUID id) {
-        UserAccount user = users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        return toScimUser(user);
+    public Map<String, Object> get(HttpServletRequest request, @PathVariable UUID id) {
+        return toScimUser(requireUser(request, id));
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
-        UUID tenantId = parseTenantId(body);
+    public ResponseEntity<Map<String, Object>> create(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        UUID tenantId = ScimScope.resolve(request, parseTenantId(body));
         String email = extractEmail(body);
         if (email == null || email.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userName or emails required.");
@@ -83,25 +86,54 @@ public class ScimUserController {
     }
 
     @PutMapping("/{id}")
-    public Map<String, Object> replace(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
-        UserAccount user = users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public Map<String, Object> replace(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        UserAccount user = requireUser(request, id);
         applyUserFields(user, body);
         return toScimUser(users.save(user));
     }
 
     @PatchMapping("/{id}")
-    public Map<String, Object> patch(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
-        UserAccount user = users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public Map<String, Object> patch(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        UserAccount user = requireUser(request, id);
         applyPatchOperations(user, body);
         return toScimUser(users.save(user));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        UserAccount user = users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable UUID id) {
+        UserAccount user = requireUser(request, id);
         user.setStatus("DISABLED");
         users.save(user);
         return ResponseEntity.noContent().build();
+    }
+
+    /** A user of the token's tenant; others are reported as not found. */
+    private UserAccount requireUser(HttpServletRequest request, UUID id) {
+        UserAccount user = users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        ScimScope.requireVisible(request, user.getTenantId());
+        return user;
+    }
+
+    private static final java.util.regex.Pattern EQ_FILTER =
+            java.util.regex.Pattern.compile("^\\s*([A-Za-z.]+)\\s+eq\\s+\"([^\"]*)\"\\s*$", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** RFC 7644 filters used by IdPs before provisioning: userName / emails[.value] / displayName eq "x". */
+    static java.util.function.Predicate<UserAccount> filterPredicate(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return user -> true;
+        }
+        java.util.regex.Matcher m = EQ_FILTER.matcher(filter);
+        if (!m.matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported filter. Use: userName eq \"value\".");
+        }
+        String attribute = m.group(1).toLowerCase(Locale.ROOT);
+        String value = m.group(2);
+        return switch (attribute) {
+            case "username", "emails", "emails.value" -> user ->
+                    value.equalsIgnoreCase(user.getEmail()) || value.equalsIgnoreCase(user.getUsername());
+            case "displayname" -> user -> value.equals(user.getDisplayName());
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported filter attribute: " + m.group(1));
+        };
     }
 
     private void applyUserFields(UserAccount user, Map<String, Object> body) {
@@ -129,10 +161,22 @@ public class ScimUserController {
         if (!(operations instanceof List<?> ops)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Operations array is required.");
         }
+        // Azure AD / Okta also send path-less replaces: {"op":"replace","value":{"active":false,...}}.
+        List<Map<?, ?>> expanded = new ArrayList<>();
         for (Object raw : ops) {
             if (!(raw instanceof Map<?, ?> op)) {
                 continue;
             }
+            if (op.get("path") == null && op.get("value") instanceof Map<?, ?> attributes) {
+                for (Map.Entry<?, ?> attribute : attributes.entrySet()) {
+                    expanded.add(Map.of("op", String.valueOf(op.get("op")), "path", String.valueOf(attribute.getKey()),
+                            "value", attribute.getValue() == null ? "" : attribute.getValue()));
+                }
+            } else {
+                expanded.add(op);
+            }
+        }
+        for (Map<?, ?> op : expanded) {
             String operation = String.valueOf(op.get("op")).toLowerCase(Locale.ROOT);
             if (!"replace".equals(operation)) {
                 continue;
@@ -140,7 +184,9 @@ public class ScimUserController {
             String path = op.get("path") != null ? String.valueOf(op.get("path")) : null;
             Object value = op.get("value");
             if ("active".equalsIgnoreCase(path)) {
-                user.setStatus(Boolean.FALSE.equals(value) ? "DISABLED" : "ACTIVE");
+                // Azure AD sends booleans as strings ("False").
+                boolean active = !(Boolean.FALSE.equals(value) || "false".equalsIgnoreCase(String.valueOf(value)));
+                user.setStatus(active ? "ACTIVE" : "DISABLED");
             } else if ("displayName".equalsIgnoreCase(path)) {
                 user.setDisplayName(string(value, user.getDisplayName()));
             } else if (path != null && path.toLowerCase(Locale.ROOT).startsWith("emails")) {
@@ -189,10 +235,8 @@ public class ScimUserController {
             return UUID.fromString(String.valueOf(map.get("tenantId")));
         }
         Object tenantId = body.get("tenantId");
-        if (tenantId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tenantId extension is required.");
-        }
-        return UUID.fromString(String.valueOf(tenantId));
+        // Optional: a tenant SCIM token already determines the tenant (see ScimScope).
+        return tenantId == null ? null : UUID.fromString(String.valueOf(tenantId));
     }
 
     @SuppressWarnings("unchecked")

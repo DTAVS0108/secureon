@@ -67,7 +67,6 @@ See [Applications & OAuth clients](../../docs/15-applications-and-oauth-clients.
 | Variable | Purpose |
 |----------|---------|
 | `AUTH_SERVER_URL` | Backend base URL (default `http://localhost:9000`) |
-| `SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD` | HTTP Basic for server-side API calls (must match auth-server) |
 
 ## Scripts
 

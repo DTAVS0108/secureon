@@ -17,6 +17,8 @@ export type OperatorProfile = {
   hasPassword: boolean;
   status: string;
   createdAt: string | null;
+  /** The configured emergency account: nothing to edit here. */
+  breakGlass: boolean;
 };
 
 type AdminContextDto = {
@@ -29,6 +31,7 @@ type AdminContextDto = {
   tenantSlug?: string | null;
   tenantName?: string | null;
   userId?: string | null;
+  breakGlass?: boolean;
 };
 
 function profileFromContext(raw: AdminContextDto): OperatorProfile {
@@ -46,9 +49,10 @@ function profileFromContext(raw: AdminContextDto): OperatorProfile {
     username: email?.split("@")[0] ?? principal,
     displayName: raw.displayName ?? principal,
     emailVerified: Boolean(email),
-    hasPassword: !raw.platformSuperAdmin,
+    hasPassword: !raw.breakGlass,
     status: "active",
     createdAt: null,
+    breakGlass: raw.breakGlass ?? false,
   };
 }
 

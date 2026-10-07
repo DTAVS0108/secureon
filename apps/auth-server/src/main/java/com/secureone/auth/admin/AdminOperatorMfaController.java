@@ -2,9 +2,9 @@ package com.secureone.auth.admin;
 
 import com.secureone.auth.mfa.MfaFactorRepository;
 import com.secureone.auth.mfa.MfaFactorViews;
+import com.secureone.auth.mfa.MfaRecoveryCodeService;
 import com.secureone.auth.mfa.TotpMfaService;
 import com.secureone.auth.mfa.passkey.PasskeyRegistrationService;
-import com.secureone.auth.tenant.Tenant;
 import com.secureone.auth.user.UserAccount;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,16 +45,25 @@ public class AdminOperatorMfaController {
     private final TotpMfaService totp;
     private final PasskeyRegistrationService passkeys;
     private final MfaFactorRepository factors;
+    private final MfaRecoveryCodeService recoveryCodes;
+    private final boolean mfaRequired;
+    private final com.secureone.auth.mfa.MfaPolicyService mfaPolicy;
 
     public AdminOperatorMfaController(
             AdminOperatorService operators,
             TotpMfaService totp,
             PasskeyRegistrationService passkeys,
-            MfaFactorRepository factors) {
+            MfaFactorRepository factors,
+            MfaRecoveryCodeService recoveryCodes,
+            com.secureone.auth.mfa.MfaPolicyService mfaPolicy,
+            @org.springframework.beans.factory.annotation.Value("${secureone.admin.mfa-required:true}") boolean mfaRequired) {
         this.operators = operators;
         this.totp = totp;
         this.passkeys = passkeys;
         this.factors = factors;
+        this.recoveryCodes = recoveryCodes;
+        this.mfaRequired = mfaRequired;
+        this.mfaPolicy = mfaPolicy;
     }
 
     @GetMapping("/factors")
@@ -70,7 +79,7 @@ public class AdminOperatorMfaController {
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestBody(required = false) TotpEnrollRequest body) {
         UserAccount user = requireTenantOperator(authentication, actAsEmail);
-        TotpMfaService.EnrollResponse response = totp.enroll(user, body != null ? body.label() : null);
+        TotpMfaService.EnrollResponse response = totp.enrollRequired(user, body != null ? body.label() : null);
         return Map.of(
                 "factorId", response.factorId().toString(),
                 "secret", response.secret(),
@@ -100,14 +109,38 @@ public class AdminOperatorMfaController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Unused recovery codes, and whether the operator has an authenticator they can sign in with. */
+    @GetMapping("/status")
+    public Map<String, Object> status(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail) {
+        UserAccount user = requireTenantOperator(authentication, actAsEmail);
+        return Map.of(
+                "totpEnrolled", totp.hasVerifiedTotp(user.getId()),
+                "recoveryCodesRemaining", recoveryCodes.remaining(user.getId()),
+                "mfaRequiredForConsole", mfaRequired);
+    }
+
+    /** Replaces all recovery codes with a new set (old ones stop working). Needs an authenticator. */
+    @PostMapping("/recovery-codes")
+    public Map<String, Object> regenerateRecoveryCodes(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail) {
+        UserAccount user = requireTenantOperator(authentication, actAsEmail);
+        if (!totp.hasVerifiedTotp(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Set up an authenticator app first.");
+        }
+        return Map.of("recoveryCodes", recoveryCodes.issueForUser(user.getId(), mfaPolicy.recoveryCodesPerEnrollment()));
+    }
+
     @PostMapping("/passkey/register/options")
     public Map<String, Object> passkeyRegisterOptions(
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestBody(required = false) PasskeyRegisterOptionsRequest body) {
         UserAccount user = requireTenantOperator(authentication, actAsEmail);
-        Tenant tenant = operators.requireOperatorTenant(authentication, actAsEmail);
-        return passkeys.beginRegistration(user, tenant.getSlug(), body != null ? body.label() : null);
+        return passkeys.beginRegistration(
+                user, operators.signedInTenantSlug(authentication), body != null ? body.label() : null);
     }
 
     @PostMapping("/passkey/register/verify")
@@ -135,10 +168,10 @@ public class AdminOperatorMfaController {
     }
 
     private UserAccount requireTenantOperator(Authentication authentication, String actAsEmail) {
-        if (operators.isPlatformSuperAdmin(authentication, actAsEmail)) {
+        if (operators.isBreakGlass(authentication)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Platform super-admins cannot enroll MFA here. Use a tenant operator account.");
+                    "The break-glass account cannot enroll MFA. Sign in with your named operator account.");
         }
         return operators
                 .resolveTenantUser(authentication, actAsEmail)

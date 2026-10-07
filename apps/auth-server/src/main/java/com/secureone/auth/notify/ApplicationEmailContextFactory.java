@@ -20,16 +20,19 @@ public class ApplicationEmailContextFactory {
     private final UserApplicationRepository userApplications;
     private final ApplicationRepository applications;
     private final SmtpSettingsService smtpSettings;
+    private final PlatformSmtpSettingsService platformSmtp;
 
     public ApplicationEmailContextFactory(
             ApplicationSettingRepository appSettings,
             UserApplicationRepository userApplications,
             ApplicationRepository applications,
-            SmtpSettingsService smtpSettings) {
+            SmtpSettingsService smtpSettings,
+            PlatformSmtpSettingsService platformSmtp) {
         this.appSettings = appSettings;
         this.userApplications = userApplications;
         this.applications = applications;
         this.smtpSettings = smtpSettings;
+        this.platformSmtp = platformSmtp;
     }
 
     public UUID resolveApplicationId(UUID applicationId, UserAccount user) {
@@ -62,7 +65,9 @@ public class ApplicationEmailContextFactory {
         }
         Map<String, Object> notifications = mergedMap(applicationId, "notifications");
         Map<String, Object> email = mergedMap(applicationId, "email");
-        return new ApplicationEmailContext(applicationId, notifications, email, smtpSettings.isConfigured(applicationId));
+        // Apps without their own SMTP server send through the platform one (EmailDeliveryService).
+        boolean smtpConfigured = smtpSettings.isConfigured(applicationId) || platformSmtp.isConfigured();
+        return new ApplicationEmailContext(applicationId, notifications, email, smtpConfigured);
     }
 
     private Map<String, Object> mergedMap(UUID applicationId, String key) {

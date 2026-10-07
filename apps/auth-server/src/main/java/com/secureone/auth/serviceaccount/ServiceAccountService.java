@@ -108,6 +108,10 @@ public class ServiceAccountService {
         key = apiKeys.save(key);
         Map<String, Object> out = toKeyResponse(key);
         out.put("apiKey", rawKey);
+        out.put("scopes", ServiceAccountContext.defaultScopes());
+        out.put(
+                "scopeNote",
+                "API keys authenticate to /api/v1/m2m/** (whoami, tenant, health). Rate limited per key.");
         return out;
     }
 
@@ -134,7 +138,8 @@ public class ServiceAccountService {
                         .map(account -> {
                             key.setLastUsedAt(Instant.now());
                             apiKeys.save(key);
-                            return new ServiceAccountContext(account.getTenantId(), account.getId(), account.getName());
+                            return new ServiceAccountContext(
+                                    account.getTenantId(), account.getId(), key.getId(), account.getName());
                         }));
     }
 

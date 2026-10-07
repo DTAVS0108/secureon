@@ -2,7 +2,7 @@
 
 A phased plan from MVP to enterprise. The architecture is production-shaped from day one, so phases add **feature breadth**, not structural rewrites.
 
-> **Status (2026-07):** Phase 0–1 complete. Phase 2 largely complete (MFA, M2M, hardening). Phase 3–4 foundations shipped as stubs where full enterprise scope remains multi-month work (SAML login, OpenFGA, multi-region, IGA campaigns, etc.).
+> **Status (2026-07):** Phase 0–1 complete. Phase 2 complete (MFA, M2M, hardening, token exchange). Phase 3–4 foundations shipped; enterprise scope (SAML login, OpenFGA, multi-region, IGA campaigns, full GDPR) remains multi-month work.
 
 ## Phase 0 — Foundations
 - [x] Planning & architecture documentation (`docs/`)
@@ -37,14 +37,14 @@ A phased plan from MVP to enterprise. The architecture is production-shaped from
 - [x] **Admin MFA control** — reset/clear factors, recovery codes, audited
 - [x] **Admin impersonation** — time-boxed Redis token + consume endpoint
 - [x] **Layered settings** + feature toggles + auth-method selection
-- [x] Service accounts + API keys + **M2M auth filter** (`/api/v1/m2m/whoami`)
+- [x] Service accounts + API keys + **M2M** (`/api/v1/m2m/health`, `/whoami`, `/tenant`; per-key rate limits)
 - [x] Audit logs + login history
 - [x] Brute-force defense, lockout, rate limiting, leaked-password detection
 - [x] Self-service account portal (`account/security.html` + admin profile MFA)
 - [x] **Webhooks / event stream** — signed outbound delivery + admin CRUD
 - [x] Token introspection & revocation; refresh token reuse detection
 - [x] OpenAPI spec + Swagger UI
-- [x] **TypeScript SDK** — `packages/secureone-client` (manifest, PKCE, session login, token exchange)
+- [x] **TypeScript SDK** — `packages/secureone-client` (manifest, PKCE, session login, introspect, revoke)
 
 ## Phase 3 — Enterprise
 **Goal: enterprise SSO/brokering, governance, advanced authz & protocol hardening.**
@@ -56,7 +56,7 @@ A phased plan from MVP to enterprise. The architecture is production-shaped from
 - [ ] ABAC/ReBAC via OpenFGA + OPA/Cedar + UMA 2.0
 - [x] **Organizations (stub)** — nested org CRUD per tenant + admin UI panel
 - [x] **IGA (stub):** access request workflow + **auto-grant role on approve**
-- [x] **Protocol stubs:** PAR (`/oauth2/par`), back-channel logout, token exchange (501 until implemented)
+- [x] **Protocol:** PAR (`POST /oauth2/par`, one-time `request_uri`); **Token Exchange RFC 8693**; back-channel logout (ack stub)
 - [x] Per-application schema isolation (implemented); database-per-tenant tier deferred
 - [ ] Terraform provider; Java/Python/Go SDKs
 - [x] Helm chart (`deploy/helm/secureone/`)
@@ -66,7 +66,7 @@ A phased plan from MVP to enterprise. The architecture is production-shaped from
 **Goal: identity governance (IGA), compliance, and global scale.**
 - [x] **IGA (stub):** access request workflow + **auto-grant role on approve**
 - [ ] Full IGA: certification campaigns, SoD, time-bound/JIT access workflows
-- [x] **GDPR/CCPA (stub):** export + deletion-request APIs; hosted privacy section deferred
+- [x] **GDPR/CCPA (stub):** export + deletion-request APIs; **hosted privacy portal** (`/account/privacy.html`)
 - [ ] Compliance posture: SOC 2 / ISO 27001 / HIPAA; retention policies
 - [ ] Multi-region HA / active-active, DR, blue-green/canary
 - [x] **Tenant quotas (stub):** max users/applications enforcement hooks

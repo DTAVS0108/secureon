@@ -227,6 +227,11 @@ public class EmailNotificationService {
 
     public void sendSetPasswordInvite(UUID applicationId, UserAccount user, String setPasswordLink) {
         UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            // Accounts outside any application (platform operators) use the platform mail settings.
+            sendPlatformUserTemplate(user, "set_password_invite", setPasswordLink);
+            return;
+        }
         ensureUserTransactionalEmailEnabled(appId);
         sendUserTemplate(appId, user, "set_password_invite", setPasswordLink);
     }
@@ -424,6 +429,18 @@ public class EmailNotificationService {
             return;
         }
         sendPlatformTemplated("admin_security_alert", notifications, subject, body);
+    }
+
+    private void sendPlatformUserTemplate(UserAccount user, String templateKey, String actionLink) {
+        Map<String, Object> email = getEmailSettings();
+        Map<String, String> vars = new HashMap<>();
+        vars.put("appName", string(email, "fromName", "SecureOne"));
+        vars.put("tenantName", "SecureOne");
+        vars.put("userName", displayName(user));
+        vars.put("userEmail", user.getEmail());
+        vars.put("actionLink", actionLink);
+        RenderedEmail rendered = templates.renderPlatform(templateKey, vars);
+        sendPlatformOrLog(email, user.getEmail(), List.of(), List.of(), rendered.subject(), rendered.bodyText(), rendered.bodyHtml());
     }
 
     private void sendPlatformTemplated(

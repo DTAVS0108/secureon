@@ -1,5 +1,10 @@
 # Deploy SecureOne
 
+> **Full guide (two paths):** [24 — Deployment: image + env & enterprise](../24-deployment-image-env-and-enterprise.md)
+>
+> - **Path A** — Docker images + env only (no source on server), then admin UI for clients  
+> - **Path B** — Own the monorepo, CI build, Helm/K8s for enterprise  
+
 ## Prerequisites
 
 - PostgreSQL 16+ with `platform` schema (Flyway runs on auth-server startup)

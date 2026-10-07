@@ -43,8 +43,12 @@ public class OAuthClientAdminController {
             Authentication authentication,
             @RequestParam(required = false) UUID tenantId,
             @RequestParam(required = false) UUID applicationId) {
-        access.requireSuperAdmin(authentication);
-        return service.list(tenantId, applicationId);
+        if (applicationId == null) {
+            access.requireSuperAdmin(authentication);
+        }
+        // With applicationId, AdminAccessInterceptor has already checked access to that application;
+        // its operators may see (never edit) the app's clients. Secrets are never returned here.
+        return service.list(applicationId == null ? tenantId : null, applicationId);
     }
 
     @GetMapping("/{id}")

@@ -190,7 +190,8 @@ public class ApplicationSignupService {
 
     private void ensureSignupAllowed(UUID applicationId) {
         if (!isSignupEnabled(applicationId)) {
-            throw new IllegalStateException(
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
                     "Sign-up is not enabled for this application. Ask the app administrator to enable the Self Registration feature flag.");
         }
         if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_password")) {

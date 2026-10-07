@@ -7,6 +7,15 @@ export function appScopeHeaders(applicationId: string): Record<string, string> {
   return headers;
 }
 
+/** globalThis key under which server-auth.ts registers the server-side auth header lookup. */
+export const SERVER_AUTH_HOOK = "__secureoneAdminAuthHeader";
+
+/** Server-side auth header for the signed-in user; null when signed out or the hook is not loaded. */
+export async function serverAuthHeader(): Promise<string | null> {
+  const hook = (globalThis as Record<string, unknown>)[SERVER_AUTH_HOOK];
+  return typeof hook === "function" ? ((await hook()) as string | null) : null;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,

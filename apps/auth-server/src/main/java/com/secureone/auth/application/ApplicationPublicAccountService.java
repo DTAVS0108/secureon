@@ -61,15 +61,12 @@ public class ApplicationPublicAccountService {
 
     public Map<String, String> requestMagicLink(UUID applicationId, String email) {
         tenants.requireActiveApplication(applicationId);
-        tenants.findUserByEmail(applicationId, email)
-                .ifPresent(user -> memberships.ensureMemberWithDefaultRole(applicationId, user.getId()));
+        // Membership is granted after sign-in (LoginSuccessHandler), never on an unauthenticated request.
         return accounts.requestMagicLinkForApplication(applicationId, email);
     }
 
     public Map<String, Object> requestLoginOtp(UUID applicationId, String identifier, String channel) {
         tenants.requireActiveApplication(applicationId);
-        tenants.findUserByIdentifier(applicationId, identifier)
-                .ifPresent(user -> memberships.ensureMemberWithDefaultRole(applicationId, user.getId()));
         return authOtp.requestLoginOtp(applicationId, identifier, channel);
     }
 
@@ -97,7 +94,6 @@ public class ApplicationPublicAccountService {
         tenants.requireActiveApplication(applicationId);
         UserAccount user = tenants.findUserByIdentifier(applicationId, identifier)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
-        memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
         String tenantSlug = tenants.requireTenantSlug(applicationId);
         return sessions.sessionLogin(tenantSlug, user.getEmail(), password, applicationId, request, response);
     }

@@ -188,7 +188,8 @@ public class SettingsAdminController {
         if (stored == null || stored.isEmpty()) {
             return MfaPolicyDefaults.platformDefaults();
         }
-        return new HashMap<>(stored);
+        // Fill fields added after the policy was saved, so GET and the effective policy agree.
+        return MfaPolicyDefaults.sanitizeForSave(stored);
     }
 
     @PutMapping("/mfa-policy")

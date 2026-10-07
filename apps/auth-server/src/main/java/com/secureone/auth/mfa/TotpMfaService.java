@@ -37,6 +37,7 @@ public class TotpMfaService {
     private final MfaPolicyService policy;
     private final SecretProtector secrets;
     private final String issuer;
+    private final org.springframework.data.redis.core.StringRedisTemplate redis;
 
     private final SecretGenerator secretGenerator = new DefaultSecretGenerator();
     private final TimeProvider timeProvider = new SystemTimeProvider();
@@ -48,7 +49,9 @@ public class TotpMfaService {
             MfaRecoveryCodeService recoveryCodes,
             MfaPolicyService policy,
             SecretProtector secrets,
+            org.springframework.data.redis.core.StringRedisTemplate redis,
             @Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl) {
+        this.redis = redis;
         this.factors = factors;
         this.recoveryCodes = recoveryCodes;
         this.policy = policy;
@@ -60,6 +63,21 @@ public class TotpMfaService {
         if (!policy.totpAvailable()) {
             throw new IllegalStateException("TOTP MFA is not enabled on this platform.");
         }
+        return startEnrollment(user, label);
+    }
+
+    /**
+     * Enrollment for admin console operators, who must use MFA whatever the end-user policy says.
+     */
+    public EnrollResponse enrollRequired(UserAccount user, String label) {
+        return startEnrollment(user, label);
+    }
+
+    public boolean hasVerifiedTotp(UUID userId) {
+        return factors.findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "totp").isPresent();
+    }
+
+    private EnrollResponse startEnrollment(UserAccount user, String label) {
         factors.findByUserIdAndType(user.getId(), "totp").stream()
                 .filter(MfaFactor::isVerified)
                 .findFirst()
@@ -94,7 +112,7 @@ public class TotpMfaService {
     public ConfirmResponse confirm(UserAccount user, UUID factorId, String code) {
         MfaFactor factor = requirePendingFactor(user.getId(), factorId);
         String secret = decryptSecret(factor.getSecretEncrypted());
-        if (!codeVerifier.isValidCode(secret, normalizeCode(code))) {
+        if (!codeVerifier.isValidCode(secret, normalizeCode(code)) || !markUsed(user.getId(), normalizeCode(code))) {
             throw new IllegalArgumentException("Invalid authenticator code.");
         }
         factor.setVerified(true);
@@ -119,12 +137,22 @@ public class TotpMfaService {
                 .findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "totp")
                 .orElseThrow(() -> new IllegalArgumentException("No verified authenticator enrolled."));
         String secret = decryptSecret(factor.getSecretEncrypted());
-        boolean valid = codeVerifier.isValidCode(secret, normalizeCode(code));
+        boolean valid = codeVerifier.isValidCode(secret, normalizeCode(code)) && markUsed(userId, normalizeCode(code));
         if (valid) {
             factor.setLastUsedAt(java.time.Instant.now());
             factors.save(factor);
         }
         return valid;
+    }
+
+    /**
+     * One use per code: a code stays valid for up to ~90s (clock-skew window), so remember accepted
+     * codes per user for that long and refuse replays (RFC 6238 section 5.2).
+     */
+    private boolean markUsed(UUID userId, String code) {
+        Boolean first = redis.opsForValue().setIfAbsent(
+                "secureone:mfa:totp-used:" + userId + ":" + code, "1", java.time.Duration.ofSeconds(120));
+        return Boolean.TRUE.equals(first);
     }
 
     private MfaFactor requirePendingFactor(UUID userId, UUID factorId) {

@@ -30,6 +30,12 @@ export type AdminContext = {
   /** Total OAuth clients in the platform registry (all tenants). */
   oauthClientCount: number;
   applications: ApplicationContextItem[];
+  /** Signed in with the configured emergency (break-glass) account. */
+  breakGlass: boolean;
+  /** ISO time at which the console session ends at the latest. */
+  sessionExpiresAt: string | null;
+  /** Session ends after this many seconds without activity. */
+  sessionIdleTimeoutSeconds: number;
 };
 
 export async function fetchAdminContext(): Promise<AdminContext> {
@@ -46,6 +52,9 @@ export async function fetchAdminContext(): Promise<AdminContext> {
     actAsEmail: string | null;
     oauthClientCount?: number;
     applications: ApplicationContextItem[];
+    breakGlass?: boolean;
+    sessionExpiresAt?: string | null;
+    sessionIdleTimeoutSeconds?: number;
   }>("/api/admin/v1/context");
   return {
     platformSuperAdmin: raw.platformSuperAdmin,
@@ -64,5 +73,8 @@ export async function fetchAdminContext(): Promise<AdminContext> {
       permissions: app.permissions ?? [],
       consoleFeatures: app.consoleFeatures ?? [],
     })),
+    breakGlass: raw.breakGlass ?? false,
+    sessionExpiresAt: raw.sessionExpiresAt ?? null,
+    sessionIdleTimeoutSeconds: raw.sessionIdleTimeoutSeconds ?? 1800,
   };
 }

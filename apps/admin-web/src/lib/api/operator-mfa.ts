@@ -62,3 +62,19 @@ export async function finishOperatorPasskeyRegistration(
 export async function deleteOperatorPasskey(factorId: string): Promise<void> {
   await apiFetch<void>(`/api/admin/v1/me/mfa/passkey/${factorId}`, { method: "DELETE" });
 }
+
+export type OperatorMfaStatus = {
+  totpEnrolled: boolean;
+  recoveryCodesRemaining: number;
+  /** Console sign-in asks for an authenticator code. */
+  mfaRequiredForConsole: boolean;
+};
+
+export async function getOperatorMfaStatus(): Promise<OperatorMfaStatus> {
+  return apiFetch<OperatorMfaStatus>("/api/admin/v1/me/mfa/status");
+}
+
+/** Replaces every recovery code with a new set; the old ones stop working. */
+export async function regenerateOperatorRecoveryCodes(): Promise<{ recoveryCodes: string[] }> {
+  return apiFetch("/api/admin/v1/me/mfa/recovery-codes", { method: "POST" });
+}

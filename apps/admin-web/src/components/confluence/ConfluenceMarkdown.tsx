@@ -5,15 +5,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { DrawioEmbed } from "./DrawioEmbed";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 function drawioTitleFromPath(assetPath: string): string {
   return (assetPath.split("/").pop() ?? "diagram").replace(/\.drawio$/i, "").replace(/-/g, " ");
 }
 
-function isDrawioCodeBlock(children: React.ReactNode): boolean {
+function isDiagramCodeBlock(children: React.ReactNode): boolean {
   const child = Children.toArray(children)[0];
   if (!isValidElement<{ className?: string }>(child)) return false;
-  return child.props.className?.includes("language-drawio") ?? false;
+  const className = child.props.className ?? "";
+  return className.includes("language-drawio") || className.includes("language-mermaid");
 }
 
 export function ConfluenceMarkdown({ content }: { content: string }) {
@@ -68,7 +70,7 @@ export function ConfluenceMarkdown({ content }: { content: string }) {
             <td className="border-b border-ui px-3 py-2 align-top text-soft">{children}</td>
           ),
           pre: ({ children }) => {
-            if (isDrawioCodeBlock(children)) return <>{children}</>;
+            if (isDiagramCodeBlock(children)) return <>{children}</>;
             return (
               <pre className="my-4 overflow-x-auto rounded-lg border border-ui bg-black/5 p-4 text-sm dark:bg-white/5">
                 {children}
@@ -79,6 +81,10 @@ export function ConfluenceMarkdown({ content }: { content: string }) {
             if (className?.includes("language-drawio")) {
               const assetPath = String(children).replace(/\n$/, "").trim();
               return <DrawioEmbed assetPath={assetPath} title={drawioTitleFromPath(assetPath)} />;
+            }
+            if (className?.includes("language-mermaid")) {
+              const source = String(children).replace(/\n$/, "").trim();
+              return <MermaidDiagram source={source} />;
             }
             const inline = !className;
             if (inline) {

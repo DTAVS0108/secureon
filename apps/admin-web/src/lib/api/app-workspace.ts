@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { fetchAdminContext, type AdminContext, type ApplicationContextItem } from "./context";
 
 /** Resolve application metadata for app-scoped pages (only apps in the operator context). */
@@ -11,7 +12,9 @@ export async function resolveApplicationMeta(
 export async function loadAdminContextSafe(): Promise<AdminContext> {
   try {
     return await fetchAdminContext();
-  } catch {
+  } catch (err) {
+    // Let the sign-in redirect (no or expired session) through instead of rendering an empty console.
+    unstable_rethrow(err);
     return {
       platformSuperAdmin: false,
       operatorTier: "application",
@@ -25,6 +28,9 @@ export async function loadAdminContextSafe(): Promise<AdminContext> {
       actAsEmail: null,
       oauthClientCount: 0,
       applications: [],
+      breakGlass: false,
+      sessionExpiresAt: null,
+      sessionIdleTimeoutSeconds: 1800,
     };
   }
 }

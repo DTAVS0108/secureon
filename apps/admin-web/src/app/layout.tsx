@@ -3,8 +3,9 @@ import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+// Registers the per-request auth lookup used by shared API helpers during server rendering.
+import "@/lib/api/server-auth";
 import { ConsoleProviders } from "@/components/ConsoleProviders";
-import { EnvironmentBanner } from "@/components/EnvironmentBanner";
 import { loadAdminContextSafe } from "@/lib/api/app-workspace";
 import type { AdminContext } from "@/lib/api/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -24,6 +25,9 @@ const EMPTY_ADMIN_CONTEXT: AdminContext = {
   actAsEmail: null,
   oauthClientCount: 0,
   applications: [],
+  breakGlass: false,
+  sessionExpiresAt: null,
+  sessionIdleTimeoutSeconds: 1800,
 };
 
 const geistSans = Geist({
@@ -66,7 +70,6 @@ export default async function RootLayout({
       style={theme.style as CSSProperties}
     >
       <body className="min-h-full">
-        <EnvironmentBanner />
         <ToastProvider>
           <ConsoleProviders adminContext={ctx}>
             <ThemeProvider platformSettingsAccess={ctx.platformSuperAdmin}>{children}</ThemeProvider>

@@ -1,7 +1,8 @@
 package com.secureone.auth.authn;
 
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,11 +13,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Dev console HTTP Basic auth ({@code admin:admin} by default). Usernames without {@code :} are
- * treated as platform admin, not tenant users.
+ * The configured platform account ({@code spring.security.user.name}; {@code admin:admin} in local
+ * dev). Usernames without {@code :} are this account, not tenant users.
+ *
+ * <p>Day-to-day platform administration uses named operators in the {@code platform} tenant. In
+ * production this account exists only as a break-glass login, and only while
+ * {@code secureone.break-glass.enabled} is true.
  */
 @Component
-@ConditionalOnProperty(prefix = "secureone", name = "dev-auth-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnExpression("${secureone.dev-auth-enabled:true} or ${secureone.break-glass.enabled:false}")
 public class DevAdminAuthenticationProvider implements AuthenticationProvider {
 
     private final PasswordEncoder passwordEncoder;
@@ -49,6 +54,17 @@ public class DevAdminAuthenticationProvider implements AuthenticationProvider {
                 username,
                 presented,
                 AuthenticationAuthorities.withPasswordFactor(AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
+    }
+
+    /** Rebuilds the platform admin principal for an already-issued admin session (no password check). */
+    public Optional<Authentication> restoreSession(String username) {
+        if (!adminUsername.equals(username)) {
+            return Optional.empty();
+        }
+        return Optional.of(UsernamePasswordAuthenticationToken.authenticated(
+                username,
+                null,
+                AuthenticationAuthorities.withPasswordFactor(AuthorityUtils.createAuthorityList("ROLE_ADMIN"))));
     }
 
     @Override

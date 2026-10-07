@@ -36,6 +36,16 @@ public class AdminOperatorService {
         return access.canAccessPlatformSettings(authentication, actAsEmail);
     }
 
+    /** The configured emergency account, which has no user record, MFA or tenant. */
+    public boolean isBreakGlass(Authentication authentication) {
+        return access.isBreakGlass(authentication);
+    }
+
+    /** Tenant slug of the signed-in account ({@code platform} for named platform operators). */
+    public String signedInTenantSlug(Authentication authentication) {
+        return operators.resolveTenantSlug(authentication);
+    }
+
     public Optional<UserAccount> resolveTenantUser(Authentication authentication, String actAsEmail) {
         String email = access.resolveOperatorEmail(authentication, actAsEmail);
         String tenantSlug = operators.resolveTenantSlug(authentication);

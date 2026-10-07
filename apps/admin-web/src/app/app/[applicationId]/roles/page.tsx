@@ -5,8 +5,7 @@ import { RolesWorkspace, RolesWorkspaceHeaderActions } from "@/components/roles/
 import { resolveApplicationMeta } from "@/lib/api/app-workspace";
 import { listPermissions } from "@/lib/api/permissions";
 import { listRoles, probeRolesApi } from "@/lib/api/roles";
-import { listTenants } from "@/lib/api/tenants";
-import { getApplication } from "@/lib/api/applications";
+import { getVisibleApplication, listVisibleTenants } from "@/lib/api/operator-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +37,10 @@ export default async function AppRolesPage({
     roles = [];
     permissions = [];
   }
-  const [tenants, app] = await Promise.all([listTenants(), getApplication(applicationId)]);
+  const [tenants, app] = await Promise.all([
+    listVisibleTenants([appMeta]),
+    getVisibleApplication(applicationId, appMeta),
+  ]);
   const tenant = tenants.find((t) => t.id === appMeta.tenantId);
 
   return (

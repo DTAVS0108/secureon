@@ -89,6 +89,10 @@ public class ScimGroupService {
         groups.delete(group);
     }
 
+    public UUID tenantOf(UUID id) {
+        return requireGroup(id).getTenantId();
+    }
+
     private ScimGroup requireGroup(UUID id) {
         return groups.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }

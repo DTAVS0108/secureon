@@ -1,6 +1,16 @@
 # SecureOne documentation hub
 
-Central index for **platform** documentation (operators, architects) and **application integration** documentation (developers wiring products into SecureOne).
+Central index for **platform** documentation (operators) and **application integration** documentation (developers).
+
+## New here?
+
+| I am… | Start with |
+|-------|------------|
+| **Platform owner / operator** — install, configure tenants, run day to day | **[22 — Operator getting started](22-operator-getting-started.md)** |
+| **DevOps / architect** — image+env deploy or enterprise from source | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
+| **App developer** — integrate Flipkart-style frontend (signup, signin, APIs) | **[23 — Application integration guide](23-application-integration-guide.md)** |
+
+Browse everything in **SecureOne Confluence**: http://localhost:3001/confluence
 
 ## SecureOne Confluence (in-app UI)
 
@@ -17,7 +27,9 @@ Standalone documentation browser in **admin-web** — no admin console sidebar o
 
 Example: `GET /api/confluence/architecture` returns markdown JSON for the Architecture page.
 
-**Sidebar categories:** Getting started · Platform — fundamentals · Platform — operations · Platform — reference · Application integration (aligned with this hub below).
+**Sidebar categories:** Getting started · Platform — fundamentals · Platform — operations · Deployment · Platform — reference · Application integration (aligned with this hub below).
+
+**PDF export:** every page has a **Download PDF** button in the header (print-friendly view → browser "Save as PDF"), and **All docs PDF** exports the entire catalog as one document at `/confluence/print/all`.
 
 ### Draw.io diagrams
 
@@ -36,6 +48,10 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 
 | Topic | Document |
 |-------|----------|
+| **New operator — install & run** | **[22 — Operator getting started](22-operator-getting-started.md)** |
+| **Deploy (images+env or enterprise source)** | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
+| **New developer — integrate your app (e.g. Flipkart)** | **[23 — Application integration guide](23-application-integration-guide.md)** |
+| **Roles — who sees and can do what** | **[25 — Roles and access](25-roles-and-access.md)** |
 | Vision & glossary | [01 — Overview](01-overview.md) |
 | Stack choices | [02 — Tech Stack](02-tech-stack.md) |
 | System architecture & flows | [03 — Architecture](03-architecture.md) |
@@ -48,6 +64,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | Delivery phases | [08 — Roadmap](08-roadmap.md) |
 | **Pending / backlog implementation** | **[21 — Pending implementation guide](21-pending-implementation-guide.md)** |
 | **Local install & smoke tests** | **[09 — Installation](09-installation.md)** |
+| **Image+env deploy & enterprise Helm** | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** · [runbooks/deploy.md](runbooks/deploy.md) |
 | **Run stack, migrations & schedulers** | **[16 — Environment & operations](16-environment-setup-and-operations.md)** · **[17 — Schemas & tables](17-database-schemas-and-tables.md)** · **[18 — Flyway SQL](18-flyway-migration-files.md)** |
 | Enterprise features (phased) | [10 — Enterprise](10-enterprise.md) |
 | Admin scopes & settings layers | [11 — Admin Control](11-admin-control.md) |
@@ -58,6 +75,18 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **Verification, OTP & phone auth** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Architecture decisions (ADRs) | [decisions/](decisions/README.md) |
 | Diagrams (draw.io + Mermaid) | [diagrams/](diagrams/README.md) |
+
+## Deployment
+
+Ship SecureOne to a server or cluster and go live.
+
+| Topic | Document |
+|-------|----------|
+| **Two deploy paths — image+env only (no source) vs enterprise source/Helm** | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
+| Short runbook (prereqs, images, Helm, post-deploy checks) | [runbooks/deploy.md](runbooks/deploy.md) |
+| Rollback procedure | [runbooks/rollback.md](runbooks/rollback.md) |
+| Env vars, profiles (dev/prod), schedulers | [16 — Environment & operations](16-environment-setup-and-operations.md) |
+| Production hardening backlog | [20 — Production completion master plan](20-production-completion-master-plan.md) |
 
 ### App READMEs (repo)
 
@@ -83,6 +112,7 @@ Everything needed to **integrate a product** (your app) with SecureOne: OAuth, l
 
 | Topic | Where |
 |-------|--------|
+| **Start here — full integration walkthrough** | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | Auth UI modes, OAuth, session login | [13 — Auth UI integration](13-auth-ui-integration.md) |
 | **OTP signup/login, phone, verification policy** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Register product + OAuth client | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
@@ -137,19 +167,21 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 
 ### Platform operator (first week)
 
-1. [09 — Installation](09-installation.md)
-2. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md)
-3. [11 — Admin Control](11-admin-control.md)
-4. [14 — Application RBAC](14-application-rbac-management.md)
+1. **[22 — Operator getting started](22-operator-getting-started.md)** — what SecureOne is, install, first tenant/app/user
+2. [09 — Installation](09-installation.md)
+3. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md)
+4. [11 — Admin Control](11-admin-control.md)
+5. [14 — Application RBAC](14-application-rbac-management.md)
 
 ### Application developer (integrating a new app)
 
-1. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) — register product + client
-2. [13 — Auth UI integration](13-auth-ui-integration.md) — hosted vs native
-3. [19 — Verification & OTP](19-verification-and-otp.md) — signup/login OTP, phone, magic link session
-4. Admin → **your app → Settings → Integration** — checklist + API reference
-4. [samples/external-test-client](../samples/external-test-client/README.md) — working SPA
-5. http://localhost:9000/docs — try OAuth and account APIs
+1. **[23 — Application integration guide](23-application-integration-guide.md)** — Flipkart-style example, public APIs, hosted vs native UI
+2. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) — register product + client
+3. [13 — Auth UI integration](13-auth-ui-integration.md) — hosted vs native detail
+4. [19 — Verification & OTP](19-verification-and-otp.md) — signup/login OTP, phone, magic link session
+5. Admin → **your app → Settings → Integration** — checklist + API reference
+6. [samples/external-test-client](../samples/external-test-client/README.md) — working SPA
+7. http://localhost:9000/docs — try OAuth and account APIs
 
 ### Architect / security review
 

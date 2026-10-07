@@ -6,6 +6,7 @@ import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.user.UserCredentialRepository;
 import java.util.Locale;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -35,6 +36,7 @@ public class TenantUserDetailsService implements UserDetailsService {
     }
 
     public UserDetails buildSessionPrincipal(String tenantSlug, UserAccount account) {
+        tenants.findById(account.getTenantId()).ifPresent(TenantUserDetailsService::assertTenantActive);
         if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
             throw new UsernameNotFoundException("Account is not active");
         }
@@ -59,6 +61,7 @@ public class TenantUserDetailsService implements UserDetailsService {
         Tenant tenant = tenants
                 .findBySlug(tenantSlug)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown tenant: " + tenantSlug));
+        assertTenantActive(tenant);
         UserAccount account = users
                 .findByTenantIdAndEmail(tenant.getId(), email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
@@ -76,6 +79,13 @@ public class TenantUserDetailsService implements UserDetailsService {
                 .password(hasPassword ? "{noop}placeholder" : "")
                 .roles("USER")
                 .build();
+    }
+
+    /** A suspended (or otherwise inactive) organization blocks every sign-in for its users. */
+    private static void assertTenantActive(Tenant tenant) {
+        if (!"ACTIVE".equalsIgnoreCase(tenant.getStatus())) {
+            throw new DisabledException("This organization is suspended. Contact your administrator.");
+        }
     }
 
     public UserAccount resolveAccount(String tenantSlug, String email) {

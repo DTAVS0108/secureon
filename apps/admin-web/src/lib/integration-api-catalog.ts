@@ -619,15 +619,84 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       group: "Machine",
       method: "GET",
       path: `${base}/api/v1/m2m/whoami`,
-      description: "Verify API key authentication — returns service account identity.",
+      description: "Verify API key authentication — returns service account identity and M2M scopes.",
       auth: "Authorization: Bearer sk_live_… (API key)",
       responses: [
         {
           status: 200,
           description: "Authenticated service account",
-          example: json({ serviceAccountId: "uuid", tenantId: "uuid", name: "billing-sync" }),
+          example: json({
+            serviceAccountId: "uuid",
+            tenantId: "uuid",
+            apiKeyId: "uuid",
+            name: "billing-sync",
+            scopes: ["m2m:read", "m2m:tenant", "m2m:health"],
+          }),
         },
         { status: 401, description: "Invalid or revoked API key" },
+        { status: 429, description: "Per-key rate limit exceeded (120/min)" },
+      ],
+    },
+    {
+      id: "m2m-tenant",
+      group: "Machine",
+      method: "GET",
+      path: `${base}/api/v1/m2m/tenant`,
+      description: "Tenant metadata for the API key's service account.",
+      auth: "Authorization: Bearer sk_live_…",
+      responses: [
+        {
+          status: 200,
+          description: "Tenant record",
+          example: json({ id: "uuid", slug: "acme", name: "Acme Corp", status: "ACTIVE" }),
+        },
+      ],
+    },
+    {
+      id: "m2m-health",
+      group: "Machine",
+      method: "GET",
+      path: `${base}/api/v1/m2m/health`,
+      description: "M2M health probe (requires valid API key).",
+      auth: "Authorization: Bearer sk_live_…",
+      responses: [{ status: 200, description: "Service healthy", example: json({ status: "UP", service: "secureone-m2m" }) }],
+    },
+    {
+      id: "oauth-token-exchange",
+      group: "OAuth",
+      method: "POST",
+      path: `${base}/oauth2/token`,
+      description: "OAuth 2.0 Token Exchange (RFC 8693) — issue a delegated access token from a subject access token.",
+      auth: "client_id + client_secret (confidential client)",
+      contentType: "application/x-www-form-urlencoded",
+      requestFields: [
+        {
+          name: "grant_type",
+          type: "string",
+          required: true,
+          description: "urn:ietf:params:oauth:grant-type:token-exchange",
+        },
+        { name: "subject_token", type: "string", required: true },
+        {
+          name: "subject_token_type",
+          type: "string",
+          description: "urn:ietf:params:oauth:token-type:access_token",
+        },
+        { name: "scope", type: "string", description: "Subset of subject token scopes" },
+      ],
+      responses: [
+        {
+          status: 200,
+          description: "Delegated access token",
+          example: json({
+            access_token: "eyJ…",
+            token_type: "Bearer",
+            expires_in: 3600,
+            issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+            scope: "openid profile",
+          }),
+        },
+        { status: 400, description: "invalid_grant — bad subject_token or scope" },
       ],
     },
     {
@@ -646,11 +715,15 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
         { name: "code_challenge", type: "string", required: true },
         { name: "code_challenge_method", type: "string", required: true, description: "S256" },
       ],
+      notes: [
+        "POST stored params as JSON; redirect browser to GET /oauth2/authorize?client_id=…&request_uri=…",
+        "Each request_uri is single-use (Redis get-and-delete) and expires in 300s.",
+      ],
       responses: [
         {
           status: 201,
           description: "PAR succeeded",
-          example: json({ request_uri: "urn:ietf:params:oauth:request_uri:…", expires_in: 60 }),
+          example: json({ request_uri: "urn:secureone:par:…", expires_in: 300 }),
         },
       ],
     },

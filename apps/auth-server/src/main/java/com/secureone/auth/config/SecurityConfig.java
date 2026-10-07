@@ -1,6 +1,6 @@
 package com.secureone.auth.config;
 
-import com.secureone.auth.oauth.OAuthTokenExchangeStubFilter;
+import com.secureone.auth.oauth.OAuthTokenExchangeFilter;
 import com.secureone.auth.serviceaccount.ApiKeyAuthenticationFilter;
 import com.secureone.auth.admin.AdminBasicAuthenticationFilter;
 import com.secureone.auth.admin.AdminCredentialAuthenticationFilter;
@@ -11,6 +11,9 @@ import com.secureone.auth.authn.LoginSuccessHandler;
 import com.secureone.auth.authn.OAuthAwareLoginEntryPoint;
 import com.secureone.auth.authn.TenantLoginUsernameFilter;
 import com.secureone.auth.authn.TenantPasswordAuthenticationProvider;
+import com.secureone.auth.config.oauth.ClientTenantAuthorizationValidator;
+import com.secureone.auth.tenant.RlsScope;
+import jakarta.servlet.DispatcherType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -30,6 +33,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -68,7 +72,8 @@ public class SecurityConfig {
             RequestCache requestCache,
             OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint,
             Function<OidcUserInfoAuthenticationContext, OidcUserInfo> oidcUserInfoMapper,
-            OAuthTokenExchangeStubFilter tokenExchangeStubFilter)
+            OAuthTokenExchangeFilter tokenExchangeFilter,
+            ClientTenantAuthorizationValidator clientTenantValidator)
             throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServer =
                 new OAuth2AuthorizationServerConfigurer();
@@ -79,9 +84,19 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .requestCache(cache -> cache.requestCache(requestCache))
                 .sessionManagement(session -> session.sessionFixation(fix -> fix.migrateSession()))
-                .with(authorizationServer, server -> server.oidc(oidc -> oidc.userInfoEndpoint(
-                        userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))))
-                .addFilterBefore(tokenExchangeStubFilter, UsernamePasswordAuthenticationFilter.class)
+                .with(authorizationServer, server -> server
+                        // RFC 9126 pushed authorization requests: client-authenticated, advertised in metadata.
+                        .pushedAuthorizationRequestEndpoint(Customizer.withDefaults())
+                        .authorizationEndpoint(endpoint -> endpoint.authenticationProviders(providers ->
+                                providers.forEach(provider -> {
+                                    if (provider instanceof OAuth2AuthorizationCodeRequestAuthenticationProvider codeProvider) {
+                                        // Users may only authorize clients of their own tenant and app.
+                                        codeProvider.setAuthenticationValidator(clientTenantValidator);
+                                    }
+                                })))
+                        .oidc(oidc -> oidc.userInfoEndpoint(
+                                userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))))
+                .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
@@ -102,11 +117,18 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     SecurityFilterChain bearerApiSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+        RequestMatcher bearerPrivacy = request -> {
+            String uri = request.getRequestURI();
+            return uri.equals("/api/v1/account/privacy/export")
+                    || uri.equals("/api/v1/account/privacy/delete-request");
+        };
         http
-                .securityMatcher(
-                        "/api/v1/account/profile",
-                        "/api/v1/account/password/change",
-                        "/api/v1/account/privacy/**")
+                .securityMatcher(request -> {
+                    String uri = request.getRequestURI();
+                    return uri.equals("/api/v1/account/profile")
+                            || uri.equals("/api/v1/account/password/change")
+                            || bearerPrivacy.matches(request);
+                })
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -122,7 +144,9 @@ public class SecurityConfig {
         List<AuthenticationProvider> providers = new ArrayList<>();
         devAdminProvider.ifAvailable(providers::add);
         providers.add(tenantPasswordProvider);
-        return new ProviderManager(providers);
+        ProviderManager delegate = new ProviderManager(providers);
+        // Credential checks look users up before any tenant is known, so they run in platform RLS scope.
+        return authentication -> RlsScope.asPlatform(() -> delegate.authenticate(authentication));
     }
 
     @Bean
@@ -135,6 +159,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("M2M"))
+                // Missing or invalid API key is 401 (not authenticated), not 403.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(
+                        new org.springframework.security.web.authentication.HttpStatusEntryPoint(
+                                org.springframework.http.HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(apiKeyAuthenticationFilter, AbstractPreAuthenticatedProcessingFilter.class);
         return http.build();
     }
@@ -157,6 +185,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionFixation(fix -> fix.migrateSession()))
                 .authenticationManager(authenticationManager)
                 .authorizeHttpRequests(auth -> auth
+                        // Let 4xx/5xx reach the client as-is instead of being re-challenged as 401 on /error.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
                         .requestMatchers(
@@ -183,13 +214,13 @@ public class SecurityConfig {
                                 "/api/v1/auth/passkey/**",
                                 "/scim/v2/**",
                                 "/api/v1/applications/**",
-                                "/oauth2/par",
                                 "/oauth2/backchannel-logout",
                                 "/account/**",
                                 "/login",
                                 "/login.html")
                         .permitAll()
-                        .requestMatchers("/api/admin/v1/auth/login").permitAll()
+                        .requestMatchers("/api/admin/v1/auth/login", "/api/admin/v1/auth/logout", "/api/admin/v1/auth/mfa/**")
+                        .permitAll()
                         .requestMatchers("/api/admin/v1/**").authenticated()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.ignoringRequestMatchers(

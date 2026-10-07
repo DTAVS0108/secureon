@@ -224,9 +224,19 @@ public class AdminConsoleAccessService {
         return toAssignment(row, user, app.getName());
     }
 
+    /**
+     * Revokes one assignment in the given tenant. {@code includeSuperAdmin} is false for tenant super
+     * admins, who may manage application and tenant admins but not their peers.
+     */
     @Transactional
-    public void revoke(UUID assignmentId) {
-        AdminConsoleAccess row = access.findById(assignmentId).orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+    public void revoke(UUID tenantId, UUID assignmentId, boolean includeSuperAdmin) {
+        AdminConsoleAccess row = access.findById(assignmentId)
+                .filter(r -> r.getTenantId().equals(tenantId))
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+        if (!includeSuperAdmin && row.getRoleType() == AdminConsoleRoleType.TENANT_SUPER_ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only a platform super admin can revoke tenant super admin");
+        }
         revokeRow(row);
         syncRosterAfterConsoleRevoke(row.getTenantId(), row.getUserId());
     }

@@ -158,6 +158,8 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
             case "authorization_code" -> java.util.Optional.of(AuthorizationGrantType.AUTHORIZATION_CODE);
             case "refresh_token" -> java.util.Optional.of(AuthorizationGrantType.REFRESH_TOKEN);
             case "client_credentials" -> java.util.Optional.of(AuthorizationGrantType.CLIENT_CREDENTIALS);
+            case "urn:ietf:params:oauth:grant-type:token-exchange", "token_exchange", "token-exchange" ->
+                    java.util.Optional.of(new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:token-exchange"));
             default -> java.util.Optional.empty();
         };
     }

@@ -12,7 +12,8 @@ import {
 } from "@/lib/actions";
 import { listRoles } from "@/lib/api/roles";
 import { listLoginEvents } from "@/lib/api/sessions";
-import { listTenants } from "@/lib/api/tenants";
+import { listVisibleTenants } from "@/lib/api/operator-scope";
+import { ApiError } from "@/lib/api/http";
 import { getUser } from "@/lib/api/users";
 import { formatDate, formatDateTime, initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
@@ -38,8 +39,12 @@ export default async function UserDetailPage({
   if (!user) notFound();
 
   const [logins, tenants, roles] = await Promise.all([
-    listLoginEvents({ userId: user.id }),
-    listTenants(),
+    // Platform-wide login history is platform-admin only; tenant operators see it per application.
+    listLoginEvents({ userId: user.id }).catch((e) => {
+      if (e instanceof ApiError && e.status === 403) return [];
+      throw e;
+    }),
+    listVisibleTenants(),
     listRoles({ tenantId: user.tenantId }),
   ]);
   const fullName = `${user.firstName} ${user.lastName}`;

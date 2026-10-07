@@ -20,6 +20,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
     label: "Getting started",
     pages: [
       { slug: "home", title: "Documentation hub", file: "README.md", description: "Start here" },
+      {
+        slug: "operator-getting-started",
+        title: "Operator getting started",
+        file: "22-operator-getting-started.md",
+        description: "Install, setup, and run SecureOne",
+      },
     ],
   },
   {
@@ -58,6 +64,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
       { slug: "enterprise", title: "Enterprise", file: "10-enterprise.md" },
       { slug: "settings-governance", title: "Settings governance", file: "10-settings-governance.md" },
       { slug: "admin-control", title: "Admin control", file: "11-admin-control.md" },
+      {
+        slug: "roles-and-access",
+        title: "Roles and access",
+        file: "25-roles-and-access.md",
+        description: "Who sees and can do what, MFA, access review, RLS",
+      },
       { slug: "application-rbac", title: "Application RBAC", file: "14-application-rbac-management.md" },
       {
         slug: "applications-oauth",
@@ -70,6 +82,25 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         title: "Verification & OTP",
         file: "19-verification-and-otp.md",
         description: "Signup/login OTP, phone, SMS",
+      },
+    ],
+  },
+  {
+    id: "deployment",
+    label: "Deployment",
+    description: "Ship SecureOne: images, env, Helm, enterprise rollout",
+    pages: [
+      {
+        slug: "deployment-image-env-enterprise",
+        title: "Deployment: image + env & enterprise",
+        file: "24-deployment-image-env-and-enterprise.md",
+        description: "Path A: Docker images + env only · Path B: source/Helm",
+      },
+      {
+        slug: "deploy-runbook",
+        title: "Deploy runbook",
+        file: "runbooks/deploy.md",
+        description: "Prerequisites, images, Helm, post-deploy checks",
       },
     ],
   },
@@ -100,6 +131,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
     description: "Developers wiring products into SecureOne",
     pages: [
       {
+        slug: "application-integration",
+        title: "Application integration guide",
+        file: "23-application-integration-guide.md",
+        description: "Flipkart example, APIs, hosted vs native UI",
+      },
+      {
         slug: "auth-ui-integration",
         title: "Auth UI integration",
         file: "13-auth-ui-integration.md",
@@ -110,12 +147,6 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         title: "Verification & OTP",
         file: "19-verification-and-otp.md",
         description: "Signup/login OTP, phone, SMS",
-      },
-      {
-        slug: "application-integration",
-        title: "Application integration guide",
-        file: "applications/README.md",
-        description: "Setup, APIs, samples",
       },
     ],
   },

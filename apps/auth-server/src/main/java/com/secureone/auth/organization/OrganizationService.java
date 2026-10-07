@@ -89,7 +89,22 @@ public class OrganizationService {
         if (selfId != null && selfId.equals(parentId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Organization cannot be its own parent.");
         }
-        requireOrganization(tenantId, parentId);
+        Organization parent = requireOrganization(tenantId, parentId);
+        if (selfId == null) {
+            return;
+        }
+        // Walk up from the new parent; reaching this organization means the move would create a cycle.
+        java.util.Set<UUID> seen = new java.util.HashSet<>();
+        for (Organization cursor = parent; cursor != null && cursor.getParentId() != null; ) {
+            if (cursor.getParentId().equals(selfId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Organization cannot be moved under one of its own descendants.");
+            }
+            if (!seen.add(cursor.getParentId())) {
+                break; // existing bad data; stop rather than loop forever
+            }
+            cursor = organizations.findById(cursor.getParentId()).orElse(null);
+        }
     }
 
     private Map<String, Object> toResponse(Organization organization) {

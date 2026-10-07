@@ -1,5 +1,6 @@
 "use client";
 
+import { SessionNotice } from "./SessionNotice";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
@@ -62,6 +63,7 @@ export function ConsoleShell({
           onApplicationChange={rememberApplicationId}
           registryHasClients={registryHasClients}
         />
+        <SessionNotice />
         <main className="flex min-h-0 flex-1 flex-col px-8 py-8">{children}</main>
       </div>
     </div>

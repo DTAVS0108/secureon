@@ -176,3 +176,60 @@ body {
 .confluence-prose strong {
   @apply font-semibold text-ui;
 }
+.mermaid-diagram svg {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* SecureOne Confluence — PDF export (print-friendly view) */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  .print-page-break-before {
+    break-before: page;
+  }
+  .print-page-break-after {
+    break-after: page;
+  }
+  .confluence-print {
+    background: #ffffff !important;
+  }
+  .confluence-print,
+  .confluence-print .confluence-prose,
+  .confluence-print .confluence-prose li,
+  .confluence-print .confluence-prose td {
+    color: #1f2430 !important;
+  }
+  .confluence-print h1,
+  .confluence-print h2,
+  .confluence-print h3,
+  .confluence-print h4,
+  .confluence-print .confluence-prose strong {
+    color: #000000 !important;
+  }
+  .confluence-print pre,
+  .confluence-print code {
+    background: #f3f4f6 !important;
+    color: #1f2430 !important;
+  }
+  .confluence-print table,
+  .confluence-print pre,
+  .confluence-print .mermaid-diagram {
+    break-inside: avoid;
+  }
+  .confluence-print .mermaid-diagram {
+    border-color: #d1d5db !important;
+    background: #ffffff !important;
+  }
+  .confluence-print h1,
+  .confluence-print h2,
+  .confluence-print h3 {
+    break-after: avoid;
+  }
+  .confluence-print a {
+    color: #1d4ed8 !important;
+    text-decoration: underline;
+  }
+}

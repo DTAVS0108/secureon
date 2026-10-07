@@ -93,7 +93,8 @@ public class TenantRbacAdminService {
         role.setDescription(request.description());
         role.setSystemRole(false);
         try {
-            roles.save(role);
+            // Flush now: permission/application links are inserted with JDBC and reference this row.
+            roles.saveAndFlush(role);
         } catch (DataIntegrityViolationException ex) {
             throw new ConflictException("Tenant role already exists: " + name);
         }

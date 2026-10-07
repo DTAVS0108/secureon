@@ -38,10 +38,10 @@ public class OpenApiConfig {
 
                                 **API surfaces**
                                 - **Public** — unauthenticated manifest, sign-up, auth method catalog, account recovery
-                                - **Admin** — platform and application-scoped management (HTTP Basic or form session)
+                                - **Admin** — platform and application-scoped management (console session token after MFA)
                                 - **OAuth 2.1 / OIDC** — authorization server protocol endpoints
 
-                                **Try admin APIs in Swagger UI:** Authorize with HTTP Basic (`admin` / `admin` in dev) or sign in via `/login.html` first, then use Try it out.
+                                **Try admin APIs in Swagger UI:** sign in with `POST /api/admin/v1/auth/login` (and `/auth/mfa/verify`), then Authorize with `SecureOne-Admin-Session <sessionToken>`.
 
                                 **Integrated apps (e.g. e-commerce):** use `GET/POST /api/v1/applications/{applicationId}/signup` when Self Registration is enabled.""")
                         .contact(new Contact().name("SecureOne").email("support@secureone.local"))
@@ -190,11 +190,14 @@ public class OpenApiConfig {
     }
 
     private static SecurityScheme adminBasicScheme() {
+        // Key kept as "adminHttpBasic" because controllers reference it; the credential is a session token.
         return new SecurityScheme()
-                .type(SecurityScheme.Type.HTTP)
-                .scheme("basic")
+                .type(SecurityScheme.Type.APIKEY)
+                .in(SecurityScheme.In.HEADER)
+                .name("Authorization")
                 .description(
-                        "Platform operator (`admin` / dev password) or tenant user with application admin access. "
-                                + "Form login at `/login.html` also establishes a session cookie for browser Try it out.");
+                        "Console session token: `SecureOne-Admin-Session <sessionToken>`. Get one from "
+                                + "`POST /api/admin/v1/auth/login` (then `/auth/mfa/verify` with an authenticator code). "
+                                + "HTTP Basic and sign-in cookies are not accepted on admin APIs.");
     }
 }

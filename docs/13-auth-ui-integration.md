@@ -79,6 +79,8 @@ Pass `applicationId` on hosted pages when you want app-scoped context in links:
 | `/account/forgot-password.html` | Request password reset email |
 | `/account/reset-password.html?token=…` | Complete password reset |
 | `/account/set-password.html?token=…` | Set password from invite |
+| `/account/security.html` | MFA enrollment, trusted devices, session security |
+| `/account/privacy.html` | GDPR self-service: data export + deletion request (session auth) |
 
 See [Installation — dev flows](09-installation.md#8-email--notifications-dev) for local URLs and MailHog testing.
 
@@ -214,6 +216,8 @@ Magic link verification **creates an HTTP session** (`JSESSIONID` in Redis), set
 | Forgot password | `/account/forgot-password.html` | Your page + forgot API | N/A |
 | Reset password email link | Hosted or `clientUrls.passwordReset` | `clientUrls.passwordReset` | N/A |
 | Self-registration | `/account/signup.html` | `POST …/signup` from your UI | N/A |
+| Privacy (export / delete) | `/account/privacy.html` | Bearer privacy APIs | N/A |
+| Account security / MFA | `/account/security.html` | Admin profile MFA (operators) | N/A |
 
 ## Admin console vs end-user UI
 

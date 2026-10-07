@@ -11,7 +11,8 @@ import { resolveApplicationMeta } from "@/lib/api/app-workspace";
 import { fetchUserDirectorySettings } from "@/lib/api/user-directory";
 import { listUsers } from "@/lib/api/users";
 import { listRoles } from "@/lib/api/roles";
-import { listTenants } from "@/lib/api/tenants";
+import { listVisibleTenants } from "@/lib/api/operator-scope";
+import { ApiError } from "@/lib/api/http";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,12 @@ export default async function AppUsersPage({
         error: e instanceof Error ? e.message : "Could not load users.",
       }),
     ),
-    listRoles({ applicationId }),
-    listTenants(),
+    // Operators without role:read still get the user list, just without role names.
+    listRoles({ applicationId }).catch((e) => {
+      if (e instanceof ApiError && e.status === 403) return [];
+      throw e;
+    }),
+    listVisibleTenants([app]),
     fetchUserDirectorySettings(applicationId).catch(() => null),
   ]);
   const users = usersResult.rows;

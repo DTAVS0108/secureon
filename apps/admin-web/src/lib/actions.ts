@@ -1,5 +1,8 @@
 "use server";
 
+// Shared API helpers called here run as the signed-in user (registers the lookup).
+import "@/lib/api/server-auth";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {

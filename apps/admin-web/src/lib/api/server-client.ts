@@ -1,30 +1,24 @@
 import "server-only";
 
+import { redirect } from "next/navigation";
 import { AUTH_SERVER_URL } from "@/lib/config";
-import { buildAdminAuthHeader } from "@/lib/auth/session-shared";
-import { getAdminSession } from "@/lib/auth/session-server";
 import { ApiError } from "./http";
+import { adminAuthHeader } from "./server-auth";
 
-const DEV_USER = process.env.SECUREONE_DEV_USER ?? "admin";
-const DEV_PASSWORD = process.env.SECUREONE_DEV_PASSWORD ?? "admin";
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
-
-async function authHeader(): Promise<string> {
-  const session = await getAdminSession();
-  if (session) {
-    return buildAdminAuthHeader(session);
-  }
-  const token = Buffer.from(`${DEV_USER}:${DEV_PASSWORD}`).toString("base64");
-  return `Basic ${token}`;
-}
 
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  const authorization = await adminAuthHeader();
+  if (!authorization) {
+    redirect("/login");
+  }
+
   const url = `${AUTH_SERVER_URL}${path.startsWith("/") ? path : `/${path}`}`;
   const baseHeaders: Record<string, string> = {
-    Authorization: await authHeader(),
+    Authorization: authorization,
     Accept: "application/json",
   };
   if (ACT_AS_EMAIL) baseHeaders["X-Act-As-Email"] = ACT_AS_EMAIL;
@@ -38,6 +32,11 @@ export async function apiFetch<T>(
       ...(init?.headers as Record<string, string> | undefined),
     },
   });
+
+  if (res.status === 401) {
+    // Session expired or revoked on the auth-server.
+    redirect("/login?reason=expired");
+  }
 
   if (res.status === 204) {
     return undefined as T;

@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.MDC;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,10 +57,10 @@ public class AuditService {
         }
         Map<String, Object> meta = new HashMap<>();
         meta.put("result", success ? "success" : "failure");
-        meta.put("actorEmail", actorEmail != null ? actorEmail : "admin");
+        String principal = currentPrincipal();
+        meta.put("actorEmail", resolveActor(actorEmail, principal));
         meta.put("targetLabel", targetLabel);
-        String principal = MDC.get(RequestContext.PRINCIPAL);
-        if (principal != null && !principal.isBlank()) {
+        if (principal != null) {
             meta.put("actorPrincipal", principal);
         }
         String requestId = MDC.get(RequestContext.REQUEST_ID);
@@ -66,5 +69,24 @@ public class AuditService {
         }
         log.setMetadata(meta);
         repository.save(log);
+    }
+
+    /** Callers pass "admin" as a placeholder; record the operator who is actually signed in. */
+    static String resolveActor(String given, String principal) {
+        boolean placeholder = given == null || given.isBlank() || "admin".equalsIgnoreCase(given);
+        if (placeholder && principal != null) {
+            return principal;
+        }
+        return given != null && !given.isBlank() ? given : "system";
+    }
+
+    private static String currentPrincipal() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)
+                && auth.getName() != null && !auth.getName().isBlank()) {
+            return auth.getName();
+        }
+        String fromMdc = MDC.get(RequestContext.PRINCIPAL);
+        return fromMdc != null && !fromMdc.isBlank() ? fromMdc : null;
     }
 }

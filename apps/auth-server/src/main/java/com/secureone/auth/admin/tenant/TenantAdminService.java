@@ -85,6 +85,11 @@ public class TenantAdminService {
                 throw new ConflictException("Tenant slug already exists: " + slug);
             }
         });
+        if (isSystemTenant(tenant)
+                && (!slug.equals(tenant.getSlug())
+                        || !"ACTIVE".equalsIgnoreCase(normalizeStatus(request.status(), tenant.getStatus())))) {
+            throw new ConflictException("The reserved platform tenant cannot be renamed or suspended.");
+        }
         tenant.setName(request.name().trim());
         tenant.setSlug(slug);
         tenant.setStatus(normalizeStatus(request.status(), tenant.getStatus()));
@@ -97,9 +102,17 @@ public class TenantAdminService {
 
     public void delete(UUID id) {
         Tenant tenant = require(id);
+        if (isSystemTenant(tenant)) {
+            throw new ConflictException("The reserved platform tenant cannot be deleted.");
+        }
         tenantRepository.delete(tenant);
         auditService.record(tenant.getId(), "admin", "tenant.deleted", "tenant", id, tenant.getName(), true);
         emailService.sendAdminNotification(null, "Tenant deleted", "Removed tenant: " + tenant.getName());
+    }
+
+    /** The reserved tenant holding platform operator accounts (migration V62). */
+    private static boolean isSystemTenant(Tenant tenant) {
+        return tenant.getSettings() != null && Boolean.TRUE.equals(tenant.getSettings().get("system"));
     }
 
     private Tenant require(UUID id) {

@@ -1,6 +1,10 @@
 package com.secureone.auth.admin.iga;
 
+import com.secureone.auth.admin.AdminOperatorService;
 import com.secureone.auth.iga.AccessRequestService;
+import com.secureone.auth.user.UserAccount;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.RequestHeader;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -23,9 +27,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccessRequestAdminController {
 
     private final AccessRequestService service;
+    private final AdminOperatorService operators;
 
-    public AccessRequestAdminController(AccessRequestService service) {
+    public AccessRequestAdminController(AccessRequestService service, AdminOperatorService operators) {
         this.service = service;
+        this.operators = operators;
+    }
+
+    /**
+     * The reviewer is the signed-in operator. Only the platform operator, who has no tenant user
+     * account, may record a reviewer explicitly.
+     */
+    private UUID reviewer(Authentication authentication, String actAsEmail, UUID requested) {
+        return operators.resolveTenantUser(authentication, actAsEmail)
+                .map(UserAccount::getId)
+                .orElse(requested);
     }
 
     @GetMapping
@@ -41,17 +57,21 @@ public class AccessRequestAdminController {
 
     @PostMapping("/{id}/approve")
     public Map<String, Object> approve(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @PathVariable UUID tenantId,
             @PathVariable UUID id,
-            @RequestParam UUID reviewerId) {
-        return service.approve(tenantId, id, reviewerId);
+            @RequestParam(required = false) UUID reviewerId) {
+        return service.approve(tenantId, id, reviewer(authentication, actAsEmail, reviewerId));
     }
 
     @PostMapping("/{id}/deny")
     public Map<String, Object> deny(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @PathVariable UUID tenantId,
             @PathVariable UUID id,
-            @RequestParam UUID reviewerId) {
-        return service.deny(tenantId, id, reviewerId);
+            @RequestParam(required = false) UUID reviewerId) {
+        return service.deny(tenantId, id, reviewer(authentication, actAsEmail, reviewerId));
     }
 }

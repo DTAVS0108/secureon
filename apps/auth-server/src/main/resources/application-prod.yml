@@ -3,6 +3,9 @@ secureone:
   environment: ${SECUREONE_ENV:production}
   swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:false}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:false}
+  # Database row-level security is enforced in production (see docs/25 and migrations V61-V64).
+  rls:
+    enforce: ${SECUREONE_RLS_ENFORCE:on}
   mail:
     log-links-when-smtp-unavailable: ${SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE:false}
   rate-limit:

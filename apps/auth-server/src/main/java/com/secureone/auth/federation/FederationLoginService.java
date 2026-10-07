@@ -1,6 +1,6 @@
 package com.secureone.auth.federation;
 
-import com.secureone.auth.application.ApplicationMembershipService;
+import com.secureone.auth.application.ApplicationAccessService;
 import com.secureone.auth.authn.LoginSuccessHandler;
 import com.secureone.auth.authn.TenantUserDetailsService;
 import com.secureone.auth.federation.IdentityProviderService.FederationUserProfile;
@@ -35,7 +35,7 @@ public class FederationLoginService {
     private final UserAccountRepository users;
     private final TenantRepository tenants;
     private final TenantUserDetailsService userDetailsService;
-    private final ApplicationMembershipService memberships;
+    private final ApplicationAccessService access;
     private final SecurityContextRepository securityContextRepository;
     private final LoginSuccessHandler loginSuccessHandler;
     private final MfaLoginService mfaLogin;
@@ -47,7 +47,7 @@ public class FederationLoginService {
             UserAccountRepository users,
             TenantRepository tenants,
             TenantUserDetailsService userDetailsService,
-            ApplicationMembershipService memberships,
+            ApplicationAccessService access,
             SecurityContextRepository securityContextRepository,
             LoginSuccessHandler loginSuccessHandler,
             MfaLoginService mfaLogin) {
@@ -57,7 +57,7 @@ public class FederationLoginService {
         this.users = users;
         this.tenants = tenants;
         this.userDetailsService = userDetailsService;
-        this.memberships = memberships;
+        this.access = access;
         this.securityContextRepository = securityContextRepository;
         this.loginSuccessHandler = loginSuccessHandler;
         this.mfaLogin = mfaLogin;
@@ -90,8 +90,9 @@ public class FederationLoginService {
         }
         UserAccount user = resolveOrCreateUser(provider, pending, profile);
         linkIdentity(provider, user, profile);
-        if (pending.applicationId() != null) {
-            memberships.ensureMemberWithDefaultRole(pending.applicationId(), user.getId());
+        if (pending.applicationId() != null && !access.admit(pending.applicationId(), user.getId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account has not been granted access to this application.");
         }
         Tenant tenant = tenants.findById(pending.tenantId()).orElseThrow();
         UserDetails details = userDetailsService.buildSessionPrincipal(tenant.getSlug(), user);
@@ -124,6 +125,10 @@ public class FederationLoginService {
             if (!bool(provider.getConfig().get("linkByEmail"))) {
                 throw new IllegalStateException("An account with this email already exists. Sign in with password first.");
             }
+            if (!profile.emailVerified()) {
+                // Linking on an unverified address would let anyone who can claim the email take over the account.
+                throw new IllegalStateException("The identity provider did not confirm this email address, so it cannot be linked.");
+            }
             return existing;
         }
         if (!bool(provider.getConfig().get("jitProvisioning"))) {
@@ -132,7 +137,7 @@ public class FederationLoginService {
         UserAccount created = new UserAccount();
         created.setTenantId(pending.tenantId());
         created.setEmail(email);
-        created.setEmailVerified(true);
+        created.setEmailVerified(profile.emailVerified());
         created.setUsername(email);
         created.setDisplayName(email);
         created.setStatus("ACTIVE");

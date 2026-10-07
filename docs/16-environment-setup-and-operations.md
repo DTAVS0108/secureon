@@ -586,9 +586,17 @@ SECUREONE_PUBLIC_BASE_URL=http://localhost:9000
 SECUREONE_ADMIN_WEB_URL=http://localhost:3001
 SECUREONE_PORT=9000
 
-# Dev admin API (HTTP Basic)
+# Break-glass platform account (console sign-in with empty tenant slug; see doc 25)
 SECUREONE_DEV_USER=admin
 SECUREONE_DEV_PASSWORD=admin
+# Production: off unless in an incident; password must be a bcrypt hash
+SECUREONE_BREAK_GLASS_ENABLED=false
+
+# Console sign-in and sessions
+SECUREONE_ADMIN_MFA_REQUIRED=true
+SECUREONE_ADMIN_SESSION_IDLE=30m
+SECUREONE_ADMIN_SESSION_MAX=8h
+SECUREONE_BREAK_GLASS_SESSION_MAX=1h
 
 # Scheduled jobs (optional overrides)
 SECUREONE_PASSWORD_EXPIRY_SCHEDULER=true

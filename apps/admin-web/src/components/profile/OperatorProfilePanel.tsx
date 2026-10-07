@@ -72,7 +72,8 @@ export function OperatorProfilePanel({
     );
   }
 
-  const readOnly = profile.platformSuperAdmin;
+  // Only the emergency account is configured on the server; named operators manage their own.
+  const readOnly = profile.breakGlass;
 
   async function saveProfile() {
     setSaving(true);
@@ -117,6 +118,7 @@ export function OperatorProfilePanel({
               {profile.operatorTier.replace("_", " ")}
             </Badge>
             {profile.platformSuperAdmin && <Badge tone="success">Super admin</Badge>}
+            {profile.breakGlass && <Badge tone="danger">Emergency account</Badge>}
             <Badge tone={statusTone(profile.status as Status)} dot className="capitalize">
               {profile.status}
             </Badge>
@@ -165,7 +167,7 @@ export function OperatorProfilePanel({
   );
 
   const passwordDescription = readOnly
-    ? "Change the platform admin password in SECUREONE_DEV_PASSWORD or your deployment secrets."
+    ? "The emergency account's password is set in server configuration (SECUREONE_DEV_PASSWORD)."
     : profile.hasPassword
       ? "Enter your current password, then choose a new one."
       : "Set a password for console sign-in.";
@@ -174,9 +176,8 @@ export function OperatorProfilePanel({
     <div className={variant === "modal" ? "space-y-4" : "space-y-4 px-5 pb-5"}>
           {readOnly ? (
             <p className="text-sm text-soft">
-              Dev login: <code className="rounded bg-ui-elevated px-1.5 py-0.5">admin</code> /{" "}
-              <code className="rounded bg-ui-elevated px-1.5 py-0.5">admin</code> (or your
-              configured SECUREONE_DEV_PASSWORD).
+              Use this account only in an emergency. Day-to-day work should use a named platform
+              operator account, added under Access review.
             </p>
           ) : (
             <>
@@ -223,7 +224,7 @@ export function OperatorProfilePanel({
           <h3 className="text-sm font-medium text-ui">Account</h3>
           <p className="mt-0.5 text-xs text-muted">
             {readOnly
-              ? "Platform super-admin credentials are managed via server configuration."
+              ? "The emergency account is configured on the server and cannot be edited here."
               : "Update how your name appears in the admin console."}
           </p>
           <div className="mt-4">{accountSection}</div>
@@ -235,9 +236,9 @@ export function OperatorProfilePanel({
         </section>
         <section className="border-t border-ui pt-6">
           <h3 className="text-sm font-medium text-ui">Multi-factor authentication</h3>
-          <p className="mt-0.5 text-xs text-muted">Enroll TOTP or passkeys for your tenant user account.</p>
+          <p className="mt-0.5 text-xs text-muted">Your authenticator app is required to sign in to the admin console.</p>
           <div className="mt-4">
-            <OperatorSecurityPanel platformSuperAdmin={readOnly} variant="modal" />
+            <OperatorSecurityPanel breakGlass={readOnly} variant="modal" />
           </div>
         </section>
       </div>
@@ -251,7 +252,7 @@ export function OperatorProfilePanel({
           title="Account"
           description={
             readOnly
-              ? "Platform super-admin credentials are managed via server configuration."
+              ? "The emergency account is configured on the server and cannot be edited here."
               : "Update how your name appears in the admin console."
           }
         />
@@ -264,9 +265,9 @@ export function OperatorProfilePanel({
       <Card className="lg:col-span-2">
         <CardHeader
           title="Multi-factor authentication"
-          description="Enroll TOTP or passkeys for your tenant user account."
+          description="Your authenticator app is required to sign in to the admin console."
         />
-        <OperatorSecurityPanel platformSuperAdmin={readOnly} variant="page" />
+        <OperatorSecurityPanel breakGlass={readOnly} variant="page" />
       </Card>
     </div>
   );

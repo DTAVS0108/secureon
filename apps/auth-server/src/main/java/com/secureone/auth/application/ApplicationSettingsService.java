@@ -191,7 +191,7 @@ public class ApplicationSettingsService {
         if (platform == null || platform.isEmpty()) {
             return MfaPolicyDefaults.platformDefaults();
         }
-        return platform;
+        return MfaPolicyDefaults.sanitizeForSave(platform);
     }
 
     private void syncTokenPolicyToApplicationConfig(UUID applicationId) {

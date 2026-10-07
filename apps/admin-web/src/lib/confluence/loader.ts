@@ -114,14 +114,18 @@ export type LoadedConfluenceDoc = {
   format: "markdown";
 };
 
-export async function loadConfluenceDoc(slug: string): Promise<LoadedConfluenceDoc | null> {
+export async function loadConfluenceDoc(
+  slug: string,
+  options?: { embedDrawio?: boolean },
+): Promise<LoadedConfluenceDoc | null> {
   const page = getConfluencePage(slug);
   if (!page) return null;
 
+  const embedDrawio = options?.embedDrawio ?? true;
   const filePath = path.join(docsRoot(), page.file);
   try {
     const raw = await fs.readFile(filePath, "utf8");
-    const withDrawio = processDrawioEmbeds(raw, page.file);
+    const withDrawio = embedDrawio ? processDrawioEmbeds(raw, page.file) : raw;
     return {
       page,
       content: rewriteMarkdownLinks(withDrawio, page.file),

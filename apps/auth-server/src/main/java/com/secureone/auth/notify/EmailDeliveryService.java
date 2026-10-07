@@ -59,10 +59,12 @@ public class EmailDeliveryService {
             String subject,
             String text,
             String html) {
+        // The application's own SMTP server if it has one, otherwise the platform SMTP server.
         JavaMailSender mailSender = mailSenderProvider
                 .getIfConfigured(applicationId)
+                .or(mailSenderProvider::getPlatformIfConfigured)
                 .orElseThrow(() -> new IllegalStateException(
-                        "SMTP is not configured. Open Application settings → Notifications and save SMTP settings."));
+                        "SMTP is not configured. Save SMTP settings under Platform settings or Application settings → Notifications."));
         sendWithSender(mailSender, emailSettings, to, cc, bcc, subject, text, html, applicationId);
     }
 

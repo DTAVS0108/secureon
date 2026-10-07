@@ -94,7 +94,7 @@ This provisions a **PostgreSQL schema** for the app and seeds default RBAC. See 
 | Truncated catalog tables only | `.\scripts\reseed-catalog.ps1` |
 | Repair after partial migration | Restart auth-server; check `public.flyway_schema_history` |
 
-**Platform super admin** (dev): HTTP Basic `admin` / `admin` — not stored in Postgres.
+**Platform super admin** (dev): the break-glass account `admin` / `admin` (console sign-in page → **Emergency access**; not stored in Postgres). Add named platform operators under **Access review** for daily use. See [25 — Roles and access](25-roles-and-access.md).
 
 ### Legacy application isolation
 

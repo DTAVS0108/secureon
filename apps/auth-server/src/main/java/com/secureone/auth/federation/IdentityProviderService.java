@@ -201,10 +201,14 @@ public class IdentityProviderService {
                 subject = node.path("id").isNumber() ? node.path("id").asText() : text(node, "id", null);
             }
             String email = text(node, "email", null);
+            JsonNode verifiedClaim = node.path("email_verified");
+            boolean emailVerified = email != null && !email.isBlank()
+                    && (verifiedClaim.asBoolean(false) || "true".equalsIgnoreCase(verifiedClaim.asText()));
             if (email == null || email.isBlank()) {
+                // A username is not a verified email address.
                 email = text(node, "preferred_username", null);
             }
-            return new FederationUserProfile(subject, email, json);
+            return new FederationUserProfile(subject, email, json, emailVerified);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to parse user profile from IdP.", ex);
         }
@@ -227,7 +231,8 @@ public class IdentityProviderService {
             JsonNode user = mapper.readTree(userJson);
             String subject = user.path("id").isNumber() ? user.path("id").asText() : text(user, "id", null);
             String email = resolveGitHubEmail(emailJson);
-            return new FederationUserProfile(subject, email, userJson);
+            // resolveGitHubEmail only returns addresses GitHub marks verified.
+            return new FederationUserProfile(subject, email, userJson, email != null);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to parse GitHub profile.", ex);
         }
@@ -367,7 +372,7 @@ public class IdentityProviderService {
 
     private void assertAliasAvailable(UUID tenantId, UUID applicationId, String alias) {
         if (resolveProvider(tenantId, applicationId, alias).isPresent()) {
-            throw new IllegalArgumentException("Provider alias already exists: " + alias);
+            throw new com.secureone.auth.admin.ConflictException("Provider alias already exists: " + alias);
         }
     }
 
@@ -418,5 +423,6 @@ public class IdentityProviderService {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    public record FederationUserProfile(String subject, String email, String rawProfileJson) {}
+    /** {@code emailVerified}: the IdP vouches for the email (OIDC email_verified / GitHub verified address). */
+    public record FederationUserProfile(String subject, String email, String rawProfileJson, boolean emailVerified) {}
 }

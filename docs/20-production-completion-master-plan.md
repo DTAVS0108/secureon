@@ -63,7 +63,6 @@
 
 **Files:**
 - `apps/admin-web/src/lib/config.ts` — `IS_DEV`, `IS_PROD`, `ENVIRONMENT`
-- `apps/admin-web/src/components/EnvironmentBanner.tsx` — amber dev / blue staging
 - `apps/admin-web/src/app/layout.tsx` — render banner
 - `apps/admin-web/.env.local.example`, `deploy/Dockerfile.admin-web` — build ARG for public URL
 - `apps/admin-web/src/app/api/proxy/[...path]/route.ts` — no dev fallback in prod
@@ -374,7 +373,7 @@ Run **twice** (dev profile + staging profile) before declaring “complete”.
 | Lockout | `AccountLockoutService.java`, `TenantUserDetailsService.java` |
 | Rate limit | `RateLimitFilter.java`, `RedisRateLimiter.java` |
 | MFA | `auth/mfa/*`, `V52__*.sql`, `AuthSessionService.java`, `login.html` |
-| Dev/prod UI | `config.ts`, `EnvironmentBanner.tsx` |
+| Dev/prod UI | `config.ts` |
 | Tests | `scripts/test-full-platform.ps1`, `.github/workflows/ci.yml` |
 | Docs | `08-roadmap.md` (update checkboxes), `19-verification-and-otp.md` |
 

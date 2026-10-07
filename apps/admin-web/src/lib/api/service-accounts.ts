@@ -20,7 +20,7 @@ export type ApiKeySummary = {
   revokedAt?: string | null;
 };
 
-export type CreatedApiKey = ApiKeySummary & { apiKey: string };
+export type CreatedApiKey = ApiKeySummary & { apiKey: string; scopes?: string[]; scopeNote?: string };
 
 export async function listServiceAccounts(tenantId: string): Promise<ServiceAccount[]> {
   return apiFetch<ServiceAccount[]>(`/api/admin/v1/tenants/${tenantId}/service-accounts`);

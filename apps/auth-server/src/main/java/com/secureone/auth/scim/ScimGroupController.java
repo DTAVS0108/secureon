@@ -1,5 +1,6 @@
 package com.secureone.auth.scim;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,11 +30,8 @@ public class ScimGroupController {
     }
 
     @GetMapping
-    public Map<String, Object> list(@RequestParam(required = false) UUID tenantId) {
-        if (tenantId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tenantId filter is required.");
-        }
-        List<Map<String, Object>> resources = groups.list(tenantId);
+    public Map<String, Object> list(HttpServletRequest request, @RequestParam(required = false) UUID tenantId) {
+        List<Map<String, Object>> resources = groups.list(ScimScope.resolve(request, tenantId));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("schemas", List.of("urn:ietf:params:scim:api:messages:2.0:ListResponse"));
         out.put("totalResults", resources.size());
@@ -44,29 +42,33 @@ public class ScimGroupController {
     }
 
     @GetMapping("/{id}")
-    public Map<String, Object> get(@PathVariable UUID id) {
+    public Map<String, Object> get(HttpServletRequest request, @PathVariable UUID id) {
+        ScimScope.requireVisible(request, groups.tenantOf(id));
         return groups.get(id);
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(@RequestBody Map<String, Object> body) {
-        UUID tenantId = parseTenantId(body);
+    public ResponseEntity<Map<String, Object>> create(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        UUID tenantId = ScimScope.resolve(request, parseTenantId(body));
         Map<String, Object> created = groups.create(tenantId, body);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
-    public Map<String, Object> replace(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> replace(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        ScimScope.requireVisible(request, groups.tenantOf(id));
         return groups.replace(id, body);
     }
 
     @PatchMapping("/{id}")
-    public Map<String, Object> patch(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> patch(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        ScimScope.requireVisible(request, groups.tenantOf(id));
         return groups.patch(id, body);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable UUID id) {
+        ScimScope.requireVisible(request, groups.tenantOf(id));
         groups.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -78,9 +80,7 @@ public class ScimGroupController {
             return UUID.fromString(String.valueOf(map.get("tenantId")));
         }
         Object tenantId = body.get("tenantId");
-        if (tenantId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tenantId extension is required.");
-        }
-        return UUID.fromString(String.valueOf(tenantId));
+        // Optional: a tenant SCIM token already determines the tenant (see ScimScope).
+        return tenantId == null ? null : UUID.fromString(String.valueOf(tenantId));
     }
 }

@@ -96,9 +96,9 @@ public class OAuthClientAdminService {
         client.setStatus(normalizeStatus(request.status(), "ACTIVE"));
         client.setGrantTypes(nonEmptyList(request.grantTypes(), defaultGrantTypes(type)));
         client.setScopes(nonEmptyList(request.scopes(), defaultScopes(type)));
-        client.setRedirectUris(request.redirectUris() != null ? request.redirectUris() : List.of());
+        client.setRedirectUris(RedirectUriValidator.validate(request.redirectUris(), "redirectUri"));
         client.setPostLogoutRedirectUris(
-                request.postLogoutRedirectUris() != null ? request.postLogoutRedirectUris() : List.of());
+                RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
         client.setRequirePkce(request.pkceRequired() != null ? request.pkceRequired() : defaultPkceRequired(type));
         client.setTokenEndpointAuthMethod(
                 request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()
@@ -130,9 +130,12 @@ public class OAuthClientAdminService {
         client.setStatus(normalizeStatus(request.status(), client.getStatus()));
         if (request.grantTypes() != null) client.setGrantTypes(request.grantTypes());
         if (request.scopes() != null) client.setScopes(request.scopes());
-        if (request.redirectUris() != null) client.setRedirectUris(request.redirectUris());
+        if (request.redirectUris() != null) {
+            client.setRedirectUris(RedirectUriValidator.validate(request.redirectUris(), "redirectUri"));
+        }
         if (request.postLogoutRedirectUris() != null) {
-            client.setPostLogoutRedirectUris(request.postLogoutRedirectUris());
+            client.setPostLogoutRedirectUris(
+                    RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
         }
         if (request.pkceRequired() != null) client.setRequirePkce(request.pkceRequired());
         if (request.tokenEndpointAuthMethod() != null) {

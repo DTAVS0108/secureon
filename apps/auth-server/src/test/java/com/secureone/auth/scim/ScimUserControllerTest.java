@@ -56,7 +56,7 @@ class ScimUserControllerTest {
         when(users.findById(userId)).thenReturn(Optional.of(user));
         when(users.save(any(UserAccount.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ResponseEntity<Void> response = controller.delete(userId);
+        ResponseEntity<Void> response = controller.delete(new org.springframework.mock.web.MockHttpServletRequest(), userId);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         ArgumentCaptor<UserAccount> captor = ArgumentCaptor.forClass(UserAccount.class);
@@ -74,7 +74,7 @@ class ScimUserControllerTest {
                 "Operations",
                         List.of(Map.of("op", "replace", "path", "active", "value", false)));
 
-        Map<String, Object> out = controller.patch(userId, body);
+        Map<String, Object> out = controller.patch(new org.springframework.mock.web.MockHttpServletRequest(), userId, body);
 
         assertFalse(Boolean.TRUE.equals(out.get("active")));
         verify(users).save(user);
@@ -86,7 +86,7 @@ class ScimUserControllerTest {
         when(users.findById(userId)).thenReturn(Optional.of(user));
         when(users.save(any(UserAccount.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Map<String, Object> out = controller.replace(userId, Map.of("displayName", "Updated Name", "active", true));
+        Map<String, Object> out = controller.replace(new org.springframework.mock.web.MockHttpServletRequest(), userId, Map.of("displayName", "Updated Name", "active", true));
 
         assertEquals("Updated Name", out.get("displayName"));
         assertTrue(Boolean.TRUE.equals(out.get("active")));
@@ -96,9 +96,19 @@ class ScimUserControllerTest {
     void deleteNotFoundThrows() {
         when(users.findById(userId)).thenReturn(Optional.empty());
         try {
-            controller.delete(userId);
+            controller.delete(new org.springframework.mock.web.MockHttpServletRequest(), userId);
         } catch (ResponseStatusException ex) {
             assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
+    }
+
+    @Test
+    void filterMatchesUserNameCaseInsensitively() {
+        com.secureone.auth.user.UserAccount user = new com.secureone.auth.user.UserAccount();
+        user.setEmail("jane@acme.test");
+        user.setUsername("jane@acme.test");
+        org.junit.jupiter.api.Assertions.assertTrue(ScimUserController.filterPredicate("userName eq \"JANE@acme.test\"").test(user));
+        org.junit.jupiter.api.Assertions.assertFalse(ScimUserController.filterPredicate("userName eq \"other@acme.test\"").test(user));
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> ScimUserController.filterPredicate("title sw \"x\""));
     }
 }

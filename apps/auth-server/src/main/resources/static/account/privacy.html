@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy & data · SecureOne</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #111;
+        line-height: 1.5;
+      }
+      h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+      h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+      .muted { color: #666; font-size: 0.875rem; }
+      section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
+      button {
+        padding: 0.5rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        margin-right: 0.5rem;
+      }
+      button.primary { background: #4f46e5; color: #fff; border-color: transparent; }
+      button.danger { background: #b91c1c; color: #fff; border-color: transparent; }
+      .banner { margin: 1rem 0; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; }
+      .banner.error { background: #fef2f2; color: #991b1b; }
+      .banner.ok { background: #ecfdf5; color: #065f46; }
+      pre {
+        background: #18181b;
+        color: #fafafa;
+        padding: 1rem;
+        overflow: auto;
+        border-radius: 8px;
+        font-size: 12px;
+        max-height: 20rem;
+      }
+      input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; margin: 0.5rem 0; }
+      a { color: #4f46e5; }
+      label { font-size: 0.875rem; font-weight: 600; display: block; margin-top: 0.75rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Privacy & personal data</h1>
+    <p class="muted">
+      Export your account data or request deletion. When signed in with a browser session, no access token is required.
+    </p>
+    <div id="banner" class="banner" hidden></div>
+
+    <section>
+      <h2>Session (recommended)</h2>
+      <p class="muted">Uses your existing sign-in cookie — same as <a href="/account/security.html">Account security</a>.</p>
+      <button type="button" class="primary" id="session-export">Download my data</button>
+      <button type="button" class="danger" id="session-delete">Request account deletion</button>
+    </section>
+
+    <section>
+      <h2>OAuth access token</h2>
+      <p class="muted">For integrated apps: paste a Bearer access token issued to your user.</p>
+      <label for="access-token">Access token</label>
+      <input id="access-token" type="password" autocomplete="off" placeholder="eyJhbG…" />
+      <button type="button" id="token-export">Export with token</button>
+      <button type="button" id="token-delete">Delete request with token</button>
+    </section>
+
+    <section>
+      <h2>Export preview</h2>
+      <pre id="out">{}</pre>
+    </section>
+
+    <p class="muted">
+      <a id="login-link" href="/login.html">Sign in</a>
+      · <a href="/account/security.html">Account security</a>
+      · <a href="/account/oauth-dev.html">OAuth dev tool</a>
+    </p>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const applicationId = params.get("applicationId");
+
+      function showBanner(text, ok) {
+        const el = document.getElementById("banner");
+        el.textContent = text;
+        el.className = "banner " + (ok ? "ok" : "error");
+        el.hidden = false;
+      }
+
+      function setOut(data) {
+        document.getElementById("out").textContent = JSON.stringify(data, null, 2);
+      }
+
+      async function sessionApi(path, init) {
+        const res = await fetch(path, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          ...init,
+        });
+        if (res.status === 401) throw new Error("Sign in required — use the link below.");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || body.message || "Request failed");
+        }
+        return res.json();
+      }
+
+      async function tokenApi(path, init) {
+        const token = document.getElementById("access-token").value.trim();
+        if (!token) throw new Error("Enter an access token.");
+        const res = await fetch(path, {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          ...init,
+        });
+        if (res.status === 401) throw new Error("Invalid or expired access token.");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.detail || body.message || "Request failed");
+        }
+        return res.json();
+      }
+
+      document.getElementById("session-export").onclick = async () => {
+        try {
+          const data = await sessionApi("/api/v1/account/privacy/session/export");
+          setOut(data);
+          showBanner("Export ready.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("session-delete").onclick = async () => {
+        if (!confirm("Request account deletion? Your account will be disabled immediately.")) return;
+        try {
+          const data = await sessionApi("/api/v1/account/privacy/session/delete-request", { method: "POST", body: "{}" });
+          setOut(data);
+          showBanner(data.message || "Deletion requested.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("token-export").onclick = async () => {
+        try {
+          const data = await tokenApi("/api/v1/account/privacy/export");
+          setOut(data);
+          showBanner("Export ready.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      document.getElementById("token-delete").onclick = async () => {
+        if (!confirm("Request account deletion with this token? Your account will be disabled.")) return;
+        try {
+          const data = await tokenApi("/api/v1/account/privacy/delete-request", { method: "POST", body: "{}" });
+          setOut(data);
+          showBanner(data.message || "Deletion requested.", true);
+        } catch (e) { showBanner(e.message, false); }
+      };
+
+      if (applicationId) {
+        document.getElementById("login-link").href =
+          "/login.html?applicationId=" + encodeURIComponent(applicationId);
+      }
+    </script>
+  </body>
+</html>

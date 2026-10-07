@@ -59,7 +59,10 @@ public class OtpChallengeService {
                 userId,
                 purpose,
                 Duration.ofSeconds(verificationPolicy.resendCooldownSeconds(applicationId, section)))) {
-            throw new IllegalStateException("Please wait before requesting another code.");
+            // 429, not IllegalStateException: callers must not treat a cooldown as "OTP unavailable"
+            // and fall back to another channel (that would bypass the cooldown).
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "Please wait before requesting another code.");
         }
 
         if (userId != null) {

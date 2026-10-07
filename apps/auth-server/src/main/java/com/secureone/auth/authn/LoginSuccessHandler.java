@@ -1,6 +1,8 @@
 package com.secureone.auth.authn;
 
-import com.secureone.auth.application.ApplicationMembershipService;
+import com.secureone.auth.application.ApplicationAccessService;
+import com.secureone.auth.application.ApplicationRepository;
+import com.secureone.auth.application.ApplicationSchemaContext;
 import com.secureone.auth.mfa.MfaLoginService;
 import com.secureone.auth.mfa.MfaLoginService.MfaChallengeResponse;
 import com.secureone.auth.application.UserApplicationRepository;
@@ -39,7 +41,8 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final UserAccountRepository users;
     private final LoginHistoryService loginHistory;
     private final UserApplicationRepository userApplications;
-    private final ApplicationMembershipService memberships;
+    private final ApplicationAccessService access;
+    private final ApplicationRepository applications;
     private final TenantRepository tenants;
     private final AccountLockoutService lockout;
     private final MfaLoginService mfaLogin;
@@ -51,7 +54,8 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             UserAccountRepository users,
             LoginHistoryService loginHistory,
             UserApplicationRepository userApplications,
-            ApplicationMembershipService memberships,
+            ApplicationAccessService access,
+            ApplicationRepository applications,
             TenantRepository tenants,
             AccountLockoutService lockout,
             MfaLoginService mfaLogin,
@@ -61,7 +65,8 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         this.users = users;
         this.loginHistory = loginHistory;
         this.userApplications = userApplications;
-        this.memberships = memberships;
+        this.access = access;
+        this.applications = applications;
         this.tenants = tenants;
         this.lockout = lockout;
         this.mfaLogin = mfaLogin;
@@ -106,7 +111,8 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         users.save(account);
         UUID applicationId = resolveApplicationId(request, account);
         if (applicationId != null) {
-            memberships.ensureMemberWithDefaultRole(applicationId, account.getId());
+            // Enrolls only when the app allows self registration; OAuth authorize enforces the result.
+            access.admit(applicationId, account.getId());
         }
         loginHistory.record(
                 account,
@@ -141,14 +147,26 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         });
     }
 
+    /** Requested app (form param, else app-scoped URL), only if it belongs to the user's tenant. */
     private UUID resolveApplicationId(HttpServletRequest request, UserAccount account) {
+        UUID requested = null;
         String raw = request.getParameter("applicationId");
         if (raw != null && !raw.isBlank()) {
             try {
-                return UUID.fromString(raw.trim());
+                requested = UUID.fromString(raw.trim());
             } catch (IllegalArgumentException ignored) {
                 // fall through
             }
+        }
+        if (requested == null) {
+            requested = ApplicationSchemaContext.getApplicationId();
+        }
+        if (requested != null) {
+            UUID candidate = requested;
+            return applications.findById(candidate)
+                    .filter(app -> app.getTenantId().equals(account.getTenantId()))
+                    .map(app -> candidate)
+                    .orElse(null);
         }
         return userApplications.findByUserId(account.getId()).stream()
                 .map(ua -> ua.getApplicationId())

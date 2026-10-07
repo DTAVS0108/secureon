@@ -34,13 +34,17 @@ public class TenantLoginUsernameFilter extends OncePerRequestFilter {
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         if (isLoginPost(request)) {
+            // An application's own tenant always wins over a tenant typed or posted by the browser.
+            String appTenant = resolveTenantFromApplicationId(normalize(request.getParameter("applicationId")));
             String username = normalize(request.getParameter("username"));
-            if (username == null) {
-                String tenant = normalize(request.getParameter("tenant"));
-                if (tenant == null) {
-                    tenant = resolveTenantFromApplicationId(normalize(request.getParameter("applicationId")));
+            String email = normalize(request.getParameter("email"));
+            if (appTenant != null) {
+                String login = email != null ? email : stripTenantPrefix(username);
+                if (login != null) {
+                    request = new UsernameOverrideRequest(request, appTenant + ":" + login.toLowerCase(Locale.ROOT));
                 }
-                String email = normalize(request.getParameter("email"));
+            } else if (username == null) {
+                String tenant = normalize(request.getParameter("tenant"));
                 if (tenant != null && email != null) {
                     request = new UsernameOverrideRequest(request, tenant + ":" + email.toLowerCase(Locale.ROOT));
                 }
@@ -58,6 +62,15 @@ public class TenantLoginUsernameFilter extends OncePerRequestFilter {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    /** {@code acme:jane@x.com} -> {@code jane@x.com}; a plain value is returned as-is. */
+    private static String stripTenantPrefix(String username) {
+        if (username == null) {
+            return null;
+        }
+        int sep = username.indexOf(':');
+        return sep >= 0 ? normalize(username.substring(sep + 1)) : username;
     }
 
     private static boolean isLoginPost(HttpServletRequest request) {

@@ -1,24 +1,18 @@
+import { redirect } from "next/navigation";
 import { AUTH_SERVER_URL } from "@/lib/config";
-import { buildBasicAuthHeader } from "@/lib/auth/session-shared";
-import { ApiError } from "./http";
+import { ApiError, serverAuthHeader } from "./http";
 
-const DEV_USER = process.env.SECUREONE_DEV_USER ?? "admin";
-const DEV_PASSWORD = process.env.SECUREONE_DEV_PASSWORD ?? "admin";
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
-function devAuthHeader(): string {
-  const token = Buffer.from(`${DEV_USER}:${DEV_PASSWORD}`).toString("base64");
-  return `Basic ${token}`;
-}
-
 /**
  * Admin API fetch safe for client components.
- * Browser: proxies through /api/proxy with session cookie.
- * SSR: direct auth-server with dev credentials (hydration refetches in browser when needed).
+ * Browser: proxies through /api/proxy with the session cookie.
+ * Server rendering: calls the auth-server directly as the signed-in user (see server-auth.ts);
+ * with no session it redirects to /login rather than falling back to any other account.
  */
 export async function browserApiFetch<T>(
   path: string,
@@ -38,7 +32,11 @@ export async function browserApiFetch<T>(
     : `${AUTH_SERVER_URL}/${normalized}`;
 
   if (!isBrowser()) {
-    baseHeaders.Authorization = devAuthHeader();
+    const authorization = await serverAuthHeader();
+    if (!authorization) {
+      redirect("/login");
+    }
+    baseHeaders.Authorization = authorization;
   }
 
   const res = await fetch(url, {
@@ -47,6 +45,15 @@ export async function browserApiFetch<T>(
     credentials: isBrowser() ? "same-origin" : undefined,
     headers: baseHeaders,
   });
+
+  if (res.status === 401) {
+    // Session ended on the auth-server (signed out, idle timeout or lifetime reached).
+    if (!isBrowser()) {
+      redirect("/login?reason=expired");
+    }
+    const here = `${window.location.pathname}${window.location.search}`;
+    window.location.assign(`/login?reason=expired&next=${encodeURIComponent(here)}`);
+  }
 
   if (res.status === 204) {
     return undefined as T;

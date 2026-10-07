@@ -14,6 +14,7 @@ type AdminContextDto = {
   tenantSlug?: string | null;
   tenantName?: string | null;
   userId?: string | null;
+  breakGlass?: boolean;
 };
 
 function profileFromContext(raw: AdminContextDto): OperatorProfile {
@@ -31,9 +32,10 @@ function profileFromContext(raw: AdminContextDto): OperatorProfile {
     username: email?.split("@")[0] ?? principal,
     displayName: raw.displayName ?? principal,
     emailVerified: Boolean(email),
-    hasPassword: !raw.platformSuperAdmin,
+    hasPassword: !raw.breakGlass,
     status: "active",
     createdAt: null,
+    breakGlass: raw.breakGlass ?? false,
   };
 }
 

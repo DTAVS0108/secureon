@@ -20,6 +20,12 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    /** Keeps the status and reason of explicit ResponseStatusExceptions (403, 429, ...) in the problem body. */
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    ProblemDetail responseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ProblemDetail.forStatusAndDetail(ex.getStatusCode(), ex.getReason());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     ProblemDetail serviceUnavailable(IllegalStateException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
@@ -33,6 +39,15 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     ProblemDetail notFound(ResourceNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    /**
+     * A bare {@code Optional.orElseThrow()} on a lookup. With row-level security, a row in another
+     * tenant is simply absent, so this is "not found" rather than a server error.
+     */
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    ProblemDetail notFoundLookup(java.util.NoSuchElementException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Not found");
     }
 
     @ExceptionHandler(ConflictException.class)

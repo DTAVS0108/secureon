@@ -32,17 +32,24 @@ class AccessRequestServiceTest {
     @Mock
     private ObjectProvider<WebhookEventPublisher> webhookPublisher;
 
+    @Mock
+    private com.secureone.auth.user.UserAccountRepository users;
+
     private AccessRequestService service;
 
     @BeforeEach
     void setUp() {
-        service = new AccessRequestService(requests, grantService, webhookPublisher);
+        service = new AccessRequestService(requests, grantService, webhookPublisher, users);
     }
 
     @Test
     void createPersistsPendingRequest() {
         UUID tenantId = UUID.randomUUID();
         UUID requesterId = UUID.randomUUID();
+        com.secureone.auth.user.UserAccount requester = new com.secureone.auth.user.UserAccount();
+        requester.setId(requesterId);
+        requester.setTenantId(tenantId);
+        when(users.findById(requesterId)).thenReturn(java.util.Optional.of(requester));
         when(requests.save(any(AccessRequest.class))).thenAnswer(invocation -> {
             AccessRequest row = invocation.getArgument(0);
             row.setId(UUID.randomUUID());
@@ -142,5 +149,30 @@ class AccessRequestServiceTest {
         when(requests.findById(requestId)).thenReturn(Optional.of(request));
 
         assertThrows(ResourceNotFoundException.class, () -> service.approve(UUID.randomUUID(), requestId, UUID.randomUUID()));
+    }
+
+    @Test
+    void createRejectsUserFromAnotherTenant() {
+        UUID requesterId = UUID.randomUUID();
+        com.secureone.auth.user.UserAccount other = new com.secureone.auth.user.UserAccount();
+        other.setId(requesterId);
+        other.setTenantId(UUID.randomUUID());
+        when(users.findById(requesterId)).thenReturn(java.util.Optional.of(other));
+
+        assertThrows(ResponseStatusException.class, () -> service.create(UUID.randomUUID(), Map.of(
+                "requesterUserId", requesterId.toString(), "resourceType", "role", "resourceId", "admin")));
+    }
+
+    @Test
+    void createRejectsUnknownResourceType() {
+        UUID tenantId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        com.secureone.auth.user.UserAccount requester = new com.secureone.auth.user.UserAccount();
+        requester.setId(requesterId);
+        requester.setTenantId(tenantId);
+        when(users.findById(requesterId)).thenReturn(java.util.Optional.of(requester));
+
+        assertThrows(ResponseStatusException.class, () -> service.create(tenantId, Map.of(
+                "requesterUserId", requesterId.toString(), "resourceType", "bogus", "resourceId", "x")));
     }
 }

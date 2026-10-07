@@ -32,16 +32,19 @@ public class AdminOperatorProfileController {
     private final AdminOperatorService operators;
     private final UserPasswordService passwords;
     private final UserAccountRepository users;
+    private final com.secureone.auth.tenant.TenantRepository tenants;
 
     public AdminOperatorProfileController(
             AdminAccessService access,
             AdminOperatorService operators,
             UserPasswordService passwords,
-            UserAccountRepository users) {
+            UserAccountRepository users,
+            com.secureone.auth.tenant.TenantRepository tenants) {
         this.access = access;
         this.operators = operators;
         this.passwords = passwords;
         this.users = users;
+        this.tenants = tenants;
     }
 
     public record OperatorProfileResponse(
@@ -58,7 +61,9 @@ public class AdminOperatorProfileController {
             boolean emailVerified,
             boolean hasPassword,
             String status,
-            Instant createdAt) {}
+            Instant createdAt,
+            /** The configured emergency account: no user record, profile or MFA to manage. */
+            boolean breakGlass) {}
 
     public record OperatorProfileUpdateRequest(
             @Size(max = 150) String username,
@@ -74,7 +79,7 @@ public class AdminOperatorProfileController {
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail) {
         boolean superAdmin = access.canAccessPlatformSettings(authentication, actAsEmail);
         String tier = access.resolveOperatorTier(authentication, actAsEmail);
-        if (superAdmin) {
+        if (superAdmin && access.isBreakGlass(authentication)) {
             return new OperatorProfileResponse(
                     tier,
                     true,
@@ -89,15 +94,17 @@ public class AdminOperatorProfileController {
                     true,
                     true,
                     "ACTIVE",
-                    null);
+                    null,
+                    true);
         }
         UserAccount user = operators
                 .resolveTenantUser(authentication, actAsEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Operator account not found"));
-        var tenant = operators.requireOperatorTenant(authentication, actAsEmail);
+        var tenant = tenants.findById(user.getTenantId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant not found"));
         return new OperatorProfileResponse(
                 tier,
-                false,
+                superAdmin,
                 authentication.getName(),
                 user.getId(),
                 tenant.getId(),
@@ -109,7 +116,8 @@ public class AdminOperatorProfileController {
                 user.isEmailVerified(),
                 passwords.hasPassword(user.getId()),
                 user.getStatus(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                false);
     }
 
     @PatchMapping
@@ -117,7 +125,7 @@ public class AdminOperatorProfileController {
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestBody OperatorProfileUpdateRequest body) {
-        if (access.canAccessPlatformSettings(authentication, actAsEmail)) {
+        if (access.isBreakGlass(authentication) && actAsEmail == null) {
             return profile(authentication, actAsEmail);
         }
         UserAccount user = operators
@@ -139,18 +147,21 @@ public class AdminOperatorProfileController {
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestBody OperatorPasswordChangeRequest body) {
-        if (access.canAccessPlatformSettings(authentication, actAsEmail)) {
+        if (access.isBreakGlass(authentication) && actAsEmail == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Platform super-admin password is configured via server settings (admin / SECUREONE_DEV_PASSWORD).");
+                    "The emergency account's password is set in server configuration (SECUREONE_DEV_PASSWORD).");
         }
         UserAccount user = operators
                 .resolveTenantUser(authentication, actAsEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Operator account not found"));
-        UUID appId = access.accessibleApplications(authentication, actAsEmail).stream()
-                .findFirst()
-                .map(AdminAccessService.ApplicationSummary::id)
-                .orElse(null);
+        // Platform operators belong to no application: their password follows the platform policy.
+        UUID appId = access.canAccessPlatformSettings(authentication, actAsEmail)
+                ? null
+                : access.accessibleApplications(authentication, actAsEmail).stream()
+                        .findFirst()
+                        .map(AdminAccessService.ApplicationSummary::id)
+                        .orElse(null);
         passwords.changePassword(user.getId(), body.currentPassword(), body.newPassword(), appId);
     }
 }

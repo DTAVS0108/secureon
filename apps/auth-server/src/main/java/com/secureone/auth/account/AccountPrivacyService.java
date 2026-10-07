@@ -51,7 +51,14 @@ public class AccountPrivacyService {
     }
 
     public Map<String, Object> export(Jwt jwt) {
-        UserAccount user = resolveUser(jwt);
+        return exportForUser(resolveUser(jwt));
+    }
+
+    public Map<String, String> requestDeletion(Jwt jwt) {
+        return requestDeletionForUser(resolveUser(jwt));
+    }
+
+    public Map<String, Object> exportForUser(UserAccount user) {
         Tenant tenant = tenants.findById(user.getTenantId()).orElse(null);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("exportedAt", Instant.now().toString());
@@ -82,8 +89,7 @@ public class AccountPrivacyService {
         return out;
     }
 
-    public Map<String, String> requestDeletion(Jwt jwt) {
-        UserAccount user = resolveUser(jwt);
+    public Map<String, String> requestDeletionForUser(UserAccount user) {
         if ("DISABLED".equalsIgnoreCase(user.getStatus())) {
             return Map.of(
                     "message",

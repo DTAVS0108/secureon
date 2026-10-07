@@ -1,5 +1,6 @@
 package com.secureone.auth.serviceaccount;
 
+import com.secureone.auth.ratelimit.RedisRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,10 +18,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
-    private final ServiceAccountService serviceAccounts;
+    /** Per-key requests per minute for /api/v1/m2m/** */
+    static final int M2M_RATE_LIMIT_PER_MINUTE = 120;
 
-    public ApiKeyAuthenticationFilter(ServiceAccountService serviceAccounts) {
+    private final ServiceAccountService serviceAccounts;
+    private final RedisRateLimiter rateLimiter;
+
+    public ApiKeyAuthenticationFilter(ServiceAccountService serviceAccounts, RedisRateLimiter rateLimiter) {
         this.serviceAccounts = serviceAccounts;
+        this.rateLimiter = rateLimiter;
     }
 
     @Override
@@ -44,6 +50,11 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         if (rawKey != null && rawKey.startsWith("sk_live_")) {
             var context = serviceAccounts.validateApiKey(rawKey);
             if (context.isPresent()) {
+                String bucket = "m2m:key:" + context.get().apiKeyId();
+                if (!rateLimiter.tryConsume(bucket, M2M_RATE_LIMIT_PER_MINUTE)) {
+                    response.sendError(429, "API key rate limit exceeded.");
+                    return;
+                }
                 Authentication auth = new UsernamePasswordAuthenticationToken(
                         context.get(),
                         null,

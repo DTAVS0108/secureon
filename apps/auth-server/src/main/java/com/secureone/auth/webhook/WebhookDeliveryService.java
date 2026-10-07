@@ -31,13 +31,26 @@ public class WebhookDeliveryService {
     private final SecretProtector secrets;
     private final ObjectMapper objectMapper;
     private final RestClient http;
+    private final WebhookTargetPolicy targets;
 
     public WebhookDeliveryService(
-            WebhookDeliveryRepository deliveries, SecretProtector secrets, ObjectMapper objectMapper) {
+            WebhookDeliveryRepository deliveries,
+            SecretProtector secrets,
+            ObjectMapper objectMapper,
+            WebhookTargetPolicy targets) {
         this.deliveries = deliveries;
         this.secrets = secrets;
         this.objectMapper = objectMapper;
-        this.http = RestClient.builder().build();
+        this.targets = targets;
+        // Bounded time per delivery, and no redirects (a redirect could point at an internal address).
+        java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(5))
+                .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+                .build();
+        org.springframework.http.client.JdkClientHttpRequestFactory factory =
+                new org.springframework.http.client.JdkClientHttpRequestFactory(client);
+        factory.setReadTimeout(java.time.Duration.ofSeconds(10));
+        this.http = RestClient.builder().requestFactory(factory).build();
     }
 
     @Transactional
@@ -66,6 +79,12 @@ public class WebhookDeliveryService {
             return;
         }
         String signature = sign(body, secret);
+        String blocked = targets.deliveryProblem(endpoint.getUrl());
+        if (blocked != null) {
+            markFailed(delivery, null);
+            log.warn("Webhook delivery blocked for endpoint {}: {}", endpoint.getId(), blocked);
+            return;
+        }
         try {
             var response = http.post()
                     .uri(endpoint.getUrl())

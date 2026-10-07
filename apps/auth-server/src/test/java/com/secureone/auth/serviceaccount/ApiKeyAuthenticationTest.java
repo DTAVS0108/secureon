@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.secureone.auth.ratelimit.RedisRateLimiter;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,11 +28,14 @@ class ApiKeyAuthenticationTest {
     @Mock
     private ServiceAccountService serviceAccounts;
 
+    @Mock
+    private RedisRateLimiter rateLimiter;
+
     private ApiKeyAuthenticationFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new ApiKeyAuthenticationFilter(serviceAccounts);
+        filter = new ApiKeyAuthenticationFilter(serviceAccounts, rateLimiter);
         SecurityContextHolder.clearContext();
     }
 
@@ -37,8 +43,10 @@ class ApiKeyAuthenticationTest {
     void setsM2mAuthenticationForBearerApiKey() throws Exception {
         UUID tenantId = UUID.randomUUID();
         UUID serviceAccountId = UUID.randomUUID();
-        ServiceAccountContext context = new ServiceAccountContext(tenantId, serviceAccountId, "ci-bot");
+        UUID apiKeyId = UUID.randomUUID();
+        ServiceAccountContext context = new ServiceAccountContext(tenantId, serviceAccountId, apiKeyId, "ci-bot");
         when(serviceAccounts.validateApiKey("sk_live_testkey")).thenReturn(Optional.of(context));
+        when(rateLimiter.tryConsume(eq("m2m:key:" + apiKeyId), anyInt())).thenReturn(true);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/m2m/whoami");
         request.addHeader("Authorization", "Bearer sk_live_testkey");
@@ -47,13 +55,23 @@ class ApiKeyAuthenticationTest {
 
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
         assertEquals(context, SecurityContextHolder.getContext().getAuthentication().getPrincipal());
-        assertEquals("ROLE_M2M", SecurityContextHolder.getContext().getAuthentication().getAuthorities().iterator().next().getAuthority());
+        assertEquals(
+                "ROLE_M2M",
+                SecurityContextHolder.getContext()
+                        .getAuthentication()
+                        .getAuthorities()
+                        .iterator()
+                        .next()
+                        .getAuthority());
     }
 
     @Test
     void acceptsXApiKeyHeader() throws Exception {
-        ServiceAccountContext context = new ServiceAccountContext(UUID.randomUUID(), UUID.randomUUID(), "bot");
+        UUID apiKeyId = UUID.randomUUID();
+        ServiceAccountContext context =
+                new ServiceAccountContext(UUID.randomUUID(), UUID.randomUUID(), apiKeyId, "bot");
         when(serviceAccounts.validateApiKey("sk_live_header")).thenReturn(Optional.of(context));
+        when(rateLimiter.tryConsume(any(), anyInt())).thenReturn(true);
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/m2m/whoami");
         request.addHeader("X-Api-Key", "sk_live_header");
@@ -106,11 +124,32 @@ class ApiKeyAuthenticationTest {
     }
 
     @Test
+    void rejectsWhenRateLimitExceeded() throws Exception {
+        UUID apiKeyId = UUID.randomUUID();
+        ServiceAccountContext context =
+                new ServiceAccountContext(UUID.randomUUID(), UUID.randomUUID(), apiKeyId, "bot");
+        when(serviceAccounts.validateApiKey("sk_live_rl")).thenReturn(Optional.of(context));
+        when(rateLimiter.tryConsume(eq("m2m:key:" + apiKeyId), anyInt())).thenReturn(false);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/m2m/whoami");
+        request.addHeader("Authorization", "Bearer sk_live_rl");
+        org.springframework.mock.web.MockHttpServletResponse response =
+                new org.springframework.mock.web.MockHttpServletResponse();
+
+        filter.doFilter(request, response, (req, res) -> {});
+
+        assertEquals(429, response.getStatus());
+    }
+
+    @Test
     void skipsWhenAlreadyAuthenticated() throws Exception {
-        ServiceAccountContext context = new ServiceAccountContext(UUID.randomUUID(), UUID.randomUUID(), "bot");
+        ServiceAccountContext context =
+                new ServiceAccountContext(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "bot");
         SecurityContextHolder.getContext().setAuthentication(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                        context, null, org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_M2M")));
+                        context,
+                        null,
+                        org.springframework.security.core.authority.AuthorityUtils.createAuthorityList("ROLE_M2M")));
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/m2m/whoami");
         request.addHeader("Authorization", "Bearer sk_live_testkey");

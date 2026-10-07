@@ -4,12 +4,17 @@
 
 **Last updated:** 2026-07
 
-**Recently completed (this sprint):**
+**Recently completed (July 2026 sprint):**
 - Admin UI: Organizations + Access requests panels on tenant detail
-- IGA approve → auto-grant role + access-request webhooks
+- IGA approve → auto-grant role + access-request webhooks (`AccessRequestGrantService`, V58/V59)
 - Startup fixes: indexed Redis sessions, OAuth JDBC delegate, `-parameters` compiler flag
 - TypeScript SDK: `introspectToken`, `revokeToken`
-- Integration catalog: SCIM groups, M2M whoami, PAR, introspect, revoke
+- **GDPR hosted portal:** `/account/privacy.html` + session bridge (`/api/v1/account/privacy/session/*`); link from `security.html`
+- **Token Exchange RFC 8693:** `OAuthTokenExchangeService` + filter (replaces 501 stub); unit tests
+- **PAR hardening:** Redis-backed one-time `request_uri` consume + authorize merge (`PushedAuthorizationRequestService`, `PushedAuthorizationRequestFilter`)
+- **M2M expansion:** `/api/v1/m2m/health`, `/tenant`, expanded `/whoami`; per-key rate limit (120/min); scopes on key creation in admin UI
+- Admin-web CI: ESLint 0 errors (`useDeferredEffect` pattern)
+- Integration catalog: SCIM groups, M2M routes, PAR, token exchange, introspect, revoke
 
 ---
 
@@ -22,8 +27,9 @@
 | Full IGA campaigns | Stub API only | 6+ wks | Workflow + notifications |
 | Adaptive / risk auth | Trusted device only | 3–4 wks | Risk signal pipeline |
 | Advanced MFA (AAGUID, PIV, mTLS) | Not started | 4+ wks | Hardware / attestation |
-| Token Exchange RFC 8693 | 501 stub | 2–3 wks | Custom SAS grant |
-| PAR / back-channel logout (full hardening) | Basic stub | 1–2 wks | SAS integration tests |
+| Token Exchange RFC 8693 | **Done** | — | `OAuthTokenExchangeService` |
+| PAR (one-time `request_uri`) | **Done** | — | Redis store + authorize merge |
+| Back-channel logout (full hardening) | Ack-only stub | 1–2 wks | Logout token validation |
 | Push MFA (FCM/APNs) | Not started | 2 wks | Mobile push credentials |
 | Multi-region HA | Not started | 8+ wks | Infra + replication |
 | MAU billing / quotas UI | Hooks only | 3–4 wks | Metering pipeline |
@@ -31,10 +37,10 @@
 | FAPI 2.0 | Not started | 4+ wks | Profile audit |
 | OpenTelemetry tracing | Prometheus only | 1–2 wks | OTel collector |
 | OIDC conformance + pen test | Not started | 2–4 wks | External process |
-| GDPR full portal | API stub | 2–3 wks | Consent store, residency |
+| GDPR full portal | **Partial** — hosted export/delete | 2–3 wks | Consent store, residency, grace-period deletion |
 | Terraform + Java/Python/Go SDKs | Not started | ongoing | API stability |
 | npm publish TypeScript SDK | Local package | 1 wk | CI + npm org |
-| ApiKey auth on all M2M routes | whoami + filter | 1 wk | Route security config |
+| M2M routes + rate limits | **Done** | — | health, tenant, whoami, 120/min/key |
 | IGA approve → grant role | **Done** | — | Auto-grant on approve |
 | Self-service signup → webhook | Done | — | — |
 
@@ -103,7 +109,8 @@
 ### Current state
 - `access_request` table + CRUD API: `AccessRequestAdminController`, `AccessRequestService`
 - Admin UI: `AccessRequestsPanel.tsx` (create / approve / deny)
-- **Gap:** Approve does not auto-grant roles; no campaigns or SoD
+- **Done:** Approve auto-grants tenant or application roles via `AccessRequestGrantService` (V58 `application_id`, V59 `granted_role_name`)
+- **Gap:** No certification campaigns, SoD rules, or time-bound grants
 
 ### Target files
 | Layer | Path |
@@ -115,7 +122,7 @@
 | Notifications | `AccountNotificationService` — campaign reminders |
 
 ### Implementation steps
-1. On `approve`, if `resourceType=role`, call `UserRoleRepository` to grant role to `targetUserId` or `requesterUserId`.
+1. ~~On `approve`, grant role~~ — **done** in `AccessRequestGrantService`.
 2. Add `certification_campaign` + items linking users/roles; scheduled job marks overdue.
 3. SoD rules: before grant, query conflicting role pairs; reject with 409.
 4. Time-bound access: store `expiresAt` on grant; scheduled revoke job.
@@ -165,14 +172,24 @@
 
 ## 6. OAuth protocol hardening
 
-### Token Exchange (RFC 8693)
-- **Stub:** `OAuthTokenExchangeStubFilter.java` returns 501
-- **Implement:** Register custom `OAuth2TokenExchangeAuthenticationProvider` in Spring Authorization Server; validate subject token, issue delegated token with reduced scope
-- **Files:** `.../oauth/tokenexchange/*`, security filter chain order before token endpoint
+### Token Exchange (RFC 8693) — **DONE**
 
-### PAR / back-channel logout
-- **Stubs exist** — harden with conformance tests, `request_uri` one-time use in Redis, logout token validation per OIDC Back-Channel Logout spec
-- **Files:** `.../oauth/par/*`, `.../oauth/logout/*`
+Implemented in `OAuthTokenExchangeService` + `OAuthTokenExchangeFilter`:
+- Grant type `urn:ietf:params:oauth:grant-type:token-exchange` on `POST /oauth2/token`
+- Validates client credentials, decodes `subject_token` JWT, checks `azp`/audience, issues delegated JWT
+- Tests: `OAuthTokenExchangeServiceTest`
+
+### PAR (RFC 9126) — **DONE**
+
+Implemented in `PushedAuthorizationRequestService` + `PushedAuthorizationRequestFilter`:
+- `POST /oauth2/par` stores params in Redis, returns `request_uri`
+- `GET /oauth2/authorize?request_uri=…` merges stored params (one-time consume via `getAndDelete`)
+- Tests: `PushedAuthorizationRequestServiceTest`
+
+### Back-channel logout — **partial**
+
+- `POST /oauth2/backchannel-logout` returns 200 (ack-only stub)
+- **Remaining:** logout token validation per OIDC Back-Channel Logout spec, session termination, conformance tests
 
 ### DPoP / CIBA / JARM
 - Not started — see `docs/10-enterprise.md`; add after core SAS hardening
@@ -264,16 +281,17 @@ External process — not code-complete in-repo.
 
 ## 14. GDPR / CCPA full portal
 
-### Current state
-- APIs: `GET /api/v1/account/privacy/export`, `POST /api/v1/account/privacy/delete-request`
-- Hosted `account/security.html` — no privacy section
+### Current state — **partial (hosted portal shipped)**
 
-### Implementation
-1. Add consent records table + API
+- **Bearer APIs:** `GET /api/v1/account/privacy/export`, `POST /api/v1/account/privacy/delete-request` (`AccountPrivacyController`)
+- **Session bridge:** `GET /api/v1/account/privacy/session/export`, `POST /api/v1/account/privacy/session/delete-request` (`AccountPrivacySessionController`) — for logged-in users without a bearer token
+- **Hosted UI:** `static/account/privacy.html` — export JSON download + deletion request; linked from `account/security.html`
+
+### Remaining
+1. Consent records table + API
 2. Data residency flags on tenant
 3. Extend export to include audit trail summary, federation links
 4. Deletion workflow: grace period, admin completion queue, hard delete job
-5. UI in `static/account/privacy.html` or expand security portal
 
 ---
 
@@ -288,18 +306,14 @@ External process — not code-complete in-repo.
 
 ---
 
-## 16. ApiKey auth — broaden M2M coverage
+## 16. M2M API key coverage — **DONE**
 
-### Current state
-- `ApiKeyAuthenticationFilter` + `GET /api/v1/m2m/whoami`
+Implemented:
+- Routes: `GET /api/v1/m2m/health`, `/whoami` (apiKeyId, scopes), `/tenant`
+- `ApiKeyAuthenticationFilter` on `/api/v1/m2m/**` with per-key rate limit (120 req/min via `RedisRateLimiter`)
+- Key creation returns `scopes` + `scopeNote` in `ServiceAccountService`; shown in `ServiceAccountsPanel.tsx`
 
-### Implementation
-1. Define M2M route prefix `/api/v1/m2m/**` in security config
-2. Map API key → service account → scoped permissions (read-only vs admin)
-3. Document scopes on key creation in `ServiceAccountsPanel`
-4. Rate limit per key in Redis
-
-**Files:** `SecurityConfig.java` or `ApiKeyAuthenticationFilter.java`, `ServiceAccountService.java`
+**Files:** `M2mController.java`, `ApiKeyAuthenticationFilter.java`, `ServiceAccountContext.java`
 
 ---
 

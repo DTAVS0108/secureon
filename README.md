@@ -84,6 +84,9 @@ Details: [docs/02-tech-stack.md](docs/02-tech-stack.md).
 | 13 | [Auth UI integration](docs/13-auth-ui-integration.md) | Hosted vs native login |
 | 14 | [Application RBAC](docs/14-application-rbac-management.md) | Groups, roles, permissions |
 | **15** | **[Applications & OAuth clients](docs/15-applications-and-oauth-clients.md)** | **Product vs client, schema provisioning, isolate** |
+| 22 | [Operator getting started](docs/22-operator-getting-started.md) | Install & run day to day |
+| 23 | [Application integration](docs/23-application-integration-guide.md) | Signup/signin APIs for product apps |
+| **24** | **[Deployment: image + env & enterprise](docs/24-deployment-image-env-and-enterprise.md)** | **Image+env deploy vs source/Helm; admin + clients** |
 | — | **[Documentation hub](docs/README.md)** | **Platform + application integration index** |
 | — | **[Application integrator guide](docs/applications/README.md)** | **Setup, APIs, samples (per-app)** |
 | — | [Diagrams](docs/diagrams/README.md) | Mermaid + draw.io sources (inline in Confluence) |

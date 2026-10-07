@@ -28,8 +28,14 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
             Pattern.compile("^/api/admin/v1/permissions/([0-9a-fA-F-]{36})$");
     private static final Pattern TENANT_PATH =
             Pattern.compile("^/api/admin/v1/tenants/([0-9a-fA-F-]{36})(?:/|$)");
+    /** Tenant-scoped resources a tenant super admin may manage for their own tenant. */
     private static final Pattern TENANT_GOVERNANCE_PATH = Pattern.compile(
-            "^/api/admin/v1/tenants/[0-9a-fA-F-]{36}/(?:console-roles|tenant-rbac)(?:/|$)");
+            "^/api/admin/v1/tenants/[0-9a-fA-F-]{36}/"
+                    + "(?:console-access|console-roles|tenant-rbac|organizations|federation/providers|service-accounts|webhooks|access-requests|access-review|scim)"
+                    + "(?:/|$)");
+
+    private static final Pattern PLATFORM_WIDE_WITHOUT_APP =
+            Pattern.compile("^/api/admin/v1/(?:audit|logs|sessions)(?:/.*)?$");
 
     private static final Map<String, String> PATH_PERMISSIONS = Map.ofEntries(
             Map.entry("users", "user:read"),
@@ -66,23 +72,41 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
-        if (!path.startsWith("/api/admin/v1/")) {
+        if (!path.startsWith("/api/admin/v1/") || path.startsWith("/api/admin/v1/auth/")) {
             return true;
         }
+        // Only a console session token proves the operator passed sign-in, including MFA.
+        if (!Boolean.TRUE.equals(request.getAttribute(AdminCredentialAuthenticationFilter.CONSOLE_SESSION_ATTR))) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            try {
+                response.getWriter().write("{\"detail\":\"Sign in to the admin console again.\"}");
+            } catch (java.io.IOException ignored) {
+                // Status is already set.
+            }
+            return false;
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String actAs = request.getHeader("X-Act-As-Email");
+        // Acting as another operator is a platform support tool, never a way to borrow a colleague's role.
+        if (actAs != null && !actAs.isBlank() && !access.isPlatformSuperAdmin(auth)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "X-Act-As-Email is only available to platform super admins");
+        }
         if (path.startsWith("/api/admin/v1/context")
-                || path.startsWith("/api/admin/v1/auth/")
                 || path.startsWith("/api/admin/v1/me")
                 || path.startsWith("/api/admin/v1/tenant-workspace")) {
             return true;
         }
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String actAs = request.getHeader("X-Act-As-Email");
-
         UUID applicationId = parseApplicationId(path, request);
         if (applicationId != null) {
             access.requireApplicationAccess(auth, actAs, applicationId);
             enforcePermission(auth, actAs, applicationId, path, request.getMethod());
+        } else if (PLATFORM_WIDE_WITHOUT_APP.matcher(path).matches()) {
+            // Without an applicationId these list (or delete) every tenant's records.
+            access.requirePlatformSettingsAccess(auth, actAs);
         }
 
         if (path.startsWith("/api/admin/v1/settings")) {
@@ -119,18 +143,20 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
         if (email == null) {
             return;
         }
-        enforceConsoleFeature(email, applicationId, path);
+        UUID userId = access.resolveOperatorUserId(auth, actAs).orElse(null);
+        if (userId != null && consoleCapabilities.hasConsoleAccess(userId)) {
+            // The console role is the grant: the operator may use every section enabled for that
+            // role in this app (tenant super admins choose the sections per role).
+            enforceConsoleFeature(userId, applicationId, path);
+            return;
+        }
         String required = requiredPermission(path, method);
         if (required != null) {
             permissions.requirePermission(applicationId, email, required);
         }
     }
 
-    private void enforceConsoleFeature(String email, UUID applicationId, String path) {
-        UserAccount user = users.findByEmailIgnoreCase(email).stream().findFirst().orElse(null);
-        if (user == null || !consoleCapabilities.hasConsoleAccess(user.getId())) {
-            return;
-        }
+    private void enforceConsoleFeature(UUID userId, UUID applicationId, String path) {
         Application app = applications.findById(applicationId).orElse(null);
         if (app == null) {
             return;
@@ -139,8 +165,7 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
         if (section == null) {
             return;
         }
-        if (!consoleCapabilities.canAccessFeature(
-                user.getId(), app.getTenantId(), applicationId, section)) {
+        if (!consoleCapabilities.canAccessFeature(userId, app.getTenantId(), applicationId, section)) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Console feature not granted: " + section);
         }
@@ -150,6 +175,11 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
         Matcher appSection = Pattern.compile("^/api/admin/v1/applications/[^/]+/([^/]+)").matcher(path);
         if (appSection.find()) {
             return appSection.group(1);
+        }
+        // App-filtered views of the shared lists, e.g. /api/admin/v1/logs?applicationId=…
+        Matcher shared = Pattern.compile("^/api/admin/v1/(audit|logs|sessions)(?:/|$)").matcher(path);
+        if (shared.find()) {
+            return shared.group(1);
         }
         return null;
     }

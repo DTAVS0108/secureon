@@ -115,6 +115,11 @@ export function ServiceAccountsPanel({ tenantId }: { tenantId: string }) {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
             <p className="text-sm font-medium text-ui">New API key (copy now)</p>
             <CopyValue value={newKey.apiKey} />
+            {newKey.scopes && newKey.scopes.length > 0 && (
+              <p className="text-xs text-muted">
+                Scopes: {newKey.scopes.join(", ")} — routes under <code>/api/v1/m2m/**</code> (120 req/min per key).
+              </p>
+            )}
             <Button variant="secondary" size="sm" onClick={() => setNewKey(null)}>
               Done
             </Button>

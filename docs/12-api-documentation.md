@@ -68,6 +68,42 @@ Public flows do not require Swagger authorization:
 
 See [19 — Verification & OTP](19-verification-and-otp.md) and [Authentication UI integration](13-auth-ui-integration.md).
 
+## Privacy & GDPR (account)
+
+Session or bearer token required for export/deletion:
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /api/v1/account/privacy/export` | Bearer | JSON export of user data |
+| `POST /api/v1/account/privacy/delete-request` | Bearer | Request account deletion |
+| `GET /api/v1/account/privacy/session/export` | Session cookie | Same export for logged-in browser users |
+| `POST /api/v1/account/privacy/session/delete-request` | Session cookie | Deletion request via session |
+
+Hosted UI: `/account/privacy.html` (linked from `/account/security.html`). See [13 — Auth UI integration](13-auth-ui-integration.md#hosted-account-pages).
+
+## Machine-to-machine (API keys)
+
+Service account API keys authenticate to `/api/v1/m2m/**` via `Authorization: Bearer {api_key}` or `X-Api-Key` header:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/m2m/health` | Liveness check for the M2M route |
+| `GET /api/v1/m2m/whoami` | Service account id, tenant, apiKeyId, scopes |
+| `GET /api/v1/m2m/tenant` | Tenant metadata for the key's service account |
+
+Per-key rate limit: 120 requests/minute (Redis). Keys and scopes are created in **Application → Service accounts** (admin-web).
+
+## OAuth extensions
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /oauth2/par` | Store authorization params; returns `request_uri` (single-use, Redis TTL) |
+| `GET /oauth2/authorize?request_uri=…` | Standard authorize with merged pushed params |
+| `POST /oauth2/token` (`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`) | RFC 8693 token exchange — `subject_token`, `requested_token_type`, optional `scope` |
+| `POST /oauth2/backchannel-logout` | Back-channel logout notification (ack stub) |
+
+Use **oauthClientBasic** in Swagger for PAR and token exchange when testing with `demo-client` / `demo-secret`.
+
 ## Swagger UI: "No API definition provided"
 
 Usually **`disable-swagger-default-url: true`** without a default spec URL. Fix: use **`http://localhost:9000/docs`** or **`/swagger-ui/index.html?url=/v3/api-docs/all`**, and ensure `springdoc.swagger-ui.url` is set to `/v3/api-docs/all` in `application.yml`. Restart auth-server after config changes.

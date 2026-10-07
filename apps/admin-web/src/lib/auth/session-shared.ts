@@ -1,37 +1,25 @@
 export const SESSION_COOKIE = "secureone_admin_session";
-export const ADMIN_AUTH_SCHEME = "SecureOne-Admin";
+/** Opaque console session token issued by POST /api/admin/v1/auth/login. */
+export const ADMIN_SESSION_SCHEME = "SecureOne-Admin-Session";
+
+/** 32 random bytes, base64url without padding. */
+const TOKEN_FORMAT = /^[A-Za-z0-9_-]{43}$/;
 
 export type AdminSession = {
-  username: string;
-  password: string;
+  token: string;
 };
 
 export function encodeSession(session: AdminSession): string {
-  return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
+  return session.token;
 }
 
 export function decodeSession(value: string): AdminSession | null {
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as AdminSession;
-    if (!parsed?.username || !parsed?.password) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  return TOKEN_FORMAT.test(value) ? { token: value } : null;
 }
 
-/** Auth header for admin API calls (supports tenantSlug:email usernames). */
+/** Auth header for admin API calls. The password never leaves the login request. */
 export function buildAdminAuthHeader(session: AdminSession): string {
-  const token = Buffer.from(
-    JSON.stringify({ username: session.username, password: session.password }),
-    "utf8",
-  ).toString("base64");
-  return `${ADMIN_AUTH_SCHEME} ${token}`;
-}
-
-/** @deprecated Use buildAdminAuthHeader */
-export function buildBasicAuthHeader(session: AdminSession): string {
-  return buildAdminAuthHeader(session);
+  return `${ADMIN_SESSION_SCHEME} ${session.token}`;
 }
 
 /** Build login username: platform admin or tenantSlug:email */
