@@ -195,5 +195,3 @@ secureone/
 ## Stack
 
 Java 25 · Spring Boot 4 · Spring Authorization Server · PostgreSQL 16 (Flyway, row-level security) · Redis 7 · Next.js 16 · TypeScript · Tailwind. Details: [docs/02](docs/02-tech-stack.md).
-#   s e c u r e o n  
- 

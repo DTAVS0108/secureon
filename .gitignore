@@ -45,7 +45,8 @@ Thumbs.db
 
 # ---- Infra / local data ----
 *.log
-logs/
+# Runtime logs at the top level only (src/**/logs/ are console pages)
+/logs/
 pgdata/
 redisdata/
 docker-compose.override.yml
