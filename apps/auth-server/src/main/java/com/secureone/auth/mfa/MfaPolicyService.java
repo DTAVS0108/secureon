@@ -20,6 +20,7 @@ public class MfaPolicyService {
     private final ApplicationSettingsService applicationSettings;
     private final MfaFactorRepository mfaFactors;
     private final TrustedDeviceService trustedDevices;
+    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
 
     public MfaPolicyService(
             AuthSettingsService authSettings,
@@ -27,7 +28,9 @@ public class MfaPolicyService {
             PlatformSettingsService platformSettings,
             ApplicationSettingsService applicationSettings,
             MfaFactorRepository mfaFactors,
-            TrustedDeviceService trustedDevices) {
+            TrustedDeviceService trustedDevices,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings) {
+        this.effectiveSettings = effectiveSettings;
         this.authSettings = authSettings;
         this.verificationPolicy = verificationPolicy;
         this.platformSettings = platformSettings;
@@ -36,12 +39,17 @@ public class MfaPolicyService {
         this.trustedDevices = trustedDevices;
     }
 
+    /** Authenticator apps are allowed for the application this request is for (platform default otherwise). */
     public boolean totpAvailable() {
-        return authSettings.isAuthMethodEnabled("m_totp") && authSettings.isAuthMethodImplemented("m_totp");
+        return totpAvailable(com.secureone.auth.application.ApplicationSchemaContext.getApplicationId());
     }
 
-    public boolean passkeysAvailable() {
-        return authSettings.isAuthMethodEnabled("m_passkey") && authSettings.isAuthMethodImplemented("m_passkey");
+    public boolean totpAvailable(UUID applicationId) {
+        return effectiveSettings.getObject().isMethodAvailable(applicationId, "m_totp");
+    }
+
+    public boolean passkeysAvailable(UUID applicationId) {
+        return effectiveSettings.getObject().isMethodAvailable(applicationId, "m_passkey");
     }
 
     public String loginMfaRequired(UUID applicationId) {
@@ -129,17 +137,17 @@ public class MfaPolicyService {
         if ("off".equals(mode)) {
             return false;
         }
-        if (requirePasskeyWhenEnrolled(applicationId) && passkeysAvailable() && hasVerifiedPasskey(user.getId())) {
+        if (requirePasskeyWhenEnrolled(applicationId) && passkeysAvailable(applicationId) && hasVerifiedPasskey(user.getId())) {
             return true;
         }
-        if (totpAvailable() && hasVerifiedTotp(user.getId())) {
+        if (totpAvailable(applicationId) && hasVerifiedTotp(user.getId())) {
             return true;
         }
         return false;
     }
 
     public void assertMfaEnrolledIfRequired(UserAccount user, UUID applicationId) {
-        if (!totpAvailable()) {
+        if (!totpAvailable(applicationId)) {
             return;
         }
         if (!"required".equals(loginMfaRequired(applicationId))) {

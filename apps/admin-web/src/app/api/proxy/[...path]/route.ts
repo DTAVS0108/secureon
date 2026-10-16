@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { AUTH_SERVER_URL } from "@/lib/config";
-import { adminAuthHeader } from "@/lib/api/server-auth";
+import { authServerInternalUrl } from "@/lib/config";
+import { adminAuthHeader, forwardedHeadersFrom } from "@/lib/api/server-auth";
 
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
 
@@ -11,10 +11,10 @@ async function forward(request: Request, pathSegments: string[]) {
   }
 
   const incoming = new URL(request.url);
-  const target = new URL(`${AUTH_SERVER_URL}/${pathSegments.join("/")}`);
+  const target = new URL(`${authServerInternalUrl()}/${pathSegments.join("/")}`);
   target.search = incoming.search;
 
-  const headers = new Headers();
+  const headers = new Headers(forwardedHeadersFrom(request.headers));
   headers.set("Authorization", auth);
   const accept = request.headers.get("accept");
   headers.set("Accept", accept ?? "application/json");

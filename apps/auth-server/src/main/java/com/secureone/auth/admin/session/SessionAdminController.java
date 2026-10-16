@@ -4,10 +4,13 @@ import com.secureone.auth.session.LoginHistory;
 import com.secureone.auth.session.LoginHistoryRepository;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.util.JsonMaps;
+import com.secureone.auth.admin.AdminListLimit;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -44,23 +47,30 @@ public class SessionAdminController {
     public List<LoginEventResponse> list(
             @org.springframework.web.bind.annotation.RequestParam(required = false) UUID userId,
             @org.springframework.web.bind.annotation.RequestParam(required = false) UUID applicationId,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID tenantId) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID tenantId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer limit) {
+        Pageable page = AdminListLimit.newest(limit);
         var rows =
                 userId != null
-                        ? repository.findByUserIdOrderByCreatedAtDesc(userId)
+                        ? repository.findByUserIdOrderByCreatedAtDesc(userId, page)
                         : applicationId != null && tenantId != null
                                 ? repository.findByApplicationIdAndTenantIdOrderByCreatedAtDesc(
-                                        applicationId, tenantId)
+                                        applicationId, tenantId, page)
                                 : applicationId != null
-                                        ? repository.findByApplicationIdOrderByCreatedAtDesc(applicationId)
-                                        : repository.findRecent();
-        return rows.stream().map(this::toResponse).toList();
+                                        ? repository.findByApplicationIdOrderByCreatedAtDesc(applicationId, page)
+                                        : repository.findRecent(page);
+        // One lookup per distinct user, not per row.
+        Map<UUID, String> emails = new HashMap<>();
+        return rows.stream().map(row -> toResponse(row, emails)).toList();
     }
 
-    private LoginEventResponse toResponse(LoginHistory row) {
+    private LoginEventResponse toResponse(LoginHistory row, Map<UUID, String> emails) {
         Map<String, Object> geo = row.getGeo() != null ? row.getGeo() : Map.of();
         String email = row.getUserId() != null
-                ? userRepository.findById(row.getUserId()).map(u -> u.getEmail()).orElse(row.getUserId().toString())
+                ? emails.computeIfAbsent(row.getUserId(), id -> userRepository
+                        .findById(id)
+                        .map(u -> u.getEmail())
+                        .orElse(id.toString()))
                 : "unknown";
         String result = switch (row.getResult()) {
             case "SUCCESS" -> "success";

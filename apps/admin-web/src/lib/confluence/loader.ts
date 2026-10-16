@@ -6,10 +6,8 @@ import {
   getConfluencePage,
   type ConfluencePage,
 } from "./catalog";
+import { docsRoot } from "./assets";
 
-function docsRoot(): string {
-  return path.join(process.cwd(), "..", "..", "docs");
-}
 
 export async function docsRootExists(): Promise<boolean> {
   try {
@@ -122,7 +120,7 @@ export async function loadConfluenceDoc(
   if (!page) return null;
 
   const embedDrawio = options?.embedDrawio ?? true;
-  const filePath = path.join(docsRoot(), page.file);
+  const filePath = path.join(/*turbopackIgnore: true*/ docsRoot(), page.file);
   try {
     const raw = await fs.readFile(filePath, "utf8");
     const withDrawio = embedDrawio ? processDrawioEmbeds(raw, page.file) : raw;

@@ -145,7 +145,10 @@ public class ApplicationAdminService {
 
     public void delete(UUID id) {
         Application app = require(id);
+        String schemaName = app.getSchemaName();
         applicationRepository.delete(app);
+        applicationRepository.flush();
+        schemaProvisioner.drop(schemaName);
         auditService.record(
                 app.getTenantId(), "admin", "application.deleted", "application", id, app.getName(), true);
         emailService.sendAdminNotification(id, "Application deleted", "Removed application: " + app.getName());

@@ -18,7 +18,8 @@
       #tenant-wrap { display: none; }
       #federation { margin-top: 1.25rem; display: none; }
       #federation p { font-size: 0.875rem; margin: 0 0 0.5rem; color: #374151; }
-      .fed-btn { display: block; width: 100%; padding: 0.55rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; font-weight: 600; cursor: pointer; }
+      /* Secondary buttons: dark text (the base button style is white text on indigo). */
+      .fed-btn { display: block; width: 100%; padding: 0.55rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; color: #111827; font-weight: 600; cursor: pointer; }
       .fed-btn:hover { background: #f3f4f6; }
       .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.25rem 0; color: #6b7280; font-size: 0.75rem; }
       .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e5e7eb; }
@@ -45,6 +46,19 @@
     <div id="federation">
       <div class="divider">or continue with</div>
       <div id="federation-buttons"></div>
+    </div>
+    <div id="otp-wrap" style="margin-top: 0.75rem; display: none">
+      <button type="button" id="otp-start" class="fed-btn">Sign in with a one-time code</button>
+    </div>
+    <div id="otp-panel" class="panel" hidden>
+      <label for="otp-identifier">Email or mobile number</label>
+      <input id="otp-identifier" autocomplete="username" />
+      <button type="button" id="otp-send" style="margin-top: 0.75rem">Send code</button>
+      <div id="otp-code-wrap" hidden>
+        <label for="otp-code">Code</label>
+        <input id="otp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" />
+        <button type="button" id="otp-verify" style="margin-top: 0.75rem">Verify and sign in</button>
+      </div>
     </div>
     <div id="passkey-wrap" style="margin-top: 0.75rem; display: none">
       <button type="button" id="passkey-signin" class="fed-btn">Sign in with passkey</button>
@@ -73,8 +87,7 @@
       <pre id="session-json">Loading…</pre>
       <p style="margin: 0.5rem 0 0">
         Form login only sets a <code>JSESSIONID</code> cookie — not an OAuth access token. To get a token and
-        <code>/userinfo</code>, use your app&apos;s Sign in button (OAuth) or the
-        <a href="/account/oauth-dev.html">OAuth dev tool</a>.
+        <code>/userinfo</code>, use your app&apos;s Sign in button (OAuth).
       </p>
     </div>
     <div class="links">
@@ -86,13 +99,25 @@
       (function () {
         const CONTINUE_KEY = "secureone:oauth_continue";
         const params = new URLSearchParams(location.search);
+        // Only OAuth endpoints on this server; anything else would make sign-in an open redirect.
+        function isOAuthContinue(value) {
+          if (!value) return false;
+          try {
+            const u = new URL(value, location.origin);
+            return u.origin === location.origin &&
+              (u.pathname === "/oauth2/authorize" || u.pathname === "/oauth2/device_verification");
+          } catch (_) {
+            return false;
+          }
+        }
         let continueUrl = params.get("continue");
-        if (continueUrl && continueUrl.includes("/oauth2/authorize")) {
+        if (isOAuthContinue(continueUrl)) {
           sessionStorage.setItem(CONTINUE_KEY, continueUrl);
           document.getElementById("continue").value = continueUrl;
         } else {
+          continueUrl = null;
           const stored = sessionStorage.getItem(CONTINUE_KEY);
-          if (stored && stored.includes("/oauth2/authorize")) {
+          if (isOAuthContinue(stored)) {
             continueUrl = stored;
             document.getElementById("continue").value = stored;
           }
@@ -164,7 +189,7 @@
         }
         if (banner) {
           if (params.has("signedIn")) {
-            if (continueUrl && continueUrl.includes("/oauth2/authorize")) {
+            if (isOAuthContinue(continueUrl)) {
               banner.textContent = "Signed in — returning to your application…";
               banner.className = "banner success";
               banner.hidden = false;
@@ -195,7 +220,8 @@
                 hint.textContent = "Could not load session profile.";
                 json.textContent = String(e);
               });
-          } else if (continueUrl && continueUrl.includes("/oauth2/authorize")) {
+          } else if (!params.has("error") && isOAuthContinue(continueUrl)) {
+            // Already signed in: go straight back. Not after a failed attempt, which must show its error.
             fetch("/api/v1/auth/me", { credentials: "same-origin" })
               .then((r) => (r.ok ? r.json() : null))
               .then((body) => {
@@ -205,13 +231,33 @@
                 }
               })
               .catch(() => undefined);
+          } else if (params.has("signedOut")) {
+            banner.textContent = "You have been signed out.";
+            banner.className = "banner success";
+            banner.hidden = false;
           } else if (params.get("error") === "expired") {
             banner.textContent =
               "Your password has expired and you cannot sign in. A password reset link has been sent to your email. Use that link to set a new password, or choose Forgot password below.";
             banner.className = "banner error";
             banner.hidden = false;
+          } else if (params.get("error") === "federation") {
+            const reasons = {
+              cancelled: "Sign-in with the external account was cancelled.",
+              unverified_email: "Your external account has no verified email address. Verify an email there, or sign in another way.",
+              expired: "That sign-in attempt expired. Please try again.",
+              not_allowed: "That sign-in option is not available for this application.",
+            };
+            banner.textContent = reasons[params.get("reason")] || "Sign-in with the external account failed. Please try again or use another method.";
+            banner.className = "banner error";
+            banner.hidden = false;
+          } else if (params.get("error") === "mfa_enrollment_required") {
+            banner.textContent =
+              "This application requires multi-factor authentication. Set up an authenticator app in your account, or ask an administrator, then sign in again.";
+            banner.className = "banner error";
+            banner.hidden = false;
           } else if (params.has("error")) {
-            banner.textContent = isAppScoped()
+            // Opened for an app (applicationId or an OAuth request): shoppers have no tenant to check.
+            banner.textContent = appId || continueUrl
               ? "Sign in failed. Check your email and password. If your email is not verified, open the link from your inbox."
               : "Sign in failed. Check tenant slug, email, and password. If your email is not verified, open the link from your inbox or ask an administrator.";
             banner.className = "banner error";
@@ -250,6 +296,10 @@
           fetch("/api/v1/applications/" + encodeURIComponent(appId) + "/signup")
             .then((r) => (r.ok ? r.json() : null))
             .then((opts) => {
+              // No "Create an account" link into a sign-up that is switched off.
+              if (opts && opts.signupEnabled === false) {
+                document.getElementById("signup-link").parentElement.hidden = true;
+              }
               if (opts && opts.applicationName) {
                 document.getElementById("title").textContent = "Sign in to " + opts.applicationName;
                 const subtitle = document.getElementById("subtitle");
@@ -259,6 +309,7 @@
             })
             .catch(() => undefined);
           loadFederationProviders();
+          loadMethods(appId);
         }
 
         if (!appId && !continueUrl) {
@@ -427,7 +478,9 @@
               throw new Error("Passkey sign-in is unavailable.");
             }
             const optsBody = await optsRes.json();
-            const publicKey = JSON.parse(optsBody.publicKey);
+            let publicKey = JSON.parse(optsBody.publicKey);
+            // The server sends navigator.credentials.get() input: { publicKey: {...} }.
+            if (publicKey.publicKey) publicKey = publicKey.publicKey;
             publicKey.challenge = Uint8Array.from(atob(publicKey.challenge.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
               c.charCodeAt(0)
             );
@@ -467,18 +520,90 @@
 
         document.getElementById("passkey-signin").addEventListener("click", signInWithPasskey);
 
-        fetch("/api/v1/auth/methods")
-          .then((r) => r.json())
-          .then((methods) => {
-            const available = methods.filter((m) => m.available).map((m) => m.name);
-            document.getElementById("methods").textContent =
-              "Available: " + (available.length ? available.join(", ") : "none");
-            const passkeyOn = methods.some((m) => m.id === "m_passkey" && m.available);
-            document.getElementById("passkey-wrap").style.display = passkeyOn ? "block" : "none";
-          })
-          .catch(() => {
-            document.getElementById("methods").textContent = "";
+        function showBanner(text, kind) {
+          if (!banner) return;
+          banner.textContent = text;
+          banner.className = "banner " + (kind || "error");
+          banner.hidden = false;
+        }
+
+        // Which options to offer: the application's own settings when the page is for an app.
+        function loadMethods(forAppId) {
+          const url = "/api/v1/auth/methods" + (forAppId ? "?applicationId=" + encodeURIComponent(forAppId) : "");
+          fetch(url)
+            .then((r) => r.json())
+            .then((methods) => {
+              const on = (id) => methods.some((m) => m.id === id && m.available);
+              document.getElementById("passkey-wrap").style.display = on("m_passkey") ? "block" : "none";
+              document.getElementById("magic-link").parentElement.hidden = !on("m_magic");
+              const otpOn = Boolean(forAppId) && (on("m_email_otp") || on("m_sms"));
+              document.getElementById("otp-wrap").style.display = otpOn ? "block" : "none";
+            })
+            .catch(() => undefined);
+        }
+        if (!appId && !continueUrl) {
+          loadMethods(null);
+        }
+
+        // One-time code sign-in (email or SMS), then the same continuation as a password sign-in.
+        let otpChallengeId = null;
+        document.getElementById("otp-start").addEventListener("click", () => {
+          document.getElementById("otp-panel").hidden = false;
+          document.getElementById("otp-identifier").value = document.getElementById("email").value.trim();
+          document.getElementById("otp-identifier").focus();
+        });
+        document.getElementById("otp-send").addEventListener("click", async () => {
+          const app = document.getElementById("applicationId").value.trim();
+          const identifier = document.getElementById("otp-identifier").value.trim();
+          if (!app || !identifier) {
+            showBanner("Enter your email or mobile number.");
+            return;
+          }
+          const res = await fetch("/api/v1/applications/" + encodeURIComponent(app) + "/auth/otp/request", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ identifier: identifier, channel: identifier.includes("@") ? "email" : "sms" }),
           });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showBanner(body.detail || "Could not send a code. Try again.");
+            return;
+          }
+          otpChallengeId = body.challengeId;
+          document.getElementById("otp-code-wrap").hidden = false;
+          document.getElementById("otp-code").focus();
+          showBanner(body.message || "If an account exists, a code has been sent.", "success");
+        });
+        document.getElementById("otp-verify").addEventListener("click", async () => {
+          const app = document.getElementById("applicationId").value.trim();
+          const code = document.getElementById("otp-code").value.trim();
+          if (!otpChallengeId || !code) {
+            showBanner("Enter the code you received.");
+            return;
+          }
+          const res = await fetch("/api/v1/applications/" + encodeURIComponent(app) + "/auth/otp/verify", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ challengeId: otpChallengeId, code: code }),
+          });
+          if (res.status === 204) {
+            const next = new URL(location.href);
+            next.searchParams.set("signedIn", "1");
+            location.replace(next.toString());
+            return;
+          }
+          const body = await res.json().catch(() => ({}));
+          if (res.status === 428 && body.mfaChallengeId) {
+            const next = new URL(location.href);
+            next.searchParams.set("mfa", "1");
+            next.searchParams.set("mfaChallengeId", body.mfaChallengeId);
+            location.replace(next.toString());
+            return;
+          }
+          showBanner(body.detail || "That code is not valid. Check it or request a new one.");
+        });
       })();
     </script>
   </body>

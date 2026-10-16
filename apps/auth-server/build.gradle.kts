@@ -13,8 +13,20 @@ java {
 	}
 }
 
+springBoot {
+	// META-INF/build-info.properties: the release version for /api/info and /actuator/info.
+	buildInfo()
+}
+
 repositories {
 	mavenCentral()
+	// OpenSAML (used by Spring Security's SAML 2.0 service provider) is published only here.
+	maven("https://build.shibboleth.net/maven/releases/") {
+		content {
+			includeGroupByRegex("org[.]opensaml.*")
+			includeGroupByRegex("net[.]shibboleth.*")
+		}
+	}
 }
 
 dependencies {
@@ -27,12 +39,18 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-authorization-server")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.security:spring-security-saml2-service-provider")
+	implementation("org.opensaml:opensaml-saml-api")
+	implementation("org.opensaml:opensaml-saml-impl")
+	// Self-signed SAML SP signing certificate (already on the classpath through OpenSAML).
+	implementation("org.bouncycastle:bcpkix-jdk18on:1.77")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	// Tenant configuration files (configuration as code).
+	implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml")
 	implementation("com.googlecode.libphonenumber:libphonenumber:8.13.50")
-	implementation("com.twilio.sdk:twilio:10.6.4")
 	implementation("software.amazon.awssdk:sns:2.29.51")
 	implementation("dev.samstevens.totp:totp:1.7.1")
 	implementation("com.yubico:webauthn-server-core:2.5.2")

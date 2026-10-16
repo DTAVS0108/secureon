@@ -7,8 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -45,13 +45,11 @@ public class MagicLinkAuthService {
     public Map<String, String> completeAndCreateSession(
             String rawToken, HttpServletRequest request, HttpServletResponse response) {
         Map<String, String> result = accounts.completeMagicLink(rawToken);
-        UserAccount user = users.findByEmailIgnoreCase(result.get("loginEmail")).stream()
-                .findFirst()
-                .orElseThrow();
+        // By id: the same email can exist in several tenants.
+        UserAccount user = users.findById(java.util.UUID.fromString(result.get("userId"))).orElseThrow();
         String tenantSlug = tenantSlugResolver.slugForTenant(user.getTenantId());
         UserDetails details = userDetailsService.buildSessionPrincipal(tenantSlug, user);
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
+        Authentication authentication = SignedInAuthentication.of(details, FactorGrantedAuthority.OTT_AUTHORITY);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);

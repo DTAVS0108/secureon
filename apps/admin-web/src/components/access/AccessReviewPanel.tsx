@@ -13,6 +13,7 @@ import {
   type AccessReviewEntry,
   type AccessReviewFlag,
 } from "@/lib/api/access-governance";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const ROLE_LABELS: Record<AccessReviewEntry["role"], string> = {
   PLATFORM_OPERATOR: "Platform super admin",
@@ -27,10 +28,6 @@ const FLAG_LABELS: Record<AccessReviewFlag, { label: string; tone: BadgeTone }> 
   UNUSED_90_DAYS: { label: "Unused 90+ days", tone: "warning" },
   NO_MFA: { label: "No MFA", tone: "danger" },
 };
-
-function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleDateString() : "—";
-}
 
 function toCsv(rows: AccessReviewEntry[]) {
   const header = [
@@ -154,10 +151,10 @@ export function AccessReviewPanel({ tenantId }: { tenantId?: string }) {
                       : (r.applicationName ?? "—")}
                 </TD>
                 <TD className="text-sm text-soft">
-                  {formatDate(r.grantedAt)}
+                  <LocalTime value={r.grantedAt} />
                   {r.grantedBy && <p className="text-xs text-faint">by {r.grantedBy}</p>}
                 </TD>
-                <TD className="text-sm text-soft">{formatDate(r.lastLoginAt)}</TD>
+                <TD className="text-sm text-soft"><LocalTime value={r.lastLoginAt} /></TD>
                 <TD>
                   <div className="flex flex-wrap gap-1">
                     {r.flags.length === 0 ? (

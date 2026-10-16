@@ -2,6 +2,7 @@ package com.secureone.auth.application;
 
 import com.secureone.auth.authn.IdentifierResolver;
 import com.secureone.auth.admin.ResourceNotFoundException;
+import com.secureone.auth.platform.VerificationPolicyService;
 import com.secureone.auth.tenant.Tenant;
 import com.secureone.auth.tenant.TenantRepository;
 import com.secureone.auth.user.UserAccount;
@@ -9,6 +10,7 @@ import com.secureone.auth.user.UserAccountRepository;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +23,16 @@ public class ApplicationTenantResolver {
     private final TenantRepository tenants;
     private final UserAccountRepository users;
     private final IdentifierResolver identifiers;
+    /** Lazy: the policy service sits above this resolver in the dependency graph. */
+    private final ObjectProvider<VerificationPolicyService> verificationPolicy;
 
     public ApplicationTenantResolver(
             ApplicationRepository applications,
             TenantRepository tenants,
             UserAccountRepository users,
-            IdentifierResolver identifiers) {
+            IdentifierResolver identifiers,
+            ObjectProvider<VerificationPolicyService> verificationPolicy) {
+        this.verificationPolicy = verificationPolicy;
         this.applications = applications;
         this.tenants = tenants;
         this.users = users;
@@ -68,7 +74,8 @@ public class ApplicationTenantResolver {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
         }
-        return identifiers.resolve(requireTenantId(applicationId), identifier);
+        return identifiers.resolve(
+                requireTenantId(applicationId), identifier, verificationPolicy.getObject().defaultPhoneRegion(applicationId));
     }
 
     public Optional<UserAccount> findUserById(UUID userId) {

@@ -1,9 +1,9 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { authServerInternalUrl } from "@/lib/config";
 import { ApiError } from "./http";
-import { adminAuthHeader } from "./server-auth";
+import { adminAuthHeader, requestForwardedHeaders } from "./server-auth";
 
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
 
@@ -16,10 +16,11 @@ export async function apiFetch<T>(
     redirect("/login");
   }
 
-  const url = `${AUTH_SERVER_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const url = `${authServerInternalUrl()}${path.startsWith("/") ? path : `/${path}`}`;
   const baseHeaders: Record<string, string> = {
     Authorization: authorization,
     Accept: "application/json",
+    ...(await requestForwardedHeaders()),
   };
   if (ACT_AS_EMAIL) baseHeaders["X-Act-As-Email"] = ACT_AS_EMAIL;
 

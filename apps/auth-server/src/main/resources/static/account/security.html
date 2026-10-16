@@ -110,7 +110,9 @@
       }
 
       function decodeCreationOptions(publicKeyJson) {
-        const parsed = JSON.parse(publicKeyJson);
+        let parsed = JSON.parse(publicKeyJson);
+        // The server sends navigator.credentials.create() input: { publicKey: {...} }.
+        if (parsed.publicKey) parsed = parsed.publicKey;
         parsed.challenge = Uint8Array.from(atob(parsed.challenge.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
         parsed.user.id = Uint8Array.from(atob(parsed.user.id.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
         if (parsed.excludeCredentials) {
@@ -128,7 +130,12 @@
         ul.innerHTML = "";
         rows.filter((f) => f.type !== "recovery").forEach((f) => {
           const li = document.createElement("li");
-          li.innerHTML = `<span>${f.label || f.type} <small>(${f.verified ? "verified" : "pending"})</small></span>`;
+          // Labels are user-chosen (passkey names): text nodes only, never parsed as HTML.
+          const label = document.createElement("span");
+          const state = document.createElement("small");
+          state.textContent = ` (${f.verified ? "verified" : "pending"})`;
+          label.append(document.createTextNode(f.label || f.type), state);
+          li.appendChild(label);
           if (f.type !== "recovery") {
             const btn = document.createElement("button");
             btn.textContent = "Remove";
@@ -151,7 +158,9 @@
         ul.innerHTML = "";
         (data.sessions || []).forEach((s) => {
           const li = document.createElement("li");
-          li.innerHTML = `<span>${s.current ? "Current session" : "Session"} · ${s.lastAccessedAt || s.createdAt}</span>`;
+          const label = document.createElement("span");
+          label.textContent = `${s.current ? "Current session" : "Session"} · ${s.lastAccessedAt || s.createdAt}`;
+          li.appendChild(label);
           if (!s.current) {
             const btn = document.createElement("button");
             btn.textContent = "Revoke";
@@ -202,7 +211,12 @@
           return;
         }
         try {
-          const opts = await api("/api/v1/account/mfa/passkey/register/options", { method: "POST", body: "{}" });
+          const appParam = new URLSearchParams(location.search).get("applicationId");
+          // The app's name appears in the browser's passkey prompt.
+          const opts = await api("/api/v1/account/mfa/passkey/register/options", {
+            method: "POST",
+            body: JSON.stringify(appParam ? { applicationId: appParam } : {}),
+          });
           const publicKey = decodeCreationOptions(opts.publicKey);
           const cred = await navigator.credentials.create({ publicKey });
           const response = cred.response;

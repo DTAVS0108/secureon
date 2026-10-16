@@ -33,7 +33,7 @@ class AuditServiceTest {
         MDC.put(RequestContext.USER_AGENT, "SecureOne-Test/1.0");
 
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        AuditService service = new AuditService(repository);
+        AuditService service = new AuditService(repository, org.mockito.Mockito.mock(com.secureone.auth.application.ApplicationRepository.class));
 
         service.record(null, null, "ops@example.com", "user.update", "user", null, "Jane", true);
 

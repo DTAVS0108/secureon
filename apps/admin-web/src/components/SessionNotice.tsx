@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAdminContext } from "./AdminContextProvider";
+import { stripBasePath, withBasePath } from "@/lib/config";
 
 /** Start warning this long before the session's absolute end. */
 const WARN_BEFORE_MS = 10 * 60 * 1000;
@@ -25,23 +26,30 @@ function formatRemaining(ms: number) {
 export function SessionNotice() {
   const ctx = useAdminContext();
   const expiresAt = ctx.sessionExpiresAt ? Date.parse(ctx.sessionExpiresAt) : null;
-  const [now, setNow] = useState(() => Date.now());
+  // Time is read in the browser only: server and browser clocks would render different minutes
+  // and break hydration.
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
     if (!expiresAt) return;
-    const timer = window.setInterval(() => {
+    const tick = () => {
       const t = Date.now();
       setNow(t);
       if (t >= expiresAt) {
         window.clearInterval(timer);
-        const here = `${window.location.pathname}${window.location.search}`;
-        window.location.assign(`/login?reason=expired&next=${encodeURIComponent(here)}`);
+        const here = `${stripBasePath(window.location.pathname)}${window.location.search}`;
+        window.location.assign(withBasePath(`/login?reason=expired&next=${encodeURIComponent(here)}`));
       }
-    }, 15000);
-    return () => window.clearInterval(timer);
+    };
+    const first = window.setTimeout(tick, 0);
+    const timer = window.setInterval(tick, 15000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
   }, [expiresAt]);
 
-  const remaining = expiresAt ? expiresAt - now : null;
+  const remaining = expiresAt && now !== null ? expiresAt - now : null;
   const ending = remaining !== null && remaining <= WARN_BEFORE_MS;
 
   if (!ctx.breakGlass && !ending) {

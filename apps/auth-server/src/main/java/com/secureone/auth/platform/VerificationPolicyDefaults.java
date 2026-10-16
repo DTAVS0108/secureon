@@ -13,6 +13,7 @@ public final class VerificationPolicyDefaults {
         policy.put("signup", signupDefaults());
         policy.put("login", loginDefaults());
         policy.put("recovery", recoveryDefaults());
+        policy.put("defaultPhoneRegion", com.secureone.auth.account.PhoneNormalizer.PLATFORM_DEFAULT_REGION);
         return policy;
     }
 
@@ -24,6 +25,16 @@ public final class VerificationPolicyDefaults {
         mergeSection(out, "signup", body.get("signup"));
         mergeSection(out, "login", body.get("login"));
         mergeSection(out, "recovery", body.get("recovery"));
+        // Country for phone numbers typed without +country code (sign-in, sign-up, recovery).
+        Object region = body.get("defaultPhoneRegion");
+        if (region != null && !region.toString().isBlank()) {
+            String normalized = com.secureone.auth.account.PhoneNormalizer.normalizeRegion(region.toString());
+            if (normalized == null) {
+                throw new IllegalArgumentException(
+                        "Unknown phone country code: " + region + " (use an ISO code such as IN or US).");
+            }
+            out.put("defaultPhoneRegion", normalized);
+        }
         clampOtpFields(out, "signup");
         clampOtpFields(out, "login");
         clampOtpFields(out, "recovery");

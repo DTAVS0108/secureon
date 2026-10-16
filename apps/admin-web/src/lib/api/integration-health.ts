@@ -1,4 +1,4 @@
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 
 export type IntegrationHealthResult = {
   id: string;
@@ -42,7 +42,7 @@ async function probe(
 export async function runIntegrationHealthChecks(
   applicationId: string,
 ): Promise<IntegrationHealthResult[]> {
-  const base = AUTH_SERVER_URL;
+  const base = publicAuthServerUrl();
   const appBase = `${base}/api/v1/applications/${applicationId}`;
   return Promise.all([
     probe("info", "Auth server", () => fetch(`${base}/api/info`)),

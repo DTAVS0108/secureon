@@ -10,6 +10,7 @@ type TenantDto = {
   userCount: number;
   appCount: number;
   createdAt: string;
+  system?: boolean;
 };
 
 function mapTenant(dto: TenantDto): Tenant {
@@ -22,6 +23,7 @@ function mapTenant(dto: TenantDto): Tenant {
     userCount: dto.userCount,
     appCount: dto.appCount,
     createdAt: dto.createdAt,
+    system: dto.system === true,
   };
 }
 

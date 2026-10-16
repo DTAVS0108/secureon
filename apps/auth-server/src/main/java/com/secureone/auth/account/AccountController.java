@@ -125,7 +125,9 @@ public class AccountController {
                     <p><a href="/login.html">Go to login</a></p>
                     </body></html>
                     """
-                    .formatted(result.get("message"), result.get("loginUsername"));
+                    .formatted(
+                            escapeHtml(String.valueOf(result.get("message"))),
+                            escapeHtml(String.valueOf(result.get("loginUsername"))));
         } catch (Exception ex) {
             return "<html><body><h1>Invalid or expired magic link</h1></body></html>";
         }

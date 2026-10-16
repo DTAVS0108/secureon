@@ -35,7 +35,9 @@ final class ApplicationLogSpecifications {
                     predicates.add(cb.equal(root.get("applicationId"), filter.applicationId()));
                 }
             }
-            if (filter.tenantId() != null) {
+            // An application belongs to one tenant, so with an app filter the tenant one adds nothing and
+            // would only drop that app's lines logged outside a tenant context (platform operators).
+            if (filter.tenantId() != null && filter.applicationId() == null) {
                 if (filter.includeUnscoped()) {
                     predicates.add(cb.or(
                             cb.equal(root.get("tenantId"), filter.tenantId()),

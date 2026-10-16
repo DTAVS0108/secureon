@@ -4,14 +4,14 @@
 
 **Not this guide?**
 
-- Building a product frontend (e.g. Flipkart) and need signup/login APIs → **[23 — Application integration guide](23-application-integration-guide.md)**
+- Building a product frontend (e.g. an online store) and need signup/login APIs → **[23 — Application integration guide](23-application-integration-guide.md)**
 - Deploying SecureOne with Docker images + env, or enterprise from source/Helm → **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)**
 
 ---
 
 ## What is SecureOne?
 
-SecureOne is a **central identity platform** (like Keycloak or Auth0, but self-hosted). Your applications do **not** store passwords or issue their own login tokens. Instead they delegate to SecureOne:
+SecureOne is a **central identity platform** (an identity provider you host yourself). Your applications do **not** store passwords or issue their own login tokens. Instead they delegate to SecureOne:
 
 | SecureOne provides | Your apps get |
 |--------------------|---------------|
@@ -26,7 +26,7 @@ SecureOne is a **central identity platform** (like Keycloak or Auth0, but self-h
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   admin-web     │     │   auth-server    │     │  PostgreSQL     │
-│   :3001         │────▶│   :9000          │────▶│  + Redis        │
+│   :9000/admin   │────▶│   :9000          │────▶│  + Redis        │
 │ Admin console   │     │ OAuth, APIs,     │     │ Users, tokens,  │
 │ + Confluence    │     │ hosted login UI  │     │ per-app schemas │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
@@ -37,10 +37,10 @@ SecureOne is a **central identity platform** (like Keycloak or Auth0, but self-h
 
 | Component | URL (dev) | Who uses it |
 |-----------|-----------|-------------|
-| **admin-web** | http://localhost:3001 | Platform admins, tenant admins, app operators |
+| **admin-web** | http://localhost:9000/admin | Platform admins, tenant admins, app operators |
 | **auth-server** | http://localhost:9000 | End-user login, OAuth, public account APIs |
 | **Swagger / OpenAPI** | http://localhost:9000/docs | API exploration |
-| **SecureOne Confluence** | http://localhost:3001/confluence | In-app documentation browser |
+| **SecureOne Confluence** | http://localhost:9000/admin/confluence | In-app documentation browser |
 | **MailHog** (dev email) | http://localhost:8025 | Catches verification/reset emails |
 
 ---
@@ -49,12 +49,12 @@ SecureOne is a **central identity platform** (like Keycloak or Auth0, but self-h
 
 | Term | Meaning |
 |------|---------|
-| **Tenant** | An organization (e.g. `acme`, `flipkart`). Users belong to a tenant. |
-| **Application (product)** | A product registered in SecureOne (e.g. “Flipkart Web”, “Billing Portal”). Has its own roles, permissions, and database schema. |
+| **Tenant** | An organization (e.g. `acme`, `demostore`). Users belong to a tenant. |
+| **Application (product)** | A product registered in SecureOne (e.g. “Demo Store Web”, “Billing Portal”). Has its own roles, permissions, and database schema. |
 | **OAuth client** | Protocol credentials (`client_id`, redirect URIs) used to obtain tokens. One application can have several clients (web, mobile, M2M). |
 | **Platform super-admin** | Runs the whole deployment. Dev login: `admin` / `admin` (no tenant slug). |
 | **Tenant admin** | Manages users and apps inside one tenant. Login: `tenantSlug:email`. |
-| **End user** | Someone who signs into your product (e.g. a Flipkart customer). |
+| **End user** | Someone who signs into your product (e.g. a Demo Store customer). |
 | **Hosted UI** | SecureOne’s built-in pages (`login.html`, `signup.html`, …) on auth-server. |
 | **Native / custom UI** | Your own frontend calls SecureOne APIs directly. |
 
@@ -103,7 +103,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3001** and sign in as platform super-admin: **`admin` / `admin`**.
+Open **http://localhost:9000/admin**. In local development you can sign in with the emergency account **`admin` / `admin`** (Emergency access). On a new installation without any platform operator, the sign-in page links to **first-run setup** (`/admin/setup`): enter the setup code from the auth-server log and create your named operator account; see [24 — First-run setup](24-deployment-image-env-and-enterprise.md#1-first-run-setup-create-the-first-operator).
 
 ### Step 4 — Environment variables (reference)
 
@@ -126,28 +126,28 @@ Follow this sequence once after install. It mirrors a real onboarding.
 ### 1. Create a tenant
 
 1. Admin → **Tenants** → **+ Add tenant**
-2. Name: `Flipkart` (example), slug: `flipkart`
-3. Note the **tenant slug** — users sign in as `flipkart:user@example.com` when using hosted login
+2. Name: `Demo Store` (example), slug: `demostore`
+3. Note the **tenant slug** — users sign in as `demostore:user@example.com` when using hosted login
 
 ### 2. Register an application + OAuth client
 
 1. Admin → **Applications** → **+ Register application & OAuth client**
-2. **Application:** tenant = Flipkart, name = `Flipkart Web`, slug = `flipkart-web`
-3. **OAuth client:** type = SPA or Web, client ID = `flipkart-web`, redirect URI = `http://localhost:5173/callback`, PKCE enabled
+2. **Application:** tenant = Demo Store, name = `Demo Store Web`, slug = `demostore-web`
+3. **OAuth client:** type = SPA or Web, client ID = `demostore-web`, redirect URI = `http://localhost:5173/callback`, PKCE enabled
 4. **Copy** the application UUID and client secret (if confidential)
 
-SecureOne provisions a dedicated PostgreSQL schema (`flipkart_web`) and seeds default roles.
+SecureOne provisions a dedicated PostgreSQL schema (`demostore_web`) and seeds default roles.
 
 ### 3. Create a test user
 
-1. **Tenants** → open Flipkart → **+ Add user**
+1. **Tenants** → open Demo Store → **+ Add user**
 2. Email: `customer@example.com`, status Active
 3. **Grant access** → assign a role (e.g. Tenant User or app-scoped role)
-4. **Applications** → Flipkart Web console → **Users** → set password
+4. **Applications** → Demo Store Web console → **Users** → set password
 
 ### 4. Configure the application
 
-Open **Application console → Settings** for Flipkart Web:
+Open **Application console → Settings** for Demo Store Web:
 
 | Tab | What to configure |
 |-----|-------------------|
@@ -163,7 +163,7 @@ Open **Application console → Settings** for Flipkart Web:
 | Test | How |
 |------|-----|
 | Hosted login | Open `http://localhost:9000/login.html?applicationId={your-app-uuid}` |
-| Admin as tenant user | Sign out → login with `flipkart:customer@example.com` |
+| Admin as tenant user | Sign out → login with `demostore:customer@example.com` |
 | OAuth PKCE | Run `.\scripts\test-external-client.ps1` or use sample client |
 | Email | Trigger password reset → check http://localhost:8025 |
 
@@ -175,7 +175,7 @@ Open **Application console → Settings** for Flipkart Web:
 
 ```mermaid
 flowchart LR
-  subgraph your_app [Your application e.g. Flipkart]
+  subgraph your_app [Your application e.g. Demo Store]
     FE[Frontend]
     BE[Backend API]
   end
@@ -209,7 +209,7 @@ Detail: [11 — Admin control](11-admin-control.md), [14 — Application RBAC](1
 ### Database layout
 
 - **`platform` schema** — tenants, application registry, OAuth clients, global identity
-- **`{app_slug}` schema** — per-application roles, permissions, settings, audit (e.g. `flipkart_web`)
+- **`{app_slug}` schema** — per-application roles, permissions, settings, audit (e.g. `demostore_web`)
 
 Detail: [06 — Database strategy](06-database.md), [17 — Schemas & tables](17-database-schemas-and-tables.md).
 
@@ -238,6 +238,10 @@ Detail: [06 — Database strategy](06-database.md), [17 — Schemas & tables](17
 | Configure SMTP | App settings → Notifications |
 | View audit | Application console → Audit / Platform audit |
 | Impersonate user (support) | Application console → Users → Impersonate (time-boxed) |
+| Hosted or native sign-in for an app | App settings → Integration → Authentication UI (published in the manifest as `authUiMode`) |
+| Company SSO (SAML) | App settings → Authentication → Add provider → SAML 2.0 → give the IdP the SP values shown ([23](23-application-integration-guide.md#enterprise-sso-saml-20)) |
+| Sign-in on TVs / CLIs | Applications → OAuth client → Grant types → `device_code` ([23](23-application-integration-guide.md#device-sign-in-tvs-consoles-clis--rfc-8628)) |
+| Rotate signing keys | [Key rotation runbook](runbooks/key-rotation.md) |
 
 ### Email in development
 
@@ -290,7 +294,7 @@ Detail: [07 — Security](07-security.md), [runbooks/deploy.md](runbooks/deploy.
 | Goal | Document |
 |------|----------|
 | Image+env deploy or enterprise from source | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
-| Wire a Flipkart-style frontend | **[23 — Application integration guide](23-application-integration-guide.md)** |
+| Wire your own frontend | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | Hosted vs custom login UI | [13 — Auth UI integration](13-auth-ui-integration.md) |
 | Signup, OTP, phone auth | [19 — Verification & OTP](19-verification-and-otp.md) |
 | OAuth clients & schemas | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
@@ -307,10 +311,10 @@ Install:     docker compose -f deploy/docker-compose.yml up -d
              cd apps/auth-server && .\gradlew.bat bootRun
              cd apps/admin-web && npm run dev
 
-Admin UI:    http://localhost:3001  (admin / admin)
+Admin UI:    http://localhost:9000/admin  (admin / admin)
 Auth server: http://localhost:9000
 API docs:    http://localhost:9000/docs
-Docs UI:     http://localhost:3001/confluence
+Docs UI:     http://localhost:9000/admin/confluence
 Mail (dev):  http://localhost:8025
 
 Tenant login format:  {tenantSlug}:{email}

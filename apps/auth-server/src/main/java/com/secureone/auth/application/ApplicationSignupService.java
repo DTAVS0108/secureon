@@ -2,11 +2,12 @@ package com.secureone.auth.application;
 
 import com.secureone.auth.account.AccountNotificationService;
 import com.secureone.auth.account.AccountVerificationService;
+import com.secureone.auth.account.PasswordPolicyService;
 import com.secureone.auth.account.PhoneNormalizer;
 import com.secureone.auth.account.UserPasswordService;
-import com.secureone.auth.admin.ConflictException;
 import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.audit.AuditService;
+import com.secureone.auth.platform.VerificationPolicyService;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.webhook.UserLifecycleWebhookPublisher;
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Self-service registration for end users of a registered application (e.g. a Flipkart-style client
+ * Self-service registration for end users of a registered application (e.g. an online-store client
  * integrated via the public API).
  */
 @Service
@@ -36,6 +37,9 @@ public class ApplicationSignupService {
     private final AuditService auditService;
     private final UserLifecycleWebhookPublisher userLifecycleWebhooks;
     private final String publicBaseUrl;
+    private final PasswordPolicyService passwordPolicy;
+    private final ApplicationSettingsService settings;
+    private final VerificationPolicyService verificationPolicy;
 
     public ApplicationSignupService(
             ApplicationRepository applications,
@@ -47,7 +51,13 @@ public class ApplicationSignupService {
             AccountVerificationService accountVerification,
             AuditService auditService,
             UserLifecycleWebhookPublisher userLifecycleWebhooks,
-            @Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl) {
+            @Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl,
+            PasswordPolicyService passwordPolicy,
+            ApplicationSettingsService settings,
+            VerificationPolicyService verificationPolicy) {
+        this.verificationPolicy = verificationPolicy;
+        this.passwordPolicy = passwordPolicy;
+        this.settings = settings;
         this.applications = applications;
         this.users = users;
         this.memberships = memberships;
@@ -87,9 +97,31 @@ public class ApplicationSignupService {
         ensureSignupAllowed(applicationId);
 
         String email = ApplicationConsumerAuth.normalizeEmail(request.email());
+        // Input checks come first so a taken email or phone gets the same 400s as a new one.
+        passwordPolicy.validate(request.password(), applicationId);
+        String phone = null;
+        if (request.phone() != null && !request.phone().isBlank()) {
+            phone = PhoneNormalizer.toE164(request.phone(), verificationPolicy.defaultPhoneRegion(applicationId));
+            if (phone == null) {
+                throw new IllegalArgumentException("Invalid phone number.");
+            }
+        }
+        // A taken email or phone answers exactly like a new sign-up (anyone could otherwise test which
+        // emails and numbers have accounts), changes nothing, and the inbox owner is told instead.
         var existing = users.findByTenantIdAndEmail(app.getTenantId(), email);
         if (existing.isPresent()) {
-            return linkExistingUserToApplication(app, applicationId, existing.get(), email);
+            accountNotifications.notifySignupWithExistingEmail(applicationId, existing.get(), forgotPasswordLink(applicationId));
+            return signupResponse(email, accountVerification.decoySignupVerification(
+                    applicationId, request.verificationMode(), request.verificationChannel(), email, phone));
+        }
+        if (phone != null && users.findByTenantIdAndPhone(app.getTenantId(), phone).isPresent()) {
+            accountNotifications.notifySignupPhoneInUse(
+                    applicationId,
+                    email,
+                    resolveDisplayName(request.firstName(), request.lastName(), request.displayName(), email),
+                    publicBaseUrl + "/account/signup.html?applicationId=" + applicationId);
+            return signupResponse(email, accountVerification.decoySignupVerification(
+                    applicationId, request.verificationMode(), request.verificationChannel(), email, phone));
         }
 
         UserAccount user = new UserAccount();
@@ -99,14 +131,7 @@ public class ApplicationSignupService {
         user.setDisplayName(resolveDisplayName(request.firstName(), request.lastName(), request.displayName(), email));
         user.setEmailVerified(false);
         user.setPhoneVerified(false);
-        if (request.phone() != null && !request.phone().isBlank()) {
-            String phone = PhoneNormalizer.toE164(request.phone(), "US");
-            if (phone == null) {
-                throw new IllegalArgumentException("Invalid phone number.");
-            }
-            users.findByTenantIdAndPhone(app.getTenantId(), phone).ifPresent(phoneTaken -> {
-                throw new ConflictException("An account with this phone number already exists.");
-            });
+        if (phone != null) {
             user.setPhone(phone);
         }
         user.setStatus("ACTIVE");
@@ -132,15 +157,19 @@ public class ApplicationSignupService {
 
         userLifecycleWebhooks.userCreated(user, applicationId, "self_registration");
 
+        return signupResponse(email, verification);
+    }
+
+    /** One response shape for every sign-up outcome (no user id: a refused duplicate has none to give). */
+    private static Map<String, Object> signupResponse(String email, Map<String, Object> verification) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put(
                 "message",
                 "otp".equals(verification.get("mode"))
                         ? "Account created. Enter the verification code sent to your "
-                                + verification.getOrDefault("channel", "email")
+                                + ("sms".equals(verification.get("channel")) ? "phone" : "email")
                                 + "."
                         : "Account created. Check your inbox for a verification link, then sign in with your email and password.");
-        response.put("userId", user.getId().toString());
         response.put("loginEmail", email);
         response.put("emailVerificationRequired", true);
         response.put("verificationSent", true);
@@ -151,41 +180,13 @@ public class ApplicationSignupService {
         return response;
     }
 
-    private Map<String, Object> linkExistingUserToApplication(
-            Application app, UUID applicationId, UserAccount user, String email) {
-        if (memberships.isMember(applicationId, user.getId())) {
-            throw new ConflictException(
-                    "An account with this email already exists for this application. Try signing in or reset your password.");
+    /** The app's own forgot-password page when it has one, otherwise the hosted page. */
+    private String forgotPasswordLink(UUID applicationId) {
+        Object configured = settings.publicClientUrls(applicationId).get("forgotPassword");
+        if (configured != null && !configured.toString().isBlank()) {
+            return configured.toString().trim();
         }
-        memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
-        if (!user.isEmailVerified()) {
-            accountNotifications.sendVerificationEmail(applicationId, user, "signup");
-        }
-        auditService.record(
-                app.getTenantId(),
-                applicationId,
-                email,
-                "user.application_joined",
-                "user_account",
-                user.getId(),
-                email,
-                true);
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put(
-                "message",
-                "You already have an account. We granted access to "
-                        + app.getName()
-                        + " — sign in with your existing email and password.");
-        response.put("userId", user.getId().toString());
-        response.put("loginEmail", email);
-        response.put("existingAccountLinked", true);
-        response.put("emailVerificationRequired", !user.isEmailVerified());
-        response.put("verificationEmailSent", !user.isEmailVerified());
-        response.put(
-                "devMailInboxHint",
-                "Local dev: open http://localhost:8025 (MailHog) if the message is not in your real inbox.");
-        return response;
+        return publicBaseUrl + "/account/forgot-password.html?applicationId=" + applicationId;
     }
 
     private void ensureSignupAllowed(UUID applicationId) {
@@ -195,10 +196,12 @@ public class ApplicationSignupService {
                     "Sign-up is not enabled for this application. Ask the app administrator to enable the Self Registration feature flag.");
         }
         if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_password")) {
-            throw new IllegalStateException("Password sign-up is not available for this application.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Password sign-up is not available for this application.");
         }
         if (!effectiveSettings.isAuthMethodImplemented(applicationId, "m_password")) {
-            throw new IllegalStateException("Password sign-up is not available for this application.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Password sign-up is not available for this application.");
         }
     }
 

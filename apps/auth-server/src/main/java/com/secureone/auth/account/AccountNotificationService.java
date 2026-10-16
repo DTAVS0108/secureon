@@ -89,7 +89,8 @@ public class AccountNotificationService {
     public Map<String, String> requestMagicLinkForApplication(UUID applicationId, String email) {
         if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_magic")
                 || !effectiveSettings.isAuthMethodImplemented(applicationId, "m_magic")) {
-            throw new IllegalStateException("Magic link login is disabled for this application.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Magic link login is disabled for this application.");
         }
         applicationTenants.findUserByEmail(applicationId, email).ifPresent(user -> sendMagicLinkEmail(applicationId, user));
         return Map.of("message", "If an account exists for that email, a sign-in link has been sent.");
@@ -99,15 +100,28 @@ public class AccountNotificationService {
     @Deprecated
     public Map<String, String> requestMagicLink(String tenantSlug, String email) {
         if (!authSettings.isAuthMethodEnabled("m_magic") || !authSettings.isAuthMethodImplemented("m_magic")) {
-            throw new IllegalStateException("Magic link login is disabled.");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Magic link login is disabled.");
         }
         resolveUserOptional(tenantSlug, email).ifPresent(user -> sendMagicLinkEmail(null, user));
         return Map.of("message", "If an account exists for that email, a sign-in link has been sent.");
     }
 
+    public void notifySignupWithExistingEmail(UUID applicationId, UserAccount owner, String resetLink) {
+        mail.sendSignupAccountExists(applicationId, owner, resetLink);
+    }
+
+    public void notifySignupPhoneInUse(UUID applicationId, String email, String name, String signupLink) {
+        mail.sendSignupPhoneInUse(applicationId, email, name, signupLink);
+    }
+
     public Map<String, String> completeMagicLink(String rawToken) {
         var token = emailTokens.requireValid(rawToken, EmailTokenType.MAGIC_LINK);
         UserAccount user = users.findById(token.getUserId()).orElseThrow();
+        // A link sent before the account was suspended or disabled must not sign it in.
+        if (!"ACTIVE".equalsIgnoreCase(user.getStatus()) && !"PENDING".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalArgumentException("This sign-in link is no longer valid.");
+        }
         emailTokens.consume(token);
         user.setLastLoginAt(java.time.Instant.now());
         user.setEmailVerified(true);
@@ -116,9 +130,11 @@ public class AccountNotificationService {
         }
         mail.sendAdminSecurityAlert(
                 null, user, "Magic link sign-in", "User " + user.getEmail() + " signed in via magic link.");
-        return Map.of(
-                "message", "Signed in successfully.",
-                "loginEmail", user.getEmail());
+        Map<String, String> result = new java.util.HashMap<>();
+        result.put("message", "Signed in successfully.");
+        result.put("loginEmail", user.getEmail());
+        result.put("userId", user.getId().toString());
+        return result;
     }
 
     public Map<String, String> setPasswordFromInvite(String rawToken, String newPassword) {

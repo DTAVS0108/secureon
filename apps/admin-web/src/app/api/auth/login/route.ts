@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { authServerInternalUrl } from "@/lib/config";
+import { forwardedHeadersFrom } from "@/lib/api/server-auth";
 import { readJson, sessionResponse } from "@/lib/auth/session-cookie";
 
 type LoginResult = {
@@ -28,11 +29,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ detail: "Username and password are required." }, { status: 400 });
   }
 
-  const res = await fetch(`${AUTH_SERVER_URL}/api/admin/v1/auth/login`, {
+  const res = await fetch(`${authServerInternalUrl()}/api/admin/v1/auth/login`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      // Per-client sign-in rate limit and audit IP (single image only; see server-auth.ts).
+      ...forwardedHeadersFrom(request.headers),
     },
     body: JSON.stringify({
       tenantSlug: body.tenantSlug?.trim() || undefined,

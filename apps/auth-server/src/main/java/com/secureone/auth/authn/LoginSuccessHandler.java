@@ -47,6 +47,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final AccountLockoutService lockout;
     private final MfaLoginService mfaLogin;
     private final ObjectProvider<WebhookEventPublisher> webhookPublisher;
+    private final SignInApplicationResolver signInApplication;
 
     public LoginSuccessHandler(
             RequestCache requestCache,
@@ -59,7 +60,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             TenantRepository tenants,
             AccountLockoutService lockout,
             MfaLoginService mfaLogin,
-            ObjectProvider<WebhookEventPublisher> webhookPublisher) {
+            ObjectProvider<WebhookEventPublisher> webhookPublisher,
+            SignInApplicationResolver signInApplication) {
+        this.signInApplication = signInApplication;
         this.requestCache = requestCache;
         this.userDetailsService = userDetailsService;
         this.users = users;
@@ -97,7 +100,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     public void recordSuccessfulLogin(HttpServletRequest request, Authentication authentication) {
         String username = authentication.getName();
-        AuthRequestContext.enrichForLogin(request, username, tenants);
+        AuthRequestContext.enrichForLogin(request, username, tenants, signInApplication.current());
         if (username == null || !username.contains(":")) {
             return;
         }
@@ -161,6 +164,11 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         if (requested == null) {
             requested = ApplicationSchemaContext.getApplicationId();
         }
+        // The authorization request this sign-in completes names the app authoritatively.
+        UUID signingInTo = signInApplication.current();
+        if (signingInTo != null) {
+            requested = signingInTo;
+        }
         if (requested != null) {
             UUID candidate = requested;
             return applications.findById(candidate)
@@ -178,8 +186,16 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     public void onAuthenticationSuccess(
             HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException, ServletException {
-        UUID applicationId = parseApplicationId(request);
-        if (applicationId != null && mfaLogin.shouldChallengeFormLogin(authentication, applicationId, request)) {
+        // The app the sign-in is for decides MFA; a missing or crafted form field must not skip it.
+        UUID applicationId = signInApplication.current();
+        if (mfaLogin.enrollmentRequiredButMissing(authentication, applicationId)) {
+            mfaLogin.clearSession(request, response);
+            String url = "/login.html?error=mfa_enrollment_required"
+                    + (applicationId != null ? "&applicationId=" + applicationId : "");
+            getRedirectStrategy().sendRedirect(request, response, url);
+            return;
+        }
+        if (mfaLogin.shouldChallengeFormLogin(authentication, applicationId, request)) {
             int sep = authentication.getName().indexOf(':');
             UserAccount account = userDetailsService.resolveAccount(
                     authentication.getName().substring(0, sep), authentication.getName().substring(sep + 1));
@@ -188,8 +204,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             mfaLogin.clearSession(request, response);
             String mfaUrl = "/login.html?mfa=1&mfaChallengeId="
                     + URLEncoder.encode(challenge.mfaChallengeId().toString(), StandardCharsets.UTF_8)
-                    + "&applicationId="
-                    + URLEncoder.encode(applicationId.toString(), StandardCharsets.UTF_8);
+                    + (applicationId != null
+                            ? "&applicationId=" + URLEncoder.encode(applicationId.toString(), StandardCharsets.UTF_8)
+                            : "");
             getRedirectStrategy().sendRedirect(request, response, mfaUrl);
             return;
         }
@@ -197,15 +214,4 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         finishLogin(request, response, authentication);
     }
 
-    private static UUID parseApplicationId(HttpServletRequest request) {
-        String raw = request.getParameter("applicationId");
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return UUID.fromString(raw.trim());
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
 }

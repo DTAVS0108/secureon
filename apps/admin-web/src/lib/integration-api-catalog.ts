@@ -1,4 +1,4 @@
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 
 export type ApiField = {
   name: string;
@@ -40,7 +40,7 @@ function json(value: unknown): string {
 }
 
 export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationApiEndpoint[] {
-  const base = AUTH_SERVER_URL;
+  const base = publicAuthServerUrl();
   const { applicationId, clientId = "{clientId}", tenantSlug = "{tenantSlug}" } = ctx;
 
   return [
@@ -367,19 +367,22 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       group: "Profile",
       method: "GET",
       path: `${base}/userinfo`,
-      description: "Standard OIDC userinfo claims for the signed-in user.",
+      description:
+        "OIDC userinfo claims for the signed-in user, plus their roles and permissions in this application (same as the access token).",
       authUiMode: "both",
       auth: "Authorization: Bearer {access_token}",
       responses: [
         {
           status: 200,
-          description: "OIDC claims",
+          description: "OIDC claims with application roles and permissions",
           example: json({
-            sub: "00000000-0000-0000-0000-000000000001",
+            sub: `${tenantSlug}:user@example.com`,
             email: "user@example.com",
             email_verified: true,
             name: "Jane Doe",
             preferred_username: `${tenantSlug}:user@example.com`,
+            roles: ["Member", "Order approver"],
+            permissions: ["orders:approve", "user:read"],
           }),
         },
         { status: 401, description: "Missing or invalid access token" },
@@ -766,7 +769,7 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       group: "Sign-in",
       method: "GET",
       path: `${base}/api/v1/auth/federation/providers?applicationId=${applicationId}`,
-      description: "List enabled social/OIDC federation providers for login buttons.",
+      description: "List enabled federation providers (Google, GitHub, OIDC, SAML 2.0) for sign-in buttons.",
       authUiMode: "both",
       auth: "None (public)",
       responses: [
@@ -778,9 +781,107 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
               alias: "google",
               type: "GOOGLE",
               displayName: "Google",
-              loginUrl: `/api/v1/auth/federation/google/start?applicationId=${applicationId}`,
+              authMethodId: "m_google",
+              startUrl: "/api/v1/auth/federation/google/start",
             },
+            { alias: "corp-sso", type: "SAML", displayName: "Corp SSO", authMethodId: "m_saml", startUrl: "/api/v1/auth/federation/corp-sso/start" },
           ]),
+        },
+      ],
+    },
+    {
+      id: "federation-start",
+      group: "Sign-in",
+      method: "GET",
+      path: `${base}/api/v1/auth/federation/{alias}/start?applicationId=${applicationId}&continue={authorizeUrl}`,
+      description:
+        "Start sign-in with a provider: OAuth/OIDC redirect, or a signed SAML AuthnRequest (redirect or auto-POST form). Open it in the browser (top-level navigation).",
+      authUiMode: "both",
+      auth: "None (browser)",
+      notes: [
+        "continue must be a /oauth2/authorize URL on SecureOne (anything else is ignored).",
+        "Failures come back to /login.html?error=federation&reason=expired|failed|not_allowed|unverified_email.",
+      ],
+      responses: [{ status: 302, description: "To the IdP (or 200 auto-POST form for SAML HTTP-POST binding)" }],
+    },
+    {
+      id: "saml-sp-metadata",
+      group: "Sign-in",
+      method: "GET",
+      path: `${base}/api/v1/auth/federation/saml/{alias}/metadata?applicationId=${applicationId}`,
+      description: "SAML SP metadata to import at the company IdP: entity ID, ACS (HTTP-POST), single logout, signing + encryption certificate.",
+      authUiMode: "both",
+      auth: "None (public)",
+      responses: [{ status: 200, description: "application/xml EntityDescriptor" }],
+    },
+    {
+      id: "saml-logout",
+      group: "Sign-in",
+      method: "GET",
+      path: `${base}/api/v1/auth/federation/saml/logout`,
+      description:
+        "End the SecureOne session; for a SAML session also sign out at the IdP (single logout). OIDC apps get the same through /connect/logout.",
+      authUiMode: "both",
+      auth: "Session cookie (browser)",
+      responses: [{ status: 302, description: "To the IdP's logout endpoint, then /login.html?signedOut=1" }],
+    },
+    {
+      id: "device-authorization",
+      group: "Devices",
+      method: "POST",
+      path: `${base}/oauth2/device_authorization`,
+      description: "RFC 8628: a TV app or CLI asks for a code the user enters at verification_uri on another device.",
+      authUiMode: "both",
+      auth: "client_id (public device client) or client secret",
+      contentType: "application/x-www-form-urlencoded",
+      requestFields: [
+        { name: "client_id", type: "string", required: true, description: "OAuth client with the device_code grant" },
+        { name: "scope", type: "string", description: "e.g. profile email (openid is not allowed in this flow)" },
+      ],
+      requestExample: `client_id=${clientId}&scope=profile%20email`,
+      responses: [
+        {
+          status: 200,
+          description: "Codes",
+          example: json({
+            device_code: "…",
+            user_code: "WDJB-MJHT",
+            verification_uri: `${base}/account/device.html`,
+            verification_uri_complete: `${base}/account/device.html?user_code=WDJB-MJHT`,
+            expires_in: 600,
+            interval: 5,
+          }),
+        },
+      ],
+    },
+    {
+      id: "device-token",
+      group: "Devices",
+      method: "POST",
+      path: `${base}/oauth2/token`,
+      description: "Device polls every `interval` seconds until the user allows or denies on /account/device.html.",
+      authUiMode: "both",
+      auth: "client_id (public) or client secret",
+      contentType: "application/x-www-form-urlencoded",
+      requestExample: `grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code={device_code}&client_id=${clientId}`,
+      responses: [
+        { status: 400, description: "authorization_pending | slow_down | access_denied | expired_token" },
+        { status: 200, description: "access_token + refresh_token (no id_token); the device code is single use" },
+      ],
+    },
+    {
+      id: "protected-resource-metadata",
+      group: "Discovery",
+      method: "GET",
+      path: `${base}/.well-known/oauth-protected-resource`,
+      description: "RFC 9728 metadata for SecureOne's own bearer APIs (authorization server, JWKS, bearer in header).",
+      authUiMode: "both",
+      auth: "None (public)",
+      responses: [
+        {
+          status: 200,
+          description: "Metadata",
+          example: json({ resource: base, authorization_servers: [base], jwks_uri: `${base}/oauth2/jwks`, bearer_methods_supported: ["header"] }),
         },
       ],
     },

@@ -13,20 +13,22 @@ For a shorter first-time walkthrough, see [09 â€” Installation](09-installa
 | **PostgreSQL** | `5432` | System of record (`platform` + per-app schemas) |
 | **Redis** | `6379` | Sessions, cache, rate limits |
 | **MailHog** | SMTP `1025`, UI `8025` | Catches outbound email in dev |
-| **auth-server** | `9000` | OAuth/OIDC, admin APIs, Flyway, schedulers |
-| **admin-web** | `3001` | Admin console + SecureOne Confluence |
+| **auth-server** | `9000` | OAuth/OIDC, admin APIs, Flyway, schedulers; serves the console at **`/admin`** |
+| **admin-web** (`next dev`) | `3001` (internal) | Admin console + SecureOne Confluence; open it at http://localhost:9000/admin (or http://localhost:3001/admin for hot reload) |
 
 ---
 
 ## Docker & Compose files (reference)
 
-Source files live under **`deploy/`**. In local dev, **`docker-compose.yml` runs only infrastructure** (Postgres, Redis, MailHog). **auth-server** and **admin-web** are started on the host by `scripts/start-all.ps1` (Gradle + Node). The Dockerfiles below are for building app images (CI/production).
+Source files live under **`deploy/`**. In local dev, **`docker-compose.yml` runs only infrastructure** (Postgres, Redis, MailHog). **auth-server** and **admin-web** are started on the host by `scripts/start-all.ps1` (Gradle + Node), and the auth-server forwards `/admin` to the console dev server. For production there is **one image** (`deploy/Dockerfile`) containing both.
 
 ```
 deploy/
-â”œâ”€â”€ docker-compose.yml       â† dev: Postgres, Redis, MailHog
-â”œâ”€â”€ Dockerfile.auth-server   â† build auth-server JAR image
-â””â”€â”€ Dockerfile.admin-web     â† build admin-web image (bundles docs/ for Confluence)
+├── docker-compose.yml             ← dev: Postgres, Redis, MailHog
+├── docker-compose.quickstart.yml  ← evaluation: the SecureOne image + Postgres, Redis, MailHog
+├── Dockerfile                     ← the single SecureOne image (auth-server + console at /admin)
+└── helm/secureone                 ← Kubernetes chart (one Deployment, Service, Ingress)
+.dockerignore                      ← allow-list for the image build (repo root)
 ```
 
 ### `deploy/docker-compose.yml` (development infrastructure)
@@ -98,100 +100,46 @@ docker compose -f deploy/docker-compose.yml down
 docker compose -f deploy/docker-compose.yml down -v
 ```
 
-### `deploy/Dockerfile.auth-server`
+### `deploy/Dockerfile` (the single image)
 
-Multi-stage build: Gradle `bootJar` â†’ JRE runtime on port **9000**. Flyway runs on container start (same as `bootRun`).
-
-```dockerfile
-# SecureOne auth-server â€” production-style image
-# Build (from repo root):
-#   docker build -f deploy/Dockerfile.auth-server -t secureone/auth-server apps/auth-server
-
-FROM eclipse-temurin:25-jdk-alpine AS build
-WORKDIR /workspace
-COPY gradlew ./
-COPY gradle gradle
-COPY build.gradle.kts settings.gradle.kts ./
-COPY src src
-RUN chmod +x gradlew && ./gradlew bootJar --no-daemon -x test
-
-FROM eclipse-temurin:25-jre-alpine
-WORKDIR /app
-RUN adduser -D -h /app secureone
-USER secureone
-COPY --from=build /workspace/build/libs/*.jar /app/app.jar
-EXPOSE 9000
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-```
+Three stages: the console is built as a Next.js standalone server (Node 22), the auth-server as a Spring Boot jar (JDK 25, unpacked), and both go into one JRE 25 Alpine image with Node.js and `tini`. The last stage records a JVM start-up cache (`app.aot`) by starting the application once against a temporary PostgreSQL + Redis that exist only during that build step. Health and metrics are on port 9001 (`SECUREONE_MANAGEMENT_PORT`). At start-up the auth-server runs the console on `127.0.0.1:3001` and serves it at **`/admin`**; only port **9000** is exposed. It runs as UID 10001. Flyway runs on container start (same as `bootRun`). Nothing environment-specific is baked in: URLs, environment and secrets are read at start-up.
 
 **Build & run** (after compose is up):
 
 ```bash
-docker build -f deploy/Dockerfile.auth-server -t secureone/auth-server apps/auth-server
+docker build -f deploy/Dockerfile -t secureone/secureone .
 
 docker run --rm -p 9000:9000 \
+  -e SPRING_PROFILES_ACTIVE=dev -e SECUREONE_ENV=development \
   -e SECUREONE_DB_URL=jdbc:postgresql://host.docker.internal:5432/secureone?currentSchema=platform \
   -e SECUREONE_DB_USERNAME=secureone \
   -e SECUREONE_DB_PASSWORD=secureone \
   -e SECUREONE_REDIS_URL=redis://host.docker.internal:6379 \
   -e SECUREONE_ISSUER_URL=http://localhost:9000 \
-  secureone/auth-server
+  -e SECUREONE_PUBLIC_BASE_URL=http://localhost:9000 \
+  secureone/secureone
+# http://localhost:9000/admin
 ```
 
 > On Linux use `host.docker.internal` via `--add-host=host.docker.internal:host-gateway` or point at the compose service network.
 
-### `deploy/Dockerfile.admin-web`
+The image defaults to `SPRING_PROFILES_ACTIVE=prod` / `SECUREONE_ENV=production`, which refuses to start without production settings (https URLs, encryption key, OTP pepper, signing key; see [24 — Deployment](24-deployment-image-env-and-enterprise.md#production-caveats)). The example above switches to development for a local try-out.
 
-Multi-stage Next.js build. Copies **`docs/`** into the image so SecureOne Confluence can read markdown at `/app/docs` (matches `../../docs` from the app working directory).
-
-```dockerfile
-# SecureOne admin-web â€” production-style image (includes docs/ for Confluence)
-# Build (from repo root):
-#   docker build -f deploy/Dockerfile.admin-web -t secureone/admin-web .
-
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY apps/admin-web/package.json apps/admin-web/package-lock.json ./apps/admin-web/
-WORKDIR /app/apps/admin-web
-RUN npm ci
-COPY apps/admin-web ./
-COPY docs /app/docs
-RUN npm run build
-
-FROM node:20-alpine AS run
-WORKDIR /app/apps/admin-web
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN adduser -D -h /app secureone
-USER secureone
-COPY --from=build /app/apps/admin-web/package.json ./
-COPY --from=build /app/apps/admin-web/package-lock.json ./
-COPY --from=build /app/apps/admin-web/node_modules ./node_modules
-COPY --from=build /app/apps/admin-web/.next ./.next
-COPY --from=build /app/apps/admin-web/public ./public
-COPY --from=build /app/docs /app/docs
-EXPOSE 3001
-CMD ["npm", "start", "--", "-p", "3001"]
-```
-
-**Build & run:**
+### `deploy/docker-compose.quickstart.yml` (evaluation)
 
 ```bash
-docker build -f deploy/Dockerfile.admin-web -t secureone/admin-web .
-
-docker run --rm -p 3001:3001 \
-  -e NEXT_PUBLIC_AUTH_SERVER_URL=http://host.docker.internal:9000 \
-  -e SECUREONE_DEV_USER=admin \
-  -e SECUREONE_DEV_PASSWORD=admin \
-  secureone/admin-web
+docker compose -f deploy/docker-compose.quickstart.yml up --build
+# http://localhost:9000/admin (admin / admin) · MailHog http://localhost:8025
 ```
 
-### Dev vs containerized apps
+Builds the image and runs it with its own Postgres, Redis and MailHog, in development mode. Not for production.
 
-| Mode | Infrastructure | auth-server | admin-web |
-|------|----------------|-------------|-----------|
-| **Local dev (default)** | Docker Compose | Host (`gradlew bootRun`) | Host (`npm run dev` / `start-all.ps1`) |
-| **Container images** | Docker Compose (or managed DB/Redis) | `Dockerfile.auth-server` | `Dockerfile.admin-web` |
+### Dev vs containerized
+
+| Mode | Infrastructure | auth-server | Admin console |
+|------|----------------|-------------|---------------|
+| **Local dev (default)** | Docker Compose | Host (`gradlew bootRun`) | Host `next dev` on :3001, served at http://localhost:9000/admin (`SECUREONE_CONSOLE_UPSTREAM_URL`) |
+| **Container image** | Docker Compose (or managed DB/Redis) | `deploy/Dockerfile` | Same container, started by the auth-server (`SECUREONE_CONSOLE_DIR`) |
 ---
 
 ## Configuration files (reference)
@@ -207,7 +155,7 @@ secureone/
 │   ├── build.gradle.kts                      ← Java 25, Spring Boot, Flyway deps
 │   └── src/main/resources/application.yml    ← auth-server defaults + scheduler cron
 └── apps/admin-web/
-    ├── package.json                          ← Next.js scripts (dev :3001)
+    ├── package.json                          ← Next.js scripts (dev :3001, served under /admin)
     ├── next.config.ts
     └── .env.local.example                    ← copy to .env.local
 ```
@@ -268,7 +216,7 @@ server:
 
 secureone:
   public-base-url: ${SECUREONE_PUBLIC_BASE_URL:http://localhost:9000}
-  admin-web-url: ${SECUREONE_ADMIN_WEB_URL:http://localhost:3001}
+  admin-web-url: ${SECUREONE_ADMIN_WEB_URL:${secureone.public-base-url}/admin}
   # When MailHog/SMTP is down, log verification/reset links to the auth-server console (dev only).
   mail:
     log-links-when-smtp-unavailable: ${SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE:true}
@@ -338,9 +286,18 @@ SECUREONE_OTP_PEPPER=change-me-in-production
 SECUREONE_ISSUER_URL=http://localhost:9000
 SECUREONE_JWT_KEY_SOURCE=local          # local | kms | vault
 
-# ---- Secret encryption (MFA seeds, client secrets) ----
-# PROD: use a KMS-managed key, NOT a static value
-SECUREONE_ENCRYPTION_KEY=base64:replace-with-32-byte-key
+# ---- Secret encryption (stored secrets + generated signing keys) ----
+# AES-256 key kept OUTSIDE the database: encrypts SMTP/SMS credentials, IdP client secrets and the
+# JWT / SAML private keys SecureOne generates. Generate: echo "base64:$(openssl rand -base64 32)"
+# Blank = development fallback (key stored in the database, warning at startup). A malformed value
+# stops startup. Production: set it from your secret manager and back it up separately from the DB.
+SECUREONE_ENCRYPTION_KEY=
+
+# ---- SAML 2.0 SSO (optional) ----
+# SP signing/decryption key (PKCS#8 PEM) + self-signed certificate published in SP metadata.
+# Blank = generated on first SAML use and stored encrypted. One-line env files: use \n for line breaks.
+SECUREONE_SAML_SP_KEY_PEM=
+SECUREONE_SAML_SP_CERT_PEM=
 
 # ---- Email (SMTP) ----
 # Dev default: MailHog via docker compose (localhost:1025, UI http://localhost:8025).
@@ -355,9 +312,9 @@ SECUREONE_SMTP_SSL_TRUST=smtp.gmail.com
 # Set false when using real SMTP so failures surface instead of logging to console
 SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=true
 
-# ---- First-run bootstrap super-admin ----
-SECUREONE_BOOTSTRAP_ADMIN_EMAIL=admin@example.com
-SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=change-me-now
+# ---- First-run setup ----
+# Optional: fixed setup code for /admin/setup (otherwise printed in the log until the first operator exists)
+# SECUREONE_SETUP_CODE=
 ```
 
 ### `apps/admin-web/.env.local.example`
@@ -367,7 +324,7 @@ Copy to `apps/admin-web/.env.local` for local dev.
 ```dotenv
 # Base URL of the SecureOne authorization server (apps/auth-server).
 # Copy this file to .env.local and adjust as needed.
-NEXT_PUBLIC_AUTH_SERVER_URL=http://localhost:9000
+SECUREONE_PUBLIC_BASE_URL=http://localhost:9000
 
 # Server-side Basic auth for admin API calls (must match auth-server dev user).
 SECUREONE_DEV_USER=admin
@@ -470,10 +427,18 @@ java {
 
 repositories {
 	mavenCentral()
+	// OpenSAML (used by Spring Security's SAML 2.0 service provider) is published only here.
+	maven("https://build.shibboleth.net/maven/releases/") {
+		content {
+			includeGroupByRegex("org[.]opensaml.*")
+			includeGroupByRegex("net[.]shibboleth.*")
+		}
+	}
 }
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("io.micrometer:micrometer-registry-prometheus")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
@@ -481,10 +446,20 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-authorization-server")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.security:spring-security-saml2-service-provider")
+	implementation("org.opensaml:opensaml-saml-api")
+	implementation("org.opensaml:opensaml-saml-impl")
+	// Self-signed SAML SP signing certificate (already on the classpath through OpenSAML).
+	implementation("org.bouncycastle:bcpkix-jdk18on:1.77")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	implementation("com.googlecode.libphonenumber:libphonenumber:8.13.50")
+	implementation("software.amazon.awssdk:sns:2.29.51")
+	implementation("dev.samstevens.totp:totp:1.7.1")
+	implementation("com.yubico:webauthn-server-core:2.5.2")
+	implementation("org.springframework.session:spring-session-data-redis")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
 	annotationProcessor("org.projectlombok:lombok")
@@ -505,14 +480,20 @@ dependencies {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+tasks.withType<JavaCompile> {
+	options.compilerArgs.add("-parameters")
+}
 ```
+
+> The Shibboleth repository serves only OpenSAML (`org.opensaml`, `net.shibboleth`) for SAML SSO; builds need access to it (or a mirror). BouncyCastle `bcpkix` creates the self-signed SAML SP certificate.
 
 | File | Purpose |
 |------|---------|
 | `application.yml` | Spring Boot + Flyway + Redis + scheduler cron + Swagger |
 | `.env.example` | Full production env var catalog |
 | `.env.local.example` | admin-web → auth-server URL + dev Basic auth |
-| `build.gradle.kts` | JDK 25 toolchain, Flyway, Spring Authorization Server |
+| `build.gradle.kts` | JDK 25 toolchain, Flyway, Spring Authorization Server, Spring Security SAML2 SP (OpenSAML 5), WebAuthn, TOTP, AWS SNS |
 
 ---
 
@@ -583,7 +564,7 @@ SECUREONE_REDIS_URL=redis://localhost:6379
 # OIDC / public URLs
 SECUREONE_ISSUER_URL=http://localhost:9000
 SECUREONE_PUBLIC_BASE_URL=http://localhost:9000
-SECUREONE_ADMIN_WEB_URL=http://localhost:3001
+SECUREONE_ADMIN_WEB_URL=http://localhost:9000/admin
 SECUREONE_PORT=9000
 
 # Break-glass platform account (console sign-in with empty tenant slug; see doc 25)
@@ -635,12 +616,12 @@ npm run dev                        # listens on :3001 (see package.json)
 `apps/admin-web/.env.local`:
 
 ```dotenv
-NEXT_PUBLIC_AUTH_SERVER_URL=http://localhost:9000
+SECUREONE_PUBLIC_BASE_URL=http://localhost:9000
 SECUREONE_DEV_USER=admin
 SECUREONE_DEV_PASSWORD=admin
 ```
 
-Open **http://localhost:3001** Â· sign in **`admin` / `admin`** (no tenant slug).
+Open **http://localhost:9000/admin** (or http://localhost:3001/admin directly) · sign in **`admin` / `admin`** (no tenant slug).
 ---
 
 ## Database migrations (Flyway)
@@ -655,7 +636,7 @@ SecureOne uses **two migration paths**:
 `
 apps/auth-server/src/main/resources/db/migration/
 ├── postgresql/                         ← Flyway versioned + repeatable scripts
-│   ├── V1__….sql … V45__platform_schema_oauth_client.sql
+│   ├── V1__….sql … V67__oauth_client_subject_type.sql
 │   └── R__z_repair_catalog.sql         ← idempotent catalog repair (repeatable)
 └── application-schema/
     └── V1__app_core.sql                ← template DDL (not Flyway-versioned per app)
@@ -674,11 +655,19 @@ cd apps/auth-server
 
 > `bootRun` already migrates automatically.
 
-### Migration index (V1–V45 + repeatable)
+### Migration index (V1–V67 + repeatable)
 
-| Version | File |
-|---------|------|
+| Version | File | Summary |
+|---------|------|---------|
 | V1 | `V1__core_schema.sql` | core schema |
+| V2 | `V2__seed_dev_data.sql` | seed dev data |
+| V3 | `V3__platform_settings_and_app_config.sql` | platform settings and app config |
+| V4 | `V4__seed_roles_and_admin_assignments.sql` | seed roles and admin assignments |
+| V5 | `V5__email_tokens_and_user_notifications.sql` | email tokens and user notifications |
+| V6 | `V6__auth_settings_mfa_and_magic_link.sql` | auth settings mfa and magic link |
+| V7 | `V7__dev_password_credentials.sql` | dev password credentials |
+| V8 | `V8__application_scoped_users_and_settings.sql` | application scoped users and settings |
+| V9 | `V9__application_scope_audit_sessions_access.sql` | application scope audit sessions access |
 | V10 | `V10__app_settings_exposure.sql` | app settings exposure |
 | V11 | `V11__rbac_permissions_seed.sql` | rbac permissions seed |
 | V12 | `V12__default_permissions_all_apps.sql` | default permissions all apps |
@@ -689,7 +678,6 @@ cd apps/auth-server
 | V17 | `V17__external_test_application.sql` | external test application |
 | V18 | `V18__application_logs.sql` | application logs |
 | V19 | `V19__smtp_email_templates.sql` | smtp email templates |
-| V2 | `V2__seed_dev_data.sql` | seed dev data |
 | V20 | `V20__user_credential_one_current.sql` | user credential one current |
 | V21 | `V21__restore_dev_tenant_admin.sql` | restore dev tenant admin |
 | V22 | `V22__dev_reset_acme_operator_password.sql` | dev reset acme operator password |
@@ -700,7 +688,6 @@ cd apps/auth-server
 | V27 | `V27__finalize_dev_data_removal.sql` | finalize dev data removal |
 | V28 | `V28__seed_default_roles_all_apps.sql` | seed default roles all apps |
 | V29 | `V29__tenant_user_roster.sql` | tenant user roster |
-| V3 | `V3__platform_settings_and_app_config.sql` | platform settings and app config |
 | V30 | `V30__repair_invited_application_members.sql` | repair invited application members |
 | V31 | `V31__tenant_roster_metadata.sql` | tenant roster metadata |
 | V32 | `V32__admin_console_feature_overrides.sql` | admin console feature overrides |
@@ -711,20 +698,34 @@ cd apps/auth-server
 | V37 | `V37__mark_tenant_rbac_system_roles.sql` | mark tenant rbac system roles |
 | V38 | `V38__platform_notifications_independent.sql` | platform notifications independent |
 | V39 | `V39__user_credential_expires_at.sql` | user credential expires at |
-| V4 | `V4__seed_roles_and_admin_assignments.sql` | seed roles and admin assignments |
 | V40 | `V40__password_expiry_notifications.sql` | password expiry notifications |
 | V41 | `V41__trim_feature_flag_catalog.sql` | trim feature flag catalog |
 | V42 | `V42__application_rbac_groups.sql` | application rbac groups |
 | V43 | `V43__tenant_console_groups.sql` | tenant console groups |
 | V44 | `V44__reseed_platform_settings.sql` | reseed platform settings |
 | V45 | `V45__platform_schema_oauth_client.sql` | platform schema oauth client |
-| V5 | `V5__email_tokens_and_user_notifications.sql` | email tokens and user notifications |
-| V6 | `V6__auth_settings_mfa_and_magic_link.sql` | auth settings mfa and magic link |
-| V7 | `V7__dev_password_credentials.sql` | dev password credentials |
-| V8 | `V8__application_scoped_users_and_settings.sql` | application scoped users and settings |
-| V9 | `V9__application_scope_audit_sessions_access.sql` | application scope audit sessions access |
-| R (repeatable) | `R__z_repair_catalog.sql` | Idempotent catalog repair |
-| App template | `application-schema/V1__app_core.sql` | Per-app schema DDL (runtime) |
+| V46 | `V46__otp_verification_and_phone.sql` | otp verification and phone |
+| V47 | `V47__expose_sms_to_applications.sql` | expose sms to applications |
+| V48 | `V48__recovery_otp_and_verification_policy.sql` | recovery otp and verification policy |
+| V49 | `V49__oauth2_authorization_jdbc.sql` | oauth2 authorization jdbc |
+| V50 | `V50__signing_keys.sql` | signing keys |
+| V52 | `V52__mfa_factor_extended.sql` | mfa factor extended |
+| V53 | `V53__mfa_policy.sql` | mfa policy |
+| V54 | `V54__tenant_rls_policies.sql` | tenant rls policies |
+| V55 | `V55__identity_federation.sql` | identity federation |
+| V56 | `V56__scim_groups_service_accounts.sql` | scim groups service accounts |
+| V57 | `V57__webhooks_trusted_device_iga.sql` | webhooks trusted device iga |
+| V58 | `V58__access_request_application_id.sql` | access request application id |
+| V59 | `V59__access_request_granted_role_name.sql` | access request granted role name |
+| V60 | `V60__terrafarm_oauth_redirect.sql` | terrafarm oauth redirect |
+| V61 | `V61__rls_fail_closed_option.sql` | rls fail closed option |
+| V62 | `V62__named_platform_operators.sql` | named platform operators |
+| V63 | `V63__rls_application_role.sql` | rls application role |
+| V64 | `V64__rls_functions_schema_qualified.sql` | rls functions schema qualified |
+| V65 | `V65__remove_stale_platform_rbac_copies.sql` | remove stale platform rbac copies |
+| V66 | `V66__application_logs_single_table.sql` | application logs single table |
+| V67 | `V67__oauth_client_subject_type.sql` | oauth client subject type |
+| R | `R__z_repair_catalog.sql` | idempotent catalog repair (repeatable) |
 
 ### Application schema provisioning
 
@@ -752,7 +753,7 @@ Runs `R__z_repair_catalog.sql` against Postgres, then restart auth-server.
 | Topic | Document |
 |-------|----------|
 | Schemas, tables & connections | [17 — Database schemas & tables](17-database-schemas-and-tables.md) |
-| Full Flyway SQL (V1–V45) | [18 — Flyway migration files](18-flyway-migration-files.md) |
+| Full Flyway SQL (V1–V67) | [18 — Flyway migration files](18-flyway-migration-files.md) |
 
 ---
 
@@ -766,6 +767,9 @@ These run on **`ApplicationReadyEvent`** â€” they are **not** cron jobs. Th
 | Catalog repair | `CatalogRepairBootstrap` | Re-seeds tenant RBAC catalog + application default roles/permissions for every existing tenant/app |
 | Tenant create | `TenantRbacBootstrapService` | Seeds tenant-scoped permissions/roles when a **new tenant** is created |
 | Application create | `RbacBootstrapService` | Seeds default roles/permissions when a **new application** is registered |
+| Auth catalog repair | `AuthCatalogRepairService` | Marks shipped sign-in methods as implemented (e.g. `m_oidc`, `m_saml`) without re-running Flyway |
+| Signing keys | `OAuth2SigningKeyService`, `SamlSpCredentialService` | Load keys from env, else from `platform_setting` (encrypted); create once if missing, under a Redis lock so replicas agree. Older plaintext keys are re-encrypted in place |
+| Encryption key check | `SecretProtector` | Fails startup on a malformed `SECUREONE_ENCRYPTION_KEY`; warns when it is not set |
 
 **Scheduling is separate** â€” see below. Bootstrap only runs once per process start (and on explicit create flows).
 
@@ -850,9 +854,10 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 | Check | Command / URL |
 |-------|----------------|
 | Auth server up | `GET http://localhost:9000/api/info` |
-| Actuator health | `GET http://localhost:9000/actuator/health` |
+| First-run setup | While no platform operator exists, the log prints a setup code for `/admin/setup` (`SECUREONE_SETUP_CODE` fixes it for automated installs) |
+| Actuator health | `GET http://localhost:9000/actuator/health` in development; in the image it moves to the management port `9001` (`SECUREONE_MANAGEMENT_PORT`) |
 | OIDC discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
-| Admin UI | `http://localhost:3001` |
+| Admin UI | `http://localhost:9000/admin` |
 | MailHog | `http://localhost:8025` |
 | Flyway history | `SELECT version, description, success FROM public.flyway_schema_history ORDER BY installed_rank;` |
 | App schemas | `SELECT name, schema_name FROM platform.application;` |
@@ -866,7 +871,8 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 | Flyway fails on boot | Partial migration, duplicate objects | Check `flyway_schema_history`; dev: `reset-database.ps1` |
 | Empty permissions/roles | Catalog tables truncated | `reseed-catalog.ps1` + restart auth-server |
 | auth-server won't start (port) | Process still on `:9000` | `stop-all.ps1` or kill Java process |
-| admin-web can't reach API | Wrong `NEXT_PUBLIC_AUTH_SERVER_URL` | Set to `http://localhost:9000` in `.env.local` |
+| admin-web can't reach API | Wrong `SECUREONE_PUBLIC_BASE_URL` / `SECUREONE_AUTH_SERVER_INTERNAL_URL` | Set to `http://localhost:9000` in `apps/admin-web/.env.local` |
+| http://localhost:9000/admin returns 404 | auth-server started without `SECUREONE_CONSOLE_UPSTREAM_URL` | Use `scripts/start-all.ps1`, or set it to `http://localhost:3001` |
 | No expiry emails | Scheduler disabled or SMTP off | Check `SECUREONE_PASSWORD_EXPIRY_SCHEDULER`, MailHog, Settings â†’ Notifications |
 | Scheduler logs nothing | No credentials with `expires_at` set | Set password policy expiry in platform/app settings |
 
@@ -876,6 +882,9 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 
 - Run **one auth-server instance** with schedulers enabled, or accept duplicate cron ticks across replicas (password expiry job is idempotent per credential).
 - Set `SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=false` and configure real SMTP.
+- Set `SECUREONE_ENCRYPTION_KEY`, `SECUREONE_JWK_PRIVATE_KEY_PEM` and (for SAML) `SECUREONE_SAML_SP_KEY_PEM` / `_CERT_PEM` from a secrets manager; see [24 — Deployment](24-deployment-image-env-and-enterprise.md#a2--generate-secrets).
+- Several replicas are fine for sign-in flows: SAML request/logout state, device-code polling, sessions and rate limits are in Redis.
+- Reverse proxy: forward `X-Forwarded-*`, and do not add CORS rules on `/api/v1/auth/federation/saml/acs/*` and `/saml/slo/*` (IdP form POSTs).
 - Use managed Postgres + Redis, TLS termination, secrets manager for `SECUREONE_DEV_PASSWORD` replacement.
 - Pin Flyway migrations in release artifacts; run `flywayMigrate` in deploy pipeline before or during rolling restarts.
 
@@ -891,9 +900,9 @@ See [07 â€” Security](07-security.md) and [03 â€” Architecture Â§ De
 | Flyway layout & schemas | [06 â€” Database Strategy](06-database.md) |
 | Application schema provision | [15 â€” Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | Password expiry scheduler detail | [10 â€” Settings governance](10-settings-governance.md) |
-| Docker Compose & Dockerfiles | `deploy/docker-compose.yml`, `deploy/Dockerfile.auth-server`, `deploy/Dockerfile.admin-web` |
+| Docker Compose & image | `deploy/docker-compose.yml`, `deploy/docker-compose.quickstart.yml`, `deploy/Dockerfile`, `.dockerignore` |
 | Configuration files (full) | `application.yml`, `.env.example`, `.env.local.example`, `build.gradle.kts`, `package.json`, `next.config.ts` |
-| Full Flyway SQL (V1–V45) | [18 — Flyway migration files](18-flyway-migration-files.md) |
+| Full Flyway SQL (V1–V67) | [18 — Flyway migration files](18-flyway-migration-files.md) |
 | Schemas, tables & FK map | [17 — Database schemas & tables](17-database-schemas-and-tables.md) |
 | auth-server config | [apps/auth-server/README.md](../apps/auth-server/README.md) |
 | admin-web config | [apps/admin-web/README.md](../apps/admin-web/README.md) |

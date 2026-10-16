@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect a device · SecureOne</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 24rem; margin: 3rem auto; padding: 0 1rem; }
+      label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
+      input { width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 1rem; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px;
+        font-size: 1.25rem; letter-spacing: 0.15em; text-transform: uppercase; text-align: center; }
+      button { width: 100%; padding: 0.6rem; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+      button.secondary { background: transparent; color: #4f46e5; margin-top: 0.5rem; }
+      .err { color: #991b1b; font-size: 0.875rem; }
+      .ok { color: #166534; }
+      .muted { color: #555; font-size: 0.875rem; }
+      ul { padding-left: 1.25rem; }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Connect a device</h1>
+
+    <form id="code-form">
+      <p class="muted">Enter the code shown on your TV, console or terminal.</p>
+      <label for="user-code">Code</label>
+      <input id="user-code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false"
+        maxlength="9" placeholder="XXXX-XXXX" required />
+      <button type="submit" id="check">Continue</button>
+    </form>
+
+    <div id="confirm" hidden>
+      <p id="confirm-question"><strong id="app-name"></strong> on your device wants to sign in to your account.</p>
+      <p class="muted">Code <strong id="confirm-code"></strong>. Only continue if this code is on your own device.</p>
+      <p class="muted" id="scopes-wrap" hidden>It will be able to read: <span id="scopes"></span></p>
+      <!-- Before sign-in: continue to the approval step. After sign-in (state present): the actual decision. -->
+      <button type="button" id="approve">Continue</button>
+      <button type="button" id="cancel" class="secondary">Not my device</button>
+    </div>
+
+    <form id="consent-form" method="post" action="/oauth2/device_verification" hidden>
+      <input type="hidden" name="client_id" id="consent-client" />
+      <input type="hidden" name="state" id="consent-state" />
+      <input type="hidden" name="user_code" id="consent-code" />
+      <div id="consent-scopes"></div>
+    </form>
+
+    <p id="status" role="status"></p>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(location.search);
+        const status = document.getElementById("status");
+        const form = document.getElementById("code-form");
+        const confirmPanel = document.getElementById("confirm");
+        const input = document.getElementById("user-code");
+        let current = null;
+
+        const SCOPE_LABELS = { openid: "your identity", profile: "your name", email: "your email address" };
+        const RESULTS = {
+          approved: ["ok", "Device connected. You can go back to your device; it will finish signing in."],
+          denied: ["", "Nothing was connected. The device will show that sign-in was cancelled."],
+          not_allowed: ["err", "This account cannot sign in to that application."],
+          invalid_grant: ["err", "That code is invalid or has expired. Start again on your device."],
+        };
+        // After sign-in the authorization server sends the user back here to decide (consent step).
+        const consent = params.get("state") && params.get("client_id") && params.get("user_code")
+          ? { state: params.get("state"), clientId: params.get("client_id"), scopes: (params.get("scope") || "").split(" ").filter(Boolean) }
+          : null;
+
+        function submitConsent(allow) {
+          document.getElementById("consent-client").value = consent.clientId;
+          document.getElementById("consent-state").value = consent.state;
+          document.getElementById("consent-code").value = current;
+          const wrap = document.getElementById("consent-scopes");
+          wrap.innerHTML = "";
+          // No scopes posted = denied.
+          (allow ? consent.scopes : []).forEach((scope) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "scope";
+            input.value = scope;
+            wrap.appendChild(input);
+          });
+          document.getElementById("consent-form").submit();
+        }
+
+        function show(kind, text) {
+          status.className = kind;
+          status.textContent = text;
+        }
+
+        function normalize(value) {
+          const letters = (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+          return letters.length === 8 ? letters.slice(0, 4) + "-" + letters.slice(4) : null;
+        }
+
+        async function lookup(code) {
+          const normalized = normalize(code);
+          if (!normalized) {
+            show("err", "Enter the 8-character code from your device.");
+            return;
+          }
+          show("", "Checking…");
+          const res = await fetch("/api/v1/auth/device/lookup", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ userCode: normalized }),
+          }).catch(() => null);
+          if (!res) {
+            show("err", "Could not reach the server. Try again.");
+            return;
+          }
+          if (res.status === 429) {
+            show("err", "Too many attempts. Wait a minute and try again.");
+            return;
+          }
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok || !body.valid) {
+            show("err", body.detail || "That code is invalid or has expired.");
+            return;
+          }
+          current = body.userCode;
+          document.getElementById("app-name").textContent = body.applicationName;
+          document.getElementById("confirm-code").textContent = body.userCode;
+          const scopes = (body.scopes || []).map((s) => SCOPE_LABELS[s] || s);
+          document.getElementById("scopes").textContent = scopes.join(", ");
+          document.getElementById("scopes-wrap").hidden = scopes.length === 0;
+          if (consent) {
+            document.getElementById("approve").textContent = "Allow";
+            document.getElementById("cancel").textContent = "Deny";
+            document.getElementById("confirm-question").firstChild.nextSibling.textContent =
+              " on your device wants to sign in to your account. Allow it?";
+          }
+          form.hidden = true;
+          confirmPanel.hidden = false;
+          show("", "");
+        }
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          lookup(input.value);
+        });
+        document.getElementById("approve").addEventListener("click", () => {
+          if (consent) {
+            submitConsent(true);
+            return;
+          }
+          // Signs in first if needed (the login page returns here), then asks for the decision.
+          location.href = "/oauth2/device_verification?user_code=" + encodeURIComponent(current);
+        });
+        document.getElementById("cancel").addEventListener("click", () => {
+          if (consent) {
+            submitConsent(false);
+            return;
+          }
+          current = null;
+          confirmPanel.hidden = true;
+          form.hidden = false;
+          input.value = "";
+          show("", "Nothing was connected.");
+        });
+
+        const result = params.get("status");
+        if (result) {
+          const [kind, text] = RESULTS[result] || ["err", "The device could not be connected. Start again on your device."];
+          form.hidden = result === "approved";
+          if (result === "approved") document.getElementById("title").textContent = "Device connected";
+          show(kind, text);
+        } else if (params.get("user_code")) {
+          // verification_uri_complete: the code came in the link or QR code.
+          input.value = params.get("user_code");
+          lookup(input.value);
+        }
+      })();
+    </script>
+  </body>
+</html>

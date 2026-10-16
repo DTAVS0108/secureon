@@ -13,7 +13,7 @@ The OAuth2/OIDC protocol surface (PKCE, token rotation, JWKS, introspection, dis
 | Option | OIDC engine | Pros | Cons |
 |---|---|---|---|
 | Node.js + NestJS + TS | `panva/oidc-provider` (certified) | Full-stack TS, fast feature velocity, huge ecosystem | Single-threaded; assemble more yourself |
-| **Java/Kotlin + Spring Boot** ✅ | **Spring Authorization Server** (first-class) | Enterprise IAM gold standard; strongest security pedigree; mature SAML/LDAP; what Keycloak's lineage uses | Heavier runtime, more memory, slower iteration |
+| **Java/Kotlin + Spring Boot** ✅ | **Spring Authorization Server** (first-class) | Enterprise IAM gold standard; strongest security pedigree; mature SAML/LDAP; widely used by established IAM products | Heavier runtime, more memory, slower iteration |
 | Go + Ory `fosite` | `fosite` | Single static binary, great M2M throughput, low memory | More boilerplate, slower for rich admin features |
 | Python + FastAPI | `Authlib` | Very fast MVP, clean async | Thinner enterprise IAM/SAML track record |
 

@@ -15,8 +15,8 @@ import {
   type OperatorProfile,
 } from "@/lib/api/profile";
 import { statusTone } from "@/lib/status";
-import { formatDate } from "@/lib/format";
 import type { Status } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 export function OperatorProfilePanel({
   initial,
@@ -154,7 +154,7 @@ export function OperatorProfilePanel({
           </FieldRow>
 
           {profile.createdAt && (
-            <p className="text-xs text-faint">Member since {formatDate(profile.createdAt)}</p>
+            <p className="text-xs text-faint">Member since <LocalTime value={profile.createdAt} /></p>
           )}
 
         {!readOnly && (

@@ -22,7 +22,11 @@
 
 | Item | Status | Effort | Blocking deps |
 |------|--------|--------|---------------|
-| SAML 2.0 IdP login | Metadata stub only | 4–8 wks | OpenSAML / Spring SAML |
+| SAML 2.0 SP login (SSO, IdP-initiated, SLO, encryption) | **Done** | — | Spring Security SAML2 + OpenSAML 5 |
+| Device authorization grant (RFC 8628) | **Done** | — | Hosted `/account/device.html` |
+| RFC 9728 protected resource metadata | **Done** | — | `ProtectedResourceMetadataController` |
+| Signing keys encrypted at rest | **Done** | — | `SECUREONE_ENCRYPTION_KEY` |
+| SecureOne as SAML IdP | Not started | 4–6 wks | Assertion issuing, per-SP config |
 | OpenFGA / ABAC / ReBAC | Not started | 4+ wks | Policy engine deploy |
 | Full IGA campaigns | Stub API only | 6+ wks | Workflow + notifications |
 | Adaptive / risk auth | Trusted device only | 3–4 wks | Risk signal pipeline |
@@ -30,7 +34,7 @@
 | Token Exchange RFC 8693 | **Done** | — | `OAuthTokenExchangeService` |
 | PAR (one-time `request_uri`) | **Done** | — | Redis store + authorize merge |
 | Back-channel logout (full hardening) | Ack-only stub | 1–2 wks | Logout token validation |
-| Push MFA (FCM/APNs) | Not started | 2 wks | Mobile push credentials |
+| Push MFA (FCM/APNs) | Not started | 2–3 wks | An authenticator mobile app (or SDK) + FCM/APNs credentials |
 | Multi-region HA | Not started | 8+ wks | Infra + replication |
 | MAU billing / quotas UI | Hooks only | 3–4 wks | Metering pipeline |
 | HSM / BYOK | Runbook only | 4+ wks | HSM vendor |
@@ -46,34 +50,23 @@
 
 ---
 
-## 1. SAML 2.0 IdP login (full)
+## 1. SAML 2.0 — done (SP role); IdP role pending
 
-### Current state
-- SP metadata stub: `GET /api/v1/auth/federation/saml/{alias}/metadata`
-- Login returns **501**: `FederationAuthController`, `IdentityProviderService`
-- Federation providers can be configured as SAML type but login throws
-
-### Target files
+### Shipped (2026-10)
 | Layer | Path |
 |-------|------|
-| Controller | `apps/auth-server/.../federation/FederationAuthController.java` |
-| Service | `apps/auth-server/.../federation/IdentityProviderService.java` |
-| New | `.../federation/saml/SamlAuthnRequestBuilder.java`, `SamlResponseValidator.java`, `SamlAssertionMapper.java` |
-| Config | `apps/auth-server/build.gradle` — add OpenSAML or Spring Security SAML2 SP |
-| UI | `apps/admin-web/.../FederationProvidersPanel.tsx` — SAML-specific fields (entityId, SSO URL, cert) |
+| Registrations | `federation/SamlRelyingParties.java` — Spring `RelyingPartyRegistration` per provider (metadata URL or entity ID + SSO URL + PEM; SLO; signing + decryption credential) |
+| Sign-in | `federation/SamlLoginService.java` — AuthnRequest (Redirect/POST), response validation, replay cache, NameID/attribute → profile |
+| AuthnRequest store | `federation/SamlRequestStore.java` — Redis by RelayState (cross-site POST safe) |
+| Logout | `federation/SamlLogoutService.java`, `SamlAwareOidcLogoutHandler.java` — SP- and IdP-initiated SLO |
+| SP key | `federation/SamlSpCredentialService.java` — env PEMs or generated once (encrypted, cluster-safe) |
+| HTTP | `FederationAuthController` — `/{alias}/start`, `/saml/{alias}/metadata`, `/saml/acs/{providerId}`, `/saml/slo/{providerId}`, `/saml/logout` |
+| Console | `FederationProvidersPanel.tsx` — SAML fields, SP values to copy |
+| Tests | End-to-end against an open-source SAML IdP in Docker (SP- and IdP-initiated SSO, SLO both ways, encryption, replay, forged responses, tenant-wide providers, console forms) |
 
-### Implementation steps
-1. Add OpenSAML 4.x (or `spring-security-saml2-service-provider`) dependency.
-2. Extend `identity_provider` table / DTO with SAML fields: `entityId`, `ssoUrl`, `x509Cert`, `nameIdFormat`, `signRequests`.
-3. Implement `GET .../saml/{alias}/start` → build AuthnRequest, redirect to IdP SSO URL.
-4. Implement ACS endpoint `POST .../saml/{alias}/acs` → validate signature, clock skew, audience; map NameID → local user (JIT or link).
-5. Wire JIT provisioning via existing `IdentityProviderService.linkOrCreateUser`.
-6. Add integration test with sample IdP metadata (Keycloak or samltest.id offline fixture).
-
-### Verification
-- Manual SP-initiated flow against Keycloak SAML IdP
-- Unit tests for assertion validation (expired, wrong audience, invalid signature)
-- Update `docs/08-roadmap.md` Phase 3 SAML checkbox
+### Still pending
+- **SecureOne as a SAML IdP** (issue assertions to SAML-only SaaS apps): per-SP registration, assertion builder, NameID/attribute release policy, IdP metadata.
+- SOAP back-channel SLO and artifact binding (front-channel Redirect/POST SLO is implemented).
 
 ---
 
@@ -232,7 +225,7 @@ Implemented in `PushedAuthorizationRequestService` + `PushedAuthorizationRequest
 1. New table `usage_daily_snapshot` (tenant_id, date, mau, logins, api_calls)
 2. Nightly job aggregate from `login_history` + audit
 3. Admin UI: `TenantUsagePanel.tsx` with charts
-4. Optional: Stripe metered billing webhook
+4. Optional: metered-billing webhook to a payment provider
 
 ---
 

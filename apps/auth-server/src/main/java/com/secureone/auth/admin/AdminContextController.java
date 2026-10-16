@@ -67,7 +67,9 @@ public class AdminContextController {
             String slug,
             String status,
             List<String> permissions,
-            List<String> consoleFeatures) {}
+            List<String> consoleFeatures,
+            /** May register and manage this application's OAuth clients (Connect an app). */
+            boolean canManageClients) {}
 
     public record AdminContextResponse(
             boolean platformSuperAdmin,
@@ -140,7 +142,8 @@ public class AdminContextController {
                     app.slug(),
                     app.status(),
                     appPermissions,
-                    features));
+                    features,
+                    access.canManageClients(authentication, actAsEmail, app.id())));
         }
         return new AdminContextResponse(
                 superAdmin,

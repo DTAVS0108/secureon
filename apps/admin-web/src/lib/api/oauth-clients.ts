@@ -1,14 +1,17 @@
 import { ApiError } from "./http";
 import { browserApiFetch as apiFetch } from "./browser-client";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 import type { AppType, OAuthClient, OAuthEndpoints, Status } from "@/lib/types";
 
-const DEFAULT_ENDPOINTS: OAuthEndpoints = {
-  issuer: AUTH_SERVER_URL,
-  authorizationEndpoint: `${AUTH_SERVER_URL}/oauth2/authorize`,
-  tokenEndpoint: `${AUTH_SERVER_URL}/oauth2/token`,
-  jwksUri: `${AUTH_SERVER_URL}/oauth2/jwks`,
-};
+function defaultEndpoints(): OAuthEndpoints {
+  const issuer = publicAuthServerUrl();
+  return {
+    issuer,
+    authorizationEndpoint: `${issuer}/oauth2/authorize`,
+    tokenEndpoint: `${issuer}/oauth2/token`,
+    jwksUri: `${issuer}/oauth2/jwks`,
+  };
+}
 
 type OAuthClientDto = {
   id: string;
@@ -25,6 +28,7 @@ type OAuthClientDto = {
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
+  subjectType?: "user_id" | "legacy";
   clientSecretConfigured: boolean;
   createdAt: string;
   updatedAt: string;
@@ -49,10 +53,11 @@ function mapClient(dto: OAuthClientDto): OAuthClient {
     pkceRequired: dto.pkceRequired ?? type !== "m2m",
     tokenEndpointAuthMethod:
       dto.tokenEndpointAuthMethod ?? (type === "web" || type === "m2m" ? "client_secret_basic" : "none"),
+    subjectType: dto.subjectType ?? "legacy",
     clientSecretConfigured: dto.clientSecretConfigured ?? false,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt ?? dto.createdAt,
-    oAuthEndpoints: dto.oAuthEndpoints ?? DEFAULT_ENDPOINTS,
+    oAuthEndpoints: dto.oAuthEndpoints ?? defaultEndpoints(),
   };
 }
 
@@ -86,6 +91,7 @@ export type OAuthClientWriteInput = {
   postLogoutRedirectUris?: string[];
   pkceRequired?: boolean;
   tokenEndpointAuthMethod?: string;
+  subjectType?: string;
 };
 
 export async function createOAuthClientApi(

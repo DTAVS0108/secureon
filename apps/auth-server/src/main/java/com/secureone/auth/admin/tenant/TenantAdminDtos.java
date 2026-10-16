@@ -18,7 +18,9 @@ public final class TenantAdminDtos {
             String plan,
             long userCount,
             long appCount,
-            Instant createdAt) {}
+            Instant createdAt,
+            /** The reserved platform tenant: cannot be deleted, renamed (slug) or suspended. */
+            boolean system) {}
 
     public record TenantCreateRequest(
             @NotBlank @Size(max = 255) String name,

@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, type ReactNode, Suspense, useState } from "react";
+import { FormEvent, type ReactNode, Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { APP_NAME } from "@/lib/config";
+import { APP_NAME, withBasePath } from "@/lib/config";
 
 const INPUT_CLASS =
   "h-10 w-full rounded-[var(--ui-radius)] border border-ui bg-ui-elevated px-3 text-sm text-ui outline-none focus:border-[var(--ui-primary)] focus:ring-2 focus:ring-brand";
@@ -46,7 +47,24 @@ type MfaStep =
 const REASONS: Record<string, string> = {
   expired: "Your session ended (inactivity or maximum session length). Sign in again to continue.",
   "signed-out": "You signed out.",
+  "setup-done": "Your operator account is ready. Sign in under Platform operator; you will add an authenticator app next.",
 };
+
+/** Whether first-run setup is still open (no platform operator yet). */
+function useSetupRequired(): boolean {
+  const [required, setRequired] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(withBasePath("/api/setup/status"), { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => !cancelled && setRequired(!!s?.setupRequired))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return required;
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -134,9 +152,17 @@ function PasswordForm({
   onStep: (step: MfaStep) => void;
   onSignedIn: () => void;
 }) {
+  // Just finished first-run setup: the new account is a platform operator. Search params are the same
+  // on the server and in the browser, so this initial tab does not change during hydration.
+  const justSetUp = useSearchParams().get("reason") === "setup-done";
   const [mode, setMode] = useState<LoginMode>(() =>
-    typeof window === "undefined" ? "organization" : (readRemembered().mode ?? "organization"),
+    justSetUp
+      ? "platform"
+      : typeof window === "undefined"
+        ? "organization"
+        : (readRemembered().mode ?? "organization"),
   );
+  const setupRequired = useSetupRequired();
   const [tenantSlug, setTenantSlug] = useState(() =>
     typeof window === "undefined" ? "" : (readRemembered().tenantSlug ?? ""),
   );
@@ -167,7 +193,7 @@ function PasswordForm({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(withBasePath("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantSlug: slug, emailOrUsername: identity, password }),
@@ -223,6 +249,12 @@ function PasswordForm({
       {reason && (
         <p role="status" className="mb-4 rounded-lg bg-sky-500/10 px-3 py-2 text-sm text-sky-700 dark:text-sky-300">
           {reason}
+        </p>
+      )}
+      {setupRequired && (
+        <p role="status" data-testid="setup-banner" className="mb-4 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-ui">
+          SecureOne is not set up yet: no platform operator exists.{" "}
+          <Link href="/setup" className="font-medium text-brand hover:underline">Set it up</Link> with the code from the server log.
         </p>
       )}
       {emergency ? (
@@ -339,7 +371,7 @@ function SecondFactorForm({
           ? { action: "verify", mfaToken: step.mfaToken, recoveryCode: code }
           : { action: "verify", mfaToken: step.mfaToken, code };
     try {
-      const res = await fetch("/api/auth/login/mfa", {
+      const res = await fetch(withBasePath("/api/auth/login/mfa"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

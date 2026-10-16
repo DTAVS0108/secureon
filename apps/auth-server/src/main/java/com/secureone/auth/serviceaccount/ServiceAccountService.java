@@ -115,6 +115,37 @@ public class ServiceAccountService {
         return out;
     }
 
+    /**
+     * Adds an API key whose value the operator supplies (configuration files: kept in an environment
+     * variable, never in the file). Same format as generated keys.
+     */
+    public Map<String, Object> importApiKey(
+            UUID tenantId, UUID serviceAccountId, String label, String rawKey, Instant expiresAt) {
+        requireAccount(tenantId, serviceAccountId);
+        if (rawKey == null || !rawKey.startsWith("sk_live_") || rawKey.length() < 40) {
+            throw new IllegalArgumentException("An API key must start with sk_live_ and be at least 40 characters long.");
+        }
+        if (apiKeys.findByKeyHash(hashKey(rawKey)).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This API key is already in use.");
+        }
+        ApiKey key = new ApiKey();
+        key.setServiceAccountId(serviceAccountId);
+        key.setKeyPrefix(rawKey.substring(0, 16));
+        key.setKeyHash(hashKey(rawKey));
+        key.setLabel(label);
+        key.setExpiresAt(expiresAt);
+        return toKeyResponse(apiKeys.save(key));
+    }
+
+    /** Whether this raw key is an active key of the service account. */
+    @Transactional(readOnly = true)
+    public boolean hasActiveKey(UUID serviceAccountId, String rawKey) {
+        return rawKey != null && apiKeys.findByKeyHash(hashKey(rawKey))
+                .filter(ApiKey::isActive)
+                .filter(k -> serviceAccountId.equals(k.getServiceAccountId()))
+                .isPresent();
+    }
+
     public void revokeKey(UUID tenantId, UUID serviceAccountId, UUID keyId) {
         requireAccount(tenantId, serviceAccountId);
         ApiKey key = apiKeys.findById(keyId)

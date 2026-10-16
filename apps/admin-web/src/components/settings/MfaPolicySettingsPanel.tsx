@@ -139,6 +139,17 @@ export function MfaPolicySettingsPanel({ applicationId }: { applicationId?: stri
           </FieldRow>
         </li>
         <li className="px-5 py-4">
+          <FieldRow label="Recovery codes per enrollment" hint="Issued when a user sets up an authenticator app">
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={policy.recoveryCodesPerEnrollment ?? 10}
+              onChange={(e) => patch({ recoveryCodesPerEnrollment: Number(e.target.value) })}
+            />
+          </FieldRow>
+        </li>
+        <li className="px-5 py-4">
           <FieldRow label="Remember device (days)" hint="0 = disabled. Trusted-device cookies are a future enhancement.">
             <Input
               type="number"

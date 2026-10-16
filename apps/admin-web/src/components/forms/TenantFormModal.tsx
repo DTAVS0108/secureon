@@ -46,8 +46,11 @@ function TenantForm({ tenant, close }: { tenant?: Tenant; close: () => void }) {
       <FieldRow label="Name">
         <Input name="name" defaultValue={tenant?.name} placeholder="Your organization" required />
       </FieldRow>
-      <FieldRow label="Slug" hint="optional — auto-generated">
-        <Input name="slug" defaultValue={tenant?.slug} placeholder="your-org" />
+      <FieldRow
+        label="Slug"
+        hint={tenant?.system ? "reserved — the platform tenant's slug cannot change" : "optional — auto-generated"}
+      >
+        <Input name="slug" defaultValue={tenant?.slug} placeholder="your-org" readOnly={tenant?.system} />
       </FieldRow>
       <div className="grid grid-cols-2 gap-4">
         <FieldRow label="Plan">
@@ -58,7 +61,9 @@ function TenantForm({ tenant, close }: { tenant?: Tenant; close: () => void }) {
           </Select>
         </FieldRow>
         <FieldRow label="Status">
-          <Select name="status" defaultValue={tenant?.status ?? "active"}>
+          {/* A disabled select is not submitted; the hidden field keeps the platform tenant active. */}
+          {tenant?.system && <input type="hidden" name="status" value="active" />}
+          <Select name="status" defaultValue={tenant?.status ?? "active"} disabled={tenant?.system}>
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
           </Select>

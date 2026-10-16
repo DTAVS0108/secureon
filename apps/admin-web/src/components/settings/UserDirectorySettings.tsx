@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
+import { ComingSoonBadge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
@@ -14,6 +15,7 @@ import {
   type UserDirectorySettings,
 } from "@/lib/api/user-directory";
 import { normalizeFeatureFlags } from "@/lib/auth-settings-normalize";
+import { isFeatureFlagComingSoon } from "@/lib/coming-soon";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import type { FeatureFlag } from "@/lib/types";
 
@@ -41,7 +43,8 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
   const [config, setConfig] = useState<UserDirectorySettings>(DEFAULTS);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const ldapFeatureEnabled = isFeatureEnabled(featureFlags, "ldap");
+  const ldapComingSoon = isFeatureFlagComingSoon("ldap");
+  const ldapFeatureEnabled = !ldapComingSoon && isFeatureEnabled(featureFlags, "ldap");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
@@ -99,6 +102,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
   }
 
   function patchSource(key: keyof UserDirectorySettings["sources"], enabled: boolean) {
+    if (key === "ldap" && enabled && ldapComingSoon) return;
     if (key === "ldap" && enabled && !ldapFeatureEnabled) {
       toast("Enable the LDAP / AD feature flag under Authentication → Feature flags first.", "error");
       return;
@@ -118,7 +122,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
   }
 
   const importSources = (["csv", "excel", "ldap"] as const).filter(
-    (key) => key !== "ldap" || ldapFeatureEnabled,
+    (key) => key !== "ldap" || ldapFeatureEnabled || ldapComingSoon,
   );
 
   return (
@@ -132,7 +136,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
           <li className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
               <p className="text-sm font-medium text-ui">Allow user import</p>
-              <p className="text-xs text-muted">CSV, Excel (CSV format), and LDAP sources.</p>
+              <p className="text-xs text-muted">CSV and Excel (CSV format) sources. LDAP is coming soon.</p>
             </div>
             <Toggle
               checked={config.importEnabled}
@@ -157,18 +161,32 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
       <Card padded={false}>
         <CardHeader title="Import sources" description="Which formats appear in the import menu." />
         <ul className="divide-y divide-ui">
-          {importSources.map((key) => (
-            <li key={key} className="flex items-center justify-between gap-4 px-5 py-4">
-              <p className="text-sm font-medium uppercase text-ui">{key}</p>
-              <Toggle
-                checked={config.sources[key].enabled}
-                onChange={(v) => patchSource(key, v)}
-                aria-label={`Enable ${key} import`}
-              />
-            </li>
-          ))}
+          {importSources.map((key) => {
+            const comingSoon = key === "ldap" && ldapComingSoon;
+            return (
+              <li key={key} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-medium uppercase ${comingSoon ? "text-muted" : "text-ui"}`}>{key}</p>
+                    {comingSoon && <ComingSoonBadge />}
+                  </div>
+                  {comingSoon && (
+                    <p className="text-xs text-muted">
+                      Directory sync is not available yet. Export users from LDAP / AD to CSV and import that.
+                    </p>
+                  )}
+                </div>
+                <Toggle
+                  checked={config.sources[key].enabled}
+                  disabled={comingSoon && !config.sources[key].enabled}
+                  onChange={(v) => patchSource(key, v)}
+                  aria-label={`Enable ${key} import`}
+                />
+              </li>
+            );
+          })}
         </ul>
-        {!ldapFeatureEnabled && (
+        {!ldapComingSoon && !ldapFeatureEnabled && (
           <p className="border-t border-ui px-5 py-3 text-xs text-muted">
             LDAP import is hidden because the <strong>LDAP / AD</strong> feature flag is off. Enable it
             under Authentication → Feature flags.

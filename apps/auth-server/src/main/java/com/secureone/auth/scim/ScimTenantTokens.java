@@ -45,6 +45,31 @@ public class ScimTenantTokens {
         return raw;
     }
 
+    /** Sets the tenant's token to a value the operator supplies (configuration files). */
+    @Transactional
+    public void set(UUID tenantId, String raw) {
+        if (raw == null || !raw.startsWith(PREFIX) || raw.length() < 40) {
+            throw new IllegalArgumentException("A SCIM token must start with " + PREFIX + " and be at least 40 characters long.");
+        }
+        int updated = jdbc.update(
+                "UPDATE platform.tenant SET settings = jsonb_set(coalesce(settings, '{}'::jsonb), '{" + HASH_KEY + "}', to_jsonb(?::text)), updated_at = now() WHERE id = ?",
+                hash(raw), tenantId);
+        if (updated == 0) {
+            throw new IllegalArgumentException("Tenant not found: " + tenantId);
+        }
+    }
+
+    /** Whether this is the tenant's current token. */
+    @Transactional(readOnly = true)
+    public boolean matches(UUID tenantId, String raw) {
+        if (raw == null) {
+            return false;
+        }
+        List<String> rows = jdbc.queryForList(
+                "SELECT settings->>'" + HASH_KEY + "' FROM platform.tenant WHERE id = ?", String.class, tenantId);
+        return !rows.isEmpty() && hash(raw).equals(rows.get(0));
+    }
+
     @Transactional
     public void revoke(UUID tenantId) {
         jdbc.update("UPDATE platform.tenant SET settings = coalesce(settings, '{}'::jsonb) - '" + HASH_KEY + "', updated_at = now() WHERE id = ?", tenantId);

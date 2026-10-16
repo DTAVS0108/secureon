@@ -19,8 +19,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Password recovery via email link or email/SMS OTP (policy-driven). */
 @Service
@@ -69,38 +71,61 @@ public class PasswordRecoveryService {
     public Map<String, Object> requestRecovery(
             UUID applicationId, String identifier, String requestedMode, String requestedChannel) {
         if (!effectiveSettings.isFeatureEnabled(applicationId, "self_service_recovery")) {
-            throw new IllegalStateException("Self-service recovery is disabled for this application.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Self-service recovery is disabled for this application.");
         }
         if (identifier == null || identifier.isBlank()) {
             throw new IllegalArgumentException("identifier or email is required.");
         }
 
-        Optional<UserAccount> userOpt = tenants.findUserByIdentifier(applicationId, identifier.trim());
-        if (userOpt.isEmpty()) {
-            return genericResponse(null, null);
-        }
-
-        UserAccount user = userOpt.get();
+        // Everything decided by policy comes before the account lookup, and every outcome below answers
+        // in the same shape: whether an account exists (or has a verified phone) must not show.
         String mode = resolveRecoveryMode(applicationId, requestedMode);
         if ("otp".equals(mode) && !effectiveSettings.isFeatureEnabled(applicationId, "recovery_otp")) {
             if (verificationPolicy.recoveryFallbackToLink(applicationId)) {
                 mode = "link";
             } else {
-                throw new IllegalStateException("Password reset via OTP is disabled for this application.");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Password reset via OTP is disabled for this application.");
             }
+        }
+        Optional<UserAccount> userOpt = tenants.findUserByIdentifier(applicationId, identifier.trim())
+                .filter(u -> !"SUSPENDED".equalsIgnoreCase(u.getStatus()) && !"DISABLED".equalsIgnoreCase(u.getStatus()));
+
+        if (!"otp".equals(mode)) {
+            userOpt.ifPresent(user -> sendRecoveryLink(applicationId, user));
+            return genericResponse("link", null);
         }
 
-        if ("otp".equals(mode)) {
+        OtpChannel channel = requestedOtpChannel(applicationId, requestedChannel, identifier);
+        UUID challengeId = null;
+        if (userOpt.isPresent()) {
+            UserAccount user = userOpt.get();
             try {
-                return sendRecoveryOtp(applicationId, user, requestedChannel, identifier);
+                challengeId = sendRecoveryOtp(applicationId, user, channel);
             } catch (IllegalStateException ex) {
+                // This account cannot get a code on that channel (unverified, no phone): fall back to the
+                // link if policy allows, but answer exactly as if the code had been sent.
                 if (verificationPolicy.recoveryFallbackToLink(applicationId)) {
-                    return sendRecoveryLink(applicationId, user);
+                    sendRecoveryLink(applicationId, user);
                 }
-                throw ex;
             }
         }
-        return sendRecoveryLink(applicationId, user);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("challengeId", (challengeId != null ? challengeId : UUID.randomUUID()).toString());
+        out.put("maskedDestination", maskTyped(channel, identifier.trim()));
+        out.put("expiresIn", verificationPolicy.otpTtlSeconds(applicationId, OtpPolicySection.RECOVERY));
+        out.put("mode", "otp");
+        out.put("channel", channel == OtpChannel.SMS ? "sms" : "email");
+        out.put("message", GENERIC_MESSAGE);
+        return out;
+    }
+
+    /** Masks what the requester typed, never the account's stored address (which could link a phone to an email). */
+    private static String maskTyped(OtpChannel channel, String identifier) {
+        boolean typedEmail = identifier.contains("@");
+        if ((channel == OtpChannel.EMAIL) == typedEmail) {
+            return OtpChallengeService.maskDestination(channel, identifier);
+        }
+        return null;
     }
 
     public Map<String, String> completeRecoveryOtp(UUID applicationId, UUID challengeId, String code, String newPassword) {
@@ -127,7 +152,7 @@ public class PasswordRecoveryService {
         return Map.of("message", "Password updated. You can sign in with your new password.");
     }
 
-    private Map<String, Object> sendRecoveryLink(UUID applicationId, UserAccount user) {
+    private void sendRecoveryLink(UUID applicationId, UserAccount user) {
         String raw = emailTokens.issue(user, EmailTokenType.RESET_PASSWORD).rawToken();
         String link = passwordResetLink(applicationId, raw);
         email.sendPasswordReset(applicationId, user, link);
@@ -136,13 +161,10 @@ public class PasswordRecoveryService {
                 user,
                 "Password reset requested",
                 "User triggered password reset for " + user.getEmail() + ".");
-        Map<String, Object> out = genericResponse("link", null);
-        out.put("message", "Password reset link has been sent.");
-        return out;
     }
 
-    private Map<String, Object> sendRecoveryOtp(UUID applicationId, UserAccount user, String requestedChannel, String identifier) {
-        OtpChannel channel = resolveRecoveryChannel(applicationId, requestedChannel, identifier, user);
+    /** Issues and delivers the code; throws IllegalStateException when this account cannot receive it. */
+    private UUID sendRecoveryOtp(UUID applicationId, UserAccount user, OtpChannel channel) {
         if (!verificationPolicy.allowsRecoveryChannel(applicationId, channel == OtpChannel.SMS ? "phone" : "email")) {
             throw new IllegalStateException("Recovery channel not allowed.");
         }
@@ -174,11 +196,7 @@ public class PasswordRecoveryService {
                 null,
                 OtpPolicySection.RECOVERY);
         deliverRecoveryOtp(applicationId, user, channel, issued.code());
-
-        Map<String, Object> out = otpChallenges.challengeResponse(issued);
-        out.put("message", GENERIC_MESSAGE);
-        out.put("channel", channel.name().toLowerCase());
-        return out;
+        return issued.challengeId();
     }
 
     private void deliverRecoveryOtp(UUID applicationId, UserAccount user, OtpChannel channel, String code) {
@@ -200,8 +218,8 @@ public class PasswordRecoveryService {
         return verificationPolicy.recoveryDefaultMode(applicationId);
     }
 
-    private OtpChannel resolveRecoveryChannel(
-            UUID applicationId, String requestedChannel, String identifier, UserAccount user) {
+    /** The channel follows the request (when choice is allowed) or what was typed, never the account. */
+    private OtpChannel requestedOtpChannel(UUID applicationId, String requestedChannel, String identifier) {
         if (requestedChannel != null && !requestedChannel.isBlank()) {
             if (!verificationPolicy.recoveryAllowUserChannelChoice(applicationId)) {
                 throw new IllegalArgumentException("Channel choice is not allowed for password recovery.");
@@ -214,13 +232,7 @@ public class PasswordRecoveryService {
         if (identifier != null && identifier.contains("@")) {
             return OtpChannel.EMAIL;
         }
-        if (identifier != null && identifier.startsWith("+")) {
-            return OtpChannel.SMS;
-        }
-        if (user.getPhone() != null && !user.getPhone().isBlank()) {
-            return OtpChannel.SMS;
-        }
-        return OtpChannel.EMAIL;
+        return identifier != null && !identifier.contains("@") ? OtpChannel.SMS : OtpChannel.EMAIL;
     }
 
     private static Map<String, Object> genericResponse(String mode, String channel) {

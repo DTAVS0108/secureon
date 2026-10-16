@@ -63,6 +63,13 @@ public class OAuthClient {
     @Column(name = "require_pkce", nullable = false)
     private boolean requirePkce = true;
 
+    /** Token "sub": {@link #SUBJECT_USER_ID} (account UUID, the default for new clients) or {@link #SUBJECT_LEGACY}. */
+    @Column(name = "subject_type", nullable = false)
+    private String subjectType = SUBJECT_USER_ID;
+
+    public static final String SUBJECT_USER_ID = "user_id";
+    public static final String SUBJECT_LEGACY = "legacy";
+
     @Column(name = "status", nullable = false)
     private String status = "ACTIVE";
 

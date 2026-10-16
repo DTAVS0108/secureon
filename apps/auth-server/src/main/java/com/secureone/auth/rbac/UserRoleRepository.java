@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
     long countByRoleId(UUID roleId);
@@ -15,7 +16,11 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
 
     List<UserRole> findByUserId(UUID userId);
 
-    void deleteByUserId(UUID userId);
+    /** Bulk delete: a no-op instead of a StaleStateException (500) when a concurrent request deleted the rows. */
+    @Modifying(flushAutomatically = true)
+    @Transactional
+    @Query("DELETE FROM UserRole x WHERE x.userId = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
 
     @Query("SELECT DISTINCT ur.userId FROM UserRole ur WHERE ur.userId IS NOT NULL AND ur.roleId IN :roleIds")
     List<UUID> findDistinctUserIdsByRoleIdIn(@Param("roleIds") Collection<UUID> roleIds);

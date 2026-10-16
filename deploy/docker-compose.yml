@@ -1,3 +1,6 @@
+# Development infrastructure (project name pinned; the quickstart in this folder uses its own).
+name: deploy
+
 services:
   postgres:
     image: postgres:16-alpine

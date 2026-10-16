@@ -1,0 +1,7 @@
+# Files executed inside Linux containers or by POSIX shells must keep LF line endings on every checkout
+# (a CRLF Dockerfile breaks its RUN heredoc scripts).
+Dockerfile text eol=lf
+**/Dockerfile text eol=lf
+*.sh text eol=lf
+.dockerignore text eol=lf
+gradlew text eol=lf

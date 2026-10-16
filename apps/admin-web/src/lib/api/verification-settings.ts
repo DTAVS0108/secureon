@@ -24,6 +24,8 @@ export type VerificationPolicy = {
   signup?: VerificationPolicySection;
   login?: VerificationPolicySection;
   recovery?: VerificationPolicySection;
+  /** ISO country assumed for phone numbers typed without +country code (e.g. "IN"). */
+  defaultPhoneRegion?: string;
   inheritsPlatformDefaults?: boolean;
 };
 

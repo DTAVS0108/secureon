@@ -28,12 +28,15 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
     private final TenantUserDetailsService userDetailsService;
     private final LoginHistoryService loginHistory;
     private final TenantRepository tenants;
+    private final SignInApplicationResolver signInApplication;
 
     public FormLoginFailureHandler(
             RequestCache requestCache,
             TenantUserDetailsService userDetailsService,
             LoginHistoryService loginHistory,
-            TenantRepository tenants) {
+            TenantRepository tenants,
+            SignInApplicationResolver signInApplication) {
+        this.signInApplication = signInApplication;
         this.requestCache = requestCache;
         this.userDetailsService = userDetailsService;
         this.loginHistory = loginHistory;
@@ -59,7 +62,7 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
 
         LoginAttemptDiagnostics.Snapshot snapshot = LoginAttemptDiagnostics.capture(request);
         String username = snapshot.usernameField();
-        AuthRequestContext.enrichForLogin(request, username, tenants);
+        AuthRequestContext.enrichForLogin(request, username, tenants, signInApplication.current());
         String reasonCode = LoginAttemptDiagnostics.classify(exception, snapshot);
         LoginAttemptDiagnostics.applyMdc(snapshot, reasonCode, exception);
         Map<String, Object> diagnostics = LoginAttemptDiagnostics.toMetadata(snapshot, reasonCode, exception);
@@ -88,7 +91,8 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
                     username.substring(sep + 1).trim().toLowerCase(Locale.ROOT));
             loginHistory.recordFailure(
                     account,
-                    null,
+                    // The app being signed in to, so the failure shows in that app's Sessions list.
+                    signInApplication.current(),
                     request.getRemoteAddr(),
                     request.getHeader("User-Agent"),
                     AuthRequestContext.resolveSessionId(request),

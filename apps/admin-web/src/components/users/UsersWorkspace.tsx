@@ -18,9 +18,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
-import { formatDate, initials } from "@/lib/format";
+import { initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
 import type { Role, Tenant, User } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 type UsersRefreshHandler = (userId?: string) => void;
 
@@ -452,7 +453,7 @@ export function UsersWorkspace({
                         </div>
                       </td>
                       <td className="hidden px-4 py-3 text-xs text-muted lg:table-cell">
-                        {formatDate(u.createdAt)}
+                        <LocalTime value={u.createdAt} />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button

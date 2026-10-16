@@ -3,6 +3,7 @@ package com.secureone.auth.account;
 import com.secureone.auth.account.otp.OtpChallenge;
 import com.secureone.auth.account.otp.OtpChallengeService;
 import com.secureone.auth.account.otp.OtpChannel;
+import com.secureone.auth.account.otp.OtpPolicySection;
 import com.secureone.auth.account.otp.OtpPurpose;
 import com.secureone.auth.notify.EmailNotificationService;
 import com.secureone.auth.notify.SmsNotificationService;
@@ -41,6 +42,37 @@ public class AccountVerificationService {
         this.email = email;
         this.sms = sms;
         this.verificationPolicy = verificationPolicy;
+    }
+
+    /**
+     * What {@link #sendSignupVerification} would answer, without an account: same mode and channel
+     * rules (and errors), same fields, a challenge id that no code matches. Used when a sign-up must
+     * not reveal that the email or phone is already taken.
+     */
+    public Map<String, Object> decoySignupVerification(
+            UUID applicationId, String requestedMode, String requestedChannel, String email, String phone) {
+        String mode = resolveSignupMode(applicationId, requestedMode);
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (!"otp".equals(mode)) {
+            out.put("mode", "link");
+            out.put("verificationSent", true);
+            return out;
+        }
+        UserAccount probe = new UserAccount();
+        probe.setEmail(email);
+        probe.setPhone(phone);
+        OtpChannel channel = resolveChannel(applicationId, requestedChannel, probe);
+        String destination = channel == OtpChannel.SMS ? phone : email;
+        if (destination == null || destination.isBlank()) {
+            throw new IllegalStateException("No destination available for " + channel.name() + " OTP.");
+        }
+        out.put("challengeId", UUID.randomUUID().toString());
+        out.put("maskedDestination", OtpChallengeService.maskDestination(channel, destination));
+        out.put("expiresIn", verificationPolicy.otpTtlSeconds(applicationId, OtpPolicySection.SIGNUP));
+        out.put("mode", "otp");
+        out.put("channel", channel.name().toLowerCase());
+        out.put("verificationSent", true);
+        return out;
     }
 
     public Map<String, Object> sendSignupVerification(
@@ -84,7 +116,13 @@ public class AccountVerificationService {
     }
 
     public UserAccount confirmEmailOtp(UUID challengeId, String code) {
+        return confirmEmailOtp(challengeId, code, null);
+    }
+
+    /** {@code expectedApplicationId}: the app whose endpoint is confirming; the code must be from it. */
+    public UserAccount confirmEmailOtp(UUID challengeId, String code, UUID expectedApplicationId) {
         OtpChallenge challenge = otpChallenges.verify(challengeId, code);
+        requireApplication(challenge, expectedApplicationId);
         if (!OtpPurpose.VERIFY_EMAIL.name().equals(challenge.getPurpose())
                 && !OtpPurpose.LOGIN.name().equals(challenge.getPurpose())) {
             throw new IllegalArgumentException("Invalid challenge purpose.");
@@ -102,7 +140,12 @@ public class AccountVerificationService {
     }
 
     public UserAccount confirmPhoneOtp(UUID challengeId, String code) {
+        return confirmPhoneOtp(challengeId, code, null);
+    }
+
+    public UserAccount confirmPhoneOtp(UUID challengeId, String code, UUID expectedApplicationId) {
         OtpChallenge challenge = otpChallenges.verify(challengeId, code);
+        requireApplication(challenge, expectedApplicationId);
         if (!OtpPurpose.VERIFY_PHONE.name().equals(challenge.getPurpose())
                 && !OtpPurpose.LOGIN.name().equals(challenge.getPurpose())) {
             throw new IllegalArgumentException("Invalid challenge purpose.");
@@ -118,9 +161,17 @@ public class AccountVerificationService {
         return user;
     }
 
+    /** A code issued for one application must not verify (and grant membership) through another. */
+    private static void requireApplication(OtpChallenge challenge, UUID expectedApplicationId) {
+        if (expectedApplicationId != null && !expectedApplicationId.equals(challenge.getApplicationId())) {
+            throw new IllegalArgumentException("Invalid challenge for this application.");
+        }
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> verificationOptions(UUID applicationId) {
         Map<String, Object> out = new LinkedHashMap<>();
+        out.put("defaultPhoneRegion", verificationPolicy.defaultPhoneRegion(applicationId));
         out.put("signup", signupOptions(applicationId));
         out.put("login", loginOptions(applicationId));
         out.put("recovery", recoveryOptions(applicationId));
@@ -191,17 +242,22 @@ public class AccountVerificationService {
 
     @SuppressWarnings("unchecked")
     private OtpChannel resolveChannel(UUID applicationId, String requestedChannel, UserAccount user) {
+        List<String> required = (List<String>) verificationPolicy.signupPolicy(applicationId).get("requiredChannels");
+        OtpChannel policyChannel =
+                required != null && required.contains("phone") && user.getPhone() != null ? OtpChannel.SMS : OtpChannel.EMAIL;
         if (requestedChannel != null && !requestedChannel.isBlank()) {
-            return switch (requestedChannel.toLowerCase()) {
+            OtpChannel requested = switch (requestedChannel.toLowerCase()) {
                 case "phone", "sms" -> OtpChannel.SMS;
                 default -> OtpChannel.EMAIL;
             };
+            // Without channel choice the policy's channel is the one verified; otherwise a user could
+            // verify a phone on an app that requires email and then be unable to sign in.
+            if (requested != policyChannel && !verificationPolicy.signupAllowUserChannelChoice(applicationId)) {
+                throw new IllegalArgumentException("Choosing the verification channel is not allowed for this application.");
+            }
+            return requested;
         }
-        List<String> required = (List<String>) verificationPolicy.signupPolicy(applicationId).get("requiredChannels");
-        if (required != null && required.contains("phone") && user.getPhone() != null) {
-            return OtpChannel.SMS;
-        }
-        return OtpChannel.EMAIL;
+        return policyChannel;
     }
 
     private static String purposeLabel(OtpPurpose purpose) {

@@ -160,6 +160,56 @@ public final class EmailTemplateDefaults {
                 If you still cannot access {{appName}}, contact your administrator for {{tenantName}}.""",
                 htmlAccountReactivated(),
                 List.of("userName", "userEmail", "tenantName", "appName")));
+        templates.put("signup_account_exists", template(
+                "Sign-up with an existing email",
+                "Sent to the owner when someone signs up with an email that already has an account",
+                "You already have a {{appName}} account",
+                """
+                Hello {{userName}},
+
+                Someone tried to create a {{appName}} account with {{userEmail}}, but this email already has an account.
+
+                If it was you, sign in, or reset your password if you have forgotten it:
+                {{actionLink}}
+
+                If this was not you, you can ignore this email. Nothing about your account was changed.""",
+                htmlAccountNotice(
+                        "You already have an account",
+                        "Someone tried to create a {{appName}} account with <strong style=\"color:#0f172a;\">{{userEmail}}</strong>, but this email already has an account. If it was you, sign in, or reset your password if you have forgotten it.",
+                        "Reset password"),
+                List.of("userName", "userEmail", "actionLink", "appName")));
+        templates.put("signup_phone_in_use", template(
+                "Sign-up with a phone number in use",
+                "Sent to the person signing up when their phone number already belongs to another account",
+                "We could not create your {{appName}} account",
+                """
+                Hello {{userName}},
+
+                We could not create a {{appName}} account for {{userEmail}} because the phone number you entered is already used by another account.
+
+                Sign up again without a phone number or with a different one:
+                {{actionLink}}""",
+                htmlAccountNotice(
+                        "We could not create your account",
+                        "We could not create a {{appName}} account for <strong style=\"color:#0f172a;\">{{userEmail}}</strong> because the phone number you entered is already used by another account. Sign up again without a phone number or with a different one.",
+                        "Sign up again"),
+                List.of("userName", "userEmail", "actionLink", "appName")));
+        templates.put("account_locked", template(
+                "Account locked",
+                "Sent when an account is locked after too many failed sign-in attempts",
+                "Your {{appName}} account was temporarily locked",
+                """
+                Hello {{userName}},
+
+                Your {{appName}} account {{userEmail}} was locked for {{lockoutMinutes}} minutes after several failed sign-in attempts.
+
+                If this was you, wait and try again. If it was not you, someone may be guessing your password: reset it now.
+                {{actionLink}}""",
+                htmlAccountNotice(
+                        "Your account was temporarily locked",
+                        "Your {{appName}} account <strong style=\"color:#0f172a;\">{{userEmail}}</strong> was locked for {{lockoutMinutes}} minutes after several failed sign-in attempts. If this was not you, someone may be guessing your password: reset it now.",
+                        "Reset password"),
+                List.of("userName", "userEmail", "actionLink", "appName", "lockoutMinutes")));
         templates.put("password_changed", template(
                 "Password changed",
                 "Confirmation after a successful password change",
@@ -494,6 +544,35 @@ public final class EmailTemplateDefaults {
                     </td>
                   </tr>
                 </table>""";
+    }
+
+    private static String htmlAccountNotice(String heading, String body, String buttonLabel) {
+        return """
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+                  <tr>
+                    <td align="center" style="padding:32px 16px;">
+                      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;background-color:#ffffff;border:1px solid #dbeafe;border-radius:14px;overflow:hidden;box-shadow:0 18px 45px rgba(30,64,175,0.10);">
+                        <tr>
+                          <td style="padding:28px 32px;background-color:#1e3a8a;color:#ffffff;">
+                            <div style="font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#bfdbfe;">{{appName}}</div>
+                            <h1 style="margin:10px 0 0;font-size:24px;line-height:1.3;font-weight:700;">@@HEADING@@</h1>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:32px;">
+                            <p style="margin:0 0 18px;font-size:16px;line-height:1.65;color:#334155;">Hello {{userName}},</p>
+                            <p style="margin:0 0 22px;font-size:16px;line-height:1.65;color:#334155;">@@BODY@@</p>
+                            <p style="margin:0 0 24px;"><a href="{{actionLink}}" style="display:inline-block;padding:12px 22px;border-radius:10px;background-color:#1d4ed8;color:#ffffff;font-weight:700;text-decoration:none;">@@BUTTON@@</a></p>
+                            <p style="margin:0;font-size:14px;line-height:1.6;color:#64748b;">If this was not you, you can ignore this email. Nothing about your account was changed.</p>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>"""
+                .replace("@@HEADING@@", heading)
+                .replace("@@BODY@@", body)
+                .replace("@@BUTTON@@", buttonLabel);
     }
 
     private static String htmlPasswordExpiringSoon() {

@@ -121,8 +121,13 @@ public class ApplicationPublicManifestService {
                             "slug", app.getSlug(),
                             "status", app.getStatus().toLowerCase(Locale.ROOT)));
         }
+        List<Map<String, Object>> providers = federationProviders.listPublic(app.getTenantId(), applicationId);
         if (Boolean.TRUE.equals(sections.get("authMethods"))) {
-            response.put("authMethods", sanitizeAuthMethods(settings.resolveAuthMethods(applicationId), onlyEnabledAuth));
+            java.util.Set<Object> configuredFederation = new java.util.HashSet<>();
+            providers.forEach(p -> configuredFederation.add(p.get("authMethodId")));
+            response.put(
+                    "authMethods",
+                    sanitizeAuthMethods(settings.resolveAuthMethods(applicationId), onlyEnabledAuth, configuredFederation));
         }
         if (Boolean.TRUE.equals(sections.get("featureFlags"))) {
             response.put("featureFlags", sanitizeFeatureFlags(settings.resolveFeatureFlags(applicationId)));
@@ -140,8 +145,11 @@ public class ApplicationPublicManifestService {
             response.put("appearance", sanitizeAppearance(settings.resolveAppearance(applicationId)));
         }
         if (Boolean.TRUE.equals(sections.get("federation"))) {
-            response.put("federation", buildFederationBlock(applicationId, app.getTenantId()));
+            response.put("federation", buildFederationBlock(applicationId, providers));
         }
+        // The operator's preferred sign-in UI, so a client can pick hosted redirect vs its own screens
+        // without a build-time flag. Advisory only: both flows stay available.
+        response.put("authUiMode", settings.getClientIntegration(applicationId).get("authUiMode"));
         response.put("signup", buildSignupBlock(applicationId, app));
         response.put(
                 "account",
@@ -149,12 +157,12 @@ public class ApplicationPublicManifestService {
         return response;
     }
 
-    private Map<String, Object> buildFederationBlock(UUID applicationId, UUID tenantId) {
+    private Map<String, Object> buildFederationBlock(UUID applicationId, List<Map<String, Object>> providers) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put(
                 "providersEndpoint",
                 "/api/v1/auth/federation/providers?applicationId=" + applicationId);
-        block.put("providers", federationProviders.listPublic(tenantId, applicationId));
+        block.put("providers", providers);
         return block;
     }
 
@@ -207,8 +215,13 @@ public class ApplicationPublicManifestService {
                 .map(v -> (Map<String, Object>) v);
     }
 
+    /**
+     * {@code available} tells a client whether to offer the method. A federation method (Google,
+     * GitHub, external OIDC) also needs an enabled provider in the tenant; without one its button
+     * would lead nowhere.
+     */
     private static List<Map<String, Object>> sanitizeAuthMethods(
-            List<Map<String, Object>> methods, boolean onlyEnabled) {
+            List<Map<String, Object>> methods, boolean onlyEnabled, java.util.Set<Object> configuredFederation) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> m : methods) {
             boolean enabled = Boolean.TRUE.equals(m.get("enabled"));
@@ -223,7 +236,12 @@ public class ApplicationPublicManifestService {
             row.put("category", m.get("category"));
             row.put("enabled", enabled);
             row.put("implemented", implemented);
-            row.put("available", enabled && implemented);
+            boolean needsProvider = "federation".equals(m.get("category"));
+            boolean available = enabled && implemented && (!needsProvider || configuredFederation.contains(m.get("id")));
+            row.put("available", available);
+            if (enabled && implemented && !available) {
+                row.put("unavailableReason", "No sign-in provider is configured for this organization.");
+            }
             out.add(row);
         }
         return out;

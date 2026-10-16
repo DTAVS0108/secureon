@@ -55,6 +55,24 @@ Expose sections to applications under **Platform → For applications** (Verific
 | **log** | Dev default — OTP printed in auth-server logs |
 | **twilio** / **aws_sns** / **msg91** | Production SMS |
 
+Provider notes:
+
+- **Twilio**: each application uses its own Account SID / auth token (REST API, no shared global client).
+- **MSG91**: uses the Flow API (`/api/v5/flow`), which needs a DLT-approved **template ID**; without one the
+  provider is not considered configured. The template should contain `##otp##` (the code); `##message##`
+  carries the full text if the template shows it.
+- **AWS SNS**: direct SMS publish, optional Sender ID.
+- Code messages read `123456 is your <app name> sign-in code. Do not share it with anyone.`
+
+Operator settings for gateway endpoints (regional endpoints, or a local stand-in for testing):
+`SECUREONE_SMS_TWILIO_API_BASE_URL` (default `https://api.twilio.com`),
+`SECUREONE_SMS_MSG91_API_BASE_URL` (default `https://control.msg91.com`), `SECUREONE_SMS_AWS_SNS_ENDPOINT`.
+These are deliberately not per-application settings: an application admin must not be able to send provider
+credentials to another host.
+
+**Default phone country:** the verification policy's `defaultPhoneRegion` (ISO code, e.g. `IN`) decides how
+numbers typed without `+country` code are read, everywhere a phone is accepted.
+
 Configure under **Authentication → Verification & OTP → SMS provider** (platform or per-app).
 
 Enable **SMS OTP** under **Authentication → MFA** (`m_sms`) and **Email OTP** (`m_email_otp`) for login.

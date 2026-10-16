@@ -101,6 +101,24 @@ Per-key rate limit: 120 requests/minute (Redis). Keys and scopes are created in 
 | `GET /oauth2/authorize?request_uri=…` | Standard authorize with merged pushed params |
 | `POST /oauth2/token` (`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`) | RFC 8693 token exchange — `subject_token`, `requested_token_type`, optional `scope` |
 | `POST /oauth2/backchannel-logout` | Back-channel logout notification (ack stub) |
+| `POST /oauth2/device_authorization` | RFC 8628 device authorization: `device_code`, `user_code`, `verification_uri(_complete)`, `expires_in`, `interval` |
+| `POST /oauth2/token` (`grant_type=urn:ietf:params:oauth:grant-type:device_code`) | Device polling: `authorization_pending`, `slow_down`, `access_denied`, `expired_token`, or tokens |
+| `GET/POST /oauth2/device_verification` | User approval of a device code (hosted page `/account/device.html` drives it; explicit Allow/Deny) |
+| `POST /api/v1/auth/device/lookup` | Device page: `{ userCode }` → app name and scopes of a pending code (rate-limited) |
+| `GET /.well-known/oauth-protected-resource` | RFC 9728 metadata for SecureOne's bearer APIs |
+
+## Federation (OIDC / SAML 2.0)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/auth/federation/providers?applicationId=…` | Public list of enabled providers (`alias`, `type`, `displayName`, `startUrl`) |
+| `GET /api/v1/auth/federation/{alias}/start?applicationId=…&continue=…` | Start sign-in (OAuth redirect, or SAML AuthnRequest via Redirect / auto-POST) |
+| `GET /api/v1/auth/federation/{alias}/callback` | OAuth/OIDC callback |
+| `GET /api/v1/auth/federation/saml/{alias}/metadata?applicationId=…` | SAML SP metadata (XML) |
+| `POST /api/v1/auth/federation/saml/acs/{providerId}` | SAML assertion consumer (IdP posts `SAMLResponse`, `RelayState`) |
+| `GET/POST /api/v1/auth/federation/saml/slo/{providerId}` | SAML single logout (LogoutRequest / LogoutResponse) |
+| `GET /api/v1/auth/federation/saml/logout` | End the session and, for a SAML session, sign out at the IdP |
+| `POST /api/admin/v1/applications/{id}/federation/providers` · `POST /api/admin/v1/tenants/{id}/federation/providers` | Operator: create providers (type `GOOGLE`, `GITHUB`, `OIDC`, `SAML`); SAML responses include `serviceProvider` (entity ID, ACS, SLO, metadata URLs) |
 
 Use **oauthClientBasic** in Swagger for PAR and token exchange when testing with `demo-client` / `demo-secret`.
 
@@ -139,8 +157,8 @@ Platform documentation is served by **admin-web**, not auth-server. Auth-server 
 | API | Host | Auth | Purpose |
 |-----|------|------|---------|
 | `GET /api/v1/confluence` | auth-server `:9000` | Public | Catalog by category + links to Confluence UI and content API |
-| `GET /api/confluence` | admin-web `:3001` | Session cookie | Full catalog JSON (`categories` + flat `section` for compatibility) |
+| `GET /admin/api/confluence` | admin console (`/admin`) | Session cookie | Full catalog JSON (`categories` + flat `section` for compatibility) |
 | `GET /api/confluence/{slug}` | admin-web | Session cookie | Page markdown + metadata |
 | `GET /api/confluence/assets/{path}` | admin-web | Session cookie | Download docs assets (`.drawio`, images) |
 
-UI: http://localhost:3001/confluence — standalone docs browser; draw.io diagrams embed inline on doc pages. See [Documentation hub](../docs/README.md#secureone-confluence-in-app-ui).
+UI: http://localhost:9000/admin/confluence — standalone docs browser; draw.io diagrams embed inline on doc pages. See [Documentation hub](../docs/README.md#secureone-confluence-in-app-ui).

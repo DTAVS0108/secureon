@@ -62,24 +62,38 @@ public class ClientTenantAuthorizationValidator
         }
 
         String clientId = context.getRegisteredClient().getClientId();
-        Application app = applications.findActiveByOAuthClientId(clientId)
-                .orElseThrow(() -> denied(request, "Client application is not active."));
-        Tenant tenant = tenants.findById(app.getTenantId())
-                .orElseThrow(() -> denied(request, "Client tenant not found."));
-
-        UserAccount user = resolveTenantUser(principal.getName(), tenant)
-                .orElseThrow(() -> {
-                    log.warn(
-                            "Denied authorize for client {}: principal is not a user of tenant {}",
-                            clientId,
-                            tenant.getSlug());
-                    return denied(request, "This account cannot sign in to this application.");
-                });
-
-        if (!access.admit(app.getId(), user.getId())) {
-            log.info("Denied authorize for client {}: user {} is not a member of the application", clientId, user.getId());
-            throw denied(request, "This account has not been granted access to this application.");
+        Optional<String> denial = denial(clientId, principal);
+        if (denial.isPresent()) {
+            throw denied(request, denial.get());
         }
+    }
+
+    /**
+     * Why a signed-in principal may not authorize this client, if it may not: the user must belong to
+     * the client's tenant and be admitted to its application. Shared by the authorize and device flows.
+     */
+    public Optional<String> denial(String clientId, Authentication principal) {
+        Optional<Application> app = applications.findActiveByOAuthClientId(clientId);
+        if (app.isEmpty()) {
+            return Optional.of("Client application is not active.");
+        }
+        Optional<Tenant> tenant = tenants.findById(app.get().getTenantId());
+        if (tenant.isEmpty()) {
+            return Optional.of("Client tenant not found.");
+        }
+        Optional<UserAccount> user = resolveTenantUser(principal.getName(), tenant.get());
+        if (user.isEmpty()) {
+            log.warn(
+                    "Denied authorization for client {}: principal is not a user of tenant {}",
+                    clientId,
+                    tenant.get().getSlug());
+            return Optional.of("This account cannot sign in to this application.");
+        }
+        if (!access.admit(app.get().getId(), user.get().getId())) {
+            log.info("Denied authorization for client {}: user {} is not a member of the application", clientId, user.get().getId());
+            return Optional.of("This account has not been granted access to this application.");
+        }
+        return Optional.empty();
     }
 
     /** Tenant principals are named {@code tenantSlug:email}; anything else is not a user of this tenant. */

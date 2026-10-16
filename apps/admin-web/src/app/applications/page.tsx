@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ButtonLink } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import { ClientRegistry } from "@/components/applications/ClientRegistry";
 import { RegisterApplicationWithClientFormModal } from "@/components/forms/RegisterApplicationWithClientFormModal";
@@ -25,7 +26,8 @@ export default async function ApplicationsPage() {
         description="Register application products with OAuth credentials. Use one form for a new product + first client, or add extra OAuth clients to an existing application."
         actions={
           <div className="flex flex-wrap gap-2">
-            <RegisterApplicationWithClientFormModal tenants={tenants} />
+            <ButtonLink href="/connect">Connect an app</ButtonLink>
+            <RegisterApplicationWithClientFormModal tenants={tenants} triggerVariant="secondary" />
             <OAuthClientFormModal
               applications={applications}
               tenants={tenants}

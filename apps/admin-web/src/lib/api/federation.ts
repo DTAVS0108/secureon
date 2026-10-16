@@ -12,7 +12,10 @@ export type FederationProvider = {
   displayName: string;
   enabled: boolean;
   authMethodId: string;
-  callbackUrl: string;
+  /** OAuth/OIDC providers: the redirect URI to register at the IdP. */
+  callbackUrl?: string;
+  /** SAML providers: what to enter at the IdP (or hand it as SP metadata). */
+  serviceProvider?: { entityId: string; acsUrl: string; sloUrl?: string; metadataUrl: string };
   config: {
     clientId?: string;
     clientSecretConfigured?: boolean;
@@ -22,6 +25,15 @@ export type FederationProvider = {
     tokenUri?: string;
     userInfoUri?: string;
     scopes?: string;
+    metadataUrl?: string;
+    idpEntityId?: string;
+    ssoUrl?: string;
+    idpCertificate?: string;
+    emailAttribute?: string;
+    trustEmail?: boolean;
+    sloUrl?: string;
+    allowIdpInitiated?: boolean;
+    landingUrl?: string;
   };
 };
 
@@ -34,6 +46,8 @@ export type FederationProviderInput = {
   clientSecret?: string;
   jitProvisioning?: boolean;
   linkByEmail?: boolean;
+  /** Type-specific settings: OIDC endpoints, or SAML metadata URL / entity ID / SSO URL / certificate. */
+  config?: Record<string, string | boolean>;
 };
 
 function appScoped(appId: string, init?: RequestInit): RequestInit {

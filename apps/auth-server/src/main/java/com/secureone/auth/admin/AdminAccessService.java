@@ -148,6 +148,28 @@ public class AdminAccessService {
         }
     }
 
+    /** Platform super admins, the tenant super admin, and tenant admins of this application (see docs/25). */
+    public boolean canManageClients(Authentication authentication, String actAsEmail, UUID applicationId) {
+        if (applicationId == null) {
+            return canAccessPlatformSettings(authentication, actAsEmail);
+        }
+        if (canAccessPlatformSettings(authentication, actAsEmail)) {
+            return true;
+        }
+        return resolveTenantUserId(authentication, actAsEmail)
+                .map(userId -> consoleAccess.canManageClients(userId, applicationId))
+                .orElse(false);
+    }
+
+    public void requireClientManagement(Authentication authentication, String actAsEmail, UUID applicationId) {
+        if (!canManageClients(authentication, actAsEmail, applicationId)) {
+            throw new AccessDeniedException(applicationId == null
+                    ? "Choose one of your applications; only platform operators create new ones"
+                    : "Managing this application's OAuth clients needs the tenant super admin role, or the tenant"
+                            + " admin role for this application");
+        }
+    }
+
     public void requireSuperAdmin(Authentication authentication) {
         if (!isPlatformSuperAdmin(authentication)) {
             throw new AccessDeniedException("Platform super-admin required");

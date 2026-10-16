@@ -61,8 +61,10 @@ public class AuthSessionService {
 
     private static String loginFailureMessage(AuthenticationException ex) {
         Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-        if (cause instanceof UsernameNotFoundException unfe && unfe.getMessage() != null) {
-            return unfe.getMessage();
+        // Unknown, inactive and unverified accounts are rejected before the password is checked;
+        // naming the reason would tell anyone which emails have accounts.
+        if (cause instanceof UsernameNotFoundException) {
+            return GENERIC_FAILURE;
         }
         if (ex instanceof CredentialsExpiredException) {
             return PasswordExpiryService.EXPIRED_LOGIN_MESSAGE;
@@ -71,9 +73,13 @@ public class AuthSessionService {
             return AccountLockoutService.LOCKED_MESSAGE;
         }
         if (ex instanceof BadCredentialsException) {
-            return "Invalid email or password.";
+            return GENERIC_FAILURE;
         }
         String message = ex.getMessage();
-        return message != null && !message.isBlank() ? message : "Invalid email or password.";
+        return message != null && !message.isBlank() ? message : GENERIC_FAILURE;
     }
+
+    /** Same text for unknown account and wrong password, so the response does not reveal which. */
+    private static final String GENERIC_FAILURE =
+            "Invalid email or password. If your email is not verified yet, use the link in your inbox.";
 }

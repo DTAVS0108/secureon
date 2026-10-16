@@ -56,6 +56,7 @@ public class UserAdminService {
     private final UserPasswordService passwords;
     private final ApplicationRepository applicationRepository;
     private final UserApplicationRepository userApplications;
+    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSchemaService> schemaService;
     private final ApplicationSettingsService applicationSettings;
     private final TenantUserRosterService tenantUserRoster;
     private final TenantQuotaService tenantQuotas;
@@ -73,6 +74,7 @@ public class UserAdminService {
             UserPasswordService passwords,
             ApplicationRepository applicationRepository,
             UserApplicationRepository userApplications,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSchemaService> schemaService,
             ApplicationSettingsService applicationSettings,
             TenantUserRosterService tenantUserRoster,
             TenantQuotaService tenantQuotas,
@@ -87,6 +89,7 @@ public class UserAdminService {
         this.emailService = emailService;
         this.passwords = passwords;
         this.applicationRepository = applicationRepository;
+        this.schemaService = schemaService;
         this.userApplications = userApplications;
         this.applicationSettings = applicationSettings;
         this.tenantUserRoster = tenantUserRoster;
@@ -211,6 +214,7 @@ public class UserAdminService {
     public UserResponse create(UserCreateRequest request) {
         UUID tenantId = resolveTenantId(request);
         requireTenant(tenantId);
+        enterApplicationSchema(request.applicationId());
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         var existing = userRepository.findByTenantIdAndEmail(tenantId, email);
         if (existing.isPresent()) {
@@ -595,7 +599,9 @@ public class UserAdminService {
                 factors,
                 allowedAuthMethods,
                 user.getLastLoginAt(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.getPhone(),
+                user.isPhoneVerified());
     }
 
     private record RoleGrantSummary(List<String> roleIds, List<String> roleNames) {}
@@ -664,15 +670,37 @@ public class UserAdminService {
                         });
     }
 
+    /**
+     * Inviting into an application assigns that application's roles, which live in its own schema. The
+     * request may arrive on the shared route without the app context; switch this transaction to it.
+     */
+    private void enterApplicationSchema(UUID applicationId) {
+        if (applicationId == null || applicationId.equals(com.secureone.auth.application.ApplicationSchemaContext.getApplicationId())) {
+            return;
+        }
+        schemaService.getObject().applySearchPathForApplicationId(applicationId);
+        com.secureone.auth.application.ApplicationSchemaContext.setApplicationId(applicationId);
+    }
+
     private void syncUserRoles(UUID userId, List<UUID> roleIds) {
-        userRoleRepository.deleteByUserId(userId);
+        // Editing a user inside one application replaces only that application's roles; apps that
+        // share the platform tables would otherwise lose each other's assignments.
+        UUID applicationId = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
+        if (applicationId != null) {
+            userRoleRepository.deleteByUserIdAndApplicationId(userId, applicationId);
+        } else {
+            userRoleRepository.deleteByUserId(userId);
+        }
         if (roleIds == null || roleIds.isEmpty()) {
             return;
         }
         LinkedHashSet<UUID> unique = new LinkedHashSet<>(roleIds);
         for (UUID roleId : unique) {
-            if (!roleRepository.existsById(roleId)) {
-                throw new ResourceNotFoundException("Role not found: " + roleId);
+            Role role = roleRepository
+                    .findById(roleId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleId));
+            if (applicationId != null && !applicationId.equals(role.getApplicationId())) {
+                throw new IllegalArgumentException("Role " + role.getName() + " belongs to another application.");
             }
             UserRole grant = new UserRole();
             grant.setUserId(userId);

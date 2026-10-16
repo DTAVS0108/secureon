@@ -53,3 +53,12 @@ export function Badge({
     </span>
   );
 }
+
+/** Marks a feature that is shown but not built yet; pair it with a disabled control. */
+export function ComingSoonBadge({ className }: { className?: string }) {
+  return (
+    <Badge tone="warning" className={className}>
+      Coming soon
+    </Badge>
+  );
+}

@@ -1,7 +1,6 @@
 package com.secureone.auth.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -9,26 +8,22 @@ import org.springframework.mock.web.MockHttpServletRequest;
 class ClientIpResolverTest {
 
     @Test
-    void prefersFirstForwardedForIp() {
+    void usesTheContainerClientAddress() {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Forwarded-For", "203.0.113.10, 10.0.0.1");
-        request.setRemoteAddr("127.0.0.1");
+        request.setRemoteAddr("203.0.113.10");
 
         assertEquals("203.0.113.10", ClientIpResolver.resolve(request));
     }
 
     @Test
-    void fallsBackToRealIpThenRemoteAddr() {
+    void ignoresForwardedHeadersSentByTheClient() {
+        // Trusted proxies are handled by the container before the request gets here; a header the
+        // client sent itself must not change the address (or the rate-limit bucket).
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Real-IP", "198.51.100.4");
-        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Forwarded-For", "198.51.100.99");
+        request.addHeader("X-Real-IP", "198.51.100.98");
+        request.setRemoteAddr("203.0.113.10");
 
-        assertEquals("198.51.100.4", ClientIpResolver.resolve(request));
-    }
-
-    @Test
-    void parsesForwardedChain() {
-        assertEquals("203.0.113.1", ClientIpResolver.firstForwardedIp("203.0.113.1, 10.0.0.2"));
-        assertNull(ClientIpResolver.firstForwardedIp("  "));
+        assertEquals("203.0.113.10", ClientIpResolver.resolve(request));
     }
 }

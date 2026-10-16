@@ -1,5 +1,6 @@
 import { appScopeHeaders } from "./http";
 import { browserApiFetch as apiFetch } from "./browser-client";
+import { withBasePath } from "@/lib/config";
 
 export type UserDirectorySourceKey = "csv" | "excel" | "ldap";
 
@@ -57,7 +58,7 @@ export async function resetUserDirectorySettings(appId: string): Promise<void> {
 
 export async function exportUsersCsv(appId: string): Promise<Blob> {
   const path = `api/admin/v1/applications/${appId}/users/export?format=csv`;
-  const res = await fetch(`/api/proxy/${path}`, {
+  const res = await fetch(withBasePath(`/api/proxy/${path}`), {
     credentials: "same-origin",
     headers: {
       Accept: "text/csv, application/octet-stream",
@@ -80,7 +81,7 @@ export async function importUsersFile(
   const form = new FormData();
   form.append("file", file);
   const path = `api/admin/v1/applications/${appId}/users/import?source=${source}`;
-  const res = await fetch(`/api/proxy/${path}`, {
+  const res = await fetch(withBasePath(`/api/proxy/${path}`), {
     method: "POST",
     credentials: "same-origin",
     headers: appScopeHeaders(appId),

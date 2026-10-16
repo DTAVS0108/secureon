@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { UserFormModal } from "@/components/forms/UserFormModal";
 import { UserSecurityTab } from "@/components/users/UserSecurityTab";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, ComingSoonBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -23,11 +23,13 @@ import {
   updateUserAuthMethodsApi,
 } from "@/lib/api/users";
 import { impersonateUser } from "@/lib/api/service-accounts";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 import { listLoginEvents } from "@/lib/api/sessions";
-import { formatDate, formatDateTime, initials } from "@/lib/format";
+import { initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
+import { isAuthMethodComingSoon } from "@/lib/coming-soon";
 import type { AuthMethod, LoginEvent, MfaFactorType, Role, Tenant, User } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const MFA_LABEL: Record<string, string> = {
   passkey: "Passkey",
@@ -283,10 +285,14 @@ export function UserDetailPanel({
               <InfoRow label="User ID" value={<code className="text-xs break-all">{user.id}</code>} />
               <InfoRow label="Tenant" value={tenantName} />
               <InfoRow label="Application" value={appName} />
-              <InfoRow label="Created" value={formatDate(user.createdAt)} />
+              <InfoRow label="Created" value={<LocalTime value={user.createdAt} />} />
               <InfoRow
                 label="Last login"
-                value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Never"}
+                value={user.lastLoginAt ? <LocalTime value={user.lastLoginAt} format="datetime" /> : "Never"}
+              />
+              <InfoRow
+                label="Phone"
+                value={user.phone ? `${user.phone}${user.phoneVerified ? " (verified)" : " (not verified)"}` : "None"}
               />
               <InfoRow label="Password set" value={user.hasPassword ? "Yes" : "No (invite pending)"} />
               <InfoRow label="Failed logins" value={String(user.failedLoginCount ?? 0)} />
@@ -358,7 +364,7 @@ export function UserDetailPanel({
                       });
                       const url = res.consumeUrl.startsWith("http")
                         ? res.consumeUrl
-                        : `${AUTH_SERVER_URL}${res.consumeUrl}`;
+                        : `${publicAuthServerUrl()}${res.consumeUrl}`;
                       window.open(url, "_blank", "noopener,noreferrer");
                     } catch (e) {
                       window.alert(e instanceof Error ? e.message : "Impersonation failed");
@@ -436,23 +442,7 @@ export function UserDetailPanel({
                   </div>
                   <ul className="divide-y divide-ui rounded-xl border border-ui">
                     {logins.slice(0, 3).map((l) => (
-                      <li
-                        key={l.id}
-                        className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                      >
-                        <div>
-                          <p className="font-medium text-ui">{l.location || "Unknown"}</p>
-                          <p className="text-xs text-muted">
-                            {l.device} · {l.ip}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <Badge tone={l.result === "success" ? "success" : "danger"}>
-                            {l.method}
-                          </Badge>
-                          <p className="mt-1 text-xs text-faint">{formatDateTime(l.timestamp)}</p>
-                        </div>
-                      </li>
+                      <SignInRow key={l.id} login={l} />
                     ))}
                   </ul>
                 </div>
@@ -502,7 +492,7 @@ export function UserDetailPanel({
                           {MFA_LABEL[f.type] ?? f.type}
                         </p>
                         <p className="text-xs text-muted">
-                          {f.label} · added {formatDate(f.addedAt)}
+                          {f.label} · added <LocalTime value={f.addedAt} />
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -649,18 +639,7 @@ export function UserDetailPanel({
             {logins.length > 0 ? (
               <ul className="divide-y divide-ui rounded-xl border border-ui">
                 {logins.map((l) => (
-                  <li key={l.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-                    <div>
-                      <p className="font-medium text-ui">{l.location || "Unknown"}</p>
-                      <p className="text-xs text-muted">
-                        {l.device} · {l.ip}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Badge tone={l.result === "success" ? "success" : "danger"}>{l.method}</Badge>
-                      <p className="mt-1 text-xs text-faint">{formatDateTime(l.timestamp)}</p>
-                    </div>
-                  </li>
+                  <SignInRow key={l.id} login={l} />
                 ))}
               </ul>
             ) : (
@@ -670,6 +649,31 @@ export function UserDetailPanel({
         )}
       </div>
     </Card>
+  );
+}
+
+/** One sign-in attempt: outcome first (location is often unknown), then device, method and time. */
+function SignInRow({
+  login,
+}: {
+  login: { result: string; location?: string | null; device?: string | null; ip?: string | null; method: string; timestamp: string };
+}) {
+  const ok = login.result === "success";
+  const location = login.location && login.location !== "—" ? login.location : null;
+  return (
+    <li className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+      <div>
+        <p className="font-medium text-ui">
+          {ok ? "Signed in" : "Failed sign-in"}
+          {location ? ` · ${location}` : ""}
+        </p>
+        <p className="text-xs text-muted">{[login.device, login.ip].filter(Boolean).join(" · ")}</p>
+      </div>
+      <div className="text-right">
+        <Badge tone={ok ? "success" : "danger"}>{login.method}</Badge>
+        <p className="mt-1 text-xs text-faint"><LocalTime value={login.timestamp} format="datetime" /></p>
+      </div>
+    </li>
   );
 }
 
@@ -730,13 +734,11 @@ function UserAuthMethodToggles({
               className="flex items-start justify-between gap-3 rounded-lg border border-ui px-3 py-2"
             >
               <div>
-                <p className="text-sm font-medium text-ui">{m.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-ui">{m.name}</p>
+                  {isAuthMethodComingSoon(m) && <ComingSoonBadge />}
+                </div>
                 <p className="text-xs text-muted">{m.description}</p>
-                {m.implemented === false && (
-                  <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
-                    App offers this method; runtime enforcement may be limited in dev.
-                  </p>
-                )}
               </div>
               <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm">
                 <input

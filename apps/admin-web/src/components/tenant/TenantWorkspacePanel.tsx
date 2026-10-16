@@ -46,10 +46,10 @@ import {
 } from "@/lib/operator-list-visibility";
 import { fetchUserDirectorySettings } from "@/lib/api/user-directory";
 import { buildAppPath } from "@/lib/app-routes";
-import { formatDate } from "@/lib/format";
 import { listRoles } from "@/lib/api/roles";
 import { statusTone } from "@/lib/status";
 import type { Role, Status, Tenant } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const STATUS_FILTERS = ["ALL", "active", "invited", "pending", "suspended", "disabled"] as const;
 const SOURCE_FILTERS = [
@@ -607,7 +607,7 @@ export function TenantWorkspacePanel({
                     )}
                     {user.rosterAddedAt && (
                       <p className="mt-1 text-[10px] text-faint">
-                        Added {formatDate(user.rosterAddedAt)}
+                        Added <LocalTime value={user.rosterAddedAt} />
                       </p>
                     )}
                     {user.rosterAddedByLabel && (

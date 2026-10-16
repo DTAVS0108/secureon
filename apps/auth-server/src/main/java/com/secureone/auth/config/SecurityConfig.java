@@ -1,5 +1,14 @@
 package com.secureone.auth.config;
 
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import com.secureone.auth.config.oauth.DeviceCodeGrantGuard;
+import com.secureone.auth.federation.SamlAwareOidcLogoutHandler;
+import com.secureone.auth.federation.SamlLogoutService;
+import com.secureone.auth.config.oauth.DeviceCodeLookup;
+import com.secureone.auth.config.oauth.DeviceConsentDenyGuard;
+import com.secureone.auth.config.oauth.DeviceVerificationTenantGuard;
+import com.secureone.auth.config.oauth.PublicClientDeviceAuthentication;
+import com.secureone.auth.config.oauth.PublicClientRefreshAuthentication;
 import com.secureone.auth.oauth.OAuthTokenExchangeFilter;
 import com.secureone.auth.serviceaccount.ApiKeyAuthenticationFilter;
 import com.secureone.auth.admin.AdminBasicAuthenticationFilter;
@@ -17,6 +26,7 @@ import jakarta.servlet.DispatcherType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +43,13 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2DeviceCodeAuthenticationProvider;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2DeviceAuthorizationConsentAuthenticationProvider;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2DeviceVerificationAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -60,8 +76,8 @@ public class SecurityConfig {
 
     @Bean
     OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint(
-            RequestCache requestCache, ApplicationOAuthClientResolver applications) {
-        return new OAuthAwareLoginEntryPoint(requestCache, applications);
+            RequestCache requestCache, ApplicationOAuthClientResolver applications, DeviceCodeLookup deviceCodes) {
+        return new OAuthAwareLoginEntryPoint(requestCache, applications, deviceCodes);
     }
 
     @Bean
@@ -73,7 +89,14 @@ public class SecurityConfig {
             OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint,
             Function<OidcUserInfoAuthenticationContext, OidcUserInfo> oidcUserInfoMapper,
             OAuthTokenExchangeFilter tokenExchangeFilter,
-            ClientTenantAuthorizationValidator clientTenantValidator)
+            ClientTenantAuthorizationValidator clientTenantValidator,
+            RegisteredClientRepository registeredClients,
+            DeviceCodeLookup deviceCodes,
+            OAuth2AuthorizationConsentService consentService,
+            OAuth2AuthorizationService authorizationService,
+            org.springframework.data.redis.core.StringRedisTemplate redis,
+            SamlLogoutService samlLogout,
+            SecureOneEnvironmentProperties environment)
             throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServer =
                 new OAuth2AuthorizationServerConfigurer();
@@ -87,15 +110,62 @@ public class SecurityConfig {
                 .with(authorizationServer, server -> server
                         // RFC 9126 pushed authorization requests: client-authenticated, advertised in metadata.
                         .pushedAuthorizationRequestEndpoint(Customizer.withDefaults())
-                        .authorizationEndpoint(endpoint -> endpoint.authenticationProviders(providers ->
+                        // SPAs (public clients) may refresh with client_id alone; see PublicClientRefreshAuthentication.
+                        // Devices (TVs, CLIs) registered as public clients use the device grant the same way.
+                        .clientAuthentication(client -> client
+                                // Failed client authentication says what to check (without revealing whether the client exists).
+                                .errorResponseHandler(com.secureone.auth.config.oauth.OAuthErrorExplainer.clientAuthenticationFailureHandler())
+                                .authenticationConverter(new PublicClientRefreshAuthentication.Converter())
+                                .authenticationConverter(new PublicClientDeviceAuthentication.Converter())
+                                .authenticationProviders(providers -> {
+                                    providers.add(0, new PublicClientRefreshAuthentication.Provider(registeredClients));
+                                    providers.add(0, new PublicClientDeviceAuthentication.Provider(registeredClients));
+                                }))
+                        // RFC 8628 device authorization grant: the user enters the code on the hosted page.
+                        .deviceAuthorizationEndpoint(device -> device
+                                .verificationUri(DEVICE_PAGE)
+                                .deviceAuthorizationResponseHandler(SecurityConfig::writeDeviceAuthorization))
+                        // device_code polling: slow_down when too fast, replay of a used code revokes its tokens.
+                        .tokenEndpoint(token -> token
+                                .errorResponseHandler(com.secureone.auth.config.oauth.OAuthErrorExplainer.tokenFailureHandler())
+                                .authenticationProviders(providers -> providers.replaceAll(provider ->
+                                        provider instanceof OAuth2DeviceCodeAuthenticationProvider
+                                                ? new DeviceCodeGrantGuard(provider, authorizationService, redis)
+                                                : provider)))
+                        // Approval is always an explicit "Allow" (POST with the per-request state) on the
+                        // device page, never a bare link: a signed-in user who follows an attacker's
+                        // verification link must not connect the attacker's device to their account.
+                        .deviceVerificationEndpoint(verification -> verification
+                                .consentPage(DEVICE_PAGE)
+                                .authenticationProviders(providers -> providers.replaceAll(provider -> {
+                                    if (provider instanceof OAuth2DeviceVerificationAuthenticationProvider verify) {
+                                        verify.setAuthorizationConsentRequired(context -> true);
+                                        return new DeviceVerificationTenantGuard(verify, deviceCodes, clientTenantValidator);
+                                    }
+                                    if (provider instanceof OAuth2DeviceAuthorizationConsentAuthenticationProvider) {
+                                        return new DeviceConsentDenyGuard(provider, registeredClients, consentService);
+                                    }
+                                    return provider;
+                                }))
+                                .deviceVerificationResponseHandler((request, response, authentication) ->
+                                        response.sendRedirect(DEVICE_PAGE + "?status=approved"))
+                                .errorResponseHandler((request, response, exception) ->
+                                        response.sendRedirect(DEVICE_PAGE + "?status=" + deviceErrorStatus(exception))))
+                        .authorizationEndpoint(endpoint -> endpoint
+                                // Integration mistakes (unregistered redirect_uri, scope, missing PKCE) explained.
+                                .errorResponseHandler(com.secureone.auth.config.oauth.OAuthErrorExplainer
+                                        .authorizationFailureHandler(registeredClients, environment.isProduction()))
+                                .authenticationProviders(providers ->
                                 providers.forEach(provider -> {
                                     if (provider instanceof OAuth2AuthorizationCodeRequestAuthenticationProvider codeProvider) {
                                         // Users may only authorize clients of their own tenant and app.
                                         codeProvider.setAuthenticationValidator(clientTenantValidator);
                                     }
                                 })))
-                        .oidc(oidc -> oidc.userInfoEndpoint(
-                                userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))))
+                        .oidc(oidc -> oidc
+                                .userInfoEndpoint(userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))
+                                // Sessions from a SAML IdP are also signed out there (single logout).
+                                .logoutEndpoint(logout -> logout.logoutResponseHandler(new SamlAwareOidcLogoutHandler(samlLogout)))))
                 .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
@@ -104,15 +174,68 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
-                // Redirect browser (text/html) requests to the login page when unauthenticated.
+                // Redirect the authorize endpoint and explicit browser (text/html) requests to the login
+                // page when unauthenticated. API clients sending Accept: */* (UserInfo, device
+                // authorization) get a 401 with WWW-Authenticate instead of a login page.
                 .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
-                                oauthAwareLoginEntryPoint,
-                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)))
+                                oauthAwareLoginEntryPoint, browserNavigation()))
                 // Accept access tokens for OIDC UserInfo and/or Client Registration.
                 .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)));
         return http.build();
     }
+
+    private static RequestMatcher browserNavigation() {
+        MediaTypeRequestMatcher html = new MediaTypeRequestMatcher(MediaType.TEXT_HTML);
+        html.setIgnoredMediaTypes(java.util.Set.of(MediaType.ALL));
+        return request -> "/oauth2/authorize".equals(request.getRequestURI()) || html.matches(request);
+    }
+
+    /**
+     * RFC 8628 section 3.2 response. Spring's default leaves out {@code interval}; devices then fall back to
+     * 5 seconds, but saying it explicitly is what the slow_down rule is measured against.
+     */
+    private static void writeDeviceAuthorization(
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response,
+            org.springframework.security.core.Authentication authentication)
+            throws java.io.IOException {
+        var result = (org.springframework.security.oauth2.server.authorization.authentication
+                .OAuth2DeviceAuthorizationRequestAuthenticationToken) authentication;
+        String verificationUri = org.springframework.web.servlet.support.ServletUriComponentsBuilder
+                .fromContextPath(request).path(DEVICE_PAGE).build().toUriString();
+        String userCode = result.getUserCode().getTokenValue();
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("device_code", result.getDeviceCode().getTokenValue());
+        body.put("user_code", userCode);
+        body.put("verification_uri", verificationUri);
+        body.put("verification_uri_complete", verificationUri + "?user_code=" + userCode);
+        body.put("expires_in", java.time.Duration.between(
+                java.time.Instant.now(), result.getDeviceCode().getExpiresAt()).toSeconds());
+        body.put("interval", DeviceCodeGrantGuard.INTERVAL_SECONDS);
+        response.setStatus(200);
+        response.setContentType("application/json");
+        response.setHeader("Cache-Control", "no-store");
+        response.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body));
+    }
+
+    /** Result shown on the device page; a fixed set of values, never text from the request. */
+    private static String deviceErrorStatus(Exception exception) {
+        if (!(exception instanceof OAuth2AuthenticationException oauth)) {
+            return "error";
+        }
+        String code = oauth.getError().getErrorCode();
+        if ("access_denied".equals(code)) {
+            // The tenant/app rule (DeviceVerificationTenantGuard) vs the user pressing "Deny".
+            return DeviceVerificationTenantGuard.NOT_ALLOWED.equals(oauth.getError().getDescription())
+                    ? "not_allowed"
+                    : "denied";
+        }
+        return "invalid_grant".equals(code) || "invalid_request".equals(code) ? "invalid_grant" : "error";
+    }
+
+    /** Hosted page where a user types the code shown on a device (RFC 8628 verification_uri). */
+    static final String DEVICE_PAGE = "/account/device.html";
 
     @Bean
     @Order(2)
@@ -133,7 +256,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)));
+                .oauth2ResourceServer(rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder)))
+                .addFilterAfter(new BearerTenantContextFilter(), BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
@@ -177,8 +301,15 @@ public class SecurityConfig {
             AdminCredentialAuthenticationFilter adminCredentialAuthenticationFilter,
             TenantLoginUsernameFilter tenantLoginUsernameFilter,
             LoginSuccessHandler loginSuccessHandler,
-            FormLoginFailureHandler loginFailureHandler)
+            FormLoginFailureHandler loginFailureHandler,
+            @org.springframework.beans.factory.annotation.Value("${server.port:9000}") int serverPort,
+            @org.springframework.beans.factory.annotation.Value("${management.server.port:}") String managementPort)
             throws Exception {
+        // With SECUREONE_MANAGEMENT_PORT set, actuator (health, info, Prometheus) is served only on that
+        // port, which is never published (probes and the metrics scraper reach it inside the cluster).
+        int separateManagementPort = managementPort.isBlank() || managementPort.equals(Integer.toString(serverPort))
+                ? -1
+                : Integer.parseInt(managementPort.trim());
         http
                 .cors(Customizer.withDefaults())
                 .requestCache(cache -> cache.requestCache(requestCache))
@@ -190,6 +321,9 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
+                        .requestMatchers(request -> separateManagementPort > 0
+                                && request.getLocalPort() == separateManagementPort)
+                        .permitAll()
                         .requestMatchers(
                                 "/actuator/health/**",
                                 "/actuator/info",
@@ -200,8 +334,10 @@ public class SecurityConfig {
                                 "/docs/**",
                                 "/api/info",
                                 "/api/v1/confluence",
+                                "/api/v1/setup/**",
                                 "/api/v1/account/password/forgot",
                                 "/api/v1/account/password/reset",
+                                "/api/v1/account/password/reset/otp",
                                 "/api/v1/account/set-password",
                                 "/api/v1/account/email/**",
                                 "/api/v1/account/verify/**",
@@ -211,6 +347,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/mfa/**",
                                 "/api/v1/auth/federation/**",
                                 "/api/v1/auth/impersonation/consume",
+                                "/api/v1/auth/device/**",
+                                "/.well-known/oauth-protected-resource",
                                 "/api/v1/auth/passkey/**",
                                 "/scim/v2/**",
                                 "/api/v1/applications/**",
@@ -225,6 +363,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf.ignoringRequestMatchers(
                         "/api/admin/v1/**",
+                        "/api/v1/setup/**",
                         "/api/v1/account/**",
                         "/api/v1/auth/methods",
                         "/api/v1/auth/me",
@@ -232,6 +371,7 @@ public class SecurityConfig {
                         "/api/v1/auth/mfa/**",
                         "/api/v1/auth/federation/**",
                         "/api/v1/auth/impersonation/consume",
+                        "/api/v1/auth/device/**",
                         "/api/v1/auth/passkey/**",
                         "/scim/v2/**",
                         "/api/v1/applications/**",

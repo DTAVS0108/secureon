@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/session-shared";
 
-const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/auth/logout"];
+const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/auth/logout", "/setup", "/api/setup"];
 
 function withPathname(request: NextRequest, pathname: string, response?: NextResponse) {
   const res = response ?? NextResponse.next({ request });

@@ -6,13 +6,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice(
-        basePackages = {"com.secureone.auth.admin", "com.secureone.auth.account", "com.secureone.auth.application"})
+        basePackages = {
+            "com.secureone.auth.admin",
+            "com.secureone.auth.account",
+            "com.secureone.auth.application",
+            "com.secureone.auth.configascode",
+            "com.secureone.auth.mfa"
+        })
 public class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -55,6 +62,16 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /**
+     * Another request changed or removed the same record between this request loading and saving it,
+     * e.g. two admins deleting the same user. The caller should reload, not see a server error.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ProblemDetail concurrentChange(ObjectOptimisticLockingFailureException ex) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT, "This record was changed or removed by another request. Refresh and try again.");
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail dataConflict(DataIntegrityViolationException ex) {
         String detail = ex.getMostSpecificCause().getMessage();
@@ -87,6 +104,9 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Database constraint violation.");
     }
 
+    private static final java.util.regex.Pattern FIELD_IN_REFERENCE_CHAIN =
+            java.util.regex.Pattern.compile("\\[\"([^\"]+)\"\\]");
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ProblemDetail unreadable(HttpMessageNotReadableException ex) {
         String msg = ex.getMostSpecificCause().getMessage();
@@ -94,8 +114,21 @@ public class ApiExceptionHandler {
             return ProblemDetail.forStatusAndDetail(
                     HttpStatus.BAD_REQUEST, "One or more IDs are not valid UUIDs.");
         }
-        return ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST, "Invalid request body: " + ex.getMostSpecificCause().getMessage());
+        // Name the field when the parser says which one, never echo parser internals (class names,
+        // DeserializationFeature hints) to API clients.
+        if (msg != null) {
+            // Jackson's reference chain ends with the offending field: ...Foo["isComposite"]
+            java.util.regex.Matcher all = FIELD_IN_REFERENCE_CHAIN.matcher(msg);
+            String last = null;
+            while (all.find()) {
+                last = all.group(1);
+            }
+            if (last != null) {
+                return ProblemDetail.forStatusAndDetail(
+                        HttpStatus.BAD_REQUEST, "Invalid or missing value for '%s'.".formatted(last));
+            }
+        }
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "The request body is not valid JSON.");
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

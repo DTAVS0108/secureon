@@ -11,6 +11,8 @@ import type { AdminContext } from "@/lib/api/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { getServerThemeBootstrap } from "@/lib/theme/server";
+import { serverPublicConfig } from "@/lib/config";
+import { RuntimeConfigProvider } from "@/components/RuntimeConfigProvider";
 
 const EMPTY_ADMIN_CONTEXT: AdminContext = {
   platformSuperAdmin: false,
@@ -54,6 +56,7 @@ export default async function RootLayout({
   const isBareRoute =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/setup" ||
     pathname.startsWith("/api/");
   const [ctx, theme] = await Promise.all([
     isBareRoute ? Promise.resolve(EMPTY_ADMIN_CONTEXT) : loadAdminContextSafe(),
@@ -70,11 +73,14 @@ export default async function RootLayout({
       style={theme.style as CSSProperties}
     >
       <body className="min-h-full">
+        {/* Runtime settings for browser code (lib/config.ts): read per request, never baked into the build. */}
+        <RuntimeConfigProvider config={serverPublicConfig()}>
         <ToastProvider>
           <ConsoleProviders adminContext={ctx}>
             <ThemeProvider platformSettingsAccess={ctx.platformSuperAdmin}>{children}</ThemeProvider>
           </ConsoleProviders>
         </ToastProvider>
+        </RuntimeConfigProvider>
       </body>
     </html>
   );

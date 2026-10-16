@@ -10,7 +10,7 @@ Related: [Data model](04-data-model.md), [Database strategy](06-database.md), [I
 
 | Concept | What it is | Stored in | Enables |
 |---------|------------|-----------|---------|
-| **Application product** | The IAM boundary for a product (e.g. “Flipkart”, “Billing portal”) | `platform.application` + optional dedicated schema | Users, roles, permissions, groups, settings, audit in the **application console** |
+| **Application product** | The IAM boundary for a product (e.g. “Demo Store”, “Billing portal”) | `platform.application` + optional dedicated schema | Users, roles, permissions, groups, settings, audit in the **application console** |
 | **OAuth client** | OIDC/OAuth credentials used to obtain tokens | `platform.oauth_client` | `/oauth2/authorize`, `/oauth2/token`, redirect URIs, PKCE, client secret |
 
 - **1 application → N OAuth clients** (web app, SPA, mobile, M2M can each have their own client).
@@ -63,6 +63,16 @@ JPA queries for app-scoped entities (`role`, `permission`, `user_application`, e
    → creates `platform.oauth_client` linked to the new application.
 
 Confidential clients show the **client secret once** after submit (same as standalone OAuth registration).
+
+**Grant types** accepted (others are rejected with `400`, not silently dropped):
+
+| Grant | Typical client | Notes |
+|-------|----------------|-------|
+| `authorization_code` (+ PKCE) | web, SPA, native | Hosted or native sign-in |
+| `refresh_token` | web, SPA, native, device | Public SPA / device clients refresh with `client_id` only |
+| `client_credentials` | M2M | Service-to-service |
+| `urn:ietf:params:oauth:grant-type:device_code` (alias `device_code`) | native (TV, console, CLI) | RFC 8628; users approve at `/account/device.html` |
+| `urn:ietf:params:oauth:grant-type:token-exchange` | web / M2M | RFC 8693 delegation |
 
 ### OAuth-only auto-create
 

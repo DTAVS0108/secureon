@@ -1,4 +1,4 @@
-import { AUTH_SERVER_URL } from "./config";
+import { authServerInternalUrl } from "./config";
 
 export type AuthServerInfo = {
   name?: string;
@@ -29,7 +29,7 @@ export type ProbeResult<T> = {
 
 async function probe<T>(path: string): Promise<ProbeResult<T>> {
   try {
-    const res = await fetch(`${AUTH_SERVER_URL}${path}`, {
+    const res = await fetch(`${authServerInternalUrl()}${path}`, {
       cache: "no-store",
       // Keep the dashboard snappy even when the backend is down.
       signal: AbortSignal.timeout(4000),

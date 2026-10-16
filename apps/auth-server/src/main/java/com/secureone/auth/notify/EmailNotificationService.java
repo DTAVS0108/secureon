@@ -160,6 +160,42 @@ public class EmailNotificationService {
                 ctx, "admin_security_alert", vars, adminRecipientEmails(ctx.notifications()), List.of(), List.of());
     }
 
+    /** To the owner of an email someone tried to sign up with; {@code actionLink} goes to password reset. */
+    public void sendSignupAccountExists(UUID applicationId, UserAccount user, String actionLink) {
+        ApplicationEmailContext ctx = emailContext.context(applicationId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        sendTemplated(ctx, user.getEmail(), "signup_account_exists", userVariables(ctx, user, actionLink), List.of(), List.of());
+    }
+
+    /** To someone whose sign-up was refused because the phone number belongs to another account. */
+    public void sendSignupPhoneInUse(UUID applicationId, String toEmail, String name, String actionLink) {
+        ApplicationEmailContext ctx = emailContext.context(applicationId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        Map<String, String> vars = baseVariables(ctx);
+        vars.put("userName", name);
+        vars.put("userEmail", toEmail);
+        vars.put("actionLink", actionLink);
+        sendTemplated(ctx, toEmail, "signup_phone_in_use", vars, List.of(), List.of());
+    }
+
+    public void sendAccountLocked(UUID applicationId, UserAccount user, int lockoutMinutes, String resetLink) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            return;
+        }
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        Map<String, String> vars = userVariables(ctx, user, resetLink);
+        vars.put("lockoutMinutes", String.valueOf(lockoutMinutes));
+        sendTemplated(ctx, user.getEmail(), "account_locked", vars, List.of(), List.of());
+    }
+
     public void sendAccountSuspended(UUID applicationId, UserAccount user) {
         sendAccountStatusEmail(applicationId, user, "account_suspended");
     }
@@ -390,7 +426,7 @@ public class EmailNotificationService {
     private Map<String, String> baseVariables(ApplicationEmailContext ctx) {
         Map<String, String> vars = new HashMap<>();
         vars.put("appName", string(ctx.email(), "fromName", "SecureOne"));
-        vars.put("tenantName", "SecureOne");
+        vars.put("tenantName", ctx.tenantName() != null ? ctx.tenantName() : "SecureOne");
         return vars;
     }
 

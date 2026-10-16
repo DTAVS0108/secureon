@@ -8,8 +8,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
@@ -121,7 +123,7 @@ public class OtpChallengeService {
             challenge.setConsumedAt(Instant.now());
             challenges.save(challenge);
             redis.deleteChallenge(challengeId);
-            throw new IllegalStateException("Too many failed attempts. Request a new code.");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many failed attempts. Request a new code.");
         }
 
         String expected = redis.getChallengeHash(challengeId);
@@ -151,7 +153,7 @@ public class OtpChallengeService {
         return out;
     }
 
-    private static String maskDestination(OtpChannel channel, String destination) {
+    public static String maskDestination(OtpChannel channel, String destination) {
         if (channel == OtpChannel.SMS) {
             return com.secureone.auth.account.PhoneNormalizer.mask(destination);
         }

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { AUTH_SERVER_URL } from "@/lib/config";
-import { ApiError, serverAuthHeader } from "./http";
+import { authServerInternalUrl, stripBasePath, withBasePath } from "@/lib/config";
+import { ApiError, serverAuthHeader, serverForwardedHeaders } from "./http";
 
 const ACT_AS_EMAIL = process.env.SECUREONE_ACT_AS_EMAIL;
 
@@ -28,8 +28,8 @@ export async function browserApiFetch<T>(
   if (ACT_AS_EMAIL) baseHeaders["X-Act-As-Email"] = ACT_AS_EMAIL;
 
   const url = isBrowser()
-    ? `/api/proxy/${normalized}`
-    : `${AUTH_SERVER_URL}/${normalized}`;
+    ? withBasePath(`/api/proxy/${normalized}`)
+    : `${authServerInternalUrl()}/${normalized}`;
 
   if (!isBrowser()) {
     const authorization = await serverAuthHeader();
@@ -37,6 +37,7 @@ export async function browserApiFetch<T>(
       redirect("/login");
     }
     baseHeaders.Authorization = authorization;
+    Object.assign(baseHeaders, await serverForwardedHeaders());
   }
 
   const res = await fetch(url, {
@@ -51,8 +52,8 @@ export async function browserApiFetch<T>(
     if (!isBrowser()) {
       redirect("/login?reason=expired");
     }
-    const here = `${window.location.pathname}${window.location.search}`;
-    window.location.assign(`/login?reason=expired&next=${encodeURIComponent(here)}`);
+    const here = `${stripBasePath(window.location.pathname)}${window.location.search}`;
+    window.location.assign(withBasePath(`/login?reason=expired&next=${encodeURIComponent(here)}`));
   }
 
   if (res.status === 204) {

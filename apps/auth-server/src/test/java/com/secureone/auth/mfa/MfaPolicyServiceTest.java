@@ -39,6 +39,12 @@ class MfaPolicyServiceTest {
     @Mock
     private com.secureone.auth.trusteddevice.TrustedDeviceService trustedDevices;
 
+    @Mock
+    private com.secureone.auth.application.ApplicationEffectiveSettingsService effective;
+
+    @Mock
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
+
     @InjectMocks
     private MfaPolicyService policy;
 
@@ -48,8 +54,8 @@ class MfaPolicyServiceTest {
         UserAccount user = new UserAccount();
         user.setId(userId);
 
-        when(authSettings.isAuthMethodEnabled("m_totp")).thenReturn(true);
-        when(authSettings.isAuthMethodImplemented("m_totp")).thenReturn(true);
+        when(effectiveSettings.getObject()).thenReturn(effective);
+        when(effective.isMethodAvailable(null, "m_totp")).thenReturn(true);
         when(platformSettings.get("mfa_policy")).thenReturn(Map.of("stepUpAfterPassword", true));
         when(verificationPolicy.loginPolicy(null)).thenReturn(Map.of("mfaRequired", "optional"));
         when(mfaFactors.findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "totp"))
@@ -65,8 +71,8 @@ class MfaPolicyServiceTest {
         UserAccount user = new UserAccount();
         user.setId(userId);
 
-        when(authSettings.isAuthMethodEnabled("m_passkey")).thenReturn(true);
-        when(authSettings.isAuthMethodImplemented("m_passkey")).thenReturn(true);
+        when(effectiveSettings.getObject()).thenReturn(effective);
+        when(effective.isMethodAvailable(applicationId, "m_passkey")).thenReturn(true);
         when(applicationSettings.resolveMfaPolicy(applicationId))
                 .thenReturn(Map.of("stepUpAfterPassword", true, "requirePasskeyWhenEnrolled", true));
         when(verificationPolicy.loginPolicy(applicationId)).thenReturn(Map.of("mfaRequired", "optional"));
@@ -80,6 +86,7 @@ class MfaPolicyServiceTest {
     void skipsStepUpWhenMfaDisabled() {
         UserAccount user = new UserAccount();
         user.setId(UUID.randomUUID());
+        when(effectiveSettings.getObject()).thenReturn(effective);
         assertFalse(policy.requiresMfaStepUp(user, null));
     }
 }

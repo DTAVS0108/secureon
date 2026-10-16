@@ -10,7 +10,10 @@ SecureOne adopts the modern, consolidated standards set so existing OAuth/OIDC c
 | **OpenID Connect (OIDC)** | Authentication, ID tokens, discovery (`/.well-known/openid-configuration`) | MVP |
 | **WebAuthn / FIDO2** | Passkeys / hardware MFA (the strategic primary factor) | 2 |
 | **TOTP (RFC 6238)** | App-based 2FA fallback | 2 |
-| **SAML 2.0** | Enterprise SSO via a separate, feature-flagged IdP/brokering module | 3 |
+| **SAML 2.0 (Web SSO, SP role)** | Enterprise SSO with company IdPs (any standards-compliant IdP): SP- and IdP-initiated sign-in, single logout, signed requests, encrypted assertions | 3 (implemented) |
+| **Device Authorization Grant (RFC 8628)** | TVs, consoles, CLIs: sign in on another device | 3 (implemented) |
+| **AS Metadata (RFC 8414)** | `/.well-known/oauth-authorization-server` | MVP (implemented) |
+| **Protected Resource Metadata (RFC 9728)** | `/.well-known/oauth-protected-resource` for SecureOne's own bearer APIs | 3 (implemented) |
 | **SCIM 2.0** | User provisioning/deprovisioning | 3 |
 | **Token Exchange (RFC 8693)** | Delegation / impersonation, service-to-service token swap | 2–3 (implemented) |
 | **PAR (RFC 9126)** | Pushed Authorization Requests (tamper-proof request params) | 3 (implemented) |
@@ -29,7 +32,7 @@ See [Enterprise Capabilities](10-enterprise.md) for the full enterprise feature 
 | **Authorization Code + PKCE** | Web apps, SPAs, mobile, native |
 | **Client Credentials** | Machine-to-machine / service accounts |
 | **Refresh Token (with rotation)** | Long-lived sessions |
-| **Device Authorization Grant** | CLIs / TVs (later) |
+| **Device Authorization Grant (RFC 8628)** | CLIs / TVs — implemented (`/oauth2/device_authorization`, hosted page `/account/device.html`) |
 | **CIBA** | Decoupled auth (approve on a second device) — Phase 3 |
 | **Token Exchange** | Delegation / impersonation between services — implemented (`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`) |
 
@@ -57,8 +60,15 @@ For how integrated applications choose **hosted SecureOne pages vs a custom logi
 | `/oauth2/revoke` | Token revocation |
 | `/oauth2/par` | Pushed Authorization Requests (RFC 9126); returns `request_uri` for `/oauth2/authorize` |
 | `/oauth2/backchannel-logout` | OIDC back-channel logout (ack stub; full validation pending) |
-| `/userinfo` | OIDC user claims |
-| `/connect/logout` | RP-initiated logout |
+| `/userinfo` | OIDC user claims (GET or POST; `401` + `WWW-Authenticate` without a token) |
+| `/connect/logout` | RP-initiated logout (also signs out at the SAML IdP for SAML sessions) |
+| `/oauth2/device_authorization` | Device authorization (RFC 8628): `device_code`, `user_code`, `verification_uri(_complete)`, `interval` |
+| `/oauth2/device_verification` | Where the hosted device page sends the user to approve (always an explicit Allow / Deny) |
+| `/.well-known/oauth-authorization-server` | RFC 8414 metadata |
+| `/.well-known/oauth-protected-resource` | RFC 9728 metadata |
+| `/api/v1/auth/federation/saml/{alias}/metadata` | SAML SP metadata (entity ID, ACS, SLO, signing + encryption certificate) |
+| `/api/v1/auth/federation/saml/acs/{providerId}` | SAML assertion consumer service (HTTP-POST) |
+| `/api/v1/auth/federation/saml/slo/{providerId}` | SAML single logout (LogoutRequest / LogoutResponse, Redirect or POST) |
 
 ## MFA / 2FA (graded, passkey-first)
 
@@ -93,7 +103,13 @@ Data model: see `mfa_factor` and `mfa_policy` in [Data Model](04-data-model.md#d
 
 ## Federation & brokering (enterprise — Phase 3)
 
-- **SAML 2.0 IdP/SP** as a separate module behind a feature flag — kept out of the core so it never complicates the primary OIDC path.
+- **Implemented:** Google, GitHub and generic OIDC sign-in, and **SAML 2.0 as a service provider** — per application or tenant-wide, configured from IdP metadata (or entity ID + SSO URL + certificate):
+  - SP-initiated sign-in (signed AuthnRequest, Redirect or POST binding) and opt-in **IdP-initiated** sign-in to an operator-set landing URL;
+  - validation of signature, audience, recipient, validity window and `InResponseTo` (Spring Security / OpenSAML 5), **encrypted assertions**, and a **replay cache** so each response is accepted once;
+  - **single logout** both ways: `/connect/logout` continues to the IdP, and an IdP's LogoutRequest ends every SecureOne session of that user;
+  - just-in-time accounts or link-by-email, MFA and app-access rules applied as for any sign-in.
+  See [23 — Integration guide](23-application-integration-guide.md#enterprise-sso-saml-20) and the [SAML flows diagram](diagrams/auth-flow-saml.drawio).
+- **Not yet:** SecureOne as a SAML **IdP** (issuing assertions to SAML-only apps), artifact binding, SOAP back-channel logout.
 - **Identity brokering** from many external IdPs (enterprise OIDC, SAML, social) with **home-realm discovery** and **JIT provisioning**.
 - **LDAP / Active Directory** user federation (sync or on-demand, group→role mapping).
 - External IdP logins link to `user_identity`. Full detail in [Enterprise Capabilities](10-enterprise.md#1-identity-federation--brokering).

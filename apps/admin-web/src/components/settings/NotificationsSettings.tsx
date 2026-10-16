@@ -5,6 +5,7 @@ import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSett
 import { EmailTestPanel } from "@/components/settings/EmailTestPanel";
 import { RecipientGroupsEditor } from "@/components/settings/RecipientGroupsEditor";
 import { SmtpSettingsCard } from "@/components/settings/SmtpSettingsCard";
+import { ComingSoonBadge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
@@ -275,7 +276,8 @@ export function NotificationsSettings({
           />
           <SettingRow
             label="Push notifications"
-            hint="Mobile / web push (coming soon)"
+            hint="Mobile / web push — not available yet"
+            comingSoon
             checked={!!notifications.pushEnabled}
             onChange={(v) => setNotifications({ ...notifications, pushEnabled: v })}
           />
@@ -380,21 +382,32 @@ function SettingRow({
   hint,
   checked,
   disabled,
+  comingSoon,
   onChange,
 }: {
   label: string;
   hint: string;
   checked: boolean;
   disabled?: boolean;
+  /** Not built yet: badge, and the toggle can only be switched off. */
+  comingSoon?: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <li className="flex items-center justify-between gap-4 px-5 py-4">
       <div>
-        <p className="text-sm font-medium text-[var(--ui-text)]">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className={`text-sm font-medium ${comingSoon ? "text-muted" : "text-ui"}`}>{label}</p>
+          {comingSoon && <ComingSoonBadge />}
+        </div>
         <p className="text-xs text-muted">{hint}</p>
       </div>
-      <Toggle checked={checked} disabled={disabled} onChange={onChange} aria-label={label} />
+      <Toggle
+        checked={checked}
+        disabled={disabled || (comingSoon && !checked)}
+        onChange={onChange}
+        aria-label={label}
+      />
     </li>
   );
 }

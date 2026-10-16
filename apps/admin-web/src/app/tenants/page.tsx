@@ -7,11 +7,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TenantFormModal } from "@/components/forms/TenantFormModal";
 import { listTenants } from "@/lib/api/tenants";
 import { tenantDeleteAction } from "@/lib/actions";
-import { formatDate } from "@/lib/format";
 import { redirect } from "next/navigation";
 import { isTenantSuperAdmin } from "@/lib/operator-access";
 import { requireTenantGovernanceAccess } from "@/lib/platform-access";
 import { planTone, statusTone } from "@/lib/status";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 export const dynamic = "force-dynamic";
 
@@ -68,19 +68,25 @@ export default async function TenantsPage() {
               <TD><Badge tone={statusTone(t.status)} dot className="capitalize">{t.status}</Badge></TD>
               <TD className="text-right tabular-nums">{t.userCount.toLocaleString()}</TD>
               <TD className="text-right tabular-nums">{t.appCount}</TD>
-              <TD className="text-muted">{formatDate(t.createdAt)}</TD>
+              <TD className="text-muted"><LocalTime value={t.createdAt} /></TD>
               <TD>
                 <div className="flex items-center justify-end gap-1">
                   <TenantFormModal tenant={t} triggerLabel="Edit" triggerVariant="ghost" triggerSize="sm" />
-                  <ConfirmDialog
-                    action={tenantDeleteAction}
-                    id={t.id}
-                    triggerLabel="Delete"
-                    triggerVariant="ghost"
-                    triggerSize="sm"
-                    title={`Delete ${t.name}?`}
-                    message="This removes the tenant and all associated configuration. This action cannot be undone."
-                  />
+                  {t.system ? (
+                    <span title="The platform tenant holds the platform operators and cannot be deleted.">
+                      <Badge tone="neutral">Reserved</Badge>
+                    </span>
+                  ) : (
+                    <ConfirmDialog
+                      action={tenantDeleteAction}
+                      id={t.id}
+                      triggerLabel="Delete"
+                      triggerVariant="ghost"
+                      triggerSize="sm"
+                      title={`Delete ${t.name}?`}
+                      message="This removes the tenant and all associated configuration. This action cannot be undone."
+                    />
+                  )}
                 </div>
               </TD>
             </TR>

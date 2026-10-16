@@ -52,11 +52,11 @@ public class OAuthTokenExchangeService {
             ApplicationRegisteredClientRepository clients,
             PasswordEncoder passwordEncoder,
             JwtDecoder jwtDecoder,
-            JWKSource<SecurityContext> jwkSource) {
+            com.secureone.auth.config.oauth.OAuth2SigningKeyService signingKeys) {
         this.clients = clients;
         this.passwordEncoder = passwordEncoder;
         this.jwtDecoder = jwtDecoder;
-        this.jwtEncoder = new NimbusJwtEncoder(jwkSource);
+        this.jwtEncoder = new NimbusJwtEncoder(signingKeys.signingJwkSource());
     }
 
     public Map<String, Object> exchange(HttpServletRequest request) {
@@ -122,7 +122,8 @@ public class OAuthTokenExchangeService {
         if (!StringUtils.hasText(clientSecret)) {
             throw invalidClient("client_secret is required.");
         }
-        if (!passwordEncoder.matches(clientSecret, client.getClientSecret())) {
+        // The registered client's secret is "{bcrypt}<hash>"; the plain BCrypt encoder does not read the prefix.
+        if (!ClientSecrets.matches(clientSecret, client.getClientSecret())) {
             throw invalidClient("Invalid client credentials.");
         }
         if (!client.getAuthorizationGrantTypes().contains(TOKEN_EXCHANGE_GRANT)) {

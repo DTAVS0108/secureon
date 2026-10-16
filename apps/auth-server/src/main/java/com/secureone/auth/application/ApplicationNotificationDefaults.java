@@ -10,6 +10,10 @@ import java.util.Map;
 /** Per-application notification defaults — not inherited from platform settings. */
 public final class ApplicationNotificationDefaults {
 
+    /** Platform default sender name; an application that keeps it sends under its own name instead. */
+    public static final String DEFAULT_FROM_NAME = "SecureOne";
+
+
     private ApplicationNotificationDefaults() {}
 
     public static Map<String, Object> notificationDefaults() {
@@ -29,7 +33,7 @@ public final class ApplicationNotificationDefaults {
 
     public static Map<String, Object> emailDefaults() {
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("fromName", "SecureOne");
+        out.put("fromName", DEFAULT_FROM_NAME);
         out.put("fromAddress", "noreply@secureone.local");
         out.put("replyTo", "support@secureone.local");
         return out;

@@ -16,6 +16,8 @@ export type Tenant = {
   userCount: number;
   appCount: number;
   createdAt: string;
+  /** Reserved platform tenant: no delete, slug change or suspend (server enforces it too). */
+  system?: boolean;
 };
 
 export type AppType = "web" | "spa" | "native" | "m2m";
@@ -56,6 +58,8 @@ export type OAuthClient = {
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
+  /** Token "sub": "user_id" (account UUID, stable) or "legacy" ("tenant:email"). */
+  subjectType?: "user_id" | "legacy";
   clientSecretConfigured: boolean;
   createdAt: string;
   updatedAt: string;
@@ -84,6 +88,9 @@ export type User = {
   lastName: string;
   status: Status;
   emailVerified: boolean;
+  /** E.164, when the user registered one. */
+  phone?: string | null;
+  phoneVerified?: boolean;
   hasPassword?: boolean;
   locked?: boolean;
   failedLoginCount?: number;
@@ -244,6 +251,9 @@ export type PasswordPolicy = {
   historyCount: number;
   hashAlgorithm: string;
   breachCheck?: boolean;
+  /** Wrong passwords or codes in a row before the account is locked. */
+  maxFailedAttempts?: number;
+  lockoutDurationMinutes?: number;
   requirements?: PasswordRequirement[];
   inheritsPlatformDefaults?: boolean;
 };

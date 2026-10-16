@@ -28,6 +28,8 @@ public class AuthCatalogRepairService {
         repairAuthMethodImplemented("m_google", true);
         repairAuthMethodImplemented("m_github", true);
         repairAuthMethodImplemented("m_passkey", true);
+        markImplementedAndOn("m_oidc");
+        markImplementedAndOn("m_saml");
         repairAppExposure("verification-policy", true);
         repairAppExposure("sms", true);
     }
@@ -54,6 +56,37 @@ public class AuthCatalogRepairService {
                         copy.put("implemented", implemented);
                         changed = true;
                     }
+                }
+                patched.add(copy);
+            }
+            if (changed) {
+                row.setValue(patched);
+                settings.save(row);
+            }
+        });
+    }
+
+    /**
+     * Generic OIDC federation works (tenant SSO providers) but the catalog said "not implemented, off".
+     * Fix that once: only while it is still marked not implemented, so a later "off" choice sticks.
+     */
+    private void markImplementedAndOn(String methodId) {
+        settings.findById("auth_methods").ifPresent(row -> {
+            if (!(row.getValue() instanceof List<?> list)) {
+                return;
+            }
+            List<Map<String, Object>> patched = new ArrayList<>();
+            boolean changed = false;
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> map)) {
+                    continue;
+                }
+                Map<String, Object> copy = new HashMap<>();
+                map.forEach((k, v) -> copy.put(String.valueOf(k), v));
+                if (methodId.equals(String.valueOf(copy.get("id"))) && !Boolean.TRUE.equals(copy.get("implemented"))) {
+                    copy.put("implemented", true);
+                    copy.put("enabled", true);
+                    changed = true;
                 }
                 patched.add(copy);
             }

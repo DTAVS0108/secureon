@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="hosted-login" name="Hosted SecureOne UI">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="920" pageHeight="744" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="h_u" value="Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_u" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="80" as="sourcePoint" /><mxPoint x="120" y="714" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_app" value="Your app (SPA / BFF)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_app" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="80" as="sourcePoint" /><mxPoint x="330" y="714" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_auth" value="auth-server&#10;(hosted pages + SAS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_auth" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="80" as="sourcePoint" /><mxPoint x="540" y="714" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_st" value="Redis / PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="670" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_st" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="80" as="sourcePoint" /><mxPoint x="750" y="714" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s1" value="authUiMode = hosted (manifest: GET /api/v1/applications/{id})" style="text;html=1;align=left;fontStyle=3;fontSize=11;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="40" y="96" width="840" height="24" as="geometry" /></mxCell>
+        <mxCell id="s2" value="1. Sign in" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="154" as="sourcePoint" /><mxPoint x="330" y="154" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s3" value="2. 302 /oauth2/authorize (PKCE, state, nonce)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="214" as="sourcePoint" /><mxPoint x="540" y="214" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s4" value="3. 302 /login.html?applicationId=… (branded)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="274" as="sourcePoint" /><mxPoint x="120" y="274" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s5" value="4. POST /login (password / OTP / passkey / SSO)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="334" as="sourcePoint" /><mxPoint x="540" y="334" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s6" value="5. MFA step if policy requires" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="376" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s7" value="6. session + authorization code" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="454" as="sourcePoint" /><mxPoint x="750" y="454" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s8" value="7. 302 redirect_uri?code&amp;state" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="514" as="sourcePoint" /><mxPoint x="330" y="514" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s9" value="8. POST /oauth2/token (code + code_verifier)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="574" as="sourcePoint" /><mxPoint x="540" y="574" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s10" value="9. access + id + refresh tokens" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="634" as="sourcePoint" /><mxPoint x="330" y="634" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="native-login" name="Native / custom UI">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="920" pageHeight="684" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="h_u" value="Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_u" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="80" as="sourcePoint" /><mxPoint x="120" y="654" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_app" value="Your app&#10;(own screens)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_app" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="80" as="sourcePoint" /><mxPoint x="330" y="654" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_auth" value="auth-server&#10;(public APIs + SAS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_auth" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="80" as="sourcePoint" /><mxPoint x="540" y="654" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_st" value="Redis / PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="670" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_st" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="80" as="sourcePoint" /><mxPoint x="750" y="654" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s1" value="authUiMode = native: your screens call the account APIs; no SecureOne page is shown" style="text;html=1;align=left;fontStyle=3;fontSize=11;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="40" y="96" width="840" height="24" as="geometry" /></mxCell>
+        <mxCell id="s2" value="1. GET /api/v1/applications/{id} (manifest: methods, policy)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="154" as="sourcePoint" /><mxPoint x="540" y="154" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s3" value="2. email + password in your form" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="214" as="sourcePoint" /><mxPoint x="330" y="214" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s4" value="3. POST …/auth/session/login (credentials: include)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="274" as="sourcePoint" /><mxPoint x="540" y="274" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s5" value="4. session (or mfaChallengeId → POST /api/v1/auth/mfa/…)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="334" as="sourcePoint" /><mxPoint x="750" y="334" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s6" value="5. 204 + session cookie" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="394" as="sourcePoint" /><mxPoint x="330" y="394" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s7" value="6. /oauth2/authorize (PKCE, prompt=none) — silent" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="454" as="sourcePoint" /><mxPoint x="540" y="454" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s8" value="7. 302 redirect_uri?code" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="514" as="sourcePoint" /><mxPoint x="330" y="514" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s9" value="8. POST /oauth2/token → tokens" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="574" as="sourcePoint" /><mxPoint x="540" y="574" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

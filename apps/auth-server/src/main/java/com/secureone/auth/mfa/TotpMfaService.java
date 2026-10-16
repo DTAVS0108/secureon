@@ -1,5 +1,6 @@
 package com.secureone.auth.mfa;
 
+import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.notify.SecretProtector;
 import com.secureone.auth.user.UserAccount;
 import dev.samstevens.totp.code.CodeVerifier;
@@ -110,6 +111,14 @@ public class TotpMfaService {
     }
 
     public ConfirmResponse confirm(UserAccount user, UUID factorId, String code) {
+        return confirm(user, factorId, code, null);
+    }
+
+    /** Recovery codes follow the given application's MFA policy (the current request's app, else platform). */
+    public ConfirmResponse confirm(UserAccount user, UUID factorId, String code, UUID applicationId) {
+        UUID policyApp = applicationId != null
+                ? applicationId
+                : com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
         MfaFactor factor = requirePendingFactor(user.getId(), factorId);
         String secret = decryptSecret(factor.getSecretEncrypted());
         if (!codeVerifier.isValidCode(secret, normalizeCode(code)) || !markUsed(user.getId(), normalizeCode(code))) {
@@ -117,14 +126,14 @@ public class TotpMfaService {
         }
         factor.setVerified(true);
         factors.save(factor);
-        List<String> codes = recoveryCodes.issueForUser(user.getId(), policy.recoveryCodesPerEnrollment());
+        List<String> codes = recoveryCodes.issueForUser(user.getId(), policy.recoveryCodesPerEnrollment(policyApp));
         return new ConfirmResponse(factor.getId(), codes);
     }
 
     public void delete(UserAccount user, UUID factorId) {
         MfaFactor factor = factors
                 .findByIdAndUserId(factorId, user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("MFA factor not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("MFA factor not found."));
         if (!"totp".equalsIgnoreCase(factor.getType())) {
             throw new IllegalArgumentException("Only TOTP factors can be removed here.");
         }

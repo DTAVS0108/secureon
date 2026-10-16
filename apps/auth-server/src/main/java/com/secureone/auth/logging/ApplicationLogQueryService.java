@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +40,10 @@ public class ApplicationLogQueryService {
                 until,
                 search);
         return repository
-                .findAll(ApplicationLogSpecifications.from(filter), PageRequest.of(0, limit))
+                // Sort on the page request: findAll(spec, pageable) replaces the spec's ORDER BY with the pageable's.
+                .findAll(
+                        ApplicationLogSpecifications.from(filter),
+                        PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt")))
                 .getContent();
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
@@ -242,10 +242,12 @@ function TtlField({
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
+  const id = useId();
   return (
-    <FieldRow label={label} hint={hint}>
+    <FieldRow label={label} hint={hint} htmlFor={id}>
       <div className="flex items-center gap-2">
         <Input
+          id={id}
           type="number"
           min={0}
           value={String(value)}

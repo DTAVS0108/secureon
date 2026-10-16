@@ -23,7 +23,8 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Delete",
 }: {
-  action: (formData: FormData) => Promise<void>;
+  /** May return { error } to keep the dialog open and show why the action was refused. */
+  action: (formData: FormData) => Promise<void | { error?: string }>;
   id: string;
   triggerLabel: React.ReactNode;
   triggerVariant?: "primary" | "secondary" | "ghost" | "danger";
@@ -33,6 +34,7 @@ export function ConfirmDialog({
   confirmLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -43,7 +45,14 @@ export function ConfirmDialog({
 
   return (
     <>
-      <Button variant={triggerVariant} size={triggerSize} onClick={() => setOpen(true)}>
+      <Button
+        variant={triggerVariant}
+        size={triggerSize}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         {triggerLabel}
       </Button>
       {open && (
@@ -56,11 +65,22 @@ export function ConfirmDialog({
           >
             <h2 className="text-base font-semibold">{title}</h2>
             <p className="mt-2 text-sm text-black/60 dark:text-white/60">{message}</p>
+            {error && (
+              <p role="alert" className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+                {error}
+              </p>
+            )}
             <div className="mt-6 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <form action={action}>
+              <form
+                action={async (fd) => {
+                  setError(null);
+                  const result = await action(fd);
+                  if (result && result.error) setError(result.error);
+                }}
+              >
                 <input type="hidden" name="id" value={id} />
                 <ConfirmButton label={confirmLabel} />
               </form>

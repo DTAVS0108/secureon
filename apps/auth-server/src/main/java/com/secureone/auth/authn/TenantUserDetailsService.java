@@ -69,7 +69,9 @@ public class TenantUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Account is not active");
         }
         lockout.assertNotLocked(account);
-        if (!account.isEmailVerified()) {
+        // A verified email or phone proves the person controls the identifier they signed up with.
+        // Phone-only verification happens only when the app requires or allows it (or via SMS sign-in).
+        if (!account.isEmailVerified() && !account.isPhoneVerified()) {
             throw new UsernameNotFoundException(
                     "Email address is not verified. Open the link from your inbox or ask an administrator to verify your account.");
         }

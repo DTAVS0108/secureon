@@ -66,6 +66,12 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
 /** Super-admin / platform operations (shown at bottom of sidebar). */
 export const SUPER_ADMIN_NAV: NavItem[] = [
   {
+    label: "Connect an app",
+    href: "/connect",
+    description: "Register an app and get setup code for its framework",
+    superAdminOnly: true,
+  },
+  {
     label: "OAuth clients",
     href: "/applications",
     description: "Enterprise client registry",
@@ -79,6 +85,12 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     openInNewTab: true,
   },
   { label: "Platform settings", href: "/settings", description: "Global defaults", superAdminOnly: true },
+  {
+    label: "Configuration as code",
+    href: "/config",
+    description: "Export a tenant to a file; preview and apply files",
+    superAdminOnly: true,
+  },
   {
     label: "Access review",
     href: "/access-review",

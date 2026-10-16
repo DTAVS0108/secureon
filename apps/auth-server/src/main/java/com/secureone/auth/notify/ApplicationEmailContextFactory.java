@@ -1,12 +1,15 @@
 package com.secureone.auth.notify;
 
 import com.secureone.auth.application.Application;
+import com.secureone.auth.application.ApplicationDisplayName;
 import com.secureone.auth.application.ApplicationRepository;
 import com.secureone.auth.application.ApplicationSetting;
 import com.secureone.auth.application.ApplicationSettingRepository;
 import com.secureone.auth.application.UserApplication;
 import com.secureone.auth.application.UserApplicationRepository;
 import com.secureone.auth.application.ApplicationNotificationDefaults;
+import com.secureone.auth.tenant.Tenant;
+import com.secureone.auth.tenant.TenantRepository;
 import com.secureone.auth.user.UserAccount;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,13 +24,19 @@ public class ApplicationEmailContextFactory {
     private final ApplicationRepository applications;
     private final SmtpSettingsService smtpSettings;
     private final PlatformSmtpSettingsService platformSmtp;
+    private final TenantRepository tenants;
+    private final ApplicationDisplayName displayNames;
 
     public ApplicationEmailContextFactory(
             ApplicationSettingRepository appSettings,
             UserApplicationRepository userApplications,
             ApplicationRepository applications,
             SmtpSettingsService smtpSettings,
-            PlatformSmtpSettingsService platformSmtp) {
+            PlatformSmtpSettingsService platformSmtp,
+            TenantRepository tenants,
+            ApplicationDisplayName displayNames) {
+        this.tenants = tenants;
+        this.displayNames = displayNames;
         this.appSettings = appSettings;
         this.userApplications = userApplications;
         this.applications = applications;
@@ -65,9 +74,19 @@ public class ApplicationEmailContextFactory {
         }
         Map<String, Object> notifications = mergedMap(applicationId, "notifications");
         Map<String, Object> email = mergedMap(applicationId, "email");
+        Application app = applications.findById(applicationId).orElse(null);
+        // End users of an integrated app (e.g. a shop) should see that app's name in the sender and the
+        // template text, not the identity platform's default "SecureOne".
+        String sender = String.valueOf(email.getOrDefault("fromName", "")).trim();
+        if (sender.isEmpty() || ApplicationNotificationDefaults.DEFAULT_FROM_NAME.equals(sender)) {
+            email.put("fromName", app != null ? displayNames.of(app) : ApplicationDisplayName.PLATFORM_NAME);
+        }
+        String tenantName = app == null
+                ? ApplicationNotificationDefaults.DEFAULT_FROM_NAME
+                : tenants.findById(app.getTenantId()).map(Tenant::getName).orElse(ApplicationNotificationDefaults.DEFAULT_FROM_NAME);
         // Apps without their own SMTP server send through the platform one (EmailDeliveryService).
         boolean smtpConfigured = smtpSettings.isConfigured(applicationId) || platformSmtp.isConfigured();
-        return new ApplicationEmailContext(applicationId, notifications, email, smtpConfigured);
+        return new ApplicationEmailContext(applicationId, notifications, email, smtpConfigured, tenantName);
     }
 
     private Map<String, Object> mergedMap(UUID applicationId, String key) {
@@ -89,5 +108,9 @@ public class ApplicationEmailContextFactory {
     }
 
     public record ApplicationEmailContext(
-            UUID applicationId, Map<String, Object> notifications, Map<String, Object> email, boolean smtpConfigured) {}
+            UUID applicationId,
+            Map<String, Object> notifications,
+            Map<String, Object> email,
+            boolean smtpConfigured,
+            String tenantName) {}
 }

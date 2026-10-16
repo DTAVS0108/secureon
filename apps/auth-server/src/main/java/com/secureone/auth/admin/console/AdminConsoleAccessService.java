@@ -116,6 +116,19 @@ public class AdminConsoleAccessService {
                 .toList();
     }
 
+    /**
+     * Whether the user may register and manage the application's OAuth clients: the tenant super admin
+     * of its tenant, or a tenant admin of this application. Application admins only view them.
+     */
+    public boolean canManageClients(UUID userId, UUID applicationId) {
+        if (isTenantSuperAdminForApplication(userId, applicationId)) {
+            return true;
+        }
+        return access.findActiveByUserId(userId).stream()
+                .anyMatch(row -> applicationId.equals(row.getApplicationId())
+                        && row.getRoleType() == AdminConsoleRoleType.TENANT_ADMIN);
+    }
+
     public boolean isTenantSuperAdminForApplication(UUID userId, UUID applicationId) {
         Application app = applications.findById(applicationId).orElse(null);
         if (app == null) {

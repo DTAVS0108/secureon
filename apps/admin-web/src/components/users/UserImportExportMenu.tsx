@@ -5,6 +5,7 @@ import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { isFeatureFlagComingSoon } from "@/lib/coming-soon";
 import { fetchApplicationFeatureFlags } from "@/lib/api/application-settings";
 import {
   exportUsersCsv,
@@ -32,7 +33,12 @@ export function UserImportExportMenu({
 
   useDeferredEffect(() => {
     fetchApplicationFeatureFlags(applicationId)
-      .then((raw) => setLdapFeatureEnabled(isFeatureEnabled(normalizeFeatureFlags(raw), "ldap")))
+      // LDAP sync is not connected yet ("Coming soon"), so it is never offered here.
+      .then((raw) =>
+        setLdapFeatureEnabled(
+          !isFeatureFlagComingSoon("ldap") && isFeatureEnabled(normalizeFeatureFlags(raw), "ldap"),
+        ),
+      )
       .catch(() => setLdapFeatureEnabled(false));
   }, [applicationId]);
 

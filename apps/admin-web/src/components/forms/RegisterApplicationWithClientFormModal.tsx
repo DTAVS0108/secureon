@@ -126,7 +126,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
         <h3 className="text-sm font-semibold text-ui">Application product</h3>
         <div className="grid grid-cols-2 gap-4">
           <FieldRow label="Display name">
-            <Input name="name" placeholder="Flipkart" required />
+            <Input name="name" placeholder="Demo Store" required />
           </FieldRow>
           <FieldRow label="Tenant">
             <Select name="tenantId" defaultValue={tenants[0]?.id} disabled={tenants.length === 0} required>
@@ -139,8 +139,8 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
             </Select>
           </FieldRow>
         </div>
-        <FieldRow label="Slug" hint="Schema name + default client ID (e.g. flipkart)">
-          <Input name="slug" placeholder="flipkart" />
+        <FieldRow label="Slug" hint="Schema name + default client ID (e.g. demostore)">
+          <Input name="slug" placeholder="demostore" />
         </FieldRow>
         <FieldRow label="Description" hint="Optional">
           <Textarea name="description" rows={2} placeholder="Customer-facing product" />
@@ -170,7 +170,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
             </Select>
           </FieldRow>
           <FieldRow label="Client ID" hint="Optional — defaults to application slug">
-            <Input name="clientId" placeholder="flipkart-web" />
+            <Input name="clientId" placeholder="demostore-web" />
           </FieldRow>
         </div>
         <FieldRow label="Grant types">

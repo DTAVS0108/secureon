@@ -13,6 +13,8 @@ export type ApplicationContextItem = {
   permissions: string[];
   /** Admin console sections this operator may access for this application. */
   consoleFeatures: string[];
+  /** May register and manage this application's OAuth clients (Connect an app). */
+  canManageClients: boolean;
 };
 
 export type AdminContext = {
@@ -72,6 +74,7 @@ export async function fetchAdminContext(): Promise<AdminContext> {
       ...app,
       permissions: app.permissions ?? [],
       consoleFeatures: app.consoleFeatures ?? [],
+      canManageClients: app.canManageClients ?? false,
     })),
     breakGlass: raw.breakGlass ?? false,
     sessionExpiresAt: raw.sessionExpiresAt ?? null,

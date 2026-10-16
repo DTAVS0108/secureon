@@ -1,0 +1,9 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+// The redirect URL registered in SecureOne is http://localhost:5173/, so the port must not change.
+export default defineConfig({
+  plugins: [react()],
+  server: { port: 5173, strictPort: true },
+  preview: { port: 5173, strictPort: true },
+});

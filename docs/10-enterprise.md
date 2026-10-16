@@ -1,6 +1,6 @@
 # 10 — Enterprise Capabilities
 
-This document describes the capabilities that take SecureOne from a solid OIDC provider to a full **enterprise IAM platform** (Okta / Ping / ForgeRock / Entra ID / Keycloak-at-scale class).
+This document describes the capabilities that take SecureOne from a solid OIDC provider to a full **enterprise IAM platform** (the class of commercial and open-source enterprise identity suites).
 
 > **Scope discipline:** none of this is in the MVP. Everything here is **clearly phased** (see [Roadmap](08-roadmap.md)) so the initial build stays lean. The existing foundation — isolated auth core, `PolicyEvaluator` abstraction, repository layer, append-only audit, pluggable tenant resolution — was designed so these are **additive**, not rewrites.
 

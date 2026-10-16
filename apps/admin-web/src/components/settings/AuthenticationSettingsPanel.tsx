@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
-import { Badge } from "@/components/ui/Badge";
+import { ComingSoonBadge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
@@ -20,7 +20,7 @@ import {
   setApplicationTokenTabEnabled,
 } from "@/lib/api/application-settings";
 import { ApiError } from "@/lib/api/http";
-import { IS_PROD } from "@/lib/config";
+import { isAuthMethodComingSoon, isFeatureFlagComingSoon } from "@/lib/coming-soon";
 import type { AuthMethod, FeatureFlag, PasswordPolicy } from "@/lib/types";
 import { FederationProvidersPanel } from "@/components/settings/FederationProvidersPanel";
 import { MfaPolicySettingsPanel } from "@/components/settings/MfaPolicySettingsPanel";
@@ -123,7 +123,7 @@ export function AuthenticationSettingsPanel({
   const mfa = authMethods.filter((m) => m.category === "mfa");
   const federation = authMethods.filter((m) => m.category === "federation");
   const federationImplemented = federation.some(
-    (m) => m.enabled && (m as AuthMethod & { implemented?: boolean }).implemented !== false,
+    (m) => m.enabled && !isAuthMethodComingSoon(m),
   );
 
   return (
@@ -162,7 +162,7 @@ export function AuthenticationSettingsPanel({
           />
           <MethodSection
             title="Identity federation"
-            description="Google, GitHub, and external OIDC sign-in. Configure OAuth credentials below when enabled."
+            description="Google, GitHub, external OIDC and SAML 2.0 sign-in. Configure the providers below when enabled."
             methods={federation}
             onToggle={(next) => {
               const merged = [...primary, ...mfa, ...next];
@@ -254,6 +254,30 @@ export function AuthenticationSettingsPanel({
                 value={passwordPolicy.historyCount}
                 onChange={(e) => {
                   const next = { ...passwordPolicy, historyCount: Number(e.target.value) };
+                  setPasswordPolicy(next);
+                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
+                }}
+              />
+            </FieldRow>
+            <FieldRow label="Lock account after failed sign-ins" hint="wrong passwords or codes in a row">
+              <Input
+                type="number"
+                min={1}
+                value={passwordPolicy.maxFailedAttempts ?? 5}
+                onChange={(e) => {
+                  const next = { ...passwordPolicy, maxFailedAttempts: Number(e.target.value) };
+                  setPasswordPolicy(next);
+                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
+                }}
+              />
+            </FieldRow>
+            <FieldRow label="Lockout duration (minutes)">
+              <Input
+                type="number"
+                min={1}
+                value={passwordPolicy.lockoutDurationMinutes ?? 15}
+                onChange={(e) => {
+                  const next = { ...passwordPolicy, lockoutDurationMinutes: Number(e.target.value) };
                   setPasswordPolicy(next);
                   scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
                 }}
@@ -497,15 +521,20 @@ function FlagList({
         .filter((f) => keys.includes(f.key))
         .map((f) => {
           const idx = flags.findIndex((x) => x.key === f.key);
+          const comingSoon = isFeatureFlagComingSoon(f.key);
           return (
             <li key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-ui">{f.name}</p>
+                  <p className={`text-sm font-medium ${comingSoon ? "text-muted" : "text-ui"}`}>{f.name}</p>
                   <code className="font-mono text-[10px] text-faint">{f.key}</code>
+                  {comingSoon && <ComingSoonBadge />}
                 </div>
-                <p className="text-xs text-muted">{f.description}</p>
-                {f.platformEnabled === false && (
+                <p className="text-xs text-muted">
+                  {f.description}
+                  {comingSoon && " — not available yet."}
+                </p>
+                {!comingSoon && f.platformEnabled === false && (
                   <p className="mt-1 text-xs text-faint">
                     Enable this capability under Platform → Settings → Feature flags before turning it on
                     for this application.
@@ -514,9 +543,10 @@ function FlagList({
               </div>
               <Toggle
                 checked={f.enabled}
-                disabled={f.platformEnabled === false}
+                disabled={f.platformEnabled === false || (comingSoon && !f.enabled)}
                 onChange={(enabled) => {
                   if (f.platformEnabled === false) return;
+                  if (comingSoon && enabled) return;
                   const next = flags.map((x, i) => (i === idx ? { ...x, enabled } : x));
                   onChange(next);
                 }}
@@ -547,20 +577,22 @@ function MethodSection({
       <CardHeader title={title} description={description} />
       <ul className="divide-y divide-ui">
         {methods.map((m, idx) => {
-          const extended = m as AuthMethod & { implemented?: boolean };
-          const implemented = extended.implemented !== false;
+          const comingSoon = isAuthMethodComingSoon(m);
           return (
             <li key={m.id} className="flex items-center justify-between gap-4 px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-ui">{m.name}</p>
-                  {!implemented && !IS_PROD && <Badge tone="warning">Coming soon</Badge>}
+                  <p className={`text-sm font-medium ${comingSoon ? "text-muted" : "text-ui"}`}>{m.name}</p>
+                  {comingSoon && <ComingSoonBadge />}
                 </div>
-                <p className="text-xs text-muted">{m.description}</p>
+                <p className="text-xs text-muted">
+                  {m.description}
+                  {comingSoon && " — not available yet."}
+                </p>
               </div>
               <Toggle
                 checked={m.enabled}
-                disabled={readOnly || (IS_PROD && !implemented)}
+                disabled={readOnly || (comingSoon && !m.enabled)}
                 onChange={(enabled) => {
                   const next = methods.map((x, i) => (i === idx ? { ...x, enabled } : x));
                   onToggle(next);

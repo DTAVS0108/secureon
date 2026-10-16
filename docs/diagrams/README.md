@@ -7,7 +7,7 @@ Every architecture/flow diagram exists in two forms:
 
 ## Viewing in SecureOne Confluence
 
-1. Open **SecureOne Confluence** from the admin sidebar (new tab) → http://localhost:3001/confluence
+1. Open **SecureOne Confluence** from the admin sidebar (new tab) → http://localhost:9000/admin/confluence
 2. Go to the doc listed in **Used in** below (or open **Diagrams** and click a row — links to that doc).
 3. Scroll to the section with **Editable source** — the draw.io viewer is embedded inline below the link.
 4. Download the `.drawio` source from the link or `GET /api/confluence/assets/diagrams/{filename}.drawio` (session required).
@@ -22,6 +22,9 @@ Every architecture/flow diagram exists in two forms:
 | Auth flow — Authorization Code + PKCE | [`auth-flow-authorization-code-pkce.drawio`](auth-flow-authorization-code-pkce.drawio) | [03-architecture](../03-architecture.md) |
 | Auth flow — Client Credentials (M2M) | [`auth-flow-client-credentials.drawio`](auth-flow-client-credentials.drawio) | [03-architecture](../03-architecture.md) |
 | Auth flow — Refresh token rotation | [`auth-flow-refresh-rotation.drawio`](auth-flow-refresh-rotation.drawio) | [03-architecture](../03-architecture.md) |
+| Auth flow — Hosted vs native sign-in (2 pages) | [`auth-flow-hosted-vs-native.drawio`](auth-flow-hosted-vs-native.drawio) | [03-architecture](../03-architecture.md), [13-auth-ui-integration](../13-auth-ui-integration.md) |
+| Auth flow — Device authorization grant (RFC 8628) | [`auth-flow-device-code.drawio`](auth-flow-device-code.drawio) | [03-architecture](../03-architecture.md), [23-integration guide](../23-application-integration-guide.md) |
+| Auth flow — SAML 2.0: SP-initiated, IdP-initiated, single logout (3 pages) | [`auth-flow-saml.drawio`](auth-flow-saml.drawio) | [03-architecture](../03-architecture.md), [23-integration guide](../23-application-integration-guide.md) |
 | Deployment — MVP | [`deployment-mvp.drawio`](deployment-mvp.drawio) | [03-architecture](../03-architecture.md) |
 | Deployment — Production | [`deployment-production.drawio`](deployment-production.drawio) | [03-architecture](../03-architecture.md) |
 | Data-layer layering | [`data-layer-layering.drawio`](data-layer-layering.drawio) | [06-database](../06-database.md) |
@@ -31,6 +34,8 @@ Every architecture/flow diagram exists in two forms:
 | Roles & permissions (multi-role + composite) | [`roles-permissions.drawio`](roles-permissions.drawio) | [04-data-model](../04-data-model.md) |
 
 **Schema layout** (platform + per-app schemas) is documented in Mermaid/text in [06-database](../06-database.md) and [15-applications-and-oauth-clients](../15-applications-and-oauth-clients.md) — no separate draw.io yet.
+
+The three flow diagrams above (hosted vs native, device, SAML) are generated as sequence diagrams in this palette and can be edited in draw.io like the others.
 
 ## Editing notes
 

@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 import {
   fetchPublicManifestConfig,
   savePublicManifestConfig,
@@ -135,7 +135,7 @@ export function PublicManifestSettings({ applicationId }: { applicationId: strin
     scheduleSave(next);
   }
 
-  const publicUrl = `${AUTH_SERVER_URL}/api/v1/applications/${applicationId}`;
+  const publicUrl = `${publicAuthServerUrl()}/api/v1/applications/${applicationId}`;
 
   return (
     <div className={`space-y-5 ${!loaded ? "pointer-events-none opacity-60" : ""}`}>

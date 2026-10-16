@@ -71,8 +71,28 @@ Related: [17 â€” Database schemas & tables](17-database-schemas-and-tables.md) Â
 | V43 | `V43__tenant_console_groups.sql` | tenant console groups |
 | V44 | `V44__reseed_platform_settings.sql` | reseed platform settings |
 | V45 | `V45__platform_schema_oauth_client.sql` | platform schema oauth client |
-| R | `R__z_repair_catalog.sql` | Idempotent catalog repair (repeatable) |
-| App | `application-schema/V1__app_core.sql` | Per-app schema template (runtime, not Flyway versioned) |
+| V46 | `V46__otp_verification_and_phone.sql` | otp verification and phone |
+| V47 | `V47__expose_sms_to_applications.sql` | expose sms to applications |
+| V48 | `V48__recovery_otp_and_verification_policy.sql` | recovery otp and verification policy |
+| V49 | `V49__oauth2_authorization_jdbc.sql` | oauth2 authorization jdbc |
+| V50 | `V50__signing_keys.sql` | signing keys |
+| V52 | `V52__mfa_factor_extended.sql` | mfa factor extended |
+| V53 | `V53__mfa_policy.sql` | mfa policy |
+| V54 | `V54__tenant_rls_policies.sql` | tenant rls policies |
+| V55 | `V55__identity_federation.sql` | identity federation |
+| V56 | `V56__scim_groups_service_accounts.sql` | scim groups service accounts |
+| V57 | `V57__webhooks_trusted_device_iga.sql` | webhooks trusted device iga |
+| V58 | `V58__access_request_application_id.sql` | access request application id |
+| V59 | `V59__access_request_granted_role_name.sql` | access request granted role name |
+| V60 | `V60__terrafarm_oauth_redirect.sql` | terrafarm oauth redirect |
+| V61 | `V61__rls_fail_closed_option.sql` | rls fail closed option |
+| V62 | `V62__named_platform_operators.sql` | named platform operators |
+| V63 | `V63__rls_application_role.sql` | rls application role |
+| V64 | `V64__rls_functions_schema_qualified.sql` | rls functions schema qualified |
+| V65 | `V65__remove_stale_platform_rbac_copies.sql` | remove stale platform rbac copies |
+| V66 | `V66__application_logs_single_table.sql` | application logs single table |
+| V67 | `V67__oauth_client_subject_type.sql` | oauth client subject type |
+| R | `R__z_repair_catalog.sql` | idempotent catalog repair (repeatable) |
 
 ---
 
@@ -81,7 +101,7 @@ Related: [17 â€” Database schemas & tables](17-database-schemas-and-tables.md) Â
 ### Application schema template
 
 ```sql
--- Per-application schema DDL (executed inside each app schema, e.g. flipkart).
+-- Per-application schema DDL (executed inside each app schema, e.g. demostore).
 -- Cross-schema FKs reference platform.* for tenant, application, and user identity.
 
 CREATE TABLE IF NOT EXISTS permission (
@@ -1923,6 +1943,853 @@ WHERE config ?| ARRAY[
     'type', 'clientId', 'clientSecret', 'grantTypes', 'scopes',
     'redirectUris', 'postLogoutRedirectUris', 'pkceRequired', 'tokenEndpointAuthMethod'];
 
+```
+
+### `V46__otp_verification_and_phone.sql`
+
+```sql
+-- OTP challenges (audit trail) + verification policy + SMS settings + phone uniqueness
+
+CREATE TABLE IF NOT EXISTS otp_challenge (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID REFERENCES user_account(id) ON DELETE CASCADE,
+    tenant_id       UUID NOT NULL,
+    application_id  UUID,
+    purpose         VARCHAR(32) NOT NULL,
+    channel         VARCHAR(16) NOT NULL,
+    destination     VARCHAR(255) NOT NULL,
+    code_hash       VARCHAR(64) NOT NULL,
+    attempts        INT NOT NULL DEFAULT 0,
+    max_attempts    INT NOT NULL DEFAULT 5,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    consumed_at     TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ip_address      VARCHAR(45),
+    user_agent      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_challenge_active
+    ON otp_challenge (user_id, purpose)
+    WHERE consumed_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_otp_challenge_expires
+    ON otp_challenge (expires_at)
+    WHERE consumed_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_account_tenant_phone
+    ON user_account (tenant_id, phone)
+    WHERE phone IS NOT NULL AND phone <> '';
+
+INSERT INTO platform_setting (key, value)
+VALUES (
+    'verification_policy',
+    '{
+      "signup": {
+        "requiredChannels": ["email"],
+        "optionalChannels": ["phone"],
+        "defaultMode": "link",
+        "allowedModes": ["link", "otp"],
+        "allowUserChannelChoice": false,
+        "otpLength": 6,
+        "otpTtlSeconds": 600,
+        "maxAttempts": 5,
+        "resendCooldownSeconds": 60
+      },
+      "login": {
+        "identifierTypes": ["email", "phone"],
+        "passwordlessModes": ["email_otp", "phone_otp", "magic_link"],
+        "mfaRequired": "optional"
+      },
+      "recovery": {
+        "passwordResetMode": "link",
+        "allowedChannels": ["email"],
+        "fallbackToLink": true
+      }
+    }'::jsonb
+)
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO platform_setting (key, value)
+VALUES (
+    'sms',
+    '{
+      "provider": "log",
+      "twilioAccountSid": "",
+      "twilioAuthToken": "",
+      "twilioFromNumber": "",
+      "enabled": false
+    }'::jsonb
+)
+ON CONFLICT (key) DO NOTHING;
+
+-- Expose verification-policy to applications (merge into app_settings_exposure if present)
+UPDATE platform_setting
+SET value = value || '{"verification-policy": true}'::jsonb
+WHERE key = 'app_settings_exposure'
+  AND NOT (value ? 'verification-policy');
+```
+
+### `V47__expose_sms_to_applications.sql`
+
+```sql
+-- Expose per-application SMS provider settings (merge into app_settings_exposure if present)
+UPDATE platform_setting
+SET value = value || '{"sms": true}'::jsonb
+WHERE key = 'app_settings_exposure'
+  AND NOT (value ? 'sms');
+```
+
+### `V48__recovery_otp_and_verification_policy.sql`
+
+```sql
+-- Expand verification policy (recovery OTP modes, login OTP params) and add recovery_otp feature flag
+
+UPDATE platform_setting
+SET value = jsonb_set(
+    value,
+    '{recovery}',
+    COALESCE(value->'recovery', '{}'::jsonb)
+        || '{
+          "allowedModes": ["link", "otp"],
+          "allowedChannels": ["email", "phone"],
+          "allowUserChannelChoice": true,
+          "requireVerifiedChannel": true,
+          "otpLength": 6,
+          "otpTtlSeconds": 600,
+          "maxAttempts": 5,
+          "resendCooldownSeconds": 60
+        }'::jsonb,
+    true)
+WHERE key = 'verification_policy';
+
+UPDATE platform_setting
+SET value = jsonb_set(
+    value,
+    '{login}',
+    COALESCE(value->'login', '{}'::jsonb)
+        || '{
+          "otpLength": 6,
+          "otpTtlSeconds": 600,
+          "maxAttempts": 5,
+          "resendCooldownSeconds": 60
+        }'::jsonb,
+    true)
+WHERE key = 'verification_policy';
+
+-- Merge recovery_otp into feature_flags catalog if missing
+UPDATE platform_setting
+SET value = (
+    SELECT jsonb_agg(flag)
+    FROM (
+        SELECT flag
+        FROM jsonb_array_elements(value) AS flag
+        UNION ALL
+        SELECT '{"key":"recovery_otp","name":"Recovery OTP","description":"Password reset via email/SMS OTP","enabled":true,"rollout":100,"category":"identity"}'::jsonb
+        WHERE NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(value) f WHERE f->>'key' = 'recovery_otp'
+        )
+    ) merged
+)
+WHERE key = 'feature_flags'
+  AND NOT EXISTS (
+    SELECT 1 FROM jsonb_array_elements(value) f WHERE f->>'key' = 'recovery_otp'
+  );
+```
+
+### `V49__oauth2_authorization_jdbc.sql`
+
+```sql
+-- Spring Authorization Server JDBC persistence (PostgreSQL: blob columns â†’ text).
+-- Used by JdbcOAuth2AuthorizationService for multi-replica OAuth flows.
+
+CREATE TABLE oauth2_authorization (
+    id                           VARCHAR(100)  NOT NULL,
+    registered_client_id         VARCHAR(100)  NOT NULL,
+    principal_name               VARCHAR(200)  NOT NULL,
+    authorization_grant_type     VARCHAR(100)  NOT NULL,
+    authorized_scopes            VARCHAR(1000) DEFAULT NULL,
+    attributes                   TEXT          DEFAULT NULL,
+    state                        VARCHAR(500)  DEFAULT NULL,
+    authorization_code_value     TEXT          DEFAULT NULL,
+    authorization_code_issued_at TIMESTAMP     DEFAULT NULL,
+    authorization_code_expires_at TIMESTAMP    DEFAULT NULL,
+    authorization_code_metadata  TEXT          DEFAULT NULL,
+    access_token_value           TEXT          DEFAULT NULL,
+    access_token_issued_at       TIMESTAMP     DEFAULT NULL,
+    access_token_expires_at      TIMESTAMP     DEFAULT NULL,
+    access_token_metadata        TEXT          DEFAULT NULL,
+    access_token_type            VARCHAR(100)  DEFAULT NULL,
+    access_token_scopes          VARCHAR(1000) DEFAULT NULL,
+    oidc_id_token_value          TEXT          DEFAULT NULL,
+    oidc_id_token_issued_at      TIMESTAMP     DEFAULT NULL,
+    oidc_id_token_expires_at     TIMESTAMP     DEFAULT NULL,
+    oidc_id_token_metadata       TEXT          DEFAULT NULL,
+    refresh_token_value          TEXT          DEFAULT NULL,
+    refresh_token_issued_at      TIMESTAMP     DEFAULT NULL,
+    refresh_token_expires_at     TIMESTAMP     DEFAULT NULL,
+    refresh_token_metadata       TEXT          DEFAULT NULL,
+    user_code_value              TEXT          DEFAULT NULL,
+    user_code_issued_at          TIMESTAMP     DEFAULT NULL,
+    user_code_expires_at         TIMESTAMP     DEFAULT NULL,
+    user_code_metadata           TEXT          DEFAULT NULL,
+    device_code_value            TEXT          DEFAULT NULL,
+    device_code_issued_at        TIMESTAMP     DEFAULT NULL,
+    device_code_expires_at       TIMESTAMP     DEFAULT NULL,
+    device_code_metadata         TEXT          DEFAULT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE oauth2_authorization_consent (
+    registered_client_id VARCHAR(100)  NOT NULL,
+    principal_name       VARCHAR(200)  NOT NULL,
+    authorities          VARCHAR(1000) NOT NULL,
+    PRIMARY KEY (registered_client_id, principal_name)
+);
+```
+
+### `V50__signing_keys.sql`
+
+```sql
+-- OAuth2 JWT signing keys: persisted in platform_setting (key = oauth2_signing_jwk) at runtime.
+-- Production: set SECUREONE_JWK_PRIVATE_KEY_PEM or pre-seed that row before first deploy.
+
+SELECT 1;
+```
+
+### `V52__mfa_factor_extended.sql`
+
+```sql
+-- Extend MFA factors for TOTP secrets, recovery codes, and WebAuthn (phase B).
+
+ALTER TABLE mfa_factor
+    ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN mfa_factor.secret_encrypted IS 'AES-GCM encrypted TOTP seed or recovery payload';
+COMMENT ON COLUMN mfa_factor.metadata IS 'Recovery code hashes, WebAuthn credential fields (future)';
+```
+
+### `V53__mfa_policy.sql`
+
+```sql
+-- Platform MFA policy defaults (step-up behavior complements verification_policy.login.mfaRequired).
+
+INSERT INTO platform_setting (key, value)
+VALUES (
+    'mfa_policy',
+    '{
+      "stepUpAfterPassword": true,
+      "recoveryCodesPerEnrollment": 10,
+      "challengeTtlSeconds": 300,
+      "maxChallengeAttempts": 5
+    }'::jsonb
+)
+ON CONFLICT (key) DO NOTHING;
+```
+
+### `V54__tenant_rls_policies.sql`
+
+```sql
+-- PostgreSQL row-level security (defense in depth).
+-- When app.tenant_id is empty, platform operators see all rows.
+-- When set (per-request via set_config), only matching tenant rows are visible.
+
+CREATE OR REPLACE FUNCTION secureone_rls_bypass() RETURNS boolean
+    LANGUAGE sql
+    STABLE
+AS $$
+    SELECT COALESCE(NULLIF(current_setting('app.tenant_id', true), ''), '') = '';
+$$;
+
+CREATE OR REPLACE FUNCTION secureone_tenant_matches(row_tenant_id uuid) RETURNS boolean
+    LANGUAGE sql
+    STABLE
+AS $$
+    SELECT secureone_rls_bypass()
+        OR row_tenant_id::text = current_setting('app.tenant_id', true);
+$$;
+
+-- Core tenant-scoped tables
+ALTER TABLE user_account ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON user_account;
+CREATE POLICY tenant_isolation ON user_account
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE application ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON application;
+CREATE POLICY tenant_isolation ON application
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE role ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON role;
+CREATE POLICY tenant_isolation ON role
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE rbac_group ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON rbac_group;
+CREATE POLICY tenant_isolation ON rbac_group
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE tenant_permission ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON tenant_permission;
+CREATE POLICY tenant_isolation ON tenant_permission
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE tenant_role ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON tenant_role;
+CREATE POLICY tenant_isolation ON tenant_role
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE tenant_user_roster ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON tenant_user_roster;
+CREATE POLICY tenant_isolation ON tenant_user_roster
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE admin_console_access ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON admin_console_access;
+CREATE POLICY tenant_isolation ON admin_console_access
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE admin_console_feature_override ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON admin_console_feature_override;
+CREATE POLICY tenant_isolation ON admin_console_feature_override
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE tenant_console_role_feature ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON tenant_console_role_feature;
+CREATE POLICY tenant_isolation ON tenant_console_role_feature
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE otp_challenge ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON otp_challenge;
+CREATE POLICY tenant_isolation ON otp_challenge
+    USING (secureone_tenant_matches(tenant_id));
+
+-- Nullable tenant_id: visible only when bypassing or when tenant matches
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON audit_log;
+CREATE POLICY tenant_isolation ON audit_log
+    USING (
+        secureone_rls_bypass()
+        OR (tenant_id IS NOT NULL AND secureone_tenant_matches(tenant_id))
+    );
+
+ALTER TABLE login_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON login_history;
+CREATE POLICY tenant_isolation ON login_history
+    USING (
+        secureone_rls_bypass()
+        OR (tenant_id IS NOT NULL AND secureone_tenant_matches(tenant_id))
+    );
+
+-- MFA factors inherit tenant scope via user_account
+ALTER TABLE mfa_factor ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON mfa_factor;
+CREATE POLICY tenant_isolation ON mfa_factor
+    USING (
+        secureone_rls_bypass()
+        OR EXISTS (
+            SELECT 1
+            FROM user_account u
+            WHERE u.id = mfa_factor.user_id
+              AND u.tenant_id::text = current_setting('app.tenant_id', true)
+        )
+    );
+
+-- App DB role must not bypass policies (table owner otherwise skips RLS).
+ALTER TABLE user_account FORCE ROW LEVEL SECURITY;
+ALTER TABLE application FORCE ROW LEVEL SECURITY;
+ALTER TABLE role FORCE ROW LEVEL SECURITY;
+ALTER TABLE rbac_group FORCE ROW LEVEL SECURITY;
+ALTER TABLE tenant_permission FORCE ROW LEVEL SECURITY;
+ALTER TABLE tenant_role FORCE ROW LEVEL SECURITY;
+ALTER TABLE tenant_user_roster FORCE ROW LEVEL SECURITY;
+ALTER TABLE admin_console_access FORCE ROW LEVEL SECURITY;
+ALTER TABLE admin_console_feature_override FORCE ROW LEVEL SECURITY;
+ALTER TABLE tenant_console_role_feature FORCE ROW LEVEL SECURITY;
+ALTER TABLE otp_challenge FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
+ALTER TABLE login_history FORCE ROW LEVEL SECURITY;
+ALTER TABLE mfa_factor FORCE ROW LEVEL SECURITY;
+```
+
+### `V55__identity_federation.sql`
+
+```sql
+-- Identity federation (Phase 3 foundation): external IdPs + linked user identities.
+
+CREATE TABLE identity_provider (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    application_id  UUID REFERENCES application(id) ON DELETE CASCADE,
+    alias           VARCHAR(64) NOT NULL,
+    type            VARCHAR(32) NOT NULL,
+    display_name    VARCHAR(255),
+    enabled         BOOLEAN NOT NULL DEFAULT false,
+    config          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uq_identity_provider_tenant_alias_platform
+    ON identity_provider (tenant_id, alias)
+    WHERE application_id IS NULL;
+
+CREATE UNIQUE INDEX uq_identity_provider_tenant_app_alias
+    ON identity_provider (tenant_id, application_id, alias)
+    WHERE application_id IS NOT NULL;
+
+CREATE INDEX idx_identity_provider_tenant ON identity_provider (tenant_id);
+CREATE INDEX idx_identity_provider_application ON identity_provider (application_id);
+
+CREATE TABLE user_identity (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+    provider_id       UUID NOT NULL REFERENCES identity_provider(id) ON DELETE CASCADE,
+    provider_subject  VARCHAR(512) NOT NULL,
+    email             VARCHAR(320),
+    metadata          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    linked_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (provider_id, provider_subject)
+);
+
+CREATE INDEX idx_user_identity_user ON user_identity (user_id);
+CREATE INDEX idx_user_identity_provider ON user_identity (provider_id);
+
+-- SCIM bearer token placeholder (enabled via platform settings bootstrap / admin).
+INSERT INTO platform_setting (key, value)
+VALUES (
+    'scim',
+    '{
+      "enabled": false,
+      "bearerTokenEncrypted": "",
+      "userNameDomain": "secureone.local"
+    }'::jsonb
+)
+ON CONFLICT (key) DO NOTHING;
+
+-- Tenant-scoped federation tables
+ALTER TABLE identity_provider ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON identity_provider;
+CREATE POLICY tenant_isolation ON identity_provider
+    USING (secureone_tenant_matches(tenant_id));
+
+ALTER TABLE user_identity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON user_identity;
+CREATE POLICY tenant_isolation ON user_identity
+    USING (
+        secureone_rls_bypass()
+        OR EXISTS (
+            SELECT 1
+            FROM user_account u
+            WHERE u.id = user_identity.user_id
+              AND u.tenant_id::text = current_setting('app.tenant_id', true)
+        )
+    );
+
+ALTER TABLE identity_provider FORCE ROW LEVEL SECURITY;
+ALTER TABLE user_identity FORCE ROW LEVEL SECURITY;
+```
+
+### `V56__scim_groups_service_accounts.sql`
+
+```sql
+-- SCIM groups + service accounts / API keys (Phase 2 M2M foundation).
+
+CREATE TABLE scim_group (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    display_name    VARCHAR(255) NOT NULL,
+    external_id     VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uq_scim_group_tenant_external
+    ON scim_group(tenant_id, external_id)
+    WHERE external_id IS NOT NULL;
+
+CREATE INDEX idx_scim_group_tenant ON scim_group(tenant_id);
+
+CREATE TABLE scim_group_member (
+    group_id    UUID NOT NULL REFERENCES scim_group(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (group_id, user_id)
+);
+
+CREATE INDEX idx_scim_group_member_user ON scim_group_member(user_id);
+
+CREATE TABLE service_account (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    name            VARCHAR(150) NOT NULL,
+    description     TEXT,
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uq_service_account_tenant_name ON service_account(tenant_id, name);
+CREATE INDEX idx_service_account_tenant ON service_account(tenant_id);
+
+CREATE TABLE api_key (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_account_id  UUID NOT NULL REFERENCES service_account(id) ON DELETE CASCADE,
+    key_prefix          VARCHAR(16) NOT NULL,
+    key_hash            VARCHAR(128) NOT NULL,
+    label               VARCHAR(150),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at          TIMESTAMPTZ,
+    last_used_at        TIMESTAMPTZ,
+    revoked_at          TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX uq_api_key_hash ON api_key(key_hash);
+CREATE INDEX idx_api_key_service_account ON api_key(service_account_id);
+
+ALTER TABLE scim_group ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON scim_group;
+CREATE POLICY tenant_isolation ON scim_group
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE scim_group FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE service_account ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON service_account;
+CREATE POLICY tenant_isolation ON service_account
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE service_account FORCE ROW LEVEL SECURITY;
+```
+
+### `V57__webhooks_trusted_device_iga.sql`
+
+```sql
+-- Phase 2-4 foundation: webhooks, trusted devices, IGA, organizations, tenant quotas.
+
+CREATE TABLE webhook_endpoint (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    application_id  UUID REFERENCES application(id) ON DELETE CASCADE,
+    url             VARCHAR(2048) NOT NULL,
+    secret_encrypted TEXT NOT NULL,
+    events          JSONB NOT NULL DEFAULT '[]'::jsonb,
+    enabled         BOOLEAN NOT NULL DEFAULT true,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_webhook_endpoint_tenant ON webhook_endpoint(tenant_id);
+CREATE INDEX idx_webhook_endpoint_application ON webhook_endpoint(application_id)
+    WHERE application_id IS NOT NULL;
+
+CREATE TABLE webhook_delivery (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    endpoint_id     UUID NOT NULL REFERENCES webhook_endpoint(id) ON DELETE CASCADE,
+    event_type      VARCHAR(128) NOT NULL,
+    payload         JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status          VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    response_code   INTEGER,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_webhook_delivery_endpoint ON webhook_delivery(endpoint_id);
+CREATE INDEX idx_webhook_delivery_created ON webhook_delivery(created_at DESC);
+
+CREATE TABLE trusted_device (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+    device_token_hash   VARCHAR(128) NOT NULL,
+    label               VARCHAR(150),
+    expires_at          TIMESTAMPTZ NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at        TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX uq_trusted_device_user_token ON trusted_device(user_id, device_token_hash);
+CREATE INDEX idx_trusted_device_user ON trusted_device(user_id);
+
+CREATE TABLE access_request (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    requester_user_id   UUID NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+    target_user_id      UUID REFERENCES user_account(id) ON DELETE SET NULL,
+    resource_type       VARCHAR(64) NOT NULL,
+    resource_id         VARCHAR(255) NOT NULL,
+    reason              TEXT,
+    status              VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    reviewer_id         UUID REFERENCES user_account(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at         TIMESTAMPTZ
+);
+
+CREATE INDEX idx_access_request_tenant ON access_request(tenant_id);
+CREATE INDEX idx_access_request_status ON access_request(tenant_id, status);
+
+CREATE TABLE organization (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    parent_id       UUID REFERENCES organization(id) ON DELETE SET NULL,
+    name            VARCHAR(255) NOT NULL,
+    slug            VARCHAR(128) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uq_organization_tenant_slug ON organization(tenant_id, slug);
+CREATE INDEX idx_organization_tenant ON organization(tenant_id);
+CREATE INDEX idx_organization_parent ON organization(parent_id) WHERE parent_id IS NOT NULL;
+
+CREATE TABLE tenant_quota (
+    tenant_id           UUID PRIMARY KEY REFERENCES tenant(id) ON DELETE CASCADE,
+    max_users           INTEGER NOT NULL DEFAULT 1000,
+    max_applications    INTEGER NOT NULL DEFAULT 50,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE webhook_endpoint ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON webhook_endpoint;
+CREATE POLICY tenant_isolation ON webhook_endpoint
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE webhook_endpoint FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE access_request ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON access_request;
+CREATE POLICY tenant_isolation ON access_request
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE access_request FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE organization ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON organization;
+CREATE POLICY tenant_isolation ON organization
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE organization FORCE ROW LEVEL SECURITY;
+
+ALTER TABLE tenant_quota ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON tenant_quota;
+CREATE POLICY tenant_isolation ON tenant_quota
+    FOR ALL USING (secureone_tenant_matches(tenant_id));
+ALTER TABLE tenant_quota FORCE ROW LEVEL SECURITY;
+```
+
+### `V58__access_request_application_id.sql`
+
+```sql
+ALTER TABLE access_request
+    ADD COLUMN application_id UUID REFERENCES application(id) ON DELETE SET NULL;
+
+ALTER TABLE access_request
+    ADD COLUMN grant_type VARCHAR(64),
+    ADD COLUMN granted_role_id UUID,
+    ADD COLUMN granted_user_id UUID REFERENCES user_account(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_access_request_application ON access_request(application_id)
+    WHERE application_id IS NOT NULL;
+```
+
+### `V59__access_request_granted_role_name.sql`
+
+```sql
+ALTER TABLE access_request
+    ADD COLUMN granted_role_name VARCHAR(255);
+```
+
+### `V60__terrafarm_oauth_redirect.sql`
+
+```sql
+-- TerraFarm (Godot) OAuth PKCE callback URIs for the external test application.
+
+UPDATE application
+SET config = jsonb_set(
+    config,
+    '{redirectUris}',
+    (
+        SELECT to_jsonb(ARRAY(
+            SELECT DISTINCT uri
+            FROM unnest(
+                COALESCE(
+                    ARRAY(SELECT jsonb_array_elements_text(config->'redirectUris')),
+                    ARRAY[]::text[]
+                )
+                || ARRAY[
+                    'http://127.0.0.1:8790/oauth/callback',
+                    'http://localhost:8790/oauth/callback'
+                ]
+            ) AS uri
+        ))
+    ),
+    true
+),
+updated_at = now()
+WHERE id = '22222222-2222-2222-2222-222222222299';
+```
+
+### `V61__rls_fail_closed_option.sql`
+
+```sql
+-- Opt-in fail-closed row-level security.
+--
+-- app.rls_enforce = 'on'  (connection default, from SECUREONE_RLS_ENFORCE)
+--     Rows are visible only for the tenant in app.tenant_id, or all rows when the transaction
+--     explicitly sets app.rls_bypass = 'on' (platform operators and system jobs).
+--     A transaction with neither sees no tenant-scoped rows.
+-- app.rls_enforce unset / 'off'
+--     Legacy behaviour from V54: an empty app.tenant_id sees every row.
+--
+-- secureone_tenant_matches() and every policy call this function, so no policy changes are needed.
+CREATE OR REPLACE FUNCTION secureone_rls_bypass() RETURNS boolean
+    LANGUAGE sql
+    STABLE
+AS $$
+    SELECT COALESCE(current_setting('app.rls_bypass', true), '') = 'on'
+        OR (
+            COALESCE(current_setting('app.rls_enforce', true), '') <> 'on'
+            AND COALESCE(current_setting('app.tenant_id', true), '') = ''
+        );
+$$;
+```
+
+### `V62__named_platform_operators.sql`
+
+```sql
+-- Named platform operators (replaces the single shared operator account for day-to-day use).
+--
+-- Platform operators are ordinary user accounts in the reserved "platform" tenant, so they get
+-- passwords, MFA, lockout and audit like everyone else. platform_operator records who holds the
+-- platform-admin role. The configured break-glass account (SECUREONE_DEV_USER) remains for
+-- emergencies only.
+
+INSERT INTO platform.tenant (slug, name, status, settings)
+VALUES ('platform', 'Platform operators', 'ACTIVE', '{"system": true, "plan": "enterprise"}'::jsonb)
+ON CONFLICT (slug) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS platform.platform_operator (
+    user_id    UUID PRIMARY KEY REFERENCES platform.user_account (id) ON DELETE CASCADE,
+    granted_by VARCHAR(320),
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### `V63__rls_application_role.sql`
+
+```sql
+-- Row-level security only applies to roles that are neither superuser nor BYPASSRLS. The schema
+-- owner used by Flyway is often both, so request-time queries switch (SET ROLE, see the datasource
+-- connection-init-sql) to this role: data privileges only, policies always enforced.
+--
+-- Production may instead give the application its own LOGIN role that is a member of
+-- secureone_app; the startup check refuses to enforce RLS on a connection that bypasses it.
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'secureone_app') THEN
+        CREATE ROLE secureone_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+    END IF;
+END
+$$;
+
+-- Lets a non-superuser schema owner SET ROLE to it (superusers can anyway).
+GRANT secureone_app TO CURRENT_USER;
+
+-- Existing schemas: platform, public and every application schema.
+DO $$
+DECLARE
+    s text;
+BEGIN
+    FOR s IN
+        SELECT nspname FROM pg_namespace
+        WHERE nspname NOT LIKE 'pg\_%' AND nspname <> 'information_schema'
+    LOOP
+        EXECUTE format('GRANT USAGE ON SCHEMA %I TO secureone_app', s);
+        EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO secureone_app', s);
+        EXECUTE format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA %I TO secureone_app', s);
+        EXECUTE format('GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA %I TO secureone_app', s);
+    END LOOP;
+END
+$$;
+
+-- Objects the owner creates later (new migrations, newly provisioned application schemas).
+ALTER DEFAULT PRIVILEGES GRANT USAGE ON SCHEMAS TO secureone_app;
+ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO secureone_app;
+ALTER DEFAULT PRIVILEGES GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO secureone_app;
+ALTER DEFAULT PRIVILEGES GRANT EXECUTE ON FUNCTIONS TO secureone_app;
+```
+
+### `V64__rls_functions_schema_qualified.sql`
+
+```sql
+-- The tenant policy called secureone_rls_bypass() unqualified, so it failed whenever search_path
+-- did not include the platform schema (application-schema transactions switch search_path). It
+-- went unnoticed because the old connection role skipped RLS (see V63). Same logic, qualified name.
+CREATE OR REPLACE FUNCTION platform.secureone_tenant_matches(row_tenant_id uuid) RETURNS boolean
+    LANGUAGE sql
+    STABLE
+AS $$
+    SELECT platform.secureone_rls_bypass()
+        OR row_tenant_id::text = current_setting('app.tenant_id', true);
+$$;
+```
+
+### `V65__remove_stale_platform_rbac_copies.sql`
+
+```sql
+-- The startup catalog repair used to run without an application's schema, so it seeded each
+-- isolated application's default roles and permissions into the shared platform tables as well.
+-- Isolated applications keep their RBAC in their own schema; these platform copies were never read
+-- for them (tokens, console and checks use the application's schema). Remove them. Applications
+-- that still use the shared tables (schema_name IS NULL) are not touched.
+
+DELETE FROM platform.rbac_group
+WHERE application_id IN (SELECT id FROM platform.application WHERE schema_name IS NOT NULL);
+
+DELETE FROM platform.role
+WHERE application_id IN (SELECT id FROM platform.application WHERE schema_name IS NOT NULL);
+
+DELETE FROM platform.permission
+WHERE application_id IN (SELECT id FROM platform.application WHERE schema_name IS NOT NULL);
+```
+
+### `V66__application_logs_single_table.sql`
+
+```sql
+-- Application logs are written by a background appender into platform.application_log, but isolating
+-- an application moved its existing rows into <app schema>.application_log, and app-scoped reads
+-- (search_path set to the app schema) read that copy. New events never appeared in an application's
+-- log view. Logs now live only in the platform table, filtered by application_id like audit_log and
+-- login_history. Fold the moved rows back; the per-app tables are left empty.
+
+DO $$
+DECLARE
+    s TEXT;
+BEGIN
+    FOR s IN
+        SELECT DISTINCT schema_name FROM platform.application
+        WHERE schema_name IS NOT NULL AND schema_name <> 'platform'
+    LOOP
+        IF to_regclass(format('%I.application_log', s)) IS NOT NULL THEN
+            EXECUTE format(
+                'INSERT INTO platform.application_log (id, created_at, level, logger, message, session_id, request_id,'
+                    || ' principal, tenant_id, application_id, ip, user_agent, metadata)'
+                    || ' SELECT id, created_at, level, logger, message, session_id, request_id,'
+                    || ' principal, tenant_id, application_id, ip, user_agent, metadata FROM %I.application_log'
+                    || ' ON CONFLICT (id) DO NOTHING',
+                s);
+            EXECUTE format('DELETE FROM %I.application_log', s);
+        END IF;
+    END LOOP;
+END $$;
+```
+
+### `V67__oauth_client_subject_type.sql`
+
+```sql
+-- Which value an OAuth client receives as the token subject ("sub").
+--   legacy  : tenant-slug:email (changes when the user changes email)
+--   user_id : the account UUID (stable; what new integrations should key users on)
+-- Existing clients keep legacy so integrations that stored "sub" keep working; new clients default to
+-- user_id in the application. Switch a client explicitly once its app keys users on user_id.
+ALTER TABLE platform.oauth_client
+    ADD COLUMN IF NOT EXISTS subject_type VARCHAR(16) NOT NULL DEFAULT 'legacy';
+
+ALTER TABLE platform.oauth_client
+    ADD CONSTRAINT oauth_client_subject_type_check CHECK (subject_type IN ('legacy', 'user_id'));
 ```
 
 ### `R__z_repair_catalog.sql`

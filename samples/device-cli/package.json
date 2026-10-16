@@ -1,0 +1,16 @@
+{
+  "name": "secureone-sample-device-cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Command-line app that signs in with SecureOne using a device code",
+  "type": "module",
+  "bin": { "demo-store": "./cli.mjs" },
+  "scripts": {
+    "login": "node --env-file-if-exists=.env cli.mjs login",
+    "whoami": "node --env-file-if-exists=.env cli.mjs whoami",
+    "logout": "node --env-file-if-exists=.env cli.mjs logout"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

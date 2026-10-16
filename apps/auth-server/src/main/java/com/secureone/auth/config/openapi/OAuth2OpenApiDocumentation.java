@@ -96,12 +96,13 @@ public final class OAuth2OpenApiDocumentation {
                                 .summary("Token endpoint")
                                 .description(
                                         "Exchange credentials for tokens. Supports `authorization_code`, `refresh_token`, "
-                                                + "`client_credentials`, and other registered grant types. "
+                                                + "`client_credentials`, `urn:ietf:params:oauth:grant-type:device_code` (RFC 8628 polling: "
+                                                + "`authorization_pending`, `slow_down`, `access_denied`, `expired_token`) and token exchange. "
                                                 + "Client auth: HTTP Basic (`client_id` / `client_secret`) or `client_secret_post`.")
                                 .tags(List.of("OAuth 2.1 / OIDC"))
                                 .requestBody(formUrlEncoded(
                                         "grant_type",
-                                        "authorization_code | refresh_token | client_credentials",
+                                        "authorization_code | refresh_token | client_credentials | urn:ietf:params:oauth:grant-type:device_code",
                                         "code",
                                         "Authorization code (authorization_code grant)",
                                         "redirect_uri",
@@ -143,6 +144,30 @@ public final class OAuth2OpenApiDocumentation {
                                 .tags(List.of("OAuth 2.1 / OIDC"))
                                 .requestBody(formUrlEncoded("token", "Token to introspect"))
                                 .responses(responses("200", okJson("Active flag and token metadata")))));
+
+        paths.addPathItem(
+                "/oauth2/device_authorization",
+                new PathItem()
+                        .post(new Operation()
+                                .operationId("oauth2DeviceAuthorization")
+                                .summary("Device authorization (RFC 8628)")
+                                .description("For TVs / CLIs: returns device_code, user_code, verification_uri "
+                                        + "(/account/device.html), verification_uri_complete, expires_in and interval. "
+                                        + "Public device clients send client_id only. The openid scope is not allowed.")
+                                .tags(List.of("OAuth 2.1 / OIDC"))
+                                .requestBody(formUrlEncoded("client_id", "Client with the device_code grant", "scope", "e.g. profile email"))
+                                .responses(responses(
+                                        "200", okJson("Device and user codes"),
+                                        "401", new ApiResponse().description("Unknown client or client without the device grant")))));
+
+        paths.addPathItem(
+                "/.well-known/oauth-protected-resource",
+                new PathItem()
+                        .get(new Operation()
+                                .operationId("oauthProtectedResourceMetadata")
+                                .summary("Protected resource metadata (RFC 9728)")
+                                .tags(List.of("OAuth 2.1 / OIDC"))
+                                .responses(responses("200", okJson("Authorization servers, JWKS URI, bearer methods")))));
 
         paths.addPathItem(
                 "/oauth2/jwks",

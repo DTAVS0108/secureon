@@ -15,7 +15,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "application_log")
+// Always the platform table, also when a request runs in an application's schema (see V66).
+@Table(name = "application_log", schema = "platform")
 @Getter
 @Setter
 public class ApplicationLog {

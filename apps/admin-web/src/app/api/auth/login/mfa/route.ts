@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { authServerInternalUrl } from "@/lib/config";
+import { forwardedHeadersFrom } from "@/lib/api/server-auth";
 import { type IssuedSession, readJson, sessionResponse } from "@/lib/auth/session-cookie";
 
 /** Second sign-in step: an authenticator or recovery code, or confirming a new authenticator. */
@@ -16,10 +17,14 @@ export async function POST(request: Request) {
   }
   const enrolling = body.action === "enroll";
   const res = await fetch(
-    `${AUTH_SERVER_URL}/api/admin/v1/auth/mfa/${enrolling ? "enroll/confirm" : "verify"}`,
+    `${authServerInternalUrl()}/api/admin/v1/auth/mfa/${enrolling ? "enroll/confirm" : "verify"}`,
     {
       method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...forwardedHeadersFrom(request.headers),
+      },
       body: JSON.stringify(
         enrolling
           ? { mfaToken: body.mfaToken, factorId: body.factorId, code: body.code?.trim() }

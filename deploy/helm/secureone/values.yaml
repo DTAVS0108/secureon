@@ -1,62 +1,73 @@
-# Default values for SecureOne Helm chart.
-# Override in environment-specific values files or --set flags.
+# Default values for the SecureOne Helm chart.
+# Override in an environment-specific values file or with --set.
 
 global:
   imagePullPolicy: IfNotPresent
 
-authServer:
-  replicaCount: 2
-  image:
-    repository: secureone/auth-server
-    tag: latest
-  service:
-    port: 9000
-  resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
-    limits:
-      cpu: "1"
-      memory: 1Gi
-  env:
-    SPRING_PROFILES_ACTIVE: prod
-    SECUREONE_ENV: production
-    SECUREONE_SWAGGER_ENABLED: "false"
-    SECUREONE_DEV_AUTH_ENABLED: "false"
-  # Set via external secrets in production
-  existingSecret: secureone-auth-server
+image:
+  repository: secureone/secureone
+  # Defaults to the chart's appVersion. Pin a version; never deploy "latest" to production.
+  tag: ""
 
-adminWeb:
-  replicaCount: 2
-  image:
-    repository: secureone/admin-web
-    tag: latest
-  service:
-    port: 3001
+# Two or more replicas: sessions and caches live in Redis, generated keys are created once (cluster lock).
+replicaCount: 2
+
+service:
+  port: 9000
+
+# Health, info and Prometheus (SECUREONE_MANAGEMENT_PORT). Used by the probes and the metrics scraper inside
+# the cluster; not part of the Service or the Ingress.
+management:
+  port: 9001
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 1536Mi
+
+# Non-secret settings. Secrets (database password, encryption key, signing keys, OTP pepper, ...)
+# come from existingSecret; see docs/24 "Generate secrets".
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  SECUREONE_ENV: production
+  SECUREONE_SWAGGER_ENABLED: "false"
+  SECUREONE_DEV_AUTH_ENABLED: "false"
+  # Public URL users and apps see (https in production). Usually the ingress host.
+  SECUREONE_ISSUER_URL: https://id.example.com
+  SECUREONE_PUBLIC_BASE_URL: https://id.example.com
+  SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+  SECUREONE_REDIS_URL: redis://redis:6379
+
+# Kubernetes Secret with the SECUREONE_* secrets, loaded with envFrom.
+existingSecret: secureone
+
+# Database upgrades (docs/26). Enabled: a Job upgrades the database once before every install and upgrade
+# (helm hook), and the pods refuse to start if it did not run. Disabled: each pod upgrades at start.
+migrationJob:
+  enabled: true
+  backoffLimit: 1
+  activeDeadlineSeconds: 900
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
+      cpu: 200m
       memory: 512Mi
-  env:
-    NEXT_PUBLIC_SECUREONE_ENV: production
+    limits:
+      memory: 1Gi
+
+# Configuration as code (docs/26): tenant configuration files applied at every start-up. Name a ConfigMap
+# whose keys are the files (for example acme.yaml); it is mounted at /etc/secureone/config.
+configImport:
+  configMap: ""
 
 ingress:
   enabled: false
   className: nginx
-  host: auth.example.com
+  # One host serves everything: OAuth/OIDC, SAML, SCIM, hosted sign-in, APIs and the console at /admin.
+  host: id.example.com
   tlsSecretName: secureone-tls
-
-postgres:
-  # When false, set authServer.env SECUREONE_DB_URL to external database
-  enabled: false
-  url: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
-
-redis:
-  enabled: false
-  url: redis://redis:6379
 
 metrics:
   prometheusScrape: true

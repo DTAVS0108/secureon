@@ -5,6 +5,7 @@ import "@/lib/api/server-auth";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { fetchAdminContext } from "@/lib/api/context";
 import {
   createApplicationApi,
   deleteApplicationApi,
@@ -151,9 +152,13 @@ export async function tenantUpdateAction(_prev: FormState, fd: FormData): Promis
   }
 }
 
-export async function tenantDeleteAction(fd: FormData): Promise<void> {
+export async function tenantDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
-  if (id) await deleteTenantApi(id);
+  try {
+    if (id) await deleteTenantApi(id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the tenant." };
+  }
   revalidatePath("/tenants");
   revalidatePath("/");
   redirect("/tenants");
@@ -236,13 +241,18 @@ export async function applicationProductUpdateAction(_prev: FormState, fd: FormD
   }
 }
 
-export async function applicationProductDeleteAction(fd: FormData): Promise<void> {
+export async function applicationProductDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
-  if (id) await deleteApplicationApi(id);
+  try {
+    if (id) await deleteApplicationApi(id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the application." };
+  }
   revalidatePath("/applications");
   revalidatePath("/app");
   revalidatePath("/audit");
-  redirect("/applications");
+  const ctx = await fetchAdminContext().catch(() => null);
+  redirect(ctx && !ctx.platformSuperAdmin ? "/connect" : "/applications");
 }
 
 export async function applicationIsolateAction(fd: FormData): Promise<FormState> {
@@ -272,6 +282,7 @@ function oauthClientWritePayload(fd: FormData) {
     postLogoutRedirectUris: list(fd, "postLogoutRedirectUris"),
     pkceRequired: fd.get("pkceRequired") === "on",
     tokenEndpointAuthMethod: str(fd, "tokenEndpointAuthMethod"),
+    subjectType: str(fd, "subjectType") || undefined,
   };
 }
 
@@ -316,9 +327,13 @@ export async function oauthClientUpdateAction(_prev: FormState, fd: FormData): P
   }
 }
 
-export async function oauthClientDeleteAction(fd: FormData): Promise<void> {
+export async function oauthClientDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
-  if (id) await deleteOAuthClientApi(id);
+  try {
+    if (id) await deleteOAuthClientApi(id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the OAuth client." };
+  }
   revalidatePath("/applications");
   revalidatePath("/app");
   revalidatePath("/audit");
@@ -388,7 +403,7 @@ export async function userUpdateAction(_prev: FormState, fd: FormData): Promise<
       status: str(fd, "status") || "active",
       emailVerified,
       roleIds: list(fd, "roleIds"),
-    });
+    }, applicationId || undefined);
     // Dedicated endpoint (same as Security tab) — PUT emailVerified alone is easy to miss on older servers.
     await setUserEmailVerifiedApi(id, emailVerified, applicationId || undefined);
     revalidateUserPaths({ applicationId, userId: id });
@@ -398,10 +413,14 @@ export async function userUpdateAction(_prev: FormState, fd: FormData): Promise<
   }
 }
 
-export async function userDeleteAction(fd: FormData): Promise<void> {
+export async function userDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
   const applicationId = str(fd, "applicationId");
-  if (id) await deleteUserApi(id);
+  try {
+    if (id) await deleteUserApi(id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the user." };
+  }
   revalidateUserPaths({ applicationId });
   if (applicationId) {
     redirect(`/app/${applicationId}/users`);
@@ -588,12 +607,17 @@ export async function roleUpdateAction(_prev: FormState, fd: FormData): Promise<
   }
 }
 
-export async function roleDeleteAction(fd: FormData): Promise<void> {
+export async function roleDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
   const applicationId = str(fd, "applicationId");
-  if (!id || !isValidUuid(id)) throw new Error("Invalid role id");
-  if (!applicationId || !isValidUuid(applicationId)) throw new Error("Invalid application id");
-  await deleteRoleApi(id, applicationId);
+  if (!id || !isValidUuid(id)) return { error: "Invalid role id." };
+  if (!applicationId || !isValidUuid(applicationId)) return { error: "Invalid application id." };
+  try {
+    await deleteRoleApi(id, applicationId);
+  } catch (e) {
+    // e.g. 409 "Remove all user assignments before deleting this role."
+    return { error: e instanceof Error ? e.message : "Could not delete the role." };
+  }
   revalidateRolePaths(applicationId);
   redirect(`/app/${applicationId}/roles`);
 }
@@ -659,12 +683,16 @@ export async function groupUpdateAction(_prev: FormState, fd: FormData): Promise
   }
 }
 
-export async function groupDeleteAction(fd: FormData): Promise<void> {
+export async function groupDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
   const applicationId = str(fd, "applicationId");
-  if (!id || !isValidUuid(id)) throw new Error("Invalid group id");
-  if (!applicationId || !isValidUuid(applicationId)) throw new Error("Invalid application id");
-  await deleteGroupApi(applicationId, id);
+  if (!id || !isValidUuid(id)) return { error: "Invalid group id." };
+  if (!applicationId || !isValidUuid(applicationId)) return { error: "Invalid application id." };
+  try {
+    await deleteGroupApi(applicationId, id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the group." };
+  }
   revalidateGroupPaths(applicationId);
   redirect(`/app/${applicationId}/groups`);
 }
@@ -738,12 +766,16 @@ export async function permissionUpdateAction(_prev: FormState, fd: FormData): Pr
   }
 }
 
-export async function permissionDeleteAction(fd: FormData): Promise<void> {
+export async function permissionDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
   const id = str(fd, "id");
   const applicationId = str(fd, "applicationId");
-  if (!id || !isValidUuid(id)) throw new Error("Invalid permission id");
-  if (!applicationId || !isValidUuid(applicationId)) throw new Error("Invalid application id");
-  await deletePermissionApi(applicationId, id);
+  if (!id || !isValidUuid(id)) return { error: "Invalid permission id" };
+  if (!applicationId || !isValidUuid(applicationId)) return { error: "Invalid application id" };
+  try {
+    await deletePermissionApi(applicationId, id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not delete the permission." };
+  }
   revalidatePermissionPaths(applicationId);
   redirect(`/app/${applicationId}/permissions`);
 }

@@ -35,6 +35,16 @@ public class ApplicationEffectiveSettingsService {
         return methodImplemented(methods, methodId);
     }
 
+    /** Enabled and implemented for this application (platform defaults when {@code applicationId} is null). */
+    public boolean isMethodAvailable(UUID applicationId, String methodId) {
+        return isAuthMethodEnabled(applicationId, methodId) && isAuthMethodImplemented(applicationId, methodId);
+    }
+
+    /** Same, for the application the current request is for (see ApplicationSchemaContext). */
+    public boolean isMethodAvailableForCurrentApplication(String methodId) {
+        return isMethodAvailable(ApplicationSchemaContext.getApplicationId(), methodId);
+    }
+
     public boolean isFeatureEnabled(UUID applicationId, String key) {
         if (applicationId != null && !platformAuth.isFeatureEnabled(key)) {
             return false;

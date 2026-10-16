@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -51,39 +52,58 @@ public class OAuthClientAdminController {
         return service.list(applicationId == null ? tenantId : null, applicationId);
     }
 
+    // Platform super admins manage every client. The tenant super admin manages the clients of the
+    // tenant's applications, a tenant admin those of the applications assigned to them; application
+    // admins only view (docs/25). Only platform super admins create applications here.
+
     @GetMapping("/{id}")
-    public OAuthClientResponse get(Authentication authentication, @PathVariable UUID id) {
-        access.requireSuperAdmin(authentication);
-        return service.get(id);
+    public OAuthClientResponse get(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID id) {
+        OAuthClientResponse client = service.get(id);
+        if (!access.canAccessPlatformSettings(authentication, actAs)) {
+            access.requireApplicationAccess(authentication, actAs, client.applicationId());
+        }
+        return client;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OAuthClientCreateResult create(
-            Authentication authentication, @Valid @RequestBody OAuthClientCreateRequest request) {
-        access.requireSuperAdmin(authentication);
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @Valid @RequestBody OAuthClientCreateRequest request) {
+        access.requireClientManagement(authentication, actAs, request.applicationId());
         return service.create(request);
     }
 
     @PutMapping("/{id}")
     public OAuthClientResponse update(
             Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
             @PathVariable UUID id,
             @Valid @RequestBody OAuthClientUpdateRequest request) {
-        access.requireSuperAdmin(authentication);
+        access.requireClientManagement(authentication, actAs, service.get(id).applicationId());
         return service.update(id, request);
     }
 
     @PostMapping("/{id}/rotate-secret")
-    public OAuthClientSecretResponse rotateSecret(Authentication authentication, @PathVariable UUID id) {
-        access.requireSuperAdmin(authentication);
+    public OAuthClientSecretResponse rotateSecret(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID id) {
+        access.requireClientManagement(authentication, actAs, service.get(id).applicationId());
         return service.rotateClientSecret(id);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(Authentication authentication, @PathVariable UUID id) {
-        access.requireSuperAdmin(authentication);
+    public void delete(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID id) {
+        access.requireClientManagement(authentication, actAs, service.get(id).applicationId());
         service.delete(id);
     }
 }

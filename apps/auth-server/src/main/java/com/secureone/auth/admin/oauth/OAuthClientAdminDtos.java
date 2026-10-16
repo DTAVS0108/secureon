@@ -33,7 +33,8 @@ public final class OAuthClientAdminDtos {
             boolean clientSecretConfigured,
             Instant createdAt,
             Instant updatedAt,
-            OAuthEndpoints oAuthEndpoints) {}
+            OAuthEndpoints oAuthEndpoints,
+            String subjectType) {}
 
     public record OAuthClientCreateRequest(
             UUID applicationId,
@@ -47,7 +48,8 @@ public final class OAuthClientAdminDtos {
             List<String> redirectUris,
             List<String> postLogoutRedirectUris,
             Boolean pkceRequired,
-            String tokenEndpointAuthMethod) {}
+            String tokenEndpointAuthMethod,
+            String subjectType) {}
 
     public record OAuthClientUpdateRequest(
             @Size(max = 32) String type,
@@ -57,7 +59,8 @@ public final class OAuthClientAdminDtos {
             List<String> redirectUris,
             List<String> postLogoutRedirectUris,
             Boolean pkceRequired,
-            String tokenEndpointAuthMethod) {}
+            String tokenEndpointAuthMethod,
+            String subjectType) {}
 
     public record OAuthClientCreateResult(OAuthClientResponse client, String clientSecret) {}
 

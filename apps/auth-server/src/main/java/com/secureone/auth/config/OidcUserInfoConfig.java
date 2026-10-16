@@ -49,6 +49,13 @@ public class OidcUserInfoConfig {
             if (jwt.hasClaim("acr")) {
                 builder.claim("acr", jwt.getClaim("acr"));
             }
+            // Same application roles and permissions as the access token carries.
+            if (jwt.hasClaim("roles")) {
+                builder.claim("roles", jwt.getClaim("roles"));
+            }
+            if (jwt.hasClaim("permissions")) {
+                builder.claim("permissions", jwt.getClaim("permissions"));
+            }
         }
         resolveUser(subject, users, tenants).ifPresent(user -> {
             builder.email(user.getEmail());

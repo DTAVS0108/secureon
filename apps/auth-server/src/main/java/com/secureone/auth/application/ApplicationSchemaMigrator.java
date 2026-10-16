@@ -28,7 +28,7 @@ public class ApplicationSchemaMigrator {
         copyByApplicationId("rbac_group", platform, app, applicationId);
         copyByGroup("rbac_group_role", platform, app, applicationId);
         copyByGroup("rbac_group_member", platform, app, applicationId);
-        copyByApplicationId("application_log", platform, app, applicationId);
+        // application_log stays in the platform table (filtered by application_id); see V66.
 
         deleteLegacyData(applicationId);
     }
@@ -95,9 +95,6 @@ public class ApplicationSchemaMigrator {
                 applicationId);
         jdbc.update(
                 "DELETE FROM " + ApplicationSchemaNames.PLATFORM_SCHEMA + ".application_setting WHERE application_id = ?",
-                applicationId);
-        jdbc.update(
-                "DELETE FROM " + ApplicationSchemaNames.PLATFORM_SCHEMA + ".application_log WHERE application_id = ?",
                 applicationId);
         jdbc.update(
                 "DELETE FROM " + ApplicationSchemaNames.PLATFORM_SCHEMA + ".role WHERE application_id = ?",

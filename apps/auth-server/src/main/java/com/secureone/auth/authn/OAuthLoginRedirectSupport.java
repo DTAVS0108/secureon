@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /** Preserves OAuth authorize URLs across the hosted login page. */
 public final class OAuthLoginRedirectSupport {
@@ -18,12 +17,13 @@ public final class OAuthLoginRedirectSupport {
 
     private OAuthLoginRedirectSupport() {}
 
+    /** The current request as a relative URL (path + query), so it always passes {@link #isSafeContinue}. */
     public static String buildAuthorizeUrl(HttpServletRequest request) {
         String query = request.getQueryString();
         if (query == null || query.isBlank()) {
-            return request.getRequestURL().toString();
+            return request.getRequestURI();
         }
-        return request.getRequestURL() + "?" + query;
+        return request.getRequestURI() + "?" + query;
     }
 
     public static String loginPageWithContinue(String authorizeUrl) {
@@ -33,17 +33,51 @@ public final class OAuthLoginRedirectSupport {
                 + URLEncoder.encode(authorizeUrl, StandardCharsets.UTF_8);
     }
 
+    /** OAuth endpoints a browser may be sent back to after signing in. */
+    private static final java.util.List<String> CONTINUE_PATHS =
+            java.util.List.of("/oauth2/authorize", "/oauth2/device_verification");
+
     public static boolean isAuthorizeUrl(String url) {
         if (url == null || url.isBlank()) {
             return false;
         }
         try {
-            URI uri = URI.create(url);
-            String path = uri.getPath();
-            return path != null && path.contains("/oauth2/authorize");
+            String path = URI.create(url.trim()).getPath();
+            return path != null && CONTINUE_PATHS.stream().anyMatch(path::equals);
         } catch (IllegalArgumentException ex) {
-            return url.contains("/oauth2/authorize");
+            return false;
         }
+    }
+
+    /**
+     * A continue URL from the browser: an OAuth endpoint on this server only. Relative paths, or absolute
+     * URLs to the host the request came in on; anything else (another host, {@code //host}, odd schemes)
+     * would make sign-in an open redirect.
+     */
+    public static boolean isSafeContinue(HttpServletRequest request, String url) {
+        if (!isAuthorizeUrl(url)) {
+            return false;
+        }
+        String value = url.trim();
+        if (value.contains("\\")) {
+            return false;
+        }
+        URI uri = URI.create(value);
+        if (uri.getScheme() == null && uri.getRawAuthority() == null) {
+            return value.startsWith("/") && !value.startsWith("//");
+        }
+        boolean http = "http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme());
+        return http
+                && uri.getHost() != null
+                && uri.getHost().equalsIgnoreCase(request.getServerName())
+                && effectivePort(uri) == request.getServerPort();
+    }
+
+    private static int effectivePort(URI uri) {
+        if (uri.getPort() != -1) {
+            return uri.getPort();
+        }
+        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
     }
 
     public static String readContinueParam(HttpServletRequest request) {
@@ -51,7 +85,7 @@ public final class OAuthLoginRedirectSupport {
         if (raw == null || raw.isBlank()) {
             raw = request.getParameter(CONTINUE_PARAM);
         }
-        return isAuthorizeUrl(raw) ? raw.trim() : null;
+        return isSafeContinue(request, raw) ? raw.trim() : null;
     }
 
     public static String resolvePendingAuthorizeUrl(
@@ -72,16 +106,18 @@ public final class OAuthLoginRedirectSupport {
         if (!isAuthorizeUrl(authorizeUrl)) {
             return loginUrl;
         }
-        return UriComponentsBuilder.fromUriString(loginUrl)
-                .queryParam(CONTINUE_PARAM, authorizeUrl)
-                .build(true)
-                .toUriString();
+        // Encode the authorize URL as one parameter value; strict "already encoded" parsing of the raw
+        // value fails on its '=' characters (a failed sign-in during OAuth then returned 500).
+        return loginUrl
+                + (loginUrl.contains("?") ? "&" : "?")
+                + CONTINUE_PARAM
+                + "="
+                + URLEncoder.encode(authorizeUrl, StandardCharsets.UTF_8);
     }
 
     public static RequestCache requestCache() {
         HttpSessionRequestCache cache = new HttpSessionRequestCache();
-        cache.setRequestMatcher(
-                request -> request.getRequestURI() != null && request.getRequestURI().contains("/oauth2/authorize"));
+        cache.setRequestMatcher(request -> isAuthorizeUrl(request.getRequestURI()));
         return cache;
     }
 }

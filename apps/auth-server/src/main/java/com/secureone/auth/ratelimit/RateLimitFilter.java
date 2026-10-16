@@ -1,5 +1,6 @@
 package com.secureone.auth.ratelimit;
 
+import com.secureone.auth.logging.ClientIpResolver;
 import com.secureone.auth.config.SecureOneRateLimitProperties;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -68,11 +69,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (uri.contains("/account/password/forgot")) {
             return new RateLimitRule("forgot-password", properties.getForgotPasswordPerMinute());
         }
+        // Device sign-in: issuing codes, and checking a typed code (guessing must stay slow).
+        if ("/oauth2/device_authorization".equals(uri)) {
+            return new RateLimitRule("device-authorization", properties.getTokenPerMinute());
+        }
+        if (uri.startsWith("/api/v1/auth/device/")) {
+            return new RateLimitRule("device-lookup", properties.getOtpRequestPerMinute());
+        }
         if (uri.contains("/auth/mfa/")) {
             return new RateLimitRule("mfa-verify", properties.getOtpRequestPerMinute());
         }
         if (uri.contains("/auth/otp/request") || (uri.contains("/account/verify/") && uri.endsWith("/request"))) {
             return new RateLimitRule("otp-request", properties.getOtpRequestPerMinute());
+        }
+        // Each of these sends an email or creates an account for whatever address it is given.
+        if (uri.matches("/api/v1/applications/[^/]+/signup")) {
+            return new RateLimitRule("signup", properties.getSignupPerMinute());
+        }
+        if (uri.contains("/account/magic-link/request") || uri.contains("/account/email/resend-verification")) {
+            return new RateLimitRule("email-request", properties.getEmailRequestPerMinute());
         }
         if ("/api/admin/v1/auth/login".equals(uri)) {
             return new RateLimitRule("admin-login", properties.getAdminLoginPerMinute());
@@ -81,16 +96,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private static String clientKey(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            return comma > 0 ? forwarded.substring(0, comma).trim() : forwarded.trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        String ip = ClientIpResolver.resolve(request);
+        return ip != null ? ip : "unknown";
     }
 
     private record RateLimitRule(String name, int limit) {}

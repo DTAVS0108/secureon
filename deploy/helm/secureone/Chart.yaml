@@ -1,6 +1,6 @@
 apiVersion: v2
 name: secureone
-description: SecureOne IAM platform — auth-server and admin-web
+description: "SecureOne IAM platform (one image: auth-server with the admin console at /admin)"
 type: application
-version: 0.1.0
-appVersion: "0.0.1"
+version: 0.3.0
+appVersion: "0.2.0"

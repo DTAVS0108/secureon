@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { roleDeleteAction } from "@/lib/actions";
 import { assignRolePermissionApi, getRole, listRoleUsers, removeRolePermissionApi } from "@/lib/api/roles";
-import { initials, timeAgo } from "@/lib/format";
+import { initials } from "@/lib/format";
 import {
   canDeleteRole,
   canEditRoleDetails,
@@ -31,6 +31,7 @@ import type {
   Status,
   Tenant,
 } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 type Tab = "overview" | "permissions" | "users";
 
@@ -71,6 +72,7 @@ export function RoleDetailPanel({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [permSaving, setPermSaving] = useState(false);
+  const [pendingSelection, setPendingSelection] = useState<Set<string> | null>(null);
   const [permError, setPermError] = useState<string | null>(null);
 
   useDeferredEffect(() => {
@@ -133,6 +135,11 @@ export function RoleDetailPanel({
 
   async function togglePermission(permissionId: string, checked: boolean) {
     if (!canEditPermissions) return;
+    // Tick the box right away; the server's answer replaces it (or reverts it on error).
+    const optimistic = new Set(selected);
+    if (checked) optimistic.add(permissionId);
+    else optimistic.delete(permissionId);
+    setPendingSelection(optimistic);
     setPermSaving(true);
     setPermError(null);
     try {
@@ -143,6 +150,7 @@ export function RoleDetailPanel({
     } catch (e) {
       setPermError(e instanceof Error ? e.message : "Could not update permission");
     } finally {
+      setPendingSelection(null);
       setPermSaving(false);
     }
   }
@@ -342,7 +350,7 @@ export function RoleDetailPanel({
             ) : (
               <PermissionMatrix
                 permissions={matrixPermissions}
-                selectedIds={selected}
+                selectedIds={pendingSelection ?? selected}
                 readOnly={!canEditPermissions}
                 compact
                 onChange={
@@ -386,14 +394,14 @@ export function RoleDetailPanel({
                     </div>
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/users/${u.id}`}
+                        href={`/app/${applicationId}/users?user=${u.id}`}
                         className="font-medium text-brand hover:underline"
                       >
                         {u.displayName || u.email}
                       </Link>
                       <p className="truncate text-xs text-muted">{u.email}</p>
                       {u.grantedAt && (
-                        <p className="text-[10px] text-faint">Granted {timeAgo(u.grantedAt)}</p>
+                        <p className="text-[10px] text-faint">Granted <LocalTime value={u.grantedAt} format="ago" /></p>
                       )}
                     </div>
                     <Badge tone={statusTone(normalizeStatus(u.status))}>{u.status}</Badge>

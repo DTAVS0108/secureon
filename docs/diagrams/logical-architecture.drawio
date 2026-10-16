@@ -8,7 +8,7 @@
         <mxCell id="grp_clients" value="Clients" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6c8ebf;dashed=1;verticalAlign=top;fontStyle=2;fontColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="40" y="60" width="200" height="250" as="geometry" />
         </mxCell>
-        <mxCell id="grp_ui" value="admin-web (Next.js)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;dashed=1;verticalAlign=top;fontStyle=2;fontColor=#82b366;" vertex="1" parent="1">
+        <mxCell id="grp_ui" value="Admin console (Next.js)&#10;served by auth-server at /admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;dashed=1;verticalAlign=top;fontStyle=2;fontColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="300" y="60" width="220" height="250" as="geometry" />
         </mxCell>
         <mxCell id="grp_auth" value="auth-server (Spring Boot)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d79b00;dashed=1;verticalAlign=top;fontStyle=2;fontColor=#d79b00;" vertex="1" parent="1">
@@ -18,14 +18,14 @@
         <mxCell id="usr" value="End Users / Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="60" y="95" width="160" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="app" value="Integrated Apps&#10;(OIDC clients)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="app" value="Integrated Apps&#10;(hosted or native UI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="60" y="160" width="160" height="45" as="geometry" />
         </mxCell>
         <mxCell id="mac" value="Machines (M2M)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="60" y="225" width="160" height="45" as="geometry" />
         </mxCell>
 
-        <mxCell id="login" value="Hosted Login / Consent / MFA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+        <mxCell id="login" value="Hosted pages: login, signup,&#10;device, account, MFA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
           <mxGeometry x="320" y="100" width="180" height="55" as="geometry" />
         </mxCell>
         <mxCell id="admin" value="Admin Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
@@ -51,7 +51,7 @@
         <mxCell id="redis" value="Redis" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
           <mxGeometry x="740" y="410" width="100" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="kms" value="Secrets Manager / KMS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+        <mxCell id="kms" value="Secrets Manager / KMS&#10;(SECUREONE_ENCRYPTION_KEY,&#10;JWT + SAML SP keys)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
           <mxGeometry x="880" y="420" width="160" height="60" as="geometry" />
         </mxCell>
 
@@ -67,6 +67,11 @@
         <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="repo" target="pg"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="sas" target="redis"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="sas" target="kms"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="dev" value="Devices (TV / CLI)&#10;device_code grant" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="60" y="290" width="160" height="45" as="geometry" /></mxCell>
+        <mxCell id="fed" value="Federation: OIDC + SAML 2.0 SP&#10;(SSO, SLO, IdP-initiated)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="600" y="300" width="220" height="45" as="geometry" /></mxCell>
+        <mxCell id="idps" value="External IdPs&#10;Google, GitHub, OIDC,&#10;SAML 2.0 company IdPs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="880" y="280" width="190" height="70" as="geometry" /></mxCell>
+        <mxCell id="e_fed" value="SSO / SLO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;startArrow=block;fontSize=10;" edge="1" parent="1" source="fed" target="idps"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_dev" value="device_code" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;fontSize=10;dashed=1;" edge="1" parent="1" source="dev" target="sas"><mxGeometry relative="1" as="geometry" /></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

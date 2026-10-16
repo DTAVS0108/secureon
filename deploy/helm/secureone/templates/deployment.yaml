@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: secureone
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: secureone
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    # New pods must be ready before old ones stop. Old and new pods overlap briefly, so a release's
+    # migrations only add (columns, tables); removals wait for a later release (docs/26).
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: secureone
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.metrics.prometheusScrape }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+        prometheus.io/port: {{ .Values.management.port | quote }}
+      {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: secureone
+          image: {{ include "secureone.image" . }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+            - name: management
+              containerPort: {{ .Values.management.port }}
+          {{- include "secureone.env" . | nindent 10 }}
+            - name: SECUREONE_MANAGEMENT_PORT
+              value: {{ .Values.management.port | quote }}
+            # The migration job upgrades the database; the pods only check it. Without the job each pod
+            # upgrades at start (one at a time: Postgres locks).
+            - name: SECUREONE_DB_MIGRATE
+              value: {{ ternary "validate" "auto" .Values.migrationJob.enabled | quote }}
+            {{- if .Values.configImport.configMap }}
+            - name: SECUREONE_CONFIG_IMPORT
+              value: /etc/secureone/config
+            {{- end }}
+          {{- if .Values.configImport.configMap }}
+          volumeMounts:
+            - name: tenant-config
+              mountPath: /etc/secureone/config
+              readOnly: true
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          startupProbe:
+            # First start runs database migrations; give it time before liveness applies.
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.configImport.configMap }}
+      volumes:
+        - name: tenant-config
+          configMap:
+            name: {{ .Values.configImport.configMap }}
+      {{- end }}

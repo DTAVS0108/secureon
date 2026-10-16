@@ -97,6 +97,12 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         description: "Path A: Docker images + env only · Path B: source/Helm",
       },
       {
+        slug: "configuration-as-code-and-upgrades",
+        title: "Configuration as code and upgrades",
+        file: "26-configuration-as-code-and-upgrades.md",
+        description: "Tenant setup in files (export, preview, apply); upgrades and rollback",
+      },
+      {
         slug: "deploy-runbook",
         title: "Deploy runbook",
         file: "runbooks/deploy.md",
@@ -134,7 +140,7 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         slug: "application-integration",
         title: "Application integration guide",
         file: "23-application-integration-guide.md",
-        description: "Flipkart example, APIs, hosted vs native UI",
+        description: "Demo Store example, APIs, hosted vs native UI",
       },
       {
         slug: "auth-ui-integration",
@@ -179,6 +185,9 @@ export const DRAWIO_DOCUMENT_SLUG: Record<string, string> = {
   "auth-flow-authorization-code-pkce.drawio": "architecture",
   "auth-flow-client-credentials.drawio": "architecture",
   "auth-flow-refresh-rotation.drawio": "architecture",
+  "auth-flow-hosted-vs-native.drawio": "architecture",
+  "auth-flow-device-code.drawio": "architecture",
+  "auth-flow-saml.drawio": "architecture",
   "deployment-mvp.drawio": "architecture",
   "deployment-production.drawio": "architecture",
   "data-layer-layering.drawio": "database",

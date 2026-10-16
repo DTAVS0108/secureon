@@ -32,8 +32,9 @@ public class SmtpSettingsService {
 
     public Map<String, Object> getPublicSettings(UUID applicationId) {
         Map<String, Object> smtp = new HashMap<>(loadMap(applicationId));
+        boolean passwordConfigured = hasPassword(smtp);
         smtp.remove("passwordEncrypted");
-        smtp.put("passwordConfigured", hasPassword(smtp));
+        smtp.put("passwordConfigured", passwordConfigured);
         smtp.put("smtpConfigured", isConfigured(applicationId));
         return smtp;
     }
@@ -73,6 +74,17 @@ public class SmtpSettingsService {
         }
         persist(applicationId, current);
         return getPublicSettings(applicationId);
+    }
+
+    /** Whether the application's stored SMTP password is this value (configuration files). */
+    public boolean passwordMatches(UUID applicationId, String plain) {
+        String encrypted = string(loadMap(applicationId), "passwordEncrypted", "");
+        return plain != null && !encrypted.isBlank() && plain.equals(secrets.decrypt(encrypted));
+    }
+
+    /** Whether the application has its own SMTP server (not the platform's). */
+    public boolean hasOverride(UUID applicationId) {
+        return appSettings.findByApplicationIdAndKey(applicationId, SETTINGS_KEY).isPresent();
     }
 
     SmtpConnectionConfig loadConnectionConfig(UUID applicationId) {

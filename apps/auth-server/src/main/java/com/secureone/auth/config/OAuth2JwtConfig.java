@@ -22,7 +22,8 @@ public class OAuth2JwtConfig {
     @Bean
     @Primary
     JWKSource<SecurityContext> jwkSource(OAuth2SigningKeyService signingKeys) {
-        return new ImmutableJWKSet<>(new JWKSet(signingKeys.loadOrCreateSigningKey()));
+        // Published in JWKS and used for verification: current key + previous key during a rotation.
+        return new ImmutableJWKSet<>(new JWKSet(java.util.List.<com.nimbusds.jose.jwk.JWK>copyOf(signingKeys.verificationKeys())));
     }
 
     @Bean

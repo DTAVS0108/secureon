@@ -23,9 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/account/mfa/totp")
 public class MfaAccountController {
 
-    public record EnrollRequest(String label) {}
+    /** {@code applicationId}: the app the user is enrolling from, so its MFA policy applies. */
+    public record EnrollRequest(String label, UUID applicationId) {}
 
-    public record ConfirmRequest(@NotNull UUID factorId, @NotBlank String code) {}
+    public record ConfirmRequest(@NotNull UUID factorId, @NotBlank String code, UUID applicationId) {}
 
     private final SessionUserResolver users;
     private final TotpMfaService totp;
@@ -52,7 +53,8 @@ public class MfaAccountController {
     public Map<String, Object> confirm(
             Authentication authentication, @Valid @RequestBody ConfirmRequest body) {
         UserAccount user = users.requireTenantUser(authentication);
-        TotpMfaService.ConfirmResponse response = totp.confirm(user, body.factorId(), body.code());
+        TotpMfaService.ConfirmResponse response =
+                totp.confirm(user, body.factorId(), body.code(), body.applicationId());
         return Map.of(
                 "factorId", response.factorId().toString(),
                 "recoveryCodes", response.recoveryCodes());

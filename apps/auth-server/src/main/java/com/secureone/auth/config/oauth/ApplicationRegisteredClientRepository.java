@@ -3,6 +3,7 @@ package com.secureone.auth.config.oauth;
 import com.secureone.auth.application.Application;
 import com.secureone.auth.application.ApplicationRepository;
 import com.secureone.auth.application.ApplicationSettingsService;
+import com.secureone.auth.oauth.ClientSecrets;
 import com.secureone.auth.oauth.OAuthClient;
 import com.secureone.auth.oauth.OAuthClientRepository;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -132,16 +134,27 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
         builder.clientSettings(ClientSettings.builder()
                 .requireAuthorizationConsent(false)
                 .requireProofKey(pkceRequired)
+                .setting(SubjectClaims.SETTING, client.getSubjectType() != null ? client.getSubjectType() : OAuthClient.SUBJECT_LEGACY)
                 .build());
-        builder.tokenSettings(TokenSettingsMapper.toTokenSettings(
-                applicationSettings.resolveTokenPolicy(client.getApplicationId())));
+        TokenSettings tokenSettings = TokenSettingsMapper.toTokenSettings(
+                applicationSettings.resolveTokenPolicy(client.getApplicationId()));
+        builder.tokenSettings(tokenSettings);
+        if (!TokenSettingsMapper.refreshTokensEnabled(tokenSettings)) {
+            // Token policy turned refresh tokens off: no refresh token is issued for any grant.
+            builder.authorizationGrantTypes(types -> types.remove(AuthorizationGrantType.REFRESH_TOKEN));
+        }
 
         return builder.build();
     }
 
+    /**
+     * The client authentication checks secrets with the BCrypt {@link PasswordEncoder} bean, which reads a
+     * bare hash: stored "{bcrypt}$2a$..." loses its prefix here. A legacy plain secret (not yet hashed by
+     * the start-up upgrade) is hashed on the fly.
+     */
     private String encodeSecret(String secret) {
-        if (secret.startsWith("{bcrypt}") || secret.startsWith("$2a$") || secret.startsWith("$2b$")) {
-            return secret.startsWith("{bcrypt}") ? secret : "{bcrypt}" + secret;
+        if (ClientSecrets.isHashed(secret)) {
+            return secret.startsWith(ClientSecrets.PREFIX) ? secret.substring(ClientSecrets.PREFIX.length()) : secret;
         }
         return passwordEncoder.encode(secret);
     }
@@ -158,6 +171,8 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
             case "authorization_code" -> java.util.Optional.of(AuthorizationGrantType.AUTHORIZATION_CODE);
             case "refresh_token" -> java.util.Optional.of(AuthorizationGrantType.REFRESH_TOKEN);
             case "client_credentials" -> java.util.Optional.of(AuthorizationGrantType.CLIENT_CREDENTIALS);
+            case "urn:ietf:params:oauth:grant-type:device_code", "device_code" ->
+                    java.util.Optional.of(AuthorizationGrantType.DEVICE_CODE);
             case "urn:ietf:params:oauth:grant-type:token-exchange", "token_exchange", "token-exchange" ->
                     java.util.Optional.of(new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:token-exchange"));
             default -> java.util.Optional.empty();

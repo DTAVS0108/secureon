@@ -38,6 +38,13 @@ public class VerificationPolicyService {
         return applicationSettings.resolveVerificationPolicy(applicationId);
     }
 
+    /** Country assumed for phone numbers typed without +country code. */
+    public String defaultPhoneRegion(UUID applicationId) {
+        Object region = resolvePolicy(applicationId).get("defaultPhoneRegion");
+        String normalized = region != null ? com.secureone.auth.account.PhoneNormalizer.normalizeRegion(region.toString()) : null;
+        return normalized != null ? normalized : com.secureone.auth.account.PhoneNormalizer.PLATFORM_DEFAULT_REGION;
+    }
+
     @SuppressWarnings("unchecked")
     public Map<String, Object> signupPolicy(UUID applicationId) {
         return (Map<String, Object>) resolvePolicy(applicationId).get("signup");

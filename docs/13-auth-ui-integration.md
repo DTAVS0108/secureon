@@ -12,7 +12,7 @@ Related: [Auth standards](05-auth-standards.md), [API documentation](12-api-docu
 | **Admin console** (`admin-web`, default `:3001`) | Operator dashboard — tenants, users, **Application → Settings → Integration** | Platform and application **admins**, not your product’s end users |
 | **Custom / native app UI** | Your SPA, mobile app, or storefront (e.g. Vite on `:5173`) | End users when you build your own login screens |
 
-The **Authentication UI** preference under **Application → Settings → Integration** (`authUiMode`: `hosted` or `native`) is stored in `client_integration` and shown in the admin UI. It documents how your team intends to integrate; **your client app must implement the chosen mode**. The auth-server does not automatically switch UI based on this flag alone.
+The **Authentication UI** preference under **Application → Settings → Integration** (`authUiMode`: `hosted` or `native`) is stored in `client_integration` and shown in the admin UI. It is published in the public manifest (`GET /api/v1/applications/{id}` → `authUiMode`), so your client can read it instead of a build flag. It is advisory: both flows always work, and **your client app implements the chosen one**.
 
 ## Choosing a mode
 
@@ -21,7 +21,16 @@ The **Authentication UI** preference under **Application → Settings → Integr
 | **Hosted SecureOne UI** (`authUiMode: hosted`) | Fastest integration, standard OIDC clients | Redirect to `/oauth2/authorize` → SecureOne renders login, MFA, and consent |
 | **Native / custom UI** (`authUiMode: native`) | Branded experience, full control | Your forms call application-scoped account APIs; optional OAuth PKCE for tokens |
 
-Both modes use the **same backend APIs**. The difference is who renders the HTML and where email links land (see [Native app URLs](#native-app-urls) below).
+Both modes use the **same backend APIs**. The difference is who renders the HTML and where email links land (see [Native app URLs](#native-app-urls) below). Sequence diagrams: [hosted vs native](diagrams/auth-flow-hosted-vs-native.drawio).
+
+Read the choice at runtime instead of hard-coding it:
+
+```js
+const { authUiMode } = await (await fetch(`${AUTH}/api/v1/applications/${APP_ID}`)).json();
+if (authUiMode === "native") showOwnLoginForm(); else location.assign(authorizeUrl());
+```
+
+Both modes are verified end to end in a real browser: switching in the console, the manifest value, hosted redirect with the app-branded page, and native session login + silent PKCE.
 
 ## Discovery
 
@@ -81,6 +90,9 @@ Pass `applicationId` on hosted pages when you want app-scoped context in links:
 | `/account/set-password.html?token=…` | Set password from invite |
 | `/account/security.html` | MFA enrollment, trusted devices, session security |
 | `/account/privacy.html` | GDPR self-service: data export + deletion request (session auth) |
+| `/account/device.html` | Device sign-in (RFC 8628): enter the code from a TV/CLI, see the app, Allow / Deny |
+
+The sign-in page also shows **Continue with …** buttons for the app's federation providers (Google, GitHub, OIDC, **SAML**), and `/login.html?signedOut=1` confirms a sign-out (used after single logout).
 
 See [Installation — dev flows](09-installation.md#8-email--notifications-dev) for local URLs and MailHog testing.
 
@@ -217,7 +229,10 @@ Magic link verification **creates an HTTP session** (`JSESSIONID` in Redis), set
 | Reset password email link | Hosted or `clientUrls.passwordReset` | `clientUrls.passwordReset` | N/A |
 | Self-registration | `/account/signup.html` | `POST …/signup` from your UI | N/A |
 | Privacy (export / delete) | `/account/privacy.html` | Bearer privacy APIs | N/A |
-| Account security / MFA | `/account/security.html` | Admin profile MFA (operators) | N/A |
+| Account security / MFA | `/account/security.html` | Account MFA APIs (`/api/v1/account/mfa/…`) | N/A |
+| Company SSO (SAML / OIDC) | Button on `/login.html` | Link to the provider `startUrl` from the manifest | Inside `/oauth2/authorize` |
+| TV / CLI sign-in | `/account/device.html` | Same page (open `verification_uri_complete`) | Device grant (RFC 8628) |
+| Sign out everywhere / SLO | — | `/connect/logout` (OIDC) | Also signs out at a SAML IdP |
 
 ## Admin console vs end-user UI
 
@@ -232,9 +247,11 @@ Integration settings (OAuth client ID, application UUID, API catalog, `authUiMod
 
 | Setting | Location | Effect |
 |---------|----------|--------|
-| `authUiMode` | Application → Integration | `hosted` or `native` (team preference; client must implement) |
+| `authUiMode` | Application → Integration | `hosted` or `native`; published in the public manifest (advisory, client implements it) |
 | `clientUrls.forgotPassword` | Application → Integration (native) | Documentation / your forgot-password page URL |
 | `clientUrls.passwordReset` | Application → Integration (native) | Reset email link base URL |
+| `clientUrls.magicLink` | Application → Integration (native) | Magic-link email link base URL |
+| Federation providers | Application or Tenant → Authentication → Add provider | Google, GitHub, OIDC, SAML 2.0 (see [23](23-application-integration-guide.md#enterprise-sso-saml-20)) |
 | `SECUREONE_PUBLIC_BASE_URL` | auth-server env | Base for all email links (default `http://localhost:9000`) |
 | Public API exposure | Platform + application settings | Whether `GET /api/v1/applications/{id}` is available unauthenticated |
 | Auth methods | Platform + application Authentication | Password, magic link, email OTP, SMS OTP (`m_email_otp`, `m_sms`) |
@@ -243,10 +260,10 @@ Integration settings (OAuth client ID, application UUID, API catalog, `authUiMod
 
 ## Known gaps (as of current implementation)
 
-1. **Magic link email URL** — always hosted; no `clientUrls.magicLink` override.
-2. **Password reset via OTP** — policy field exists; flow still uses email link only.
-3. **TOTP / passkey MFA** — not wired at login (admin can list factors only).
-4. **Session list/revoke** — admin session view exists; end-user revoke-all API not yet exposed.
-5. **`login.html` magic link link** — default link omits `applicationId`; use `/account/magic-link.html?applicationId={id}` explicitly for app-scoped requests.
+The earlier gaps (magic-link URL override, OTP password reset, MFA at sign-in, end-user revoke-all, app-scoped magic-link link) are closed. Remaining:
+
+1. **Push MFA** — not implemented (needs an authenticator mobile app and FCM/APNs credentials).
+2. **SecureOne as a SAML IdP** — SecureOne consumes SAML (SP); it does not issue SAML assertions to SAML-only apps.
+3. **`authUiMode` is advisory** — the server never forces one mode; both always work.
 
 Full OTP/signup/login reference: **[19 — Verification & OTP](19-verification-and-otp.md)**.

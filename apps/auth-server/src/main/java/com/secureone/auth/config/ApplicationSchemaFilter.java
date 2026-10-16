@@ -57,6 +57,18 @@ public class ApplicationSchemaFilter extends OncePerRequestFilter {
                     // fall through
                 }
             }
+            // Console calls on shared admin routes (e.g. PUT /api/admin/v1/users/{id}) name the app in
+            // a header; AdminAccessInterceptor checks the operator may access it.
+            if (path.startsWith("/api/admin/v1/")) {
+                String header = request.getHeader("X-Application-Id");
+                if (header != null && !header.isBlank()) {
+                    try {
+                        return UUID.fromString(header.trim());
+                    } catch (IllegalArgumentException ignored) {
+                        // fall through
+                    }
+                }
+            }
         }
         String clientId = request.getParameter("client_id");
         if (clientId == null || clientId.isBlank()) {

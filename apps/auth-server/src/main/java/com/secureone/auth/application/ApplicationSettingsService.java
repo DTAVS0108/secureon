@@ -491,10 +491,8 @@ public class ApplicationSettingsService {
         requireExposed("verification-policy");
         requireApplication(applicationId);
         boolean inherits = !hasOverride(applicationId, "verification_policy");
-        Map<String, Object> merged = inherits
-                ? new HashMap<>(VerificationPolicyDefaults.platformDefaults())
-                : new HashMap<>(VerificationPolicyDefaults.sanitizeForSave(
-                        getAppMap(applicationId, "verification_policy").orElse(Map.of())));
+        // What sign-in enforces: the app's override, otherwise the platform policy (not the code defaults).
+        Map<String, Object> merged = new HashMap<>(resolveVerificationPolicy(applicationId));
         merged.put("scope", "application");
         merged.put("inheritsPlatformDefaults", inherits);
         return merged;
@@ -609,7 +607,95 @@ public class ApplicationSettingsService {
                     if ("token_policy".equals(key)) {
                         syncTokenPolicyToApplicationConfig(applicationId);
                     }
+                    if (SmtpSettingsService.SETTINGS_KEY.equals(key)) {
+                        mailSenderProvider.invalidate(applicationId);
+                    }
                 });
+    }
+
+    /**
+     * Settings sections that tenant configuration files carry. SMTP and SMS are left out: they hold
+     * provider credentials, which belong in the console or the environment, not in a file.
+     */
+    public static final List<String> PORTABLE_SETTING_KEYS = List.of(
+            "auth_methods", "password_policy", "mfa_policy", "verification_policy", "token_policy",
+            "feature_flags", "appearance", "user_directory", "notifications", "email", "client_integration");
+
+    private static final java.util.Set<String> LIST_SETTING_KEYS = java.util.Set.of("auth_methods", "feature_flags");
+    private static final java.util.Set<String> CREDENTIAL_FIELDS =
+            java.util.Set.of("bindpassword", "password", "secret", "clientsecret", "apikey", "authtoken");
+
+    public static boolean isListSetting(String key) {
+        return LIST_SETTING_KEYS.contains(key);
+    }
+
+    /** The application's own overrides (not the inherited platform values), with credentials blanked. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> exportOverrides(UUID applicationId) {
+        requireApplication(applicationId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (String key : PORTABLE_SETTING_KEYS) {
+            Object raw = getAppRaw(applicationId, key);
+            if (raw != null) {
+                out.put(key, redactCredentials(raw));
+            }
+        }
+        return out;
+    }
+
+    /** Saves one section through its usual save path; a blank credential keeps the stored one. */
+    @SuppressWarnings("unchecked")
+    public void importOverride(UUID applicationId, String key, Object value) {
+        Object merged = keepStoredCredentials(value, getAppRaw(applicationId, key));
+        switch (key) {
+            case "auth_methods" -> saveAuthMethods(applicationId, (List<Map<String, Object>>) merged);
+            case "feature_flags" -> saveFeatureFlags(applicationId, (List<Map<String, Object>>) merged);
+            case "password_policy" -> savePasswordPolicy(applicationId, (Map<String, Object>) merged);
+            case "mfa_policy" -> saveMfaPolicy(applicationId, (Map<String, Object>) merged);
+            case "verification_policy" -> saveVerificationPolicy(applicationId, (Map<String, Object>) merged);
+            case "token_policy" -> saveTokenPolicy(applicationId, (Map<String, Object>) merged);
+            case "appearance" -> saveAppearance(applicationId, (Map<String, Object>) merged);
+            case "user_directory" -> saveUserDirectory(applicationId, (Map<String, Object>) merged);
+            case "notifications" -> saveNotifications(applicationId, (Map<String, Object>) merged);
+            case "email" -> saveEmail(applicationId, (Map<String, Object>) merged);
+            case "client_integration" -> saveClientIntegration(applicationId, (Map<String, Object>) merged);
+            default -> throw new IllegalArgumentException("Unknown settings section: " + key);
+        }
+    }
+
+    public static Object redactCredentials(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            map.forEach((k, v) -> out.put(String.valueOf(k),
+                    isCredentialField(String.valueOf(k)) && v instanceof String ? "" : redactCredentials(v)));
+            return out;
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().map(ApplicationSettingsService::redactCredentials).toList();
+        }
+        return value;
+    }
+
+    private static Object keepStoredCredentials(Object incoming, Object stored) {
+        if (incoming instanceof Map<?, ?> in) {
+            Map<?, ?> old = stored instanceof Map<?, ?> m ? m : Map.of();
+            Map<String, Object> out = new LinkedHashMap<>();
+            in.forEach((k, v) -> {
+                String name = String.valueOf(k);
+                Object previous = old.get(name);
+                if (isCredentialField(name) && (v == null || "".equals(v)) && previous instanceof String) {
+                    out.put(name, previous);
+                } else {
+                    out.put(name, keepStoredCredentials(v, previous));
+                }
+            });
+            return out;
+        }
+        return incoming;
+    }
+
+    private static boolean isCredentialField(String name) {
+        return CREDENTIAL_FIELDS.contains(name.toLowerCase(java.util.Locale.ROOT));
     }
 
     private String policySource(UUID applicationId, String settingKey) {
@@ -736,7 +822,13 @@ public class ApplicationSettingsService {
                 String id = String.valueOf(row.get("id"));
                 Map<String, Object> patch = (Map<String, Object>) row;
                 if (byId.containsKey(id)) {
+                    // "implemented" is what the platform can do, not an app choice: an override saved
+                    // while the catalog said otherwise must not switch a working method off.
+                    Object implemented = byId.get(id).get("implemented");
                     byId.get(id).putAll(patch);
+                    if (implemented != null) {
+                        byId.get(id).put("implemented", implemented);
+                    }
                 } else {
                     byId.put(id, new HashMap<>(patch));
                 }

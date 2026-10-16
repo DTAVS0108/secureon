@@ -11,6 +11,8 @@ public class SecureOneRateLimitProperties {
     private int forgotPasswordPerMinute = 5;
     private int otpRequestPerMinute = 10;
     private int adminLoginPerMinute = 10;
+    private int signupPerMinute = 10;
+    private int emailRequestPerMinute = 5;
 
     public boolean isEnabled() {
         return enabled;
@@ -50,6 +52,22 @@ public class SecureOneRateLimitProperties {
 
     public void setOtpRequestPerMinute(int otpRequestPerMinute) {
         this.otpRequestPerMinute = otpRequestPerMinute;
+    }
+
+    public int getSignupPerMinute() {
+        return signupPerMinute;
+    }
+
+    public void setSignupPerMinute(int signupPerMinute) {
+        this.signupPerMinute = signupPerMinute;
+    }
+
+    public int getEmailRequestPerMinute() {
+        return emailRequestPerMinute;
+    }
+
+    public void setEmailRequestPerMinute(int emailRequestPerMinute) {
+        this.emailRequestPerMinute = emailRequestPerMinute;
     }
 
     public int getAdminLoginPerMinute() {

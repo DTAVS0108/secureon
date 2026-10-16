@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [develop, main, master]
   pull_request:
 
 concurrency:
@@ -61,6 +61,23 @@ jobs:
         working-directory: apps/auth-server
         run: ./gradlew test --no-daemon
 
+      # docs/26: upgrade an empty database, run again (no change), and refuse a database from a newer release.
+      - name: Database upgrade check
+        working-directory: apps/auth-server
+        env:
+          PGPASSWORD: secureone
+        run: |
+          ./gradlew bootJar --no-daemon -q
+          JAR=$(ls build/libs/*.jar | grep -v plain | head -1)
+          SECUREONE_DB_MIGRATE=only java -jar "$JAR" | tee migrate1.log
+          grep -q "Database schema: platform V" migrate1.log
+          SECUREONE_DB_MIGRATE=only java -jar "$JAR" | tee migrate2.log
+          ! grep -q "Database upgrade: applying" migrate2.log
+          psql -h localhost -U secureone -d secureone -c "insert into platform.flyway_schema_history (installed_rank, version, description, type, script, checksum, installed_by, execution_time, success) values (99999, '99999', 'future', 'SQL', 'V99999__future.sql', 0, 'ci', 1, true)"
+          if SECUREONE_DB_MIGRATE=only java -jar "$JAR" > migrate3.log 2>&1; then echo "an older release started against a newer database"; exit 1; fi
+          grep -q "upgraded by a newer SecureOne release" migrate3.log
+          psql -h localhost -U secureone -d secureone -c "delete from platform.flyway_schema_history where version = '99999'"
+
   admin-web:
     name: admin-web (build + lint)
     runs-on: ubuntu-latest
@@ -71,20 +88,63 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: apps/admin-web/package-lock.json
 
-      - name: Install dependencies
-        working-directory: apps/admin-web
-        run: npm ci
+      - name: Install dependencies (pnpm workspace, root lockfile)
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter admin-web
 
       - name: Lint
-        working-directory: apps/admin-web
-        run: npm run lint
+        run: pnpm --filter admin-web lint
 
       - name: Build
-        working-directory: apps/admin-web
-        run: npm run build
-        env:
-          NEXT_PUBLIC_SECUREONE_ENV: development
-          NEXT_PUBLIC_AUTH_SERVER_URL: http://localhost:9000
+        # No URLs or environment at build time: the console reads them when it starts.
+        run: pnpm --filter admin-web build
+
+  samples:
+    name: samples (install + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build and check each sample from its lockfile
+        run: |
+          set -e
+          (cd samples/express-api && npm ci && node --check server.mjs)
+          (cd samples/react-spa && npm ci && npm run build)
+          (cd samples/nextjs-web && npm ci && npm run build)
+          (cd samples/device-cli && node --check cli.mjs)
+
+  image:
+    name: image (docker build)
+    runs-on: ubuntu-latest
+    needs: [auth-server, admin-web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the single SecureOne image
+        run: docker build -f deploy/Dockerfile -t secureone/secureone:${{ github.sha }} .
+
+      - name: Smoke test (starts, serves sign-in and the console)
+        run: |
+          docker network create so
+          docker run -d --name pg --network so -e POSTGRES_DB=secureone -e POSTGRES_USER=secureone -e POSTGRES_PASSWORD=secureone postgres:16-alpine
+          docker run -d --name redis --network so redis:7-alpine
+          sleep 8
+          docker run -d --name so --network so -p 9000:9000             -e SPRING_PROFILES_ACTIVE=dev -e SECUREONE_ENV=development             -e SECUREONE_DB_URL='jdbc:postgresql://pg:5432/secureone?currentSchema=platform'             -e SECUREONE_REDIS_URL=redis://redis:6379 -e SECUREONE_OTP_PEPPER=ci-only             secureone/secureone:${{ github.sha }}
+          # Health is on the internal management port (9001), checked by the image's HEALTHCHECK.
+          for i in $(seq 1 60); do [ "$(docker inspect so --format '{{.State.Health.Status}}')" = healthy ] && break; sleep 3; done
+          [ "$(docker inspect so --format '{{.State.Health.Status}}')" = healthy ]
+          curl -fs http://localhost:9000/.well-known/openid-configuration > /dev/null
+          # Actuator must not be reachable on the public port.
+          [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/actuator/health)" != 200 ]
+          for i in $(seq 1 20); do curl -fs http://localhost:9000/admin/login > /dev/null && break; sleep 3; done
+          curl -fs http://localhost:9000/admin/login | grep -q "SecureOne"
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs so | tail -200

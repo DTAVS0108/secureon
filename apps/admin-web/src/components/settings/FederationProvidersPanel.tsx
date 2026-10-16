@@ -5,7 +5,7 @@ import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CopyValue } from "@/components/ui/CopyValue";
-import { FieldRow, Input, Select } from "@/components/ui/Field";
+import { FieldRow, Input, Select, Textarea } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import { getApplication } from "@/lib/api/applications";
@@ -27,10 +27,42 @@ const TYPE_OPTIONS: { value: FederationProviderType; label: string }[] = [
   { value: "GOOGLE", label: "Google OIDC" },
   { value: "GITHUB", label: "GitHub OAuth" },
   { value: "OIDC", label: "External OIDC" },
+  { value: "SAML", label: "SAML 2.0 (enterprise SSO)" },
 ];
 
 function defaultAlias(type: FederationProviderType): string {
-  return type === "GOOGLE" ? "google" : type === "GITHUB" ? "github" : "oidc";
+  return type === "GOOGLE" ? "google" : type === "GITHUB" ? "github" : type === "SAML" ? "sso" : "oidc";
+}
+
+const EMPTY_DRAFT: FederationProviderInput = {
+  alias: "google",
+  type: "GOOGLE",
+  enabled: false,
+  clientId: "",
+  clientSecret: "",
+  config: {},
+};
+
+function configText(draft: FederationProviderInput, key: string): string {
+  const value = draft.config?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+/** What is missing before this draft can be saved, or null. */
+function draftProblem(draft: FederationProviderInput): string | null {
+  if (!draft.alias.trim()) return "Alias is required.";
+  if (draft.type === "SAML") {
+    const manual = ["idpEntityId", "ssoUrl", "idpCertificate"].every((k) => configText(draft, k).trim());
+    return configText(draft, "metadataUrl").trim() || manual
+      ? null
+      : "Enter the IdP metadata URL, or its entity ID, SSO URL and signing certificate.";
+  }
+  if (!draft.clientId?.trim()) return "Client ID is required.";
+  if (draft.type === "OIDC") {
+    const missing = ["authorizationUri", "tokenUri", "userInfoUri"].some((k) => !configText(draft, k).trim());
+    if (missing) return "Authorization, token and user info URLs are required for an OIDC provider.";
+  }
+  return null;
 }
 
 export function FederationProvidersPanel({
@@ -45,13 +77,9 @@ export function FederationProvidersPanel({
   const [loaded, setLoaded] = useState(false);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(tenantId ?? null);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<FederationProviderInput>({
-    alias: "google",
-    type: "GOOGLE",
-    enabled: false,
-    clientId: "",
-    clientSecret: "",
-  });
+  const [draft, setDraft] = useState<FederationProviderInput>(EMPTY_DRAFT);
+  const setConfig = (key: string, value: string) =>
+    setDraft((prev) => ({ ...prev, config: { ...prev.config, [key]: value } }));
 
   const reload = useCallback(async () => {
     setLoaded(false);
@@ -81,8 +109,9 @@ export function FederationProvidersPanel({
   }, [reload]);
 
   async function createProvider() {
-    if (!draft.alias.trim() || !draft.clientId?.trim()) {
-      toast("Alias and client ID are required.", "error");
+    const problem = draftProblem(draft);
+    if (problem) {
+      toast(problem, "error");
       return;
     }
     setCreating(true);
@@ -96,13 +125,7 @@ export function FederationProvidersPanel({
         return;
       }
       toast("Provider created", "success");
-      setDraft({
-        alias: "google",
-        type: "GOOGLE",
-        enabled: false,
-        clientId: "",
-        clientSecret: "",
-      });
+      setDraft(EMPTY_DRAFT);
       await reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Create failed", "error");
@@ -144,7 +167,7 @@ export function FederationProvidersPanel({
     return (
       <p className="text-sm text-muted">
         Federation providers are configured per tenant or per application. Open an application&apos;s
-        settings to add Google, GitHub, or OIDC sign-in.
+        settings to add Google, GitHub, OIDC or SAML sign-in.
       </p>
     );
   }
@@ -175,9 +198,15 @@ export function FederationProvidersPanel({
                       <span className="font-mono text-xs text-faint">({p.type})</span>
                     </p>
                     <p className="text-xs text-muted">
-                      Alias <code className="font-mono">{p.alias}</code> · Client ID{" "}
-                      {p.config.clientId || "—"}
-                      {p.config.clientSecretConfigured ? " · secret configured" : " · no secret"}
+                      Alias <code className="font-mono">{p.alias}</code> ·{" "}
+                      {p.type === "SAML" ? (
+                        <>IdP {p.config.metadataUrl || p.config.idpEntityId || "—"}</>
+                      ) : (
+                        <>
+                          Client ID {p.config.clientId || "—"}
+                          {p.config.clientSecretConfigured ? " · secret configured" : " · no secret"}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -191,12 +220,24 @@ export function FederationProvidersPanel({
                     </Button>
                   </div>
                 </div>
-                <div className="rounded-lg border border-ui bg-black/5 px-3 py-2 text-xs dark:bg-white/5">
-                  <span className="text-muted">Callback URL</span>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <code className="break-all font-mono text-[11px]">{p.callbackUrl}</code>
-                    <CopyValue value={p.callbackUrl} />
-                  </div>
+                <div className="space-y-2 rounded-lg border border-ui bg-black/5 px-3 py-2 text-xs dark:bg-white/5">
+                  {(p.serviceProvider
+                    ? [
+                        ["SP entity ID (audience)", p.serviceProvider.entityId],
+                        ["ACS URL (HTTP-POST)", p.serviceProvider.acsUrl],
+                        ...(p.serviceProvider.sloUrl ? [["Single logout URL", p.serviceProvider.sloUrl]] : []),
+                        ["SP metadata", p.serviceProvider.metadataUrl],
+                      ]
+                    : [["Callback URL", p.callbackUrl ?? ""]]
+                  ).map(([label, value]) => (
+                    <div key={label}>
+                      <span className="text-muted">{label}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <code className="break-all font-mono text-[11px]">{value}</code>
+                        <CopyValue value={value} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </li>
             ))}
@@ -205,14 +246,21 @@ export function FederationProvidersPanel({
       </Card>
 
       <Card padded={false}>
-        <CardHeader title="Add provider" description="Register OAuth client credentials from Google Cloud or GitHub." />
+        <CardHeader
+          title="Add provider"
+          description={
+            draft.type === "SAML"
+              ? "Point at your company's SAML 2.0 identity provider. After saving, give the IdP the SP entity ID and ACS URL shown above."
+              : "Register OAuth client credentials from Google Cloud, GitHub or your OIDC provider."
+          }
+        />
         <div className="grid gap-4 p-4 md:grid-cols-2">
           <FieldRow label="Provider type">
             <Select
               value={draft.type}
               onChange={(e) => {
                 const type = e.target.value as FederationProviderType;
-                setDraft((prev) => ({ ...prev, type, alias: defaultAlias(type) }));
+                setDraft((prev) => ({ ...prev, type, alias: defaultAlias(type), config: {} }));
               }}
             >
               {TYPE_OPTIONS.map((opt) => (
@@ -235,20 +283,87 @@ export function FederationProvidersPanel({
               placeholder="Continue with Google"
             />
           </FieldRow>
-          <FieldRow label="OAuth client ID">
-            <Input
-              value={draft.clientId ?? ""}
-              onChange={(e) => setDraft((prev) => ({ ...prev, clientId: e.target.value }))}
-            />
-          </FieldRow>
-          <FieldRow label="OAuth client secret">
-            <Input
-              type="password"
-              value={draft.clientSecret ?? ""}
-              onChange={(e) => setDraft((prev) => ({ ...prev, clientSecret: e.target.value }))}
-              autoComplete="off"
-            />
-          </FieldRow>
+          {draft.type === "SAML" ? (
+            <>
+              <FieldRow label="IdP metadata URL" hint="Preferred: keeps certificates current. Or fill the fields below.">
+                <Input
+                  value={configText(draft, "metadataUrl")}
+                  onChange={(e) => setConfig("metadataUrl", e.target.value)}
+                  placeholder="https://idp.example.com/saml/metadata"
+                />
+              </FieldRow>
+              <FieldRow label="IdP entity ID">
+                <Input value={configText(draft, "idpEntityId")} onChange={(e) => setConfig("idpEntityId", e.target.value)} />
+              </FieldRow>
+              <FieldRow label="IdP SSO URL (HTTP-Redirect)">
+                <Input value={configText(draft, "ssoUrl")} onChange={(e) => setConfig("ssoUrl", e.target.value)} />
+              </FieldRow>
+              <FieldRow label="IdP single logout URL" hint="Optional with manual setup; read from metadata otherwise.">
+                <Input value={configText(draft, "sloUrl")} onChange={(e) => setConfig("sloUrl", e.target.value)} />
+              </FieldRow>
+              <FieldRow
+                label="Landing URL for IdP-initiated sign-in"
+                hint="Where users go when they start from the IdP's app portal. Leave empty to only allow sign-in started from the app."
+              >
+                <Input
+                  value={configText(draft, "landingUrl")}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDraft((prev) => ({
+                      ...prev,
+                      config: { ...prev.config, landingUrl: value, allowIdpInitiated: value.trim().length > 0 },
+                    }));
+                  }}
+                  placeholder="https://app.example.com/"
+                />
+              </FieldRow>
+              <FieldRow label="Email attribute" hint="Optional. Defaults to email/mail attributes, then an email NameID.">
+                <Input
+                  value={configText(draft, "emailAttribute")}
+                  onChange={(e) => setConfig("emailAttribute", e.target.value)}
+                />
+              </FieldRow>
+              <div className="md:col-span-2">
+                <FieldRow label="IdP signing certificate (PEM)">
+                  <Textarea
+                    rows={4}
+                    value={configText(draft, "idpCertificate")}
+                    onChange={(e) => setConfig("idpCertificate", e.target.value)}
+                    placeholder="-----BEGIN CERTIFICATE-----"
+                  />
+                </FieldRow>
+              </div>
+            </>
+          ) : (
+            <>
+              <FieldRow label="OAuth client ID">
+                <Input
+                  value={draft.clientId ?? ""}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, clientId: e.target.value }))}
+                />
+              </FieldRow>
+              <FieldRow label="OAuth client secret">
+                <Input
+                  type="password"
+                  value={draft.clientSecret ?? ""}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, clientSecret: e.target.value }))}
+                  autoComplete="off"
+                />
+              </FieldRow>
+              {draft.type === "OIDC" &&
+                (
+                  [
+                    ["authorizationUri", "Authorization URL"],
+                    ["tokenUri", "Token URL"],
+                    ["userInfoUri", "User info URL"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <FieldRow key={key} label={label}>
+                    <Input value={configText(draft, key)} onChange={(e) => setConfig(key, e.target.value)} />
+                  </FieldRow>
+                ))}
+            </>
+          )}
         </div>
         <div className="flex items-center justify-between border-t border-ui px-4 py-3">
           <label className="flex items-center gap-2 text-sm text-ui">

@@ -20,6 +20,7 @@ import {
   type OperatorMfaStatus,
 } from "@/lib/api/operator-mfa";
 import { createPasskey, passkeysSupported } from "@/lib/webauthn";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const TYPE_LABELS: Record<string, string> = {
   totp: "Authenticator app",
@@ -218,7 +219,7 @@ export function OperatorSecurityPanel({
                   </Badge>
                   {factor.lastUsedAt && (
                     <span className="text-xs text-faint">
-                      Last used {new Date(factor.lastUsedAt).toLocaleString()}
+                      Last used <LocalTime value={factor.lastUsedAt} format="datetime" />
                     </span>
                   )}
                 </div>

@@ -28,11 +28,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class IdentityProviderService {
 
     private final IdentityProviderRepository providers;
+    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
     private final TenantRepository tenants;
     private final ApplicationRepository applications;
     private final SecretProtector secrets;
     private final RestClient http;
     private final ObjectMapper mapper;
+    private final org.springframework.beans.factory.ObjectProvider<SamlRelyingParties> saml;
 
     @Value("${secureone.public-base-url:http://localhost:9000}")
     private String publicBaseUrl;
@@ -42,8 +44,12 @@ public class IdentityProviderService {
             TenantRepository tenants,
             ApplicationRepository applications,
             SecretProtector secrets,
-            ObjectMapper mapper) {
+            ObjectMapper mapper,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings,
+            org.springframework.beans.factory.ObjectProvider<SamlRelyingParties> saml) {
         this.providers = providers;
+        this.saml = saml;
+        this.effectiveSettings = effectiveSettings;
         this.tenants = tenants;
         this.applications = applications;
         this.secrets = secrets;
@@ -70,9 +76,6 @@ public class IdentityProviderService {
             requireApplication(tenantId, applicationId);
         }
         FederationProviderType type = FederationProviderType.parse(String.valueOf(body.get("type")));
-        if (type == FederationProviderType.SAML) {
-            throw new IllegalArgumentException("SAML providers are not yet supported for login.");
-        }
         String alias = normalizeAlias(String.valueOf(body.get("alias")));
         assertAliasAvailable(tenantId, applicationId, alias);
         IdentityProvider row = new IdentityProvider();
@@ -83,6 +86,7 @@ public class IdentityProviderService {
         row.setDisplayName(stringOrDefault(body.get("displayName"), alias));
         row.setEnabled(Boolean.TRUE.equals(body.get("enabled")));
         row.setConfig(sanitizeConfig(type, Map.of(), body));
+        validateSaml(row);
         return toAdminResponse(providers.save(row));
     }
 
@@ -97,6 +101,8 @@ public class IdentityProviderService {
         if (body.containsKey("config") || body.containsKey("clientId") || body.containsKey("clientSecret")) {
             FederationProviderType type = FederationProviderType.parse(row.getType());
             row.setConfig(sanitizeConfig(type, row.getConfig(), body));
+            saml.getObject().evict(row.getId());
+            validateSaml(row);
         }
         return toAdminResponse(providers.save(row));
     }
@@ -114,7 +120,7 @@ public class IdentityProviderService {
         }
         return rows.stream()
                 .filter(IdentityProvider::isEnabled)
-                .filter(p -> FederationProviderType.parse(p.getType()) != FederationProviderType.SAML)
+                .filter(p -> methodAllowed(FederationProviderType.parse(p.getType()), applicationId))
                 .map(this::toPublicResponse)
                 .toList();
     }
@@ -126,10 +132,52 @@ public class IdentityProviderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Federation provider is disabled.");
         }
         FederationProviderType type = FederationProviderType.parse(provider.getType());
-        if (type == FederationProviderType.SAML) {
-            throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "SAML login is not yet available.");
+        if (!methodAllowed(type, applicationId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "This sign-in method is turned off for this application.");
         }
         return provider;
+    }
+
+    /** The SAML provider a response was sent for (registration id = provider id), if still enabled. */
+    public IdentityProvider requireEnabledSamlProvider(UUID providerId, UUID applicationId) {
+        IdentityProvider provider = providers.findById(providerId)
+                .filter(p -> FederationProviderType.SAML.name().equalsIgnoreCase(p.getType()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Federation provider not found."));
+        if (!provider.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Federation provider is disabled.");
+        }
+        return provider;
+    }
+
+    /** SAML settings are checked when saved (metadata reachable, certificate parses), not at first login. */
+    private void validateSaml(IdentityProvider row) {
+        if (!FederationProviderType.SAML.name().equalsIgnoreCase(row.getType())) {
+            return;
+        }
+        if (row.getId() == null) {
+            row.setId(UUID.randomUUID());
+        }
+        Object landing = row.getConfig().get("landingUrl");
+        if (landing != null && !String.valueOf(landing).isBlank()) {
+            String url = String.valueOf(landing).trim();
+            if (!url.startsWith("https://") && !url.startsWith("http://")) {
+                throw new IllegalArgumentException("landingUrl must be an absolute http(s) URL of the application.");
+            }
+        }
+        saml.getObject().validate(row);
+    }
+
+    /**
+     * Google and GitHub follow the application's sign-in method switches. Generic OIDC providers are
+     * configured per tenant and are not gated by the catalog switch yet (older overrides still carry
+     * the catalog's former "not implemented, off" value).
+     */
+    private boolean methodAllowed(FederationProviderType type, UUID applicationId) {
+        if (type != FederationProviderType.GOOGLE && type != FederationProviderType.GITHUB) {
+            return true;
+        }
+        return effectiveSettings.getObject().isMethodAvailable(applicationId, FederationPresets.authMethodId(type));
     }
 
     public String buildAuthorizationRedirect(IdentityProvider provider, String state) {
@@ -173,6 +221,13 @@ public class IdentityProviderService {
 
     public String callbackUrl(String alias) {
         return publicBaseUrl + "/api/v1/auth/federation/" + alias + "/callback";
+    }
+
+    /** Whether the provider's stored client secret is this value (configuration files). */
+    @Transactional(readOnly = true)
+    public boolean clientSecretMatches(UUID tenantId, UUID id, String plain) {
+        IdentityProvider row = requireOwned(tenantId, id);
+        return plain != null && plain.equals(decryptSecret(string(row.getConfig().get("clientSecretEncrypted"))));
     }
 
     public String decryptSecret(String encrypted) {
@@ -340,6 +395,18 @@ public class IdentityProviderService {
         publicConfig.put("clientSecretConfigured", hasSecret(row.getConfig()));
         out.put("config", publicConfig);
         out.put("callbackUrl", callbackUrl(row.getAlias()));
+        if (FederationProviderType.SAML.name().equalsIgnoreCase(row.getType())) {
+            // What the operator enters at the IdP (or gives it as SP metadata).
+            SamlRelyingParties parties = saml.getObject();
+            Map<String, Object> sp = new LinkedHashMap<>();
+            sp.put("entityId", parties.spEntityId(row));
+            sp.put("acsUrl", parties.acsUrl(row.getId()));
+            sp.put("sloUrl", parties.sloUrl(row.getId()));
+            sp.put("metadataUrl", publicBaseUrl + "/api/v1/auth/federation/saml/" + row.getAlias() + "/metadata"
+                    + (row.getApplicationId() != null ? "?applicationId=" + row.getApplicationId() : ""));
+            out.put("serviceProvider", sp);
+            out.remove("callbackUrl");
+        }
         return out;
     }
 

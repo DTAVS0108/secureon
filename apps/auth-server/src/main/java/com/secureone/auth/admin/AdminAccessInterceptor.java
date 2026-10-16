@@ -99,6 +99,11 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
                 || path.startsWith("/api/admin/v1/tenant-workspace")) {
             return true;
         }
+        if (path.startsWith("/api/admin/v1/config/")) {
+            // Configuration files can create tenants and change any of their applications.
+            access.requirePlatformSettingsAccess(auth, actAs);
+            return true;
+        }
 
         UUID applicationId = parseApplicationId(path, request);
         if (applicationId != null) {

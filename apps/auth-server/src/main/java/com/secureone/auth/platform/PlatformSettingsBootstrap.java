@@ -83,8 +83,8 @@ public class PlatformSettingsBootstrap {
                 authMethod("m_push", "Push Notification", "Approve on device", false, "mfa", false),
                 authMethod("m_google", "Google", "Google OIDC", true, "federation", false),
                 authMethod("m_github", "GitHub", "GitHub OAuth", true, "federation", false),
-                authMethod("m_saml", "SAML 2.0", "Enterprise SSO", false, "federation", false),
-                authMethod("m_oidc", "External OIDC", "OIDC federation", false, "federation", false));
+                authMethod("m_saml", "SAML 2.0", "Enterprise SSO", true, "federation", true),
+                authMethod("m_oidc", "External OIDC", "OIDC federation", true, "federation", true));
     }
 
     private static Map<String, Object> authMethod(

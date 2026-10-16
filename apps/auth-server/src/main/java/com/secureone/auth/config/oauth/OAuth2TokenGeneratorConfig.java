@@ -20,9 +20,10 @@ public class OAuth2TokenGeneratorConfig {
 
     @Bean
     OAuth2TokenGenerator<? extends OAuth2Token> oauth2TokenGenerator(
-            JWKSource<SecurityContext> jwkSource,
+            OAuth2SigningKeyService signingKeys,
             OAuth2TokenCustomizer<JwtEncodingContext> jwtEncodingContextCustomizer) {
-        JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(jwkSource));
+        // Sign with the current key only; JWKS may also publish the previous key during a rotation.
+        JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(signingKeys.signingJwkSource()));
         jwtGenerator.setJwtCustomizer(jwtEncodingContextCustomizer);
         OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
         OAuth2RefreshTokenGenerator defaultRefreshGenerator = new OAuth2RefreshTokenGenerator();

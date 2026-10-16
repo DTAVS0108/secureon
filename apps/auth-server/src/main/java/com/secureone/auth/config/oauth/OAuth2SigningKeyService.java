@@ -27,18 +27,60 @@ public class OAuth2SigningKeyService {
     private static final String PRIVATE_PEM_FIELD = "privateKeyPem";
     private static final String PUBLIC_PEM_FIELD = "publicKeyPem";
 
+    private static final String PRIVATE_ENCRYPTED_FIELD = "privateKeyEncrypted";
+
     private final PlatformSettingsService platformSettings;
+    private final com.secureone.auth.notify.SecretProtector secrets;
+    private final com.secureone.auth.platform.ClusterInitLock initLock;
     private final SecureOneEnvironmentProperties environment;
     private final String envPrivateKeyPem;
+    private final String envPreviousPrivateKeyPem;
     private volatile RSAKey cachedKey;
 
     public OAuth2SigningKeyService(
             PlatformSettingsService platformSettings,
+            com.secureone.auth.notify.SecretProtector secrets,
+            com.secureone.auth.platform.ClusterInitLock initLock,
             SecureOneEnvironmentProperties environment,
-            @Value("${SECUREONE_JWK_PRIVATE_KEY_PEM:}") String envPrivateKeyPem) {
+            @Value("${SECUREONE_JWK_PRIVATE_KEY_PEM:}") String envPrivateKeyPem,
+            @Value("${SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM:}") String envPreviousPrivateKeyPem) {
         this.platformSettings = platformSettings;
+        this.secrets = secrets;
+        this.initLock = initLock;
         this.environment = environment;
         this.envPrivateKeyPem = normalizePem(envPrivateKeyPem);
+        this.envPreviousPrivateKeyPem = normalizePem(envPreviousPrivateKeyPem);
+    }
+
+    /**
+     * Keys published in JWKS and accepted when verifying: the signing key plus, during a rotation, the
+     * previous key's public part ({@code SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM}, same kid as when it was
+     * current), so tokens signed before the switch stay valid until they expire.
+     */
+    public java.util.List<RSAKey> verificationKeys() {
+        java.util.List<RSAKey> keys = new java.util.ArrayList<>();
+        keys.add(loadOrCreateSigningKey());
+        if (!envPreviousPrivateKeyPem.isBlank()) {
+            RSAKey previous = parsePrivateKeyPem(envPreviousPrivateKeyPem, stableKidFromPem(envPreviousPrivateKeyPem));
+            // Rotating away from a key SecureOne generated: it was published under the kid stored with it.
+            RSAKey stored = readStored();
+            if (stored != null && sameKey(stored, previous)) {
+                previous = stored;
+            }
+            if (!previous.getKeyID().equals(keys.get(0).getKeyID())) {
+                keys.add(previous.toPublicJWK());
+            }
+        }
+        return keys;
+    }
+
+    private static boolean sameKey(RSAKey a, RSAKey b) {
+        return a.getModulus().equals(b.getModulus()) && a.getPublicExponent().equals(b.getPublicExponent());
+    }
+
+    /** Only the current key: what tokens are signed with (an encoder must see exactly one RS256 key). */
+    public com.nimbusds.jose.jwk.source.JWKSource<com.nimbusds.jose.proc.SecurityContext> signingJwkSource() {
+        return new com.nimbusds.jose.jwk.source.ImmutableJWKSet<>(new com.nimbusds.jose.jwk.JWKSet(loadOrCreateSigningKey()));
     }
 
     public RSAKey loadOrCreateSigningKey() {
@@ -59,30 +101,47 @@ public class OAuth2SigningKeyService {
         if (!envPrivateKeyPem.isBlank()) {
             return parsePrivateKeyPem(envPrivateKeyPem, stableKidFromPem(envPrivateKeyPem));
         }
-        Map<String, Object> stored = platformSettings.get(SETTING_KEY);
-        String privatePem = stringValue(stored.get(PRIVATE_PEM_FIELD));
-        String kid = stringValue(stored.get(KEY_ID_FIELD));
-        if (!privatePem.isBlank()) {
-            if (kid.isBlank()) {
-                kid = stableKidFromPem(privatePem);
-            }
-            return parsePrivateKeyPem(privatePem, kid);
+        RSAKey stored = readStored();
+        if (stored != null) {
+            return stored;
         }
         if (environment.isProduction()) {
             throw new IllegalStateException(
                     "No OAuth2 signing key configured for production. Set SECUREONE_JWK_PRIVATE_KEY_PEM "
                             + "or seed platform_setting key '" + SETTING_KEY + "'.");
         }
-        RSAKey generated = generateRsaKey();
-        persistKey(generated);
-        return generated;
+        // Several replicas may start at once: one generates the key, the others read it.
+        return initLock.readOrCreate(SETTING_KEY, this::readStored, () -> {
+            RSAKey generated = generateRsaKey();
+            persistKey(generated);
+            return generated;
+        });
+    }
+
+    private RSAKey readStored() {
+        Map<String, Object> stored = platformSettings.get(SETTING_KEY);
+        String privatePem = secrets.decrypt(stringValue(stored.get(PRIVATE_ENCRYPTED_FIELD)));
+        String kid = stringValue(stored.get(KEY_ID_FIELD));
+        String legacyPlaintext = stringValue(stored.get(PRIVATE_PEM_FIELD));
+        if (privatePem.isBlank() && !legacyPlaintext.isBlank()) {
+            // Stored before keys were encrypted at rest: keep the key (issued tokens stay valid), encrypt it.
+            privatePem = legacyPlaintext;
+            Map<String, Object> upgraded = new LinkedHashMap<>(stored);
+            upgraded.remove(PRIVATE_PEM_FIELD);
+            upgraded.put(PRIVATE_ENCRYPTED_FIELD, secrets.encrypt(legacyPlaintext));
+            platformSettings.saveMap(SETTING_KEY, upgraded);
+        }
+        if (privatePem.isBlank()) {
+            return null;
+        }
+        return parsePrivateKeyPem(privatePem, kid.isBlank() ? stableKidFromPem(privatePem) : kid);
     }
 
     private void persistKey(RSAKey key) {
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put(KEY_ID_FIELD, key.getKeyID());
-            payload.put(PRIVATE_PEM_FIELD, toPem(key.toRSAPrivateKey().getEncoded(), "PRIVATE KEY"));
+            payload.put(PRIVATE_ENCRYPTED_FIELD, secrets.encrypt(toPem(key.toRSAPrivateKey().getEncoded(), "PRIVATE KEY")));
             payload.put(PUBLIC_PEM_FIELD, toPem(key.toRSAPublicKey().getEncoded(), "PUBLIC KEY"));
             payload.put("createdAt", Instant.now().toString());
             platformSettings.saveMap(SETTING_KEY, payload);
@@ -144,7 +203,8 @@ public class OAuth2SigningKeyService {
     }
 
     private static String normalizePem(String pem) {
-        return pem == null ? "" : pem.trim();
+        // One-line env files (docker --env-file) carry PEM line breaks as a literal backslash-n.
+        return pem == null ? "" : pem.replace("\\n", "\n").trim();
     }
 
     private static String stringValue(Object raw) {

@@ -28,13 +28,19 @@ public class ConsoleRbacMirrorService {
     private final RoleRbacRepository roleRbac;
     private final UserRoleRepository userRoles;
     private final RbacBootstrapService rbacBootstrap;
+    private final com.secureone.auth.application.ApplicationSchemaService schemaService;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public ConsoleRbacMirrorService(
             RoleRepository roles,
             PermissionRepository permissions,
             RoleRbacRepository roleRbac,
             UserRoleRepository userRoles,
-            RbacBootstrapService rbacBootstrap) {
+            RbacBootstrapService rbacBootstrap,
+            com.secureone.auth.application.ApplicationSchemaService schemaService,
+            jakarta.persistence.EntityManager entityManager) {
+        this.schemaService = schemaService;
+        this.entityManager = entityManager;
         this.roles = roles;
         this.permissions = permissions;
         this.roleRbac = roleRbac;
@@ -43,6 +49,30 @@ public class ConsoleRbacMirrorService {
     }
 
     public void grantMirrorRole(UUID tenantId, UUID applicationId, UUID userId, String roleName) {
+        inApplicationSchema(applicationId, () -> grantInCurrentSchema(tenantId, applicationId, userId, roleName));
+    }
+
+    public void revokeMirrorRole(UUID userId, UUID applicationId, String roleName) {
+        inApplicationSchema(applicationId, () -> revokeInCurrentSchema(userId, applicationId, roleName));
+    }
+
+    /**
+     * The application's roles live in its own schema; callers usually run in the platform schema.
+     * Switch this transaction's search_path there, flushing pending writes at each switch so every
+     * statement runs against the schema it belongs to.
+     */
+    private void inApplicationSchema(UUID applicationId, Runnable work) {
+        entityManager.flush();
+        schemaService.applySearchPathForApplicationId(applicationId);
+        try {
+            work.run();
+            entityManager.flush();
+        } finally {
+            schemaService.applySearchPathForContext();
+        }
+    }
+
+    private void grantInCurrentSchema(UUID tenantId, UUID applicationId, UUID userId, String roleName) {
         rbacBootstrap.seedDefaultPermissions(applicationId);
         Role role = ensureMirrorRole(tenantId, applicationId, roleName);
         boolean hasRole = userRoles.findByUserId(userId).stream()
@@ -55,7 +85,7 @@ public class ConsoleRbacMirrorService {
         }
     }
 
-    public void revokeMirrorRole(UUID userId, UUID applicationId, String roleName) {
+    private void revokeInCurrentSchema(UUID userId, UUID applicationId, String roleName) {
         roles.findByApplicationIdAndName(applicationId, roleName).ifPresent(role -> userRoles.findByUserId(userId).stream()
                 .filter(link -> link.getRoleId().equals(role.getId()))
                 .forEach(userRoles::delete));

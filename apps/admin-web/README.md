@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3001** (dev server port from `package.json`).
+Open **http://localhost:3001/admin** (dev server; the console lives under `/admin`), or http://localhost:9000/admin through the auth-server.
 
 ## Key routes
 

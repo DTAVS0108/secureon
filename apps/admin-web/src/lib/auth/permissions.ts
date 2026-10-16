@@ -23,6 +23,7 @@ export function hasConsoleFeature(
   return features.includes(section);
 }
 
+/** App permission held through an app role (accounts without a console role). */
 export function hasPermission(
   platformSuperAdmin: boolean,
   app: ApplicationContextItem | undefined,
@@ -33,15 +34,12 @@ export function hasPermission(
   return app.permissions.includes(permission);
 }
 
+/** For console operators the role's enabled sections are the whole grant, as on the server. */
 export function canAccessSection(
   platformSuperAdmin: boolean,
   app: ApplicationContextItem | undefined,
   section: string,
 ): boolean {
-  if (!platformSuperAdmin && !hasConsoleFeature(platformSuperAdmin, app, section)) {
-    return false;
-  }
-  const perm = SECTION_PERMISSIONS[section];
-  if (!perm) return platformSuperAdmin;
-  return hasPermission(platformSuperAdmin, app, perm);
+  if (platformSuperAdmin) return true;
+  return hasConsoleFeature(platformSuperAdmin, app, section);
 }

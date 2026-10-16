@@ -33,7 +33,9 @@ public final class UserAdminDtos {
             List<MfaFactorResponse> mfaFactors,
             Map<String, Boolean> allowedAuthMethods,
             Instant lastLoginAt,
-            Instant createdAt) {}
+            Instant createdAt,
+            String phone,
+            boolean phoneVerified) {}
 
     public record UserAuthMethodsUpdateRequest(Map<String, Boolean> methods) {}
 

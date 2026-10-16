@@ -13,6 +13,12 @@ public final class AuthRequestContext {
     private AuthRequestContext() {}
 
     public static void enrichForLogin(HttpServletRequest request, String username, TenantRepository tenants) {
+        enrichForLogin(request, username, tenants, null);
+    }
+
+    /** {@code resolvedApplicationId}: the app the sign-in is for, when known beyond the form field. */
+    public static void enrichForLogin(
+            HttpServletRequest request, String username, TenantRepository tenants, UUID resolvedApplicationId) {
         String sessionId = resolveSessionId(request);
         if (sessionId != null) {
             MDC.put(RequestContext.SESSION_ID, sessionId);
@@ -25,7 +31,9 @@ public final class AuthRequestContext {
         if (applicationId == null || applicationId.isBlank()) {
             applicationId = request.getParameter("application_id");
         }
-        if (applicationId != null && !applicationId.isBlank()) {
+        if (resolvedApplicationId != null) {
+            MDC.put(RequestContext.APPLICATION_ID, resolvedApplicationId.toString());
+        } else if (applicationId != null && !applicationId.isBlank()) {
             MDC.put(RequestContext.APPLICATION_ID, applicationId.trim());
         }
         if (username != null && username.contains(":")) {

@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { DrawioEmbed } from "./DrawioEmbed";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { withBasePath } from "@/lib/config";
 
 function drawioTitleFromPath(assetPath: string): string {
   return (assetPath.split("/").pop() ?? "diagram").replace(/\.drawio$/i, "").replace(/-/g, " ");
@@ -28,7 +29,7 @@ export function ConfluenceMarkdown({ content }: { content: string }) {
             if (href?.startsWith("/api/confluence/assets/")) {
               return (
                 <a
-                  href={href}
+                  href={withBasePath(href)}
                   className="text-brand hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"

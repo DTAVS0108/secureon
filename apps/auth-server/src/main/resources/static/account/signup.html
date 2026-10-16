@@ -61,11 +61,15 @@
     <script src="/account/password-policy-ui.js"></script>
   </head>
   <body>
-    <h1>Create account</h1>
+    <h1 id="heading">Create account</h1>
     <p id="intro">Loading…</p>
     <form id="form" hidden>
       <label for="email">Email</label>
       <input id="email" type="email" required autocomplete="email" />
+      <div id="phone-wrap" hidden>
+        <label for="phone">Mobile number <span id="phone-optional" class="hint">(optional)</span></label>
+        <input id="phone" type="tel" autocomplete="tel" placeholder="+91 98765 43210" />
+      </div>
       <label for="first">First name</label>
       <input id="first" autocomplete="given-name" />
       <label for="last">Last name</label>
@@ -76,6 +80,11 @@
       <p id="policy" class="hint"></p>
       <button type="submit">Create account</button>
     </form>
+    <form id="verify-form" hidden>
+      <label for="code" id="code-label">Verification code</label>
+      <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" required />
+      <button type="submit">Verify</button>
+    </form>
     <div id="status"></div>
     <p><a id="login" href="/login.html">Already have an account? Sign in</a></p>
     <script>
@@ -83,32 +92,55 @@
       const applicationId = params.get("applicationId");
       const intro = document.getElementById("intro");
       const form = document.getElementById("form");
+      const verifyForm = document.getElementById("verify-form");
       const status = document.getElementById("status");
       const policyHint = document.getElementById("policy");
       const checklist = document.getElementById("checklist");
       const passwordInput = document.getElementById("password");
+      const phoneInput = document.getElementById("phone");
+      const loginHref = "/login.html?applicationId=" + encodeURIComponent(applicationId || "");
       let passwordPolicy = null;
+      let phoneRequired = false;
+      let challenge = null;
+
+      // Messages are built from text nodes: server text and the typed email are never parsed as HTML.
+      function showStatus(kind, text, withSignInLink) {
+        status.className = "msg " + kind;
+        status.replaceChildren(document.createTextNode(text));
+        if (withSignInLink) {
+          const link = document.createElement("a");
+          link.href = loginHref;
+          link.textContent = "Go to sign in";
+          status.append(document.createElement("br"), link);
+        }
+      }
 
       if (!applicationId) {
         intro.textContent = "Missing applicationId in the URL.";
       } else {
-        document.getElementById("login").href =
-          "/login.html?applicationId=" + encodeURIComponent(applicationId);
+        document.getElementById("login").href = loginHref;
         fetch("/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup")
           .then((r) => r.json())
           .then((opts) => {
+            const name = opts.applicationName || "this application";
+            document.title = "Create account · " + name;
             if (!opts.signupEnabled) {
-              intro.textContent =
-                "Sign-up is not open for " + (opts.applicationName || "this application") + ".";
+              intro.textContent = "Sign-up is not open for " + name + ".";
               return;
             }
-            intro.textContent = "Register for " + (opts.applicationName || "this application");
+            intro.textContent = "Register for " + name;
             if (opts.passwordPolicy) {
               passwordPolicy = opts.passwordPolicy;
               SecureOnePasswordPolicy.bindPasswordField(passwordInput, checklist, passwordPolicy);
             }
-            if (opts.loginEmailHint) {
-              policyHint.textContent = "Sign in with: " + opts.loginEmailHint;
+            const signup = (opts.verification && opts.verification.signup) || {};
+            const required = signup.requiredChannels || ["email"];
+            const optional = signup.optionalChannels || [];
+            phoneRequired = required.includes("phone");
+            if (phoneRequired || optional.includes("phone")) {
+              document.getElementById("phone-wrap").hidden = false;
+              document.getElementById("phone-optional").hidden = phoneRequired;
+              phoneInput.required = phoneRequired;
             }
             form.hidden = false;
           })
@@ -121,41 +153,61 @@
         e.preventDefault();
         const pwd = passwordInput.value;
         if (passwordPolicy && !SecureOnePasswordPolicy.meetsPolicy(pwd, passwordPolicy)) {
-          status.className = "msg err";
-          status.textContent = "Password does not meet all requirements.";
+          showStatus("err", "Password does not meet all requirements.");
           return;
         }
-        status.className = "msg";
-        status.textContent = "Creating account…";
+        showStatus("", "Creating account…");
+        const payload = {
+          email: document.getElementById("email").value,
+          password: pwd,
+          firstName: document.getElementById("first").value,
+          lastName: document.getElementById("last").value,
+        };
+        if (phoneInput.value.trim()) payload.phone = phoneInput.value.trim();
+        const res = await fetch("/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showStatus("err", data.detail || data.title || "Sign-up failed (" + res.status + ")");
+          return;
+        }
+        form.hidden = true;
+        if (data.mode === "otp" && data.challengeId) {
+          // Code verification: stay on this page until the code is confirmed.
+          challenge = { id: data.challengeId, channel: data.channel === "sms" ? "phone" : "email" };
+          document.getElementById("code-label").textContent =
+            "Enter the code sent to " + (data.maskedDestination || "your " + challenge.channel);
+          verifyForm.hidden = false;
+          showStatus("ok", data.message || "Enter the verification code.");
+          return;
+        }
+        showStatus("ok", data.message || "Account created.", true);
+      });
+
+      verifyForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
         const res = await fetch(
-          "/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup",
+          "/api/v1/applications/" + encodeURIComponent(applicationId) + "/account/verify/otp/confirm",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              email: document.getElementById("email").value,
-              password: document.getElementById("password").value,
-              firstName: document.getElementById("first").value,
-              lastName: document.getElementById("last").value,
+              challengeId: challenge.id,
+              code: document.getElementById("code").value.trim(),
+              channel: challenge.channel,
             }),
           }
         );
         const data = await res.json().catch(() => ({}));
-        if (res.ok) {
-          status.className = "msg ok";
-          const loginHref =
-            "/login.html?applicationId=" + encodeURIComponent(applicationId);
-          status.innerHTML =
-            (data.message || "Account created.") +
-            (data.loginEmail
-              ? '<br/>Sign in with <code>' + data.loginEmail + "</code>"
-              : "") +
-            ' <br/><a href="' + loginHref + '">Go to sign in</a>';
-          form.hidden = true;
-        } else {
-          status.className = "msg err";
-          status.textContent = data.detail || data.title || "Sign-up failed (" + res.status + ")";
+        if (!res.ok) {
+          showStatus("err", data.detail || "That code is not valid. Check it and try again.");
+          return;
         }
+        verifyForm.hidden = true;
+        showStatus("ok", "Your account is verified. You can sign in now.", true);
       });
     </script>
   </body>

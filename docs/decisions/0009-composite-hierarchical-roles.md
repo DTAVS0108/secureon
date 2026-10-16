@@ -3,7 +3,7 @@
 **Status:** Accepted
 
 ## Context
-Flat roles (role = set of permissions) cover basic needs, but enterprises want **role hierarchy** — a role that includes other roles (e.g. `super-editor` grants `editor` + `reviewer`) — to avoid duplicating permission sets and to model org structures. Keycloak calls these *composite roles*.
+Flat roles (role = set of permissions) cover basic needs, but enterprises want **role hierarchy** — a role that includes other roles (e.g. `super-editor` grants `editor` + `reviewer`) — to avoid duplicating permission sets and to model org structures. The industry term is *composite roles*.
 
 ## Decision
 Support **composite roles** via a self-referential join `role_composite (parent_role_id, child_role_id)` plus an `is_composite` flag on `role`. A principal's **effective permissions** are the transitive union of: directly assigned roles + all child roles (recursively) + group-derived roles (Phase 3). Resolution happens at token-issuance time, behind the `PolicyEvaluator`, and is cached.

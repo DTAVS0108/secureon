@@ -183,6 +183,8 @@ if (-not (Test-Path $envLocal) -and (Test-Path $envExample)) {
 }
 
 Write-Step 'Starting auth-server on port 9000'
+# The auth-server serves the console at /admin by forwarding to `next dev` (one URL, as in production).
+if (-not $env:SECUREONE_CONSOLE_UPSTREAM_URL) { $env:SECUREONE_CONSOLE_UPSTREAM_URL = "http://localhost:3001" }
 $authPid = Start-BackgroundService `
     -Name "auth-server" `
     -WorkingDirectory $AuthDir `
@@ -201,7 +203,7 @@ $adminPid = Start-BackgroundService `
 if (-not $NoWait) {
     Write-Step "Waiting for services to respond"
     $authOk = Wait-HttpOk "http://localhost:9000/api/info" 240
-    $adminOk = Wait-HttpOk "http://localhost:3001" 120
+    $adminOk = Wait-HttpOk "http://localhost:3001/admin/login" 120
     if (-not $authOk) {
         Write-Host "  auth-server did not respond on :9000 yet. Check .local/logs/auth-server.log" -ForegroundColor Yellow
     }
@@ -215,7 +217,7 @@ Write-Host "SecureOne stack started." -ForegroundColor Green
 Write-Host ""
 Write-Host "  Auth server     http://localhost:9000"
 Write-Host "  API docs        http://localhost:9000/docs"
-Write-Host "  Admin web       http://localhost:3001"
+Write-Host "  Admin console   http://localhost:9000/admin   (dev server with hot reload: http://localhost:3001/admin)"
 Write-Host "  MailHog UI      http://localhost:8025"
 Write-Host '  Postgres        localhost:5432  user/pass: secureone / secureone'
 Write-Host "  Redis           localhost:6379"

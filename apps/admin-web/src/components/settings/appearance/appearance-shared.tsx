@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { FieldRow, Input } from "@/components/ui/Field";
 import type { ClientAppearance, ClientWidgetColors } from "@/lib/theme/types";
 import {
@@ -21,8 +22,9 @@ export function ColorField({
   onChange: (hex: string) => void;
   hint?: string;
 }) {
+  const id = useId();
   return (
-    <FieldRow label={label} hint={hint}>
+    <FieldRow label={label} hint={hint} htmlFor={id}>
       <div className="flex gap-2">
         <input
           type="color"
@@ -30,7 +32,7 @@ export function ColorField({
           onChange={(e) => onChange(e.target.value)}
           className="h-10 w-14 cursor-pointer rounded border border-ui"
         />
-        <Input value={value} onChange={(e) => onChange(e.target.value)} />
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
       </div>
     </FieldRow>
   );

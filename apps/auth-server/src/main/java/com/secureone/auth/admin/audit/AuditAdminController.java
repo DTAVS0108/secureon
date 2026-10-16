@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import com.secureone.auth.admin.AdminListLimit;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,13 +39,15 @@ public class AuditAdminController {
     @GetMapping
     public List<AuditEventResponse> list(
             @org.springframework.web.bind.annotation.RequestParam(required = false) UUID applicationId,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID tenantId) {
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID tenantId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer limit) {
+        Pageable page = AdminListLimit.newest(limit);
         var rows =
                 applicationId != null && tenantId != null
-                        ? repository.findByApplicationIdAndTenantIdOrderByCreatedAtDesc(applicationId, tenantId)
+                        ? repository.findByApplicationIdAndTenantIdOrderByCreatedAtDesc(applicationId, tenantId, page)
                         : applicationId != null
-                                ? repository.findByApplicationIdOrderByCreatedAtDesc(applicationId)
-                                : repository.findRecent();
+                                ? repository.findByApplicationIdOrderByCreatedAtDesc(applicationId, page)
+                                : repository.findRecent(page);
         return rows.stream().map(this::toResponse).toList();
     }
 

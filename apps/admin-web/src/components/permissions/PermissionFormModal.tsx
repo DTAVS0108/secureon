@@ -96,7 +96,7 @@ function PermissionForm({
             defaultValue={permission?.key ?? ""}
             placeholder="user:read"
             required={!permission}
-            pattern="[a-z][a-z0-9_-]*:[a-z][a-z0-9_-]*"
+            pattern="[a-z][a-z0-9_\-]*:[a-z][a-z0-9_\-]*"
             disabled={pending}
             className="font-mono text-sm"
           />

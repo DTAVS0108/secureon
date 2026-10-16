@@ -13,7 +13,7 @@ privileged-access standards.
 
 | Door | URL (local) | Who | Purpose |
 |---|---|---|---|
-| **Admin console** | `http://localhost:3001/login` | Platform super admin and anyone with a console role | Manage tenants, applications, users, roles, settings |
+| **Admin console** | `http://localhost:9000/admin/login` | Platform super admin and anyone with a console role | Manage tenants, applications, users, roles, settings |
 | **Hosted sign-in and account pages** | `http://localhost:9000/login.html`, `/account/*` | End users, reached from an application's "Sign in" | Sign in to applications (OAuth 2.1 / OIDC) and manage their own account |
 
 The console sign-in page has two tabs, and every sign-in ends with an authenticator-app code:
@@ -34,7 +34,7 @@ flowchart TB
   P["Platform"] --> T1["Tenant: Acme<br/>users · tenant roles · departments · SSO · webhooks"]
   P --> T2["Tenant: Globex"]
   T1 --> A1["App: test-web<br/>app roles · permissions · groups · OAuth clients"]
-  T1 --> A2["App: flipkart"]
+  T1 --> A2["App: demostore"]
   T2 --> A3["App: Globex Portal"]
   SA(["Platform super admin: everything"]) -.-> P
   TSA(["Tenant super admin: whole tenant"]) -.-> T1
@@ -87,15 +87,16 @@ If a person holds several console roles, the highest one decides the view.
 
 - **How you get it:** granted by the platform super admin for one tenant.
 - **Sidebar:** Application console (all apps in the tenant) · Confluence · Tenant → Tenants, Roles & Permissions, Access review (own tenant only).
-- **Can:** every section of every app in the tenant; tenant roles & permissions and their assignment; choose which console sections each console role sees; grant and revoke application admin and tenant admin in their tenant; run the tenant's access review; departments, SSO providers, service accounts and API keys, webhooks, access requests, SCIM token; the tenant roster; view (not edit) their apps' OAuth clients.
-- **Cannot:** see other tenants, change platform settings, create tenants, apps or OAuth clients, grant or revoke tenant super admin, delete users.
+- **Can:** every section of every app in the tenant; tenant roles & permissions and their assignment; choose which console sections each console role sees; grant and revoke application admin and tenant admin in their tenant; run the tenant's access review; departments, SSO providers, service accounts and API keys, webhooks, access requests, SCIM token; the tenant roster; **Connect an app** and the OAuth clients of every application in the tenant (register, edit, rotate secrets, delete).
+- **Cannot:** see other tenants, change platform settings, create tenants or applications, grant or revoke tenant super admin, delete users.
 
 ### Tenant admin (`TENANT_ADMIN`)
 
 - **How you get it:** granted per application by the platform super admin or the tenant super admin.
 - **Sidebar:** Application console (assigned apps; switch in the header) · Confluence.
 - **Default sections:** Users · Roles · Groups · Permissions · Settings · Audit log · Application logs · Sessions, in each assigned app.
-- **Cannot:** open the tenant page, tenant roles or tenant-level features; touch apps they are not assigned to.
+- **Also:** **Connect an app** (sidebar) for the assigned apps: register OAuth clients and manage them (edit, rotate secrets, delete). The wizard offers only those apps and cannot create a new application.
+- **Cannot:** open the tenant page, tenant roles or tenant-level features; touch apps they are not assigned to (the server refuses their clients, too); create applications.
 
 ### Application admin (`APPLICATION_ADMIN`)
 
@@ -103,7 +104,7 @@ If a person holds several console roles, the highest one decides the view.
 - **Sidebar:** that application's sections only.
 - **Default sections:** Users · Roles · Groups · Settings · Audit log · Sessions. The tenant super admin can add or remove sections; the server enforces the same list, including filtered views such as `/api/admin/v1/logs?applicationId=…`.
 - **No second permission layer:** the console role and its enabled sections are the grant. Operators no longer also need an app role with `user:read`, `role:read` and so on.
-- **Cannot:** see other apps, tenant pages, platform-wide audit, logs or sessions; grant itself higher roles.
+- **Cannot:** see other apps, tenant pages, platform-wide audit, logs or sessions; register or change OAuth clients (it can view its app's clients); grant itself higher roles. Someone who is tenant admin of one app and application admin of another manages clients only in the first.
 
 ### End user (no console role)
 
@@ -129,7 +130,7 @@ Open **My profile** from your name in the top bar:
 |---|---|---|---|---|---|
 | Platform settings, feature flags, policies | Yes | No | No | No | No |
 | Create tenants and applications | Yes | No | No | No | No |
-| OAuth clients | Manage | View own apps | No | No | No |
+| Connect an app / OAuth clients | All apps; may create applications | Manage, every app of own tenant | Manage, assigned apps | View, own app | No |
 | Add platform operators | Yes | No | No | No | No |
 | Grant tenant super admin | Yes | No | No | No | No |
 | Grant application admin, tenant admin | Any tenant | Own | No | No | No |

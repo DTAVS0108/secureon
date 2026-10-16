@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, useId } from "react";
 import { cn } from "@/lib/cn";
 import { InfoTip } from "@/components/ui/InfoTip";
 
@@ -52,6 +53,10 @@ export function Select({
   );
 }
 
+/**
+ * Label + control. When the control is a single element without an id, it gets one and the label
+ * points at it, so screen readers announce the field name and clicking the label focuses it.
+ */
 export function FieldRow({
   label,
   hint,
@@ -65,12 +70,21 @@ export function FieldRow({
   htmlFor?: string;
   children: React.ReactNode;
 }) {
+  const generatedId = useId();
+  let control = children;
+  let target = htmlFor;
+  // Only form controls (inputs, selects, or components rendering one) can be label targets; a wrapper
+  // div holding several controls must pass htmlFor for the one the label names.
+  if (!target && isValidElement<{ id?: string }>(children) && children.type !== "div") {
+    target = children.props.id ?? generatedId;
+    if (!children.props.id) control = cloneElement(children, { id: target });
+  }
   return (
     <div>
-      <Label htmlFor={htmlFor} hint={hint} info={info}>
+      <Label htmlFor={target} hint={hint} info={info}>
         {label}
       </Label>
-      {children}
+      {control}
     </div>
   );
 }

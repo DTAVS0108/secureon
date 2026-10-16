@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 import { fetchScimSettings, saveScimSettings, type ScimSettings } from "@/lib/api/scim-settings";
 
 export function ScimSettingsPanel() {
@@ -55,7 +55,7 @@ export function ScimSettingsPanel() {
     <Card padded={false}>
       <CardHeader
         title="SCIM 2.0 provisioning"
-        description="Bearer-token API for user provisioning (Okta, Azure AD, etc.). SAML login remains planned."
+        description="Bearer-token API for user provisioning from your company's identity provider. Pair it with SAML or OIDC sign-in under Authentication → Identity federation."
       />
       <div className="space-y-4 p-4">
         <div className="flex items-center justify-between gap-4 rounded-lg border border-ui px-4 py-3">
@@ -89,9 +89,9 @@ export function ScimSettingsPanel() {
         </FieldRow>
         <div className="rounded-lg border border-ui bg-black/5 px-3 py-2 text-xs dark:bg-white/5">
           <p className="text-muted">Base URL</p>
-          <code className="mt-1 block font-mono">{AUTH_SERVER_URL}/scim/v2</code>
+          <code className="mt-1 block font-mono">{publicAuthServerUrl()}/scim/v2</code>
           <p className="mt-2 text-muted">Discovery</p>
-          <code className="mt-1 block font-mono">{AUTH_SERVER_URL}/scim/v2/ServiceProviderConfig</code>
+          <code className="mt-1 block font-mono">{publicAuthServerUrl()}/scim/v2/ServiceProviderConfig</code>
         </div>
         <Button onClick={save} disabled={saving}>
           {saving ? "Saving…" : "Save SCIM settings"}

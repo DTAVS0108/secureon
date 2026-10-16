@@ -11,10 +11,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class WebConfig {
 
     private final SecureOneEnvironmentProperties environment;
+    private final RegisteredClientOrigins registeredOrigins;
 
-    public WebConfig(SecureOneEnvironmentProperties environment) {
+    public WebConfig(
+            SecureOneEnvironmentProperties environment,
+            @org.springframework.context.annotation.Lazy RegisteredClientOrigins registeredOrigins) {
         this.environment = environment;
+        this.registeredOrigins = registeredOrigins;
     }
+
+    /** SAML endpoints the IdP's page posts to: assertion consumer and single logout. */
+    static final java.util.List<String> SAML_BROWSER_POST_PREFIXES =
+            java.util.List.of("/api/v1/auth/federation/saml/acs/", "/api/v1/auth/federation/saml/slo/");
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
@@ -34,6 +42,23 @@ public class WebConfig {
         config.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-        return source;
+        // The SAML assertion consumer and single-logout endpoints receive top-level form POSTs from the
+        // IdP's page (any origin, or "null" when the IdP sends no referrer). They are not CORS requests;
+        // the SAML signatures (and InResponseTo / RelayState) are what authenticate them.
+        return request -> {
+            if (SAML_BROWSER_POST_PREFIXES.stream().anyMatch(request.getRequestURI()::startsWith)) {
+                return null;
+            }
+            CorsConfiguration base = source.getCorsConfiguration(request);
+            String origin = request.getHeader("Origin");
+            // Origins of registered apps (their redirect URIs) are allowed without an env change.
+            if (base != null && origin != null && base.checkOrigin(origin) == null
+                    && registeredOrigins.isRegistered(origin)) {
+                CorsConfiguration withApp = new CorsConfiguration(base);
+                withApp.addAllowedOrigin(origin);
+                return withApp;
+            }
+            return base;
+        };
     }
 }

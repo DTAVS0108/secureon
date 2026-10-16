@@ -8,6 +8,9 @@ const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
   expiryDays: 0,
   historyCount: 5,
   hashAlgorithm: "bcrypt",
+  breachCheck: false,
+  maxFailedAttempts: 5,
+  lockoutDurationMinutes: 15,
 };
 
 function coerceBool(value: unknown, fallback: boolean): boolean {
@@ -33,6 +36,13 @@ export function normalizePasswordPolicy(raw: unknown): PasswordPolicy {
       typeof r.hashAlgorithm === "string" && r.hashAlgorithm.trim()
         ? r.hashAlgorithm
         : DEFAULT_PASSWORD_POLICY.hashAlgorithm,
+    // Every field the server stores must survive load and save, or saving one setting resets these.
+    breachCheck: coerceBool(r.breachCheck, DEFAULT_PASSWORD_POLICY.breachCheck ?? false),
+    maxFailedAttempts: coerceInt(r.maxFailedAttempts, DEFAULT_PASSWORD_POLICY.maxFailedAttempts ?? 5),
+    lockoutDurationMinutes: coerceInt(
+      r.lockoutDurationMinutes,
+      DEFAULT_PASSWORD_POLICY.lockoutDurationMinutes ?? 15,
+    ),
     inheritsPlatformDefaults:
       typeof r.inheritsPlatformDefaults === "boolean" ? r.inheritsPlatformDefaults : undefined,
   };

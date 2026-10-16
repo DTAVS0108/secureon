@@ -8,7 +8,7 @@ Related: [Data model — Authorization](04-data-model.md#domain-3--authorization
 
 | Mode | `application.schema_name` | Tables |
 |------|---------------------------|--------|
-| **Isolated** (new apps) | e.g. `flipkart` | `{schema}.role`, `{schema}.permission`, … |
+| **Isolated** (new apps) | e.g. `demostore` | `{schema}.role`, `{schema}.permission`, … |
 | **Legacy** (pre-isolate) | `NULL` | `platform.role`, `platform.permission`, … |
 
 API paths are unchanged (`/api/admin/v1/applications/{applicationId}/…`). Auth-server sets `search_path` per request so JPA hits the correct schema.
@@ -36,7 +36,28 @@ user_account
 1. Permissions from **direct** `user_role` assignments (including composite child roles), and  
 2. Permissions from all roles linked to **groups** the user belongs to.
 
-Resolved in `AdminPermissionService` (admin console). OAuth access tokens for integrated apps use the same role union when token claims are extended in future work.
+### What your application receives
+
+Every user access token issued to one of the application's OAuth clients carries the user's access in
+**that application**, and `/userinfo` returns the same values:
+
+```json
+{
+  "roles": ["Approver", "Manager", "Viewer"],
+  "permissions": ["orders:approve", "user:read"]
+}
+```
+
+- `roles`: roles assigned directly, roles granted through groups, and the child roles of composite roles (recursively).
+- `permissions`: every permission carried by those roles.
+- Changes apply to the next token (sign-in or refresh); existing access tokens keep their claims until they expire.
+- Client-credentials tokens (no user) carry neither claim.
+
+Other notes:
+
+- Assigning roles while editing a user in an application changes only that application's roles.
+- A role that is still assigned to users cannot be deleted (409); unassign it first.
+- Removing a user from an application does not block them if the application allows self-registration: they can join again by signing in. Turn self-registration off to make removal stick.
 
 ## Groups
 

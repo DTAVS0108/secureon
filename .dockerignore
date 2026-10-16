@@ -1,0 +1,24 @@
+# Allow-list for `docker build -f deploy/Dockerfile .` (the single SecureOne image).
+# Only the sources the image needs are sent to the build: no local .env files, keys, logs or node_modules.
+*
+
+# pnpm workspace manifests and lockfile (the console installs from them)
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!packages/secureone-client/package.json
+
+!apps/auth-server/gradle/
+!apps/auth-server/gradlew
+!apps/auth-server/build.gradle.kts
+!apps/auth-server/settings.gradle.kts
+!apps/auth-server/src/
+apps/auth-server/src/test/
+
+!apps/admin-web/
+apps/admin-web/node_modules/
+apps/admin-web/.next/
+apps/admin-web/.env*
+apps/admin-web/*.tsbuildinfo
+
+!docs/

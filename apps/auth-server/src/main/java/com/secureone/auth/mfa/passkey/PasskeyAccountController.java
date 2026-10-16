@@ -1,5 +1,6 @@
 package com.secureone.auth.mfa.passkey;
 
+import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.authn.SessionUserResolver;
 import com.secureone.auth.mfa.MfaFactorRepository;
 import com.secureone.auth.user.UserAccount;
@@ -24,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/account/mfa/passkey")
 public class PasskeyAccountController {
 
-    public record RegisterOptionsRequest(String label) {}
+    /** {@code applicationId}: the app the user is in, so the browser's passkey prompt names it. */
+    public record RegisterOptionsRequest(String label, UUID applicationId) {}
 
     public record RegisterVerifyRequest(@NotNull UUID requestId, @NotBlank String credential) {}
 
@@ -47,7 +49,8 @@ public class PasskeyAccountController {
             Authentication authentication, @RequestBody(required = false) RegisterOptionsRequest body) {
         UserAccount user = users.requireTenantUser(authentication);
         String tenantSlug = tenantSlug(authentication);
-        return registration.beginRegistration(user, tenantSlug, body != null ? body.label() : null);
+        return registration.beginRegistration(
+                user, tenantSlug, body != null ? body.label() : null, body != null ? body.applicationId() : null);
     }
 
     @Operation(summary = "Finish passkey registration")
@@ -63,9 +66,9 @@ public class PasskeyAccountController {
     public ResponseEntity<Void> delete(Authentication authentication, @PathVariable UUID factorId) {
         UserAccount user = users.requireTenantUser(authentication);
         var factor = factors.findByIdAndUserId(factorId, user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Passkey not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("Passkey not found."));
         if (!WebAuthnCredentialRepository.FACTOR_TYPE.equals(factor.getType())) {
-            throw new IllegalArgumentException("Passkey not found.");
+            throw new ResourceNotFoundException("Passkey not found.");
         }
         factors.delete(factor);
         return ResponseEntity.noContent().build();

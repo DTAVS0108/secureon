@@ -131,7 +131,8 @@ public class TenantAdminService {
                 readPlan(tenant.getSettings()),
                 tenantUserRoster.countByTenantId(id),
                 applicationRepository.countByTenantId(id),
-                tenant.getCreatedAt());
+                tenant.getCreatedAt(),
+                isSystemTenant(tenant));
     }
 
     private static String readPlan(Map<String, Object> settings) {

@@ -25,15 +25,18 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
   const [appearance, setAppearance] = useState<ClientAppearance>(DEFAULT_CLIENT_APPEARANCE);
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipAutoSave = useRef(true);
+  // What the server holds now. A change equal to it (the theme editor normalising freshly loaded
+  // values) is not saved; any real edit, including the very first, is.
+  const lastSaved = useRef<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
       await ensureApplicationPolicyScope(applicationId, "appearance");
       const data = await fetchApplicationAppearance(applicationId).catch(() => ({}));
-      setAppearance(mergeClientAppearance(stripAppearanceMeta(data as Record<string, unknown>)));
-      skipAutoSave.current = true;
+      const current = mergeClientAppearance(stripAppearanceMeta(data as Record<string, unknown>));
+      lastSaved.current = JSON.stringify(toClientAppearancePayload(normalizeClientAppearance(current)));
+      setAppearance(current);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Failed to load appearance", "error");
     } finally {
@@ -48,18 +51,15 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
   const scheduleSave = useCallback(
     (next: ClientAppearance) => {
       if (!loaded) return;
-      if (skipAutoSave.current) {
-        skipAutoSave.current = false;
-        return;
-      }
+      const payload = toClientAppearancePayload(next);
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (JSON.stringify(payload) === lastSaved.current) return;
       saveTimer.current = setTimeout(async () => {
         try {
-          const saved = await saveApplicationAppearance(
-            applicationId,
-            toClientAppearancePayload(next),
-          );
-          setAppearance(mergeClientAppearance(stripAppearanceMeta(saved as Record<string, unknown>)));
+          const saved = await saveApplicationAppearance(applicationId, payload);
+          const stored = mergeClientAppearance(stripAppearanceMeta(saved as Record<string, unknown>));
+          lastSaved.current = JSON.stringify(toClientAppearancePayload(normalizeClientAppearance(stored)));
+          setAppearance(stored);
           toast("Settings saved", "success");
         } catch (e) {
           toast(e instanceof Error ? e.message : "Save failed", "error");

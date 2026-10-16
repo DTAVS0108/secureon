@@ -7,7 +7,7 @@
 **Current baseline (verified):**
 - Phase 1 complete per `08-roadmap.md` (OIDC, RBAC, OTP signup/login/recovery, layered settings)
 - Phase 2 ~30% (email/SMS OTP yes; TOTP/passkey/lockout/CI no)
-- Phase 3–4 not started (SAML, SCIM, multi-region, GDPR tooling)
+- Phase 3–4: SAML 2.0 SP, SCIM, device sign-in and GDPR stubs shipped; multi-region and full GDPR tooling not started
 
 ---
 
@@ -41,7 +41,7 @@
 **Env vars (unified catalog in `.env.example`):**
 - `SECUREONE_ENV=development|staging|production`
 - `SECUREONE_SWAGGER_ENABLED` (dev: true, prod: false)
-- `SECUREONE_CORS_ALLOWED_ORIGINS` (comma-separated)
+- `SECUREONE_CORS_ALLOWED_ORIGINS` (comma-separated; optional: origins of registered redirect URIs are allowed automatically)
 - `SECUREONE_OTP_PEPPER`, `SECUREONE_PUBLIC_BASE_URL`, `SECUREONE_ADMIN_WEB_URL`
 - `SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE` (dev: true, prod: false)
 - `SECUREONE_DEV_AUTH_ENABLED` (dev: true, prod: false)
@@ -55,8 +55,8 @@
 
 | Variable | Dev | Prod |
 |----------|-----|------|
-| `NEXT_PUBLIC_SECUREONE_ENV` | `development` | `production` |
-| `NEXT_PUBLIC_AUTH_SERVER_URL` | `http://localhost:9000` | real issuer host |
+| `SECUREONE_ENV` (console reads it at runtime too) | `development` | `production` |
+| `SECUREONE_PUBLIC_BASE_URL` (console links) | `http://localhost:9000` | real issuer host |
 | Dev banner | visible | hidden |
 | Integration “test send” panels | visible | hidden or admin-only |
 | Proxy Basic-auth fallback | allowed | **disabled** |
@@ -64,7 +64,7 @@
 **Files:**
 - `apps/admin-web/src/lib/config.ts` — `IS_DEV`, `IS_PROD`, `ENVIRONMENT`
 - `apps/admin-web/src/app/layout.tsx` — render banner
-- `apps/admin-web/.env.local.example`, `deploy/Dockerfile.admin-web` — build ARG for public URL
+- `apps/admin-web/.env.local.example`, `deploy/Dockerfile` — no build-time values: the console reads its URLs and environment at runtime
 - `apps/admin-web/src/app/api/proxy/[...path]/route.ts` — no dev fallback in prod
 
 **Verification ×2:**
@@ -226,7 +226,7 @@ When `SECUREONE_ENV=production`, seed/override:
 | Passkeys | Epic 3B | P1 |
 | Push MFA | Keep `implemented: false`; hide in prod | P3 |
 | Google/GitHub OIDC federation | Epic 6 stub or defer Phase 3 | P2 |
-| SAML / External OIDC | Phase 3 — document only | P3 |
+| SAML / External OIDC | **Done** — OIDC + SAML 2.0 SP (SSO, IdP-initiated, SLO); see doc 23 | — |
 | Session revoke API | `DELETE /api/v1/account/sessions`, `DELETE /api/v1/account/sessions/{id}` | P1 |
 | `clientUrls.magicLink` | Add to integration config + manifest | P2 |
 | Token reuse detection | Wire SAS refresh token rotation + reuse handler | P1 |

@@ -20,7 +20,7 @@ import { runIntegrationHealthChecks, type IntegrationHealthResult } from "@/lib/
 import { ApiReferenceList } from "@/components/settings/ApiReferenceList";
 import { IsolateApplicationButton } from "@/components/applications/IsolateApplicationButton";
 import { useAdminContext } from "@/components/AdminContextProvider";
-import { AUTH_SERVER_URL } from "@/lib/config";
+import { publicAuthServerUrl } from "@/lib/config";
 import { buildIntegrationApiCatalog } from "@/lib/integration-api-catalog";
 import type { ApplicationProduct, OAuthClient } from "@/lib/types";
 import type { SettingsTabId, AuthSubTabId } from "@/components/settings/SettingsTabs";
@@ -279,8 +279,10 @@ export function ApplicationIntegrationSettings({
         <CardHeader title="Authentication UI" />
         <div className="space-y-4 p-4">
           <p className="text-sm text-muted">
-            Choose how end users sign in. This preference is stored for your team; wire the same mode
-            in your app (e.g. <code className="text-xs">VITE_AUTH_MODE</code> in a Vite SPA).
+            Choose how end users sign in. The choice is published in the public manifest as{" "}
+            <code className="text-xs">authUiMode</code>, so your app can read it instead of a build flag
+            (e.g. <code className="text-xs">VITE_AUTH_MODE</code>). Both flows stay available; this
+            only sets the recommended one and filters the API reference below.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {(
@@ -446,7 +448,7 @@ export function ApplicationIntegrationSettings({
           title="API reference"
           action={
             <Link
-              href={`${AUTH_SERVER_URL}/docs`}
+              href={`${publicAuthServerUrl()}/docs`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-brand hover:underline"

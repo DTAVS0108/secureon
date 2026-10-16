@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { FieldRow, Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { SmsProviderSettingsCard } from "@/components/settings/SmsProviderSettingsCard";
 import { VerificationPolicyCards } from "@/components/settings/VerificationPolicyCards";
@@ -79,6 +80,28 @@ export function VerificationSettingsPanel({ applicationId }: { applicationId?: s
             <li key={step}>{step.replace(/\*\*(.*?)\*\*/g, "$1")}</li>
           ))}
         </ol>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Phone numbers"
+          description="Country assumed when users type a mobile number without +country code (sign-in, sign-up, password reset)."
+        />
+        <div className="px-5 pb-5">
+          <FieldRow label="Default phone country" hint="ISO code, e.g. IN or US">
+            <Input
+              value={policy.defaultPhoneRegion ?? ""}
+              maxLength={2}
+              className="max-w-24 uppercase"
+              onChange={(e) => {
+                const region = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+                // Save only a complete two-letter code; a half-typed one would be rejected.
+                if (region.length === 2) scheduleSavePolicy({ ...policy, defaultPhoneRegion: region });
+                else setPolicy({ ...policy, defaultPhoneRegion: region });
+              }}
+            />
+          </FieldRow>
+        </div>
       </Card>
 
       <VerificationPolicyCards policy={policy} onChange={scheduleSavePolicy} />

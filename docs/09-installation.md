@@ -63,7 +63,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3001** (admin-web dev server; see `package.json`). Sign in as platform super-admin: **`admin` / `admin`**.
+Open **http://localhost:9000/admin** (the auth-server serves the admin-web dev server there; hot reload also at http://localhost:3001/admin). Sign in as platform super-admin: **`admin` / `admin`**.
 
 Set `AUTH_SERVER_URL=http://localhost:9000` in `.env.local` if the default differs.
 
@@ -120,9 +120,9 @@ MailHog catches outbound mail. Configure in **Settings → Notifications**, then
 |-------|-----|
 | Discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
 | Confluence discovery | `GET http://localhost:9000/api/v1/confluence` |
-| SecureOne Confluence UI | http://localhost:3001/confluence |
+| SecureOne Confluence UI | http://localhost:9000/admin/confluence |
 | JWKS | `GET http://localhost:9000/oauth2/jwks` |
-| Admin UI | http://localhost:3001 |
+| Admin UI | http://localhost:9000/admin |
 | MailHog | `http://localhost:8025` |
 | App schema (SQL) | `SELECT name, schema_name FROM platform.application;` |
 
@@ -139,6 +139,7 @@ Docker/Kubernetes, managed Postgres + Redis, TLS, KMS for secrets. See [Architec
 | `SECUREONE_REDIS_URL` | Redis |
 | `SECUREONE_ISSUER_URL` | OIDC issuer |
 | `SECUREONE_DEV_USER` / `_PASSWORD` | Admin API Basic auth |
-| `SECUREONE_ADMIN_WEB_URL` | admin-web base URL for Confluence links in `/api/info` (default `http://localhost:3001`) |
+| `SECUREONE_ADMIN_WEB_URL` | Console URL for Confluence links in `/api/info` (default `<SECUREONE_PUBLIC_BASE_URL>/admin`) |
+| `SECUREONE_CONSOLE_UPSTREAM_URL` | Where the auth-server forwards `/admin` in development (`http://localhost:3001`; set by `start-all.ps1`) |
 | `SECUREONE_PUBLIC_BASE_URL` | Links in emails |
 | `SECUREONE_SMTP_*` | Outbound email |

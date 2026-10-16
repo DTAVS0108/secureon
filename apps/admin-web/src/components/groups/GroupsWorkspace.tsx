@@ -11,8 +11,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Field";
 import { groupDeleteAction } from "@/lib/actions";
 import { getGroup } from "@/lib/api/groups";
-import { timeAgo } from "@/lib/format";
 import type { RbacGroup, RbacGroupDetail, Role, User } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 export function GroupsWorkspaceHeaderActions({
   roles,
@@ -142,7 +142,7 @@ export function GroupsWorkspace({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-ui">{g.name}</span>
-                    <Badge tone="neutral">{g.memberCount} members</Badge>
+                    <Badge tone="neutral">{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</Badge>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted">
                     {g.roleCount} role{g.roleCount === 1 ? "" : "s"}
@@ -303,12 +303,12 @@ function GroupDetailPanel({
               <Stat label="Members" value={String(detail.memberCount)} />
               <Stat
                 label="Created"
-                value={detail.createdAt ? timeAgo(detail.createdAt) : "—"}
+                value={<LocalTime value={detail.createdAt} format="ago" />}
               />
             </div>
             <p className="text-xs text-muted">
-              Group membership grants all linked roles without creating individual{" "}
-              <code className="text-[10px]">user_role</code> rows. Use{" "}
+              Members get all of this group&apos;s roles while they are in the group; removing them
+              from the group removes those roles. Use{" "}
               <Link href={`/app/${applicationId}/users`} className="text-brand hover:underline">
                 Users
               </Link>{" "}
@@ -352,7 +352,7 @@ function GroupDetailPanel({
                 {detail.members.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-4 px-4 py-3">
                     <div>
-                      <Link href={`/users/${m.id}`} className="font-medium text-brand hover:underline">
+                      <Link href={`/app/${applicationId}/users?user=${m.id}`} className="font-medium text-brand hover:underline">
                         {m.displayName || m.email}
                       </Link>
                       <p className="text-xs text-muted">{m.email}</p>
@@ -391,7 +391,7 @@ function SummaryCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="bg-ui-surface px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{label}</p>

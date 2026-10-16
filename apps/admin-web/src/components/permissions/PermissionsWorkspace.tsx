@@ -27,7 +27,7 @@ export function PermissionsWorkspaceHeaderActions({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <SeedDefaultsButton applicationId={applicationId} missingCount={permissions.length} />
+      <SeedDefaultsButton applicationId={applicationId} />
       <PermissionFormModal
         applicationId={applicationId}
         onCreated={onCreated}
@@ -92,7 +92,7 @@ export function PermissionsWorkspace({
           </Link>
           .
         </p>
-        <SeedDefaultsButton applicationId={applicationId} missingCount={permissions.length} />
+        <SeedDefaultsButton applicationId={applicationId} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -255,7 +255,7 @@ function PermissionDetailPanel({
               triggerVariant="danger"
               triggerSize="sm"
               title="Delete permission"
-              message={`Remove "${permission.key}" from the database?`}
+              message={`Delete "${permission.key}" from this application's permission catalog?`}
               confirmLabel="Delete"
             />
           ) : (

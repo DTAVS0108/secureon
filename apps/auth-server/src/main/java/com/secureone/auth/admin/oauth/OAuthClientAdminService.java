@@ -14,6 +14,7 @@ import com.secureone.auth.application.Application;
 import com.secureone.auth.application.ApplicationRepository;
 import com.secureone.auth.audit.AuditService;
 import com.secureone.auth.notify.EmailNotificationService;
+import com.secureone.auth.oauth.ClientSecrets;
 import com.secureone.auth.oauth.OAuthClient;
 import com.secureone.auth.oauth.OAuthClientRepository;
 import com.secureone.auth.tenant.Tenant;
@@ -42,6 +43,7 @@ public class OAuthClientAdminService {
     private final AuditService auditService;
     private final EmailNotificationService emailService;
     private final String issuerBaseUrl;
+    private final com.secureone.auth.config.RegisteredClientOrigins registeredOrigins;
 
     public OAuthClientAdminService(
             OAuthClientRepository oauthClients,
@@ -50,13 +52,16 @@ public class OAuthClientAdminService {
             @Lazy ApplicationAdminService applicationAdmin,
             AuditService auditService,
             EmailNotificationService emailService,
-            @Value("${secureone.issuer:http://localhost:9000}") String issuerBaseUrl) {
+            // The real issuer (SECUREONE_ISSUER_URL); "secureone.issuer" was never set, so production showed localhost.
+            @Value("${spring.security.oauth2.authorizationserver.issuer:http://localhost:9000}") String issuerBaseUrl,
+            com.secureone.auth.config.RegisteredClientOrigins registeredOrigins) {
         this.oauthClients = oauthClients;
         this.applications = applications;
         this.tenants = tenants;
         this.applicationAdmin = applicationAdmin;
         this.auditService = auditService;
         this.emailService = emailService;
+        this.registeredOrigins = registeredOrigins;
         this.issuerBaseUrl = issuerBaseUrl.endsWith("/") ? issuerBaseUrl.substring(0, issuerBaseUrl.length() - 1) : issuerBaseUrl;
     }
 
@@ -94,21 +99,23 @@ public class OAuthClientAdminService {
         client.setClientName(app.getName());
         client.setType(type);
         client.setStatus(normalizeStatus(request.status(), "ACTIVE"));
-        client.setGrantTypes(nonEmptyList(request.grantTypes(), defaultGrantTypes(type)));
+        client.setGrantTypes(grantTypes(nonEmptyList(request.grantTypes(), defaultGrantTypes(type))));
         client.setScopes(nonEmptyList(request.scopes(), defaultScopes(type)));
         client.setRedirectUris(RedirectUriValidator.validate(request.redirectUris(), "redirectUri"));
         client.setPostLogoutRedirectUris(
                 RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
         client.setRequirePkce(request.pkceRequired() != null ? request.pkceRequired() : defaultPkceRequired(type));
+        client.setSubjectType(request.subjectType() != null ? subjectType(request.subjectType()) : OAuthClient.SUBJECT_USER_ID);
         client.setTokenEndpointAuthMethod(
                 request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()
                         ? request.tokenEndpointAuthMethod()
                         : defaultAuthMethod(type));
         if (isConfidential(type)) {
             plainSecret = generateClientSecret();
-            client.setClientSecret(plainSecret);
+            client.setClientSecret(ClientSecrets.hash(plainSecret));
         }
         oauthClients.save(client);
+        registeredOrigins.invalidate();
         auditService.record(
                 app.getTenantId(),
                 "admin",
@@ -128,7 +135,7 @@ public class OAuthClientAdminService {
         String type = normalizeType(request.type() != null ? request.type() : client.getType());
         client.setType(type);
         client.setStatus(normalizeStatus(request.status(), client.getStatus()));
-        if (request.grantTypes() != null) client.setGrantTypes(request.grantTypes());
+        if (request.grantTypes() != null) client.setGrantTypes(grantTypes(request.grantTypes()));
         if (request.scopes() != null) client.setScopes(request.scopes());
         if (request.redirectUris() != null) {
             client.setRedirectUris(RedirectUriValidator.validate(request.redirectUris(), "redirectUri"));
@@ -138,6 +145,7 @@ public class OAuthClientAdminService {
                     RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
         }
         if (request.pkceRequired() != null) client.setRequirePkce(request.pkceRequired());
+        if (request.subjectType() != null) client.setSubjectType(subjectType(request.subjectType()));
         if (request.tokenEndpointAuthMethod() != null) {
             client.setTokenEndpointAuthMethod(request.tokenEndpointAuthMethod());
         }
@@ -150,6 +158,7 @@ public class OAuthClientAdminService {
                 client.getId(),
                 client.getClientId(),
                 true);
+        registeredOrigins.invalidate();
         return toResponse(client);
     }
 
@@ -159,7 +168,7 @@ public class OAuthClientAdminService {
             throw new IllegalArgumentException("Public clients (SPA/native) do not use a client secret.");
         }
         String plainSecret = generateClientSecret();
-        client.setClientSecret(plainSecret);
+        client.setClientSecret(ClientSecrets.hash(plainSecret));
         Application app = requireApplication(client.getApplicationId());
         auditService.record(
                 app.getTenantId(),
@@ -172,10 +181,38 @@ public class OAuthClientAdminService {
         return new OAuthClientSecretResponse(plainSecret);
     }
 
+    /** Sets a confidential client's secret to a value the operator supplies (configuration files). */
+    public void setClientSecret(UUID id, String plainSecret) {
+        OAuthClient client = require(id);
+        if (!isConfidential(client.getType())) {
+            throw new IllegalArgumentException("Public clients (SPA/native) do not use a client secret.");
+        }
+        if (plainSecret == null || plainSecret.length() < 32) {
+            throw new IllegalArgumentException("A client secret must be at least 32 characters long.");
+        }
+        client.setClientSecret(ClientSecrets.hash(plainSecret));
+        Application app = requireApplication(client.getApplicationId());
+        auditService.record(
+                app.getTenantId(),
+                "admin",
+                "oauth_client.secret_set",
+                "oauth_client",
+                client.getId(),
+                client.getClientId(),
+                true);
+    }
+
+    /** Whether the client's current secret is this value (stored plain or as a bcrypt hash). */
+    @Transactional(readOnly = true)
+    public boolean clientSecretMatches(UUID id, String plainSecret) {
+        return ClientSecrets.matches(plainSecret, require(id).getClientSecret());
+    }
+
     public void delete(UUID id) {
         OAuthClient client = require(id);
         Application app = requireApplication(client.getApplicationId());
         oauthClients.delete(client);
+        registeredOrigins.invalidate();
         auditService.record(
                 app.getTenantId(),
                 "admin",
@@ -245,7 +282,16 @@ public class OAuthClientAdminService {
                 confidential && client.getClientSecret() != null && !client.getClientSecret().isBlank(),
                 client.getCreatedAt(),
                 client.getUpdatedAt(),
-                oAuthEndpoints());
+                oAuthEndpoints(),
+                client.getSubjectType());
+    }
+
+    private static String subjectType(String raw) {
+        String value = raw.trim().toLowerCase(Locale.ROOT);
+        if (!OAuthClient.SUBJECT_USER_ID.equals(value) && !OAuthClient.SUBJECT_LEGACY.equals(value)) {
+            throw new IllegalArgumentException("subjectType must be 'user_id' or 'legacy'.");
+        }
+        return value;
     }
 
     private OAuthEndpoints oAuthEndpoints() {
@@ -269,6 +315,26 @@ public class OAuthClientAdminService {
 
     private static List<String> copyList(List<String> values) {
         return values != null ? new ArrayList<>(values) : List.of();
+    }
+
+    /** Canonical grant type names; an unknown one is an error instead of silently doing nothing. */
+    private static List<String> grantTypes(List<String> requested) {
+        List<String> out = new ArrayList<>();
+        for (String raw : requested) {
+            String grant = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+            String canonical = switch (grant) {
+                case "authorization_code", "refresh_token", "client_credentials" -> grant;
+                case "urn:ietf:params:oauth:grant-type:device_code", "device_code" ->
+                        "urn:ietf:params:oauth:grant-type:device_code";
+                case "urn:ietf:params:oauth:grant-type:token-exchange", "token_exchange", "token-exchange" ->
+                        "urn:ietf:params:oauth:grant-type:token-exchange";
+                default -> throw new IllegalArgumentException("Unsupported grant type: " + raw);
+            };
+            if (!out.contains(canonical)) {
+                out.add(canonical);
+            }
+        }
+        return out;
     }
 
     private static List<String> defaultGrantTypes(String type) {

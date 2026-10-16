@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Test sign-in · SecureOne</title>
+    <style>
+      :root { --brand: #4f46e5; --ok: #047857; --bad: #b91c1c; --muted: #6b7280; --line: #e5e7eb; --bg: #f7f7f8; --card: #fff; --text: #171717; }
+      @media (prefers-color-scheme: dark) {
+        :root { --ok: #34d399; --bad: #f87171; --muted: #9ca3af; --line: #2a2a33; --bg: #121216; --card: #1c1c24; --text: #ededed; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+      main { max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; }
+      h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+      p { margin: 0.25rem 0 1rem; }
+      .muted { color: var(--muted); font-size: 0.875rem; }
+      ol { list-style: none; padding: 0; margin: 1rem 0; }
+      li { display: flex; gap: 0.6rem; padding: 0.45rem 0; border-top: 1px solid var(--line); font-size: 0.925rem; }
+      li:first-child { border-top: 0; }
+      .mark { width: 1.25rem; flex: none; font-weight: 700; text-align: center; }
+      .ok .mark { color: var(--ok); } .bad .mark { color: var(--bad); } .wait .mark { color: var(--muted); }
+      button { padding: 0.6rem 1.1rem; background: var(--brand); color: #fff; border: 0; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+      pre { background: #18181b; color: #fafafa; padding: 0.9rem; overflow: auto; border-radius: 8px; font-size: 12px; max-height: 18rem; }
+      code { font-size: 0.85em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Test sign-in</h1>
+        <p class="muted" id="intro">Checks that this OAuth client can sign a user in: authorization request, sign-in at SecureOne, and the code returned to the app.</p>
+        <ol id="steps"></ol>
+        <button type="button" id="start" hidden>Start test sign-in</button>
+        <pre id="out" hidden></pre>
+        <p class="muted">Remove the redirect URI <code id="self"></code> from the client once your app works; it exists only for this test.</p>
+      </div>
+    </main>
+    <script>
+      (function () {
+        const SELF = location.origin + location.pathname;
+        const KEY = "secureone.connect-test";
+        document.getElementById("self").textContent = SELF;
+        const params = new URLSearchParams(location.search);
+        const steps = document.getElementById("steps");
+        const out = document.getElementById("out");
+
+        function step(state, text) {
+          const li = document.createElement("li");
+          li.className = state;
+          const mark = document.createElement("span");
+          mark.className = "mark";
+          mark.textContent = state === "ok" ? "✓" : state === "bad" ? "✗" : "…";
+          const span = document.createElement("span");
+          span.textContent = text;
+          li.append(mark, span);
+          steps.append(li);
+        }
+        function show(payload) {
+          out.hidden = false;
+          out.textContent = JSON.stringify(payload, null, 2);
+        }
+        function b64url(bytes) {
+          return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        }
+        async function begin(clientId, isPublic, scope) {
+          const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+          const challenge = b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+          const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+          sessionStorage.setItem(KEY, JSON.stringify({ clientId, isPublic, scope, verifier, state }));
+          const authorize = new URLSearchParams({
+            response_type: "code", client_id: clientId, redirect_uri: SELF, scope, state,
+            code_challenge: challenge, code_challenge_method: "S256",
+          });
+          location.assign("/oauth2/authorize?" + authorize.toString());
+        }
+        async function finish(saved) {
+          history.replaceState({}, document.title, SELF);
+          if (params.get("error")) {
+            step("bad", "SecureOne returned an error: " + params.get("error") + (params.get("error_description") ? " (" + params.get("error_description") + ")" : ""));
+            return;
+          }
+          if (params.get("state") !== saved.state) {
+            step("bad", "The response does not belong to this test (state mismatch). Start again.");
+            return;
+          }
+          step("ok", "Authorization request accepted for client " + saved.clientId);
+          step("ok", "User signed in at SecureOne");
+          step("ok", "Authorization code returned to the redirect URI");
+          if (!saved.isPublic) {
+            step("ok", "Done. This is a confidential client: your server exchanges the code with its client secret, which never goes to a browser.");
+            return;
+          }
+          const res = await fetch("/oauth2/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              grant_type: "authorization_code", code: params.get("code"), redirect_uri: SELF,
+              client_id: saved.clientId, code_verifier: saved.verifier,
+            }),
+          });
+          const tokens = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            step("bad", "Token exchange failed: " + (tokens.error_description || tokens.error || "HTTP " + res.status));
+            return;
+          }
+          step("ok", "Code exchanged for tokens (PKCE)" + (tokens.refresh_token ? ", including a refresh token" : ""));
+          const info = await fetch("/userinfo", { headers: { Authorization: "Bearer " + tokens.access_token } });
+          const claims = await info.json().catch(() => ({}));
+          if (!info.ok) {
+            step("bad", "/userinfo failed: HTTP " + info.status + (saved.scope.includes("openid") ? "" : " (request the openid scope)"));
+            return;
+          }
+          step("ok", "Signed in as " + (claims.email || claims.preferred_username || claims.sub));
+          show({ userinfo: claims, token_type: tokens.token_type, expires_in: tokens.expires_in, scope: tokens.scope });
+        }
+
+        const saved = JSON.parse(sessionStorage.getItem(KEY) || "null");
+        if (params.has("code") || params.has("error")) {
+          sessionStorage.removeItem(KEY);
+          if (!saved) {
+            step("bad", "This browser did not start the test. Start it again from the console.");
+            return;
+          }
+          finish(saved).catch((e) => step("bad", e.message || String(e)));
+          return;
+        }
+        const clientId = params.get("client_id");
+        if (!clientId) {
+          step("bad", "Open this page from the console (Connect an app → Test sign-in); it needs ?client_id=…");
+          return;
+        }
+        const isPublic = params.get("public") === "1";
+        const scope = params.get("scope") || "openid profile email";
+        step("wait", "Client " + clientId + (isPublic ? " (public, PKCE)" : " (confidential)") + " · scopes: " + scope);
+        const start = document.getElementById("start");
+        start.hidden = false;
+        start.addEventListener("click", () => begin(clientId, isPublic, scope).catch((e) => step("bad", e.message || String(e))));
+      })();
+    </script>
+  </body>
+</html>

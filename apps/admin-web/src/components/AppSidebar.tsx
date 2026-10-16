@@ -9,6 +9,7 @@ import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { cn } from "@/lib/cn";
 import { buildAppPath } from "@/lib/app-routes";
 import { useAdminContext } from "./AdminContextProvider";
+import { ConnectAppLink } from "./ConnectAppLink";
 import { canAccessSection } from "@/lib/auth/permissions";
 
 export function AppSidebar({
@@ -27,6 +28,7 @@ export function AppSidebar({
   });
   const tenantSuper = isTenantSuperAdmin(ctx);
   const showPlatformAdmin = superAdmin || tenantSuper;
+  const canConnect = !superAdmin && ctx.applications.some((a) => a.canManageClients);
 
   return (
     <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-ui bg-ui-surface px-3 py-5">
@@ -60,6 +62,8 @@ export function AppSidebar({
           );
         })}
       </nav>
+
+      {canConnect && <ConnectAppLink pathname={pathname} />}
 
       {showPlatformAdmin && (
         <div className="shrink-0 border-t border-ui pt-4">

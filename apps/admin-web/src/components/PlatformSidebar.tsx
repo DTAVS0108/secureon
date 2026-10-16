@@ -6,6 +6,7 @@ import { PLATFORM_NAV, SUPER_ADMIN_NAV, TENANT_OPERATOR_NAV } from "./nav";
 import { PlatformAdminNav } from "./PlatformAdminNav";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { useAdminContext } from "./AdminContextProvider";
+import { ConnectAppLink } from "./ConnectAppLink";
 import { isTenantSuperAdmin } from "@/lib/operator-access";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { buildAppPath } from "@/lib/app-routes";
@@ -28,6 +29,7 @@ export function PlatformSidebar({
   const isTenantOperator =
     (ctx.operatorTier === "tenant" || ctx.operatorTier === "tenant_super") && !superAdmin;
   const navSource = isTenantOperator ? TENANT_OPERATOR_NAV : PLATFORM_NAV;
+  const canConnect = !superAdmin && ctx.applications.some((a) => a.canManageClients);
   const superAdminHrefs = new Set(SUPER_ADMIN_NAV.map((i) => i.href));
   const items = navSource.filter((i) => {
     if (i.href === "/app" && !registryHasClients) return false;
@@ -70,6 +72,7 @@ export function PlatformSidebar({
             />
           );
         })}
+        {canConnect && <ConnectAppLink pathname={pathname} />}
         {showPlatformAdmin && (
           <div className="mt-3 border-t border-ui pt-3">
             <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-faint">

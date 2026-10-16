@@ -7,17 +7,15 @@ public final class ClientIpResolver {
 
     private ClientIpResolver() {}
 
+    /**
+     * The client address as the servlet container reports it. Forwarded headers are applied by the
+     * container (server.forward-headers-strategy=native: Tomcat's RemoteIpValve honours
+     * X-Forwarded-For only from trusted internal proxies), so a client cannot choose its own address
+     * here by sending the header itself (which would also give it a fresh rate-limit bucket per request).
+     */
     public static String resolve(HttpServletRequest request) {
         if (request == null) {
             return null;
-        }
-        String forwarded = firstForwardedIp(request.getHeader("X-Forwarded-For"));
-        if (forwarded != null) {
-            return forwarded;
-        }
-        String realIp = trimToNull(request.getHeader("X-Real-IP"));
-        if (realIp != null) {
-            return realIp;
         }
         return trimToNull(request.getRemoteAddr());
     }
@@ -25,19 +23,6 @@ public final class ClientIpResolver {
     public static String fromMdcOrUnknown() {
         String ip = org.slf4j.MDC.get(RequestContext.CLIENT_IP);
         return ip != null && !ip.isBlank() ? ip : "unknown";
-    }
-
-    static String firstForwardedIp(String header) {
-        if (header == null || header.isBlank()) {
-            return null;
-        }
-        for (String part : header.split(",")) {
-            String trimmed = trimToNull(part);
-            if (trimmed != null) {
-                return trimmed;
-            }
-        }
-        return null;
     }
 
     private static String trimToNull(String value) {

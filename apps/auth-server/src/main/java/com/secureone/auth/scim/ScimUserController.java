@@ -161,7 +161,7 @@ public class ScimUserController {
         if (!(operations instanceof List<?> ops)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Operations array is required.");
         }
-        // Azure AD / Okta also send path-less replaces: {"op":"replace","value":{"active":false,...}}.
+        // Some IdP provisioning clients also send path-less replaces: {"op":"replace","value":{"active":false,...}}.
         List<Map<?, ?>> expanded = new ArrayList<>();
         for (Object raw : ops) {
             if (!(raw instanceof Map<?, ?> op)) {
@@ -184,7 +184,7 @@ public class ScimUserController {
             String path = op.get("path") != null ? String.valueOf(op.get("path")) : null;
             Object value = op.get("value");
             if ("active".equalsIgnoreCase(path)) {
-                // Azure AD sends booleans as strings ("False").
+                // Some clients send booleans as strings ("False").
                 boolean active = !(Boolean.FALSE.equals(value) || "false".equalsIgnoreCase(String.valueOf(value)));
                 user.setStatus(active ? "ACTIVE" : "DISABLED");
             } else if ("displayName".equalsIgnoreCase(path)) {

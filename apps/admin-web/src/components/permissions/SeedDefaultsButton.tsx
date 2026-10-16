@@ -8,10 +8,8 @@ import { seedDefaultPermissionsAction } from "@/lib/actions";
 /** Installs the standard IAM permission catalog for the current application. */
 export function SeedDefaultsButton({
   applicationId,
-  missingCount,
 }: {
   applicationId: string;
-  missingCount?: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -45,13 +43,6 @@ export function SeedDefaultsButton({
       >
         {pending ? "Installing…" : "Install default permissions"}
       </Button>
-      {missingCount !== undefined && (
-        <span className="text-xs text-muted">
-          {missingCount >= 10
-            ? "Catalog complete"
-            : `${missingCount} of 10 default permissions`}
-        </span>
-      )}
       {message && <span className="text-xs text-emerald-600 dark:text-emerald-400">{message}</span>}
       {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
     </div>

@@ -9,7 +9,18 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 /** Maps platform/application token policy JSON to Spring Authorization Server {@link TokenSettings}. */
 public final class TokenSettingsMapper {
 
+    /** Lifetime of client-credentials access tokens (Spring uses one access-token lifetime for all grants). */
+    public static final String CLIENT_CREDENTIALS_TTL = "secureone.token.client-credentials-ttl";
+    /** Lifetime of ID tokens (Spring's default is a fixed 30 minutes). */
+    public static final String ID_TOKEN_TTL = "secureone.token.id-token-ttl";
+    /** False when the policy turns refresh tokens off; the client then loses the refresh_token grant. */
+    public static final String REFRESH_TOKENS_ENABLED = "secureone.token.refresh-enabled";
+
     private TokenSettingsMapper() {}
+
+    public static boolean refreshTokensEnabled(TokenSettings settings) {
+        return !Boolean.FALSE.equals(settings.getSetting(REFRESH_TOKENS_ENABLED));
+    }
 
     public static TokenSettings toTokenSettings(Map<String, Object> policy) {
         Map<String, Object> resolved = policy != null ? policy : TokenPolicyDefaults.platformDefaults();
@@ -28,7 +39,10 @@ public final class TokenSettingsMapper {
                 .accessTokenTimeToLive(seconds(resolved, "accessTokenTtlSeconds", 3600))
                 .authorizationCodeTimeToLive(seconds(resolved, "authorizationCodeTtlSeconds", 300))
                 .deviceCodeTimeToLive(seconds(resolved, "deviceCodeTtlSeconds", 600))
-                .reuseRefreshTokens(reuseRefresh);
+                .reuseRefreshTokens(reuseRefresh)
+                .setting(CLIENT_CREDENTIALS_TTL, seconds(resolved, "clientCredentialsTtlSeconds", 3600))
+                .setting(ID_TOKEN_TTL, seconds(resolved, "idTokenTtlSeconds", 3600))
+                .setting(REFRESH_TOKENS_ENABLED, refreshEnabled);
 
         if (refreshEnabled) {
             builder.refreshTokenTimeToLive(seconds(resolved, "refreshTokenTtlSeconds", 604_800));

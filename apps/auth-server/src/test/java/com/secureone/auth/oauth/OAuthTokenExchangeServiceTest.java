@@ -42,10 +42,14 @@ class OAuthTokenExchangeServiceTest {
 
     private OAuthTokenExchangeService service;
 
+    @Mock
+    private com.secureone.auth.config.oauth.OAuth2SigningKeyService signingKeys;
+
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(signingKeys.signingJwkSource()).thenReturn(jwkSource);
         service = new OAuthTokenExchangeService(
-                clients, NoOpPasswordEncoder.getInstance(), jwtDecoder, jwkSource);
+                clients, NoOpPasswordEncoder.getInstance(), jwtDecoder, signingKeys);
     }
 
     @Test

@@ -1,0 +1,77 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="saml-sp-initiated" name="SAML SSO (SP-initiated)">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="920" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="h_u" value="Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_u" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="80" as="sourcePoint" /><mxPoint x="120" y="670" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_app" value="Your app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_app" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="80" as="sourcePoint" /><mxPoint x="330" y="670" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_auth" value="auth-server&#10;(SAML SP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_auth" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="80" as="sourcePoint" /><mxPoint x="540" y="670" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_idp" value="Company IdP&#10;(any SAML 2.0 IdP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="670" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_idp" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="80" as="sourcePoint" /><mxPoint x="750" y="670" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s1" value="1. /oauth2/authorize → hosted login" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="110" as="sourcePoint" /><mxPoint x="540" y="110" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s2" value="2. Continue with Corp SSO → /federation/{alias}/start" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="170" as="sourcePoint" /><mxPoint x="540" y="170" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s3" value="3. signed AuthnRequest; stored by RelayState" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="212" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s4" value="4. Redirect/POST binding (SAMLRequest, RelayState)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="290" as="sourcePoint" /><mxPoint x="750" y="290" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s5" value="5. employee signs in" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="650" y="332" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s6" value="6. POST /federation/saml/acs/{providerId} (SAMLResponse)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="410" as="sourcePoint" /><mxPoint x="540" y="410" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s7" value="7. decrypt; verify signature, audience, InResponseTo; replay cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="452" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s8" value="8. link / JIT user, app access, MFA if required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="512" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s9" value="9. resume /oauth2/authorize → code → tokens" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="590" as="sourcePoint" /><mxPoint x="330" y="590" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="saml-idp-initiated" name="SAML SSO (IdP-initiated, opt-in)">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="920" pageHeight="460" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="h_u" value="Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_u" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="80" as="sourcePoint" /><mxPoint x="120" y="430" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_app" value="Your app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_app" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="80" as="sourcePoint" /><mxPoint x="330" y="430" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_auth" value="auth-server&#10;(SAML SP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_auth" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="80" as="sourcePoint" /><mxPoint x="540" y="430" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_idp" value="Company IdP&#10;(any SAML 2.0 IdP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="670" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_idp" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="80" as="sourcePoint" /><mxPoint x="750" y="430" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s1" value="1. open app tile in the IdP portal" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="110" as="sourcePoint" /><mxPoint x="750" y="110" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s2" value="2. POST /federation/saml/acs/{providerId} (no InResponseTo)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="170" as="sourcePoint" /><mxPoint x="540" y="170" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s3" value="3. provider allows IdP-initiated? signature, audience, replay cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="212" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s4" value="4. sign in (same account rules)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="272" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s5" value="5. 302 landingUrl (set by the operator)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="350" as="sourcePoint" /><mxPoint x="330" y="350" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="saml-slo" name="SAML single logout">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="920" pageHeight="728" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="h_u" value="Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_u" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="120" y="80" as="sourcePoint" /><mxPoint x="120" y="698" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_app" value="Your app" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_app" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="80" as="sourcePoint" /><mxPoint x="330" y="698" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_auth" value="auth-server&#10;(SAML SP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_auth" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="80" as="sourcePoint" /><mxPoint x="540" y="698" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="h_idp" value="Company IdP&#10;(any SAML 2.0 IdP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="670" y="30" width="160" height="50" as="geometry" /></mxCell>
+        <mxCell id="ll_idp" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="80" as="sourcePoint" /><mxPoint x="750" y="698" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s1" value="SP-initiated: the app signs the user out" style="text;html=1;align=left;fontStyle=3;fontSize=11;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="40" y="96" width="840" height="24" as="geometry" /></mxCell>
+        <mxCell id="s2" value="1. /connect/logout (id_token_hint, post_logout_redirect_uri)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="330" y="154" as="sourcePoint" /><mxPoint x="540" y="154" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s3" value="2. SAML session → end local session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="196" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s4" value="3. signed LogoutRequest (NameID, SessionIndex)" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="274" as="sourcePoint" /><mxPoint x="750" y="274" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s5" value="4. LogoutResponse → /federation/saml/slo/{providerId}" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="334" as="sourcePoint" /><mxPoint x="540" y="334" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s6" value="5. 302 post_logout_redirect_uri?state" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="394" as="sourcePoint" /><mxPoint x="330" y="394" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s7" value="IdP-initiated: the user signed out at the IdP" style="text;html=1;align=left;fontStyle=3;fontSize=11;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="40" y="440" width="840" height="24" as="geometry" /></mxCell>
+        <mxCell id="s8" value="6. signed LogoutRequest → /federation/saml/slo/{providerId}" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=block;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="750" y="498" as="sourcePoint" /><mxPoint x="540" y="498" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s9" value="7. verify; end every session of the linked user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="440" y="540" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s10" value="8. LogoutResponse" style="html=1;fontSize=10;verticalAlign=bottom;labelBackgroundColor=none;endArrow=open;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="618" as="sourcePoint" /><mxPoint x="750" y="618" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

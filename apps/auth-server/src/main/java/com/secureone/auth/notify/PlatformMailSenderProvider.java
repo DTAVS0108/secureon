@@ -79,6 +79,23 @@ public class PlatformMailSenderProvider {
         platformCache = null;
     }
 
+    /** Name for EHLO and Message-IDs: SECUREONE_SMTP_EHLO_NAME, else this machine's host name (no DNS lookup). */
+    private static final String EHLO_NAME = resolveEhloName();
+
+    private static String resolveEhloName() {
+        String configured = System.getenv("SECUREONE_SMTP_EHLO_NAME");
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        for (String env : new String[] {"HOSTNAME", "COMPUTERNAME"}) {
+            String value = System.getenv(env);
+            if (value != null && !value.isBlank()) {
+                return value.trim().toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+        return "localhost";
+    }
+
     private static JavaMailSender build(SmtpConnectionConfig config) {
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(config.host());
@@ -92,6 +109,11 @@ public class PlatformMailSenderProvider {
         props.put("mail.smtp.connectiontimeout", "10000");
         props.put("mail.smtp.timeout", "10000");
         props.put("mail.smtp.writetimeout", "10000");
+        // Without these, Jakarta Mail reverse-resolves this machine's address for every message (the
+        // Message-ID domain) and connection (EHLO). That DNS lookup can take seconds, and the admin
+        // request that sends the email (invite, suspend, reset) waits for it.
+        props.put("mail.host", EHLO_NAME);
+        props.put("mail.smtp.localhost", EHLO_NAME);
 
         String security = config.security();
         if ("ssl".equals(security)) {

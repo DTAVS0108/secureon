@@ -272,9 +272,10 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
         )}
 
         <div className="border-t border-ui pt-4">
-          <FieldRow label="Test phone (E.164)" info={SMS_HELP.testPhone} hint="Send a test message using the saved provider">
+          <FieldRow label="Test phone (E.164)" info={SMS_HELP.testPhone} hint="Send a test message using the saved provider" htmlFor="sms-test-phone">
             <div className="flex gap-2">
               <Input
+                id="sms-test-phone"
                 value={testTo}
                 onChange={(e) => setTestTo(e.target.value)}
                 placeholder="+918851512349"

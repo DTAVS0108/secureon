@@ -1,6 +1,10 @@
 spring:
   application:
     name: auth-server
+  config:
+    # Secrets as files (Docker / Kubernetes secrets): a file /run/secrets/SECUREONE_DB_PASSWORD sets that
+    # setting like the environment variable would (which still wins). Missing directory: ignored. docs/24.
+    import: optional:configtree:${SECUREONE_SECRETS_DIR:/run/secrets}/
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
@@ -47,7 +51,7 @@ spring:
       namespace: secureone:session
       repository-type: indexed
 
-  # SMTP is configured in Platform settings → Notifications (stored in DB). Optional env override for local MailHog.
+  # Platform SMTP server until one is saved under Platform settings → Notifications (PlatformSmtpSettingsService).
   mail:
     host: ${SECUREONE_SMTP_HOST:}
     port: ${SECUREONE_SMTP_PORT:1025}
@@ -71,9 +75,18 @@ spring:
 
 server:
   port: ${SECUREONE_PORT:9000}
+  # Behind a load balancer: Tomcat applies X-Forwarded-For/-Proto only from trusted internal proxies
+  # (private and loopback addresses), so clients cannot spoof their IP for audit logs or rate limits.
+  forward-headers-strategy: ${SECUREONE_FORWARD_HEADERS_STRATEGY:native}
 
 secureone:
   environment: ${SECUREONE_ENV:development}
+  database:
+    # auto: upgrade the database at start-up. only: upgrade, then exit (an upgrade job before rollout).
+    # validate: never change it; refuse to start while an upgrade is missing. See docs/26.
+    migrate: ${SECUREONE_DB_MIGRATE:auto}
+  # Tenant configuration files (YAML/JSON, a file or a directory) applied at every start-up. See docs/26.
+  config-import: ${SECUREONE_CONFIG_IMPORT:}
   swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:true}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:true}
   # Emergency platform login with the configured account (spring.security.user.*). Always available
@@ -97,7 +110,16 @@ secureone:
   webhooks:
     allow-private-targets: ${SECUREONE_WEBHOOKS_ALLOW_PRIVATE:false}
   public-base-url: ${SECUREONE_PUBLIC_BASE_URL:http://localhost:9000}
-  admin-web-url: ${SECUREONE_ADMIN_WEB_URL:http://localhost:3001}
+  # Where operators open the admin console. It is served by this server at /admin (see console: below).
+  admin-web-url: ${SECUREONE_ADMIN_WEB_URL:${secureone.public-base-url}/admin}
+  console:
+    # Built console (Next.js standalone server.js): this server runs it on 127.0.0.1 and serves it at
+    # /admin. The container image sets it; leave empty in development.
+    dir: ${SECUREONE_CONSOLE_DIR:}
+    port: ${SECUREONE_CONSOLE_PORT:3001}
+    node-command: ${SECUREONE_CONSOLE_NODE:node}
+    # Or a console already running elsewhere (development: http://localhost:3001 from `next dev`).
+    upstream-url: ${SECUREONE_CONSOLE_UPSTREAM_URL:}
   # When MailHog/SMTP is down, log verification/reset links to the auth-server console (dev only).
   mail:
     log-links-when-smtp-unavailable: ${SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE:true}
@@ -115,8 +137,14 @@ secureone:
     forgot-password-per-minute: ${SECUREONE_RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE:5}
     otp-request-per-minute: ${SECUREONE_RATE_LIMIT_OTP_REQUEST_PER_MINUTE:10}
     admin-login-per-minute: ${SECUREONE_RATE_LIMIT_ADMIN_LOGIN_PER_MINUTE:10}
+    signup-per-minute: ${SECUREONE_RATE_LIMIT_SIGNUP_PER_MINUTE:10}
+    email-request-per-minute: ${SECUREONE_RATE_LIMIT_EMAIL_REQUEST_PER_MINUTE:5}
 
 management:
+  # Health, info and Prometheus on their own port (the image uses 9001; never publish it). Empty: same port as
+  # the app (local development).
+  server:
+    port: ${SECUREONE_MANAGEMENT_PORT:}
   endpoints:
     web:
       exposure:
@@ -140,7 +168,6 @@ info:
   app:
     name: SecureOne Auth Server
     description: Centralized IAM platform — authorization server
-    version: 0.0.1-SNAPSHOT
 
 springdoc:
   api-docs:

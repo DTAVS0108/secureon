@@ -5,7 +5,7 @@
 | Component | Tech | Responsibility |
 |---|---|---|
 | **auth-server** | Spring Boot + Spring Authorization Server | OIDC/OAuth endpoints, token issuance, JWKS, user/tenant/role APIs, admin APIs |
-| **admin-web** | Next.js | Admin dashboard, hosted login/consent/MFA pages, **SecureOne Confluence** (in-app docs) |
+| **admin-web** | Next.js | Admin console and **SecureOne Confluence** (in-app docs), served by the auth-server at **`/admin`** from the same container (one image, one port); hosted sign-in pages are served by the auth-server itself |
 | **docs-site** | Next.js/Nextra + Scalar | Public developer docs + OpenAPI rendering (planned) |
 | **sdk-js** | TypeScript | Client SDK for integrating applications |
 | **PostgreSQL** | RDBMS | Durable system of record |
@@ -13,6 +13,8 @@
 | **Secrets manager** | KMS / Vault | Signing keys, TOTP seed encryption keys, client secrets |
 
 The `auth-server` is **stateless** (no in-memory session state) so it scales horizontally; all shared state lives in Redis and the database.
+
+**Packaging:** one image (`deploy/Dockerfile`). The auth-server is the only public listener (port 9000); it starts the console's Node.js server on `127.0.0.1` inside the container and forwards `/admin` to it (`ConsoleProxyFilter`, `ConsoleProcess`), passing the client address so console sign-ins are rate-limited and audited per client. Settings are environment variables read at start-up, so one image serves every installation.
 
 ## Logical architecture
 
@@ -22,12 +24,13 @@ The `auth-server` is **stateless** (no in-memory session state) so it scales hor
 flowchart TB
     subgraph clients["Clients"]
         U["End Users / Browser"]
-        APP["Integrated Apps<br/>(OIDC clients)"]
+        APP["Integrated Apps<br/>(hosted or native UI)"]
         M["Machines (M2M)"]
+        DEV["Devices (TV / CLI)<br/>device_code grant"]
     end
 
     subgraph ui["admin-web (Next.js)"]
-        LOGIN["Hosted Login / Consent / MFA"]
+        LOGIN["Hosted pages: login, signup,<br/>device, account, MFA"]
         ADMIN["Admin Dashboard"]
     end
 
@@ -36,17 +39,23 @@ flowchart TB
         API["Tenant / User / Role APIs"]
         POL["PolicyEvaluator (RBAC)"]
         REPO["Repository layer (JPA)"]
+        FED["Federation: OIDC + SAML 2.0 SP<br/>(SSO, SLO, IdP-initiated)"]
     end
+
+    IDPS[["External IdPs<br/>Google, GitHub, OIDC,<br/>SAML 2.0 company IdPs"]]
 
     PG[("PostgreSQL")]
     REDIS[("Redis")]
-    KMS[["Secrets Manager / KMS"]]
+    KMS[["Secrets Manager / KMS<br/>(encryption key, JWT + SAML SP keys)"]]
 
     U --> LOGIN
     APP -- "OIDC redirects" --> LOGIN
     APP --> SAS
     M --> SAS
+    DEV -. "device_code" .-> SAS
     LOGIN --> SAS
+    LOGIN --> FED
+    FED <-- "SSO / SLO" --> IDPS
     ADMIN --> API
     SAS --> POL
     API --> POL
@@ -60,11 +69,11 @@ flowchart TB
     classDef authc fill:#ffe6cc,stroke:#d79b00,color:#000;
     classDef store fill:#f8cecc,stroke:#b85450,color:#000;
     classDef sec fill:#e1d5e7,stroke:#9673a6,color:#000;
-    class U,APP,M client;
+    class U,APP,M,DEV client;
     class LOGIN,ADMIN uic;
-    class SAS,API,POL,REPO authc;
+    class SAS,API,POL,REPO,FED authc;
     class PG,REDIS store;
-    class KMS sec;
+    class KMS,IDPS sec;
 ```
 
 ## Core request flows
@@ -126,6 +135,78 @@ sequenceDiagram
 
 Full standards detail: [Auth Standards](05-auth-standards.md).
 
+### Hosted vs native sign-in (the "Authentication UI" setting)
+
+> Editable source: [`diagrams/auth-flow-hosted-vs-native.drawio`](diagrams/auth-flow-hosted-vs-native.drawio) — two pages (hosted, native)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant APP as Your app
+    participant AS as auth-server
+    APP->>AS: GET /api/v1/applications/{id} (manifest: authUiMode, methods)
+    alt authUiMode = hosted
+        APP->>AS: 302 /oauth2/authorize (PKCE)
+        AS-->>B: /login.html (branded for the app)
+        B->>AS: credentials / OTP / passkey / SSO (+ MFA)
+        AS-->>APP: redirect_uri?code&state
+    else authUiMode = native
+        B->>APP: credentials in the app's own form
+        APP->>AS: POST …/auth/session/login (cookie)
+        APP->>AS: /oauth2/authorize (prompt=none, PKCE)
+        AS-->>APP: redirect_uri?code
+    end
+    APP->>AS: POST /oauth2/token (code + verifier) → tokens
+```
+
+### Device sign-in (RFC 8628)
+
+> Editable source: [`diagrams/auth-flow-device-code.drawio`](diagrams/auth-flow-device-code.drawio)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant D as Device (TV / CLI)
+    participant AS as auth-server
+    participant P as Phone (device page)
+    D->>AS: POST /oauth2/device_authorization (client_id, scope)
+    AS-->>D: device_code, user_code, verification_uri, interval=5
+    loop every 5 s
+        D->>AS: POST /oauth2/token (device_code)
+        AS-->>D: authorization_pending | slow_down
+    end
+    P->>AS: lookup code → app name
+    P->>AS: /oauth2/device_verification (sign in if needed, tenant + app check)
+    AS-->>P: Allow / Deny (consent, POST with state)
+    P->>AS: Allow
+    D->>AS: POST /oauth2/token (device_code)
+    AS-->>D: access + refresh token (code single use)
+```
+
+### SAML 2.0 SSO and single logout
+
+> Editable source: [`diagrams/auth-flow-saml.drawio`](diagrams/auth-flow-saml.drawio) — three pages (SP-initiated, IdP-initiated, single logout)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant AS as auth-server (SP)
+    participant IDP as Company IdP
+    B->>AS: Continue with Corp SSO (/federation/{alias}/start)
+    AS-->>B: signed AuthnRequest (stored by RelayState)
+    B->>IDP: SAMLRequest + RelayState
+    IDP-->>B: sign in
+    B->>AS: POST /federation/saml/acs/{providerId} (SAMLResponse)
+    Note over AS: decrypt · signature · audience · InResponseTo · replay cache
+    AS-->>B: session → back to /oauth2/authorize → app gets code
+    B->>AS: /connect/logout (app signs out)
+    AS-->>B: signed LogoutRequest → IdP
+    IDP-->>B: LogoutResponse → /federation/saml/slo/{providerId}
+    AS-->>B: post_logout_redirect_uri?state
+```
+
 ## Application schema isolation
 
 IAM data for each application product can live in a **dedicated PostgreSQL schema** (derived from the application slug). Shared platform data (tenants, application registry, `oauth_client`, user accounts) stays in the **`platform`** schema.
@@ -177,8 +258,7 @@ Platform admins are deliberately decoupled from any tenant so a tenant-scoped bu
 ```mermaid
 flowchart LR
     NET(["Internet"]) --> PROXY["Caddy / Traefik<br/>(TLS)"]
-    PROXY --> AUTH["auth-server<br/>(Spring Boot)"]
-    PROXY --> WEB["admin-web<br/>(Next.js)"]
+    PROXY --> AUTH["SecureOne container<br/>auth-server (Spring Boot)<br/>+ console at /admin (Next.js)"]
     AUTH --> PG[("PostgreSQL<br/>managed")]
     AUTH --> REDIS[("Redis<br/>managed")]
 
@@ -188,7 +268,6 @@ flowchart LR
     classDef store fill:#f8cecc,stroke:#b85450,color:#000;
     class PROXY sec;
     class AUTH authc;
-    class WEB uic;
     class PG,REDIS store;
 ```
 
@@ -202,29 +281,27 @@ flowchart TB
     CDN --> LB["Load Balancer<br/>(TLS, HSTS)"]
 
     subgraph tier["Stateless tier (Kubernetes, horizontally scaled)"]
-        A1["auth-server"]
-        A2["auth-server"]
-        WEB["admin-web"]
+        A1["SecureOne pod<br/>auth-server + /admin console"]
+        A2["SecureOne pod<br/>auth-server + /admin console"]
     end
 
     LB --> A1
     LB --> A2
-    LB --> WEB
     A1 --> PG[("PostgreSQL primary<br/>HA + replicas, PgBouncer")]
     A2 --> PG
     A1 --> REDIS[("Redis cluster<br/>sessions, revoke, rate-limit")]
     A2 --> REDIS
-    A2 --> KMS[["Secrets Manager / KMS"]]
+    A2 --> KMS[["Secrets Manager / KMS<br/>(encryption key, JWT + SAML SP keys)"]]
     PG --> SIEM["Audit archive (object storage) → SIEM"]
+    tier -. "outbound" .-> EG["SAML / OIDC IdPs (metadata, SSO, SLO)<br/>SMTP, SMS gateways"]
 
     classDef sec fill:#e1d5e7,stroke:#9673a6,color:#000;
     classDef authc fill:#ffe6cc,stroke:#d79b00,color:#000;
     classDef uic fill:#d5e8d4,stroke:#82b366,color:#000;
     classDef store fill:#f8cecc,stroke:#b85450,color:#000;
     classDef note fill:#fff2cc,stroke:#d6b656,color:#000;
-    class CDN,LB,KMS sec;
+    class CDN,LB,KMS,EG sec;
     class A1,A2 authc;
-    class WEB uic;
     class PG,REDIS store;
     class SIEM note;
 ```
@@ -232,6 +309,7 @@ flowchart TB
 - **Kubernetes + Helm** when Compose is outgrown; the Helm chart doubles as the self-host distribution.
 - DB connection pooling (e.g. **PgBouncer** for Postgres) and read replicas for read-heavy admin/audit queries.
 - Aggressively cache JWKS, discovery docs, and tenant config.
-- Signing keys/secrets always in a KMS/Vault in production — never env files.
+- Signing keys/secrets always in a KMS/Vault in production — never env files. The auth-server reads `SECUREONE_ENCRYPTION_KEY`, `SECUREONE_JWK_PRIVATE_KEY_PEM` and `SECUREONE_SAML_SP_KEY_PEM`/`_CERT_PEM` from the secret store; keys it generates itself are stored encrypted and created once per cluster (Redis lock).
+- All flow state (sessions, SAML requests, device polling, rate limits) is in Redis, so any replica can serve any step.
 
 See [Security](07-security.md) for hardening and [Installation](09-installation.md) for setup.

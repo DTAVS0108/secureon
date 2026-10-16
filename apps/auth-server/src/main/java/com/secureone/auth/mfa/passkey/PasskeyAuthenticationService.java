@@ -4,6 +4,7 @@ import com.secureone.auth.application.ApplicationMembershipService;
 import com.secureone.auth.application.ApplicationTenantResolver;
 import com.secureone.auth.authn.AuthContextAttributes;
 import com.secureone.auth.authn.LoginSuccessHandler;
+import com.secureone.auth.authn.SignedInAuthentication;
 import com.secureone.auth.authn.TenantUserDetailsService;
 import com.secureone.auth.mfa.MfaFactorRepository;
 import com.secureone.auth.platform.AuthSettingsService;
@@ -23,8 +24,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -40,6 +41,7 @@ public class PasskeyAuthenticationService {
     private final WebAuthnCredentialRepository credentials;
     private final WebAuthnChallengeStore challenges;
     private final AuthSettingsService authSettings;
+    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
     private final TenantRepository tenants;
     private final ApplicationTenantResolver applicationTenants;
     private final TenantUserDetailsService userDetailsService;
@@ -59,11 +61,13 @@ public class PasskeyAuthenticationService {
             ApplicationMembershipService memberships,
             SecurityContextRepository securityContextRepository,
             LoginSuccessHandler loginSuccessHandler,
-            MfaFactorRepository mfaFactors) {
+            MfaFactorRepository mfaFactors,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings) {
         this.relyingParty = relyingParty;
         this.credentials = credentials;
         this.challenges = challenges;
         this.authSettings = authSettings;
+        this.effectiveSettings = effectiveSettings;
         this.tenants = tenants;
         this.applicationTenants = applicationTenants;
         this.userDetailsService = userDetailsService;
@@ -124,8 +128,7 @@ public class PasskeyAuthenticationService {
         }
         Tenant tenant = tenants.findById(user.getTenantId()).orElseThrow();
         UserDetails details = userDetailsService.buildSessionPrincipal(tenant.getSlug(), user);
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
+        Authentication authentication = SignedInAuthentication.of(details, FactorGrantedAuthority.WEBAUTHN_AUTHORITY);
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
@@ -142,8 +145,8 @@ public class PasskeyAuthenticationService {
     }
 
     private void assertPasskeysAvailable() {
-        if (!authSettings.isAuthMethodEnabled("m_passkey") || !authSettings.isAuthMethodImplemented("m_passkey")) {
-            throw new IllegalStateException("Passkeys are not enabled on this platform.");
+        if (!effectiveSettings.getObject().isMethodAvailableForCurrentApplication("m_passkey")) {
+            throw new IllegalStateException("Passkeys are not enabled for this application.");
         }
     }
 

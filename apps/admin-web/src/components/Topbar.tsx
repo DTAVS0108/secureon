@@ -7,6 +7,7 @@ import { ApplicationSelector } from "./ApplicationSelector";
 import { OperatorProfileModal } from "./profile/OperatorProfileModal";
 import { useAdminContext } from "./AdminContextProvider";
 import type { ApplicationContextItem } from "@/lib/api/context";
+import { withBasePath } from "@/lib/config";
 
 export function Topbar({
   applications,
@@ -35,7 +36,7 @@ export function Topbar({
           : "Application admin";
 
   async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch(withBasePath("/api/auth/logout"), { method: "POST" });
     router.replace("/login?reason=signed-out");
     router.refresh();
   }

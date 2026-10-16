@@ -1,0 +1,22 @@
+{
+  "name": "secureone-sample-react-spa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "React single-page app that signs in with SecureOne and calls an API",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "oidc-client-ts": "^3.5.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-oidc-context": "^3.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.4"
+  }
+}

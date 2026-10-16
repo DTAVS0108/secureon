@@ -16,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditService {
 
     private final AuditLogRepository repository;
+    private final com.secureone.auth.application.ApplicationRepository applications;
 
-    public AuditService(AuditLogRepository repository) {
+    public AuditService(AuditLogRepository repository, com.secureone.auth.application.ApplicationRepository applications) {
         this.repository = repository;
+        this.applications = applications;
     }
 
     @Transactional
@@ -43,6 +45,18 @@ public class AuditService {
             UUID targetId,
             String targetLabel,
             boolean success) {
+        // Callers often know only the target; attribute the entry to the request's tenant and app so
+        // tenant admins see it and row-level security accepts it within the tenant's scope.
+        if (tenantId == null) {
+            tenantId = com.secureone.auth.tenant.TenantContext.getTenantId();
+        }
+        if (applicationId == null) {
+            UUID fromRequest = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
+            // Not when the request just deleted that application (the entry would reference a missing row).
+            if (fromRequest != null && applications.existsById(fromRequest)) {
+                applicationId = fromRequest;
+            }
+        }
         AuditLog log = new AuditLog();
         log.setTenantId(tenantId);
         log.setApplicationId(applicationId);

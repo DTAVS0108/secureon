@@ -8,18 +8,18 @@ Central index for **platform** documentation (operators) and **application integ
 |-------|------------|
 | **Platform owner / operator** — install, configure tenants, run day to day | **[22 — Operator getting started](22-operator-getting-started.md)** |
 | **DevOps / architect** — image+env deploy or enterprise from source | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
-| **App developer** — integrate Flipkart-style frontend (signup, signin, APIs) | **[23 — Application integration guide](23-application-integration-guide.md)** |
+| **App developer** — integrate your own frontend (signup, signin, APIs) | **[23 — Application integration guide](23-application-integration-guide.md)** |
 
-Browse everything in **SecureOne Confluence**: http://localhost:3001/confluence
+Browse everything in **SecureOne Confluence**: http://localhost:9000/admin/confluence
 
 ## SecureOne Confluence (in-app UI)
 
 Standalone documentation browser in **admin-web** — no admin console sidebar or topbar. Open from the admin sidebar: **Platform admin → SecureOne Confluence** (opens in a **new browser tab** with an external-link icon).
 
-| Access | URL (dev: admin-web on **:3001**) |
+| Access | URL (dev: console at **:9000/admin**) |
 |--------|-----------------------------------|
-| **UI** | http://localhost:3001/confluence |
-| **Doc page** | http://localhost:3001/confluence/{slug} (e.g. `/confluence/architecture`) |
+| **UI** | http://localhost:9000/admin/confluence |
+| **Doc page** | http://localhost:9000/admin/confluence/{slug} (e.g. `/confluence/architecture`) |
 | **Catalog API** (session required) | `GET /api/confluence` |
 | **Page API** (session required) | `GET /api/confluence/{slug}` |
 | **Assets API** (session required) | `GET /api/confluence/assets/{path}` (download `.drawio` / images) |
@@ -50,8 +50,9 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 |-------|----------|
 | **New operator — install & run** | **[22 — Operator getting started](22-operator-getting-started.md)** |
 | **Deploy (images+env or enterprise source)** | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
-| **New developer — integrate your app (e.g. Flipkart)** | **[23 — Application integration guide](23-application-integration-guide.md)** |
+| **New developer — integrate your app (e.g. an online store)** | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | **Roles — who sees and can do what** | **[25 — Roles and access](25-roles-and-access.md)** |
+| **Tenant setup in files; upgrades and rollback** | **[26 — Configuration as code and upgrades](26-configuration-as-code-and-upgrades.md)** |
 | Vision & glossary | [01 — Overview](01-overview.md) |
 | Stack choices | [02 — Tech Stack](02-tech-stack.md) |
 | System architecture & flows | [03 — Architecture](03-architecture.md) |
@@ -117,7 +118,7 @@ Everything needed to **integrate a product** (your app) with SecureOne: OAuth, l
 | **OTP signup/login, phone, verification policy** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Register product + OAuth client | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | OpenAPI (all endpoints) | [12 — API Documentation](12-api-documentation.md) + Swagger |
-| Sample SPA client | [../samples/external-test-client/README.md](../samples/external-test-client/README.md) |
+| Sample apps (React SPA, Next.js, Express API, CLI) | [../samples/README.md](../samples/README.md) |
 | Demo storefront (Nook) | External repo `secureone-ecommerce` |
 
 ### In the admin console (per application)
@@ -175,12 +176,12 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 
 ### Application developer (integrating a new app)
 
-1. **[23 — Application integration guide](23-application-integration-guide.md)** — Flipkart-style example, public APIs, hosted vs native UI
+1. **[23 — Application integration guide](23-application-integration-guide.md)** — Demo Store example, public APIs, hosted vs native UI
 2. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) — register product + client
 3. [13 — Auth UI integration](13-auth-ui-integration.md) — hosted vs native detail
 4. [19 — Verification & OTP](19-verification-and-otp.md) — signup/login OTP, phone, magic link session
 5. Admin → **your app → Settings → Integration** — checklist + API reference
-6. [samples/external-test-client](../samples/external-test-client/README.md) — working SPA
+6. [samples/](../samples/README.md) — working React SPA, Next.js app, Express API and device-code CLI
 7. http://localhost:9000/docs — try OAuth and account APIs
 
 ### Architect / security review
@@ -189,7 +190,7 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 2. [06 — Database Strategy](06-database.md)
 3. [07 — Security](07-security.md)
 4. [decisions/](decisions/README.md)
-5. **SecureOne Confluence** — http://localhost:3001/confluence
+5. **SecureOne Confluence** — http://localhost:9000/admin/confluence
 
 ---
 

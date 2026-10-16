@@ -18,6 +18,8 @@ type UserDto = {
   lastName: string;
   status: string;
   emailVerified: boolean;
+  phone?: string | null;
+  phoneVerified?: boolean;
   hasPassword?: boolean;
   locked?: boolean;
   failedLoginCount?: number;
@@ -42,6 +44,8 @@ function mapUser(dto: UserDto): User {
     lastName: dto.lastName,
     status: normalizedStatus,
     emailVerified: dto.emailVerified,
+    phone: dto.phone ?? null,
+    phoneVerified: dto.phoneVerified ?? false,
     hasPassword: dto.hasPassword ?? false,
     locked: dto.locked ?? false,
     failedLoginCount: dto.failedLoginCount ?? 0,
@@ -159,6 +163,8 @@ export async function createUserApi(input: {
 }): Promise<User> {
   const dto = await apiFetch<UserDto>("/api/admin/v1/users", {
     method: "POST",
+    // The app's roles live in its own schema; the header tells the server which app this is for.
+    ...(input.applicationId ? { headers: appScopeHeaders(input.applicationId) } : {}),
     body: JSON.stringify({
       tenantId: input.tenantId,
       applicationId: input.applicationId ?? null,
@@ -184,9 +190,12 @@ export async function updateUserApi(
     emailVerified: boolean;
     roleIds: string[];
   },
+  /** Application whose roles are being set (its roles live in its own schema). */
+  applicationId?: string,
 ): Promise<User> {
   const dto = await apiFetch<UserDto>(`/api/admin/v1/users/${id}`, {
     method: "PUT",
+    ...(applicationId ? { headers: appScopeHeaders(applicationId) } : {}),
     body: JSON.stringify({
       email: input.email,
       username: input.username,

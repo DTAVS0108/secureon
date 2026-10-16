@@ -2,7 +2,7 @@
 
 ## Vision
 
-SecureOne is a **centralized Identity and Access Management (IAM) platform**. Independent applications delegate their authentication and authorization to SecureOne instead of each building their own login, user store, and permission system. It plays the same role as Keycloak, Auth0, or Okta, but is self-hostable and owned end to end.
+SecureOne is a **centralized Identity and Access Management (IAM) platform**. Independent applications delegate their authentication and authorization to SecureOne instead of each building their own login, user store, and permission system. It is a self-hostable identity provider that you own end to end.
 
 One central system provides:
 
@@ -33,7 +33,7 @@ One central system provides:
 | **Tenant** | An organization/customer boundary. All tenant data is isolated. |
 | **Application (product)** | A registered product within a tenant (e.g. "Billing", "Mobile App"). Owns IAM scope; may have a dedicated PostgreSQL schema (`schema_name`). |
 | **OAuth client** | Protocol credentials for token exchange (`platform.oauth_client`). One application can have many clients (web, SPA, native, M2M). |
-| **Application schema** | Per-app PostgreSQL schema (e.g. `flipkart`) holding roles, permissions, settings — provisioned on create or via **isolate**. |
+| **Application schema** | Per-app PostgreSQL schema (e.g. `demostore`) holding roles, permissions, settings — provisioned on create or via **isolate**. |
 | **User** | A human identity within a tenant. |
 | **Admin** | A user who manages a tenant (`type = ADMIN`). |
 | **Super-admin / Platform admin** | A platform operator who manages *all* tenants. Kept in a separate trust tier. |
@@ -50,7 +50,8 @@ One central system provides:
 - **Tenant / organization support** — multi-tenancy with app-layer isolation (see [Architecture](03-architecture.md)).
 - **OAuth2 & OIDC** — Authorization Code + PKCE, Client Credentials, refresh-token rotation, discovery, JWKS.
 - **JWT access + refresh tokens** — short-lived signed JWTs; refresh tokens server-side and revocable.
-- **Optional SAML & identity brokering** — enterprise SSO + federation from external IdPs / LDAP / AD (Phase 3).
+- **Enterprise SSO & identity brokering** — Google, GitHub, any OIDC IdP and **SAML 2.0** IdPs (any standards-compliant company IdP): SP- and IdP-initiated sign-in, single logout, encrypted assertions; JIT accounts or link-by-email. LDAP / AD sync is Phase 3+.
+- **Every kind of client** — hosted SecureOne pages or the app's own (native) screens, SPAs and BFFs (code + PKCE), machines (client credentials, API keys), and **TVs / CLIs (device sign-in, RFC 8628)**.
 - **MFA/2FA — passkeys-first** — phishing-resistant WebAuthn/FIDO2 (incl. passwordless), with TOTP, **SMS OTP**, **email OTP**, and push fallbacks; recovery codes; per-tenant MFA policy, AAL levels, and step-up.
 - **Password reset & email verification** — single-use, short-lived, hashed tokens.
 - **Audit logs & login history** — append-only audit trail + per-user login outcomes.

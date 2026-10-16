@@ -15,11 +15,12 @@ import { listLoginEvents } from "@/lib/api/sessions";
 import { listVisibleTenants } from "@/lib/api/operator-scope";
 import { ApiError } from "@/lib/api/http";
 import { getUser } from "@/lib/api/users";
-import { formatDate, formatDateTime, initials } from "@/lib/format";
+import { initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
 import type { MfaFactorType } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const MFA_LABEL: Record<MfaFactorType, string> = {
   passkey: "Passkey",
@@ -101,8 +102,8 @@ export default async function UserDetailPage({
           <dl className="mt-5 space-y-3 border-t border-black/5 pt-5 text-sm dark:border-white/5">
             <Row label="Tenant" value={tenantLabel} />
             <Row label="User ID" value={<code className="font-mono text-xs">{user.id}</code>} />
-            <Row label="Created" value={formatDate(user.createdAt)} />
-            <Row label="Last login" value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Never"} />
+            <Row label="Created" value={<LocalTime value={user.createdAt} />} />
+            <Row label="Last login" value={user.lastLoginAt ? <LocalTime value={user.lastLoginAt} format="datetime" /> : "Never"} />
           </dl>
         </Card>
 
@@ -157,7 +158,7 @@ export default async function UserDetailPage({
                   <li key={f.id} className="flex items-center justify-between px-3 py-2.5">
                     <div>
                       <p className="text-sm font-medium">{MFA_LABEL[f.type]}</p>
-                      <p className="text-xs text-black/45 dark:text-white/45">{f.label} · added {formatDate(f.addedAt)}</p>
+                      <p className="text-xs text-black/45 dark:text-white/45">{f.label} · added <LocalTime value={f.addedAt} /></p>
                     </div>
                     {f.type === "passkey" ? <Badge tone="success">phishing-resistant</Badge> : <Badge tone={f.verified ? "success" : "warning"}>{f.verified ? "verified" : "pending"}</Badge>}
                   </li>
@@ -182,7 +183,7 @@ export default async function UserDetailPage({
                     </div>
                     <div className="text-right">
                       <Badge tone={l.result === "success" ? "success" : l.result === "failure" ? "danger" : "warning"}>{l.method}</Badge>
-                      <p className="mt-1 text-xs text-black/40 dark:text-white/40">{formatDateTime(l.timestamp)}</p>
+                      <p className="mt-1 text-xs text-black/40 dark:text-white/40"><LocalTime value={l.timestamp} format="datetime" /></p>
                     </div>
                   </li>
                 ))}

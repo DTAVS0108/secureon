@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Field";
 import { ROLE_LABEL_META } from "@/lib/role-labels";
 import type { RoleLabel } from "@/lib/types";
 import type { Application, Permission, Role, Tenant } from "@/lib/types";
+import { withBasePath } from "@/lib/config";
 
 type RolesFormProps = {
   roles: Role[];
@@ -104,11 +105,11 @@ export function RolesWorkspace({
       <div className="flex flex-col gap-3 rounded-xl border border-ui bg-ui-surface/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
           Permission catalog:{" "}
-          <a href={`/app/${applicationId}/permissions`} className="font-medium text-brand hover:underline">
+          <a href={withBasePath(`/app/${applicationId}/permissions`)} className="font-medium text-brand hover:underline">
             {permissions.length} keys
           </a>
           {" · "}
-          <a href={`/app/${applicationId}/groups`} className="font-medium text-brand hover:underline">
+          <a href={withBasePath(`/app/${applicationId}/groups`)} className="font-medium text-brand hover:underline">
             Groups
           </a>
           {" · "}

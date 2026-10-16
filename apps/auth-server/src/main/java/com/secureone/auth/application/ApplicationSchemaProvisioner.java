@@ -1,25 +1,15 @@
 package com.secureone.auth.application;
 
 import com.secureone.auth.admin.ConflictException;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ApplicationSchemaProvisioner {
-
-    /** Every application-schema migration, in order; new schemas must get all of them. */
-    static final List<String> APP_DDL_RESOURCES = List.of(
-            "db/migration/application-schema/V1__app_core.sql",
-            "db/migration/application-schema/V2__user_application_created_at.sql");
-    private static final String LATEST_VERSION = "V2__user_application_created_at";
 
     private final JdbcTemplate jdbc;
     private final ApplicationSchemaRepository schemaRegistry;
@@ -48,10 +38,25 @@ public class ApplicationSchemaProvisioner {
         record.setApplicationId(applicationId);
         record.setSchemaName(schemaName);
         record.setStatus("ACTIVE");
-        record.setFlywayVersion(LATEST_VERSION);
+        record.setFlywayVersion(ApplicationSchemaMigrations.latest().name());
         record.setProvisionedAt(Instant.now());
         schemaRegistry.save(record);
         return schemaName;
+    }
+
+    /**
+     * Drops an application's dedicated schema when the application is deleted, so its users' roles,
+     * groups and settings do not linger. Never touches the shared platform or public schemas.
+     */
+    public void drop(String schemaName) {
+        if (schemaName == null
+                || !schemaName.matches("[a-z][a-z0-9_]{0,62}")
+                || ApplicationSchemaNames.PLATFORM_SCHEMA.equals(schemaName)
+                || "public".equals(schemaName)) {
+            return;
+        }
+        jdbc.execute("SET LOCAL ROLE NONE"); // DDL needs the schema owner (see V63)
+        jdbc.execute("DROP SCHEMA IF EXISTS " + quoteIdent(schemaName) + " CASCADE");
     }
 
     private String resolveUniqueSchemaName(String slug) {
@@ -73,18 +78,9 @@ public class ApplicationSchemaProvisioner {
     }
 
     private void executeAppDdl() {
-        for (String resource : APP_DDL_RESOURCES) {
-            try {
-                String ddl = new ClassPathResource(resource).getContentAsString(StandardCharsets.UTF_8);
-                String cleaned = ddl.replaceAll("(?m)^--.*$", "");
-                for (String statement : cleaned.split(";")) {
-                    String trimmed = statement.trim();
-                    if (!trimmed.isEmpty()) {
-                        jdbc.execute(trimmed);
-                    }
-                }
-            } catch (IOException ex) {
-                throw new IllegalStateException("Failed to load application schema DDL: " + resource, ex);
+        for (ApplicationSchemaMigrations.Migration migration : ApplicationSchemaMigrations.ALL) {
+            for (String statement : ApplicationSchemaMigrations.statements(migration)) {
+                jdbc.execute(statement);
             }
         }
     }

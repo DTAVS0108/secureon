@@ -12,10 +12,10 @@ import { CopyValue } from "@/components/ui/CopyValue";
 import { useToast } from "@/components/ui/Toast";
 import { oauthClientDeleteAction } from "@/lib/actions";
 import { rotateOAuthClientSecretApi } from "@/lib/api/oauth-clients";
-import { AUTH_SERVER_URL } from "@/lib/config";
-import { formatDate } from "@/lib/format";
+import { publicAuthServerUrl } from "@/lib/config";
 import { statusTone } from "@/lib/status";
 import type { OAuthClient } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 const TYPE_LABEL: Record<OAuthClient["type"], string> = {
   web: "Web application (confidential)",
@@ -35,7 +35,7 @@ export function ClientDetailPanel({
   const router = useRouter();
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
-  const discoveryUrl = `${AUTH_SERVER_URL}/.well-known/openid-configuration`;
+  const discoveryUrl = `${publicAuthServerUrl()}/.well-known/openid-configuration`;
 
   async function rotateSecret() {
     setRotating(true);
@@ -102,7 +102,7 @@ export function ClientDetailPanel({
                 </Button>
               </div>
             )}
-            <Field label="Last updated" value={formatDate(client.updatedAt)} />
+            <Field label="Last updated" value={<LocalTime value={client.updatedAt} />} />
           </div>
         </Card>
 
@@ -110,6 +110,10 @@ export function ClientDetailPanel({
           <CardHeader title="Security policy" />
           <div className="space-y-3 p-5 text-sm">
             <Field label="PKCE required" value={client.pkceRequired ? "Yes (OAuth 2.1)" : "No"} />
+            <Field
+              label="Token subject (sub)"
+              value={client.subjectType === "user_id" ? "User ID (stable)" : "Legacy (tenant:email)"}
+            />
             <Field label="Grant types" value={client.grantTypes.join(", ") || "—"} />
             <Field label="Scopes" value={client.scopes.join(", ") || "—"} />
             <Field

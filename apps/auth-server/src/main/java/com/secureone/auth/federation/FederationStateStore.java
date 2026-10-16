@@ -34,6 +34,22 @@ public class FederationStateStore {
         return token;
     }
 
+    /** Reads the state without using it up (to know where to send the user if the callback fails). */
+    public Optional<PendingState> peek(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        String raw = redis.opsForValue().get(PREFIX + token.trim());
+        if (raw == null || raw.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(mapper.readValue(raw, PendingState.class));
+        } catch (JsonProcessingException ex) {
+            return Optional.empty();
+        }
+    }
+
     public Optional<PendingState> consume(String token) {
         if (token == null || token.isBlank()) {
             return Optional.empty();

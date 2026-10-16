@@ -5,10 +5,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
 import { Input } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/format";
 import type { AuditEvent } from "@/lib/types";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 type Filter = "all" | "success" | "failure";
+
+/** The server returns at most this many of the newest events (AdminListLimit.DEFAULT). */
+const SERVER_LIMIT = 500;
 
 export function AuditTable({ events }: { events: AuditEvent[] }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -63,6 +66,12 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
         </div>
       </div>
 
+      {events.length >= SERVER_LIMIT && (
+        <p className="mb-3 text-xs text-muted">
+          Showing the newest {SERVER_LIMIT} events. Filters apply to these events only.
+        </p>
+      )}
+
       <Table>
         <THead>
           <tr>
@@ -77,7 +86,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
         <TBody>
           {filtered.map((e) => (
             <TR key={e.id}>
-              <TD className="whitespace-nowrap text-muted">{formatDateTime(e.timestamp)}</TD>
+              <TD className="whitespace-nowrap text-muted"><LocalTime value={e.timestamp} format="datetime" /></TD>
               <TD>{e.actor}</TD>
               <TD><code className="font-mono text-xs text-brand">{e.action}</code></TD>
               <TD className="text-soft">{e.target}</TD>

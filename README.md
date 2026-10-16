@@ -1,106 +1,175 @@
 # SecureOne
 
-> A centralized, multi-tenant **Identity and Access Management (IAM)** platform — authentication, authorization, user management, RBAC, tenant/application management, and integration APIs from one central place.
+> A centralized, multi-tenant **Identity and Access Management (IAM)** platform: sign-in, single sign-on, MFA, users, roles and permissions for all your applications, from one place.
 
-The monorepo includes a working **auth-server** (Spring Boot + Spring Authorization Server) and **admin-web** (Next.js console), plus design documentation in `docs/`.
+SecureOne ships as **one Docker image**: the authorization server (Spring Boot + Spring Authorization Server) with the admin console built in at `/admin`. It needs PostgreSQL and Redis. Apps connect with standard OAuth 2.1 / OpenID Connect.
+
+- Image: [`dmtavs0108/secureone`](https://hub.docker.com/r/dmtavs0108/secureone) (current: `0.3.1`)
+- Everything is configured when the container is created (environment variables or secret files), including the first admin.
 
 ---
 
 ## What SecureOne provides
 
-- Multi-application support from a single central system
-- **Application products** with optional **per-app PostgreSQL schemas** for isolated IAM
-- **OAuth clients** separate from application products (1:N)
-- User, admin, and super-admin (platform operator) management
-- Application-specific roles and permissions (RBAC, evolvable to ABAC/ReBAC)
-- Tenant / organization support (multi-tenancy)
-- OAuth 2.1 and OpenID Connect (OIDC)
-- JWT access tokens + refresh tokens
-- MFA/2FA roadmap — passkeys-first (WebAuthn/FIDO2) with TOTP and OTP fallbacks
-- Password reset & email verification (link or OTP)
-- Email/SMS OTP login, phone signup, Redis sessions
-- Audit logs & login history
-- Admin dashboard
-- OpenAPI / Swagger UI on auth-server
-- **PostgreSQL** + Flyway migrations
+- **Multi-tenant**: tenants → applications, each application with its own database schema and PostgreSQL row-level security
+- **Standards**: OAuth 2.1 and OpenID Connect, PKCE, PAR, token exchange, device sign-in for TVs and CLIs (RFC 8628), discovery metadata (RFC 8414 / RFC 9728)
+- **Sign-in**: hosted sign-in pages or your own screens; passwords, email/SMS one-time codes, magic links, passkeys
+- **MFA**: passkeys (WebAuthn/FIDO2), authenticator apps (TOTP), email/SMS codes, recovery codes; required for console operators
+- **Single sign-on**: Google, GitHub, any OIDC provider and SAML 2.0 identity providers, with single logout
+- **Authorization**: roles, permissions and groups per application, included in tokens
+- **Directory and automation**: SCIM 2.0, webhooks, service accounts with API keys
+- **Governance**: access requests, access reviews, audit log, sign-in history
+- **Admin console**: tenants, applications, users, roles, settings; *Connect an app* wizard with setup code for 15 frameworks; role-scoped access for tenant and application admins
+- **Operations**: configuration as code (export, preview, apply tenant files), automatic database upgrades, health and Prometheus metrics, JSON logs
+- **Security**: client secrets and stored credentials hashed or encrypted, signing-key rotation, rate limits, password policies, breach checks
 
 ---
 
-## Quick start (local)
+## Installation
 
-```bash
-# 1. Infrastructure
-docker compose -f deploy/docker-compose.yml up -d
+Choose one:
 
-# 2. Auth server (Flyway migrations run on boot)
-cd apps/auth-server && ./gradlew bootRun    # http://localhost:9000
+| You want to… | Use |
+|---|---|
+| Try it in a few minutes | [A. Docker run](#a-docker-run) |
+| Run it on a server (with backups) | [B. Docker Compose](#b-docker-compose-recommended-for-a-single-server) |
+| Run it on Kubernetes | [C. Helm](#c-kubernetes-helm) |
+| Work on the code | [D. From source](#d-from-source-development) |
 
-# 3. Admin console
-cd apps/admin-web && npm install && npm run dev   # http://localhost:3001
+**Requirements**: Docker 24+ (or Kubernetes 1.27+), PostgreSQL 16+, Redis 7+. A container needs about 1 GB of memory. Production needs https: put a TLS reverse proxy or load balancer in front of port 9000.
+
+### A. Docker run
+
+Creates a private network, PostgreSQL, Redis and SecureOne, with the first admin. PowerShell (on Linux or macOS replace the trailing `` ` `` with `\`):
+
+```powershell
+docker network create secureone-net
+
+docker run -d --name secureone-db --network secureone-net --restart unless-stopped `
+  -e POSTGRES_DB=secureone -e POSTGRES_USER=secureone -e POSTGRES_PASSWORD=Db-Pass-2026-change-me `
+  -v secureone-pgdata:/var/lib/postgresql/data postgres:16-alpine
+
+docker run -d --name secureone-cache --network secureone-net --restart unless-stopped `
+  -v secureone-redisdata:/data redis:7-alpine redis-server --appendonly yes
+
+docker run -d --name secureone --network secureone-net --restart unless-stopped -p 9000:9000 `
+  -e SECUREONE_ENV=development `
+  -e SECUREONE_ISSUER_URL=http://localhost:9000 `
+  -e SECUREONE_PUBLIC_BASE_URL=http://localhost:9000 `
+  -e "SECUREONE_DB_URL=jdbc:postgresql://secureone-db:5432/secureone?currentSchema=platform" `
+  -e SECUREONE_DB_USERNAME=secureone `
+  -e SECUREONE_DB_PASSWORD=Db-Pass-2026-change-me `
+  -e SECUREONE_REDIS_URL=redis://secureone-cache:6379 `
+  -e SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com `
+  -e "SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Owner-Pass-2026!x" `
+  dmtavs0108/secureone:0.3.1
 ```
 
-Sign in as platform super-admin: **`admin` / `admin`** (dev). Register an application + OAuth client at **/applications**. Browse platform docs at **/confluence** (SecureOne Confluence).
+After about 30 seconds (`docker logs secureone` shows *First platform operator created*), open **http://localhost:9000/admin**, choose **Platform operator** and sign in as `owner@example.com`. The first sign-in sets up an authenticator app.
 
-Full setup: [docs/09-installation.md](docs/09-installation.md). Operations (migrations, schedulers): [docs/16-environment-setup-and-operations.md](docs/16-environment-setup-and-operations.md).
+This is development mode (plain http, example passwords). For production see the settings below.
+
+### B. Docker Compose (recommended for a single server)
+
+[`deploy/docker-compose.example.yml`](deploy/docker-compose.example.yml) runs SecureOne, PostgreSQL, Redis (persistent, with a password) and a **daily database backup**, with all secrets as files.
+
+```bash
+mkdir secureone && cd secureone
+# copy deploy/docker-compose.example.yml and deploy/generate-secrets.sh here, then:
+sh generate-secrets.sh owner@example.com          # creates ./secrets (7 files); keep a copy elsewhere
+ADMIN_EMAIL=owner@example.com PUBLIC_URL=https://id.example.com \
+  docker compose -f docker-compose.example.yml up -d
+```
+
+Sign in at `https://id.example.com/admin` with the password in `secrets/admin_password`. Backups are written to `./backups`. To try it locally over http, add `SECUREONE_ENV=development PUBLIC_URL=http://localhost:9000`.
+
+For a quick evaluation with a mail catcher instead: `docker compose -f deploy/docker-compose.quickstart.yml up --build` (builds the image from source, admin `admin@example.com` / `Quickstart-Admin-2026!`, mail at http://localhost:8025).
+
+### C. Kubernetes (Helm)
+
+```bash
+kubectl create secret generic secureone \
+  --from-literal=SECUREONE_DB_USERNAME=secureone --from-literal=SECUREONE_DB_PASSWORD='…' \
+  --from-literal=SECUREONE_ENCRYPTION_KEY="base64:$(openssl rand -base64 32)" \
+  --from-literal=SECUREONE_OTP_PEPPER="$(openssl rand -hex 32)" \
+  --from-file=SECUREONE_JWK_PRIVATE_KEY_PEM=jwk.pem \
+  --from-literal=SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com \
+  --from-literal=SECUREONE_BOOTSTRAP_ADMIN_PASSWORD='…'
+
+helm upgrade --install secureone deploy/helm/secureone \
+  --set image.repository=dmtavs0108/secureone --set image.tag=0.3.1 \
+  --set env.SECUREONE_ISSUER_URL=https://id.example.com --set env.SECUREONE_PUBLIC_BASE_URL=https://id.example.com \
+  --set env.SECUREONE_DB_URL='jdbc:postgresql://postgres:5432/secureone?currentSchema=platform' \
+  --set env.SECUREONE_REDIS_URL=redis://redis:6379 \
+  --set ingress.enabled=true --set ingress.host=id.example.com
+```
+
+A pre-install / pre-upgrade job upgrades the database before the pods start. PostgreSQL and Redis are not part of the chart (use managed services or their own charts). Details: [docs/24](docs/24-deployment-image-env-and-enterprise.md).
+
+### D. From source (development)
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d        # PostgreSQL, Redis, MailHog (http://localhost:8025)
+cd apps/auth-server && ./gradlew bootRun                  # http://localhost:9000 (Java 25)
+cd apps/admin-web && pnpm install && pnpm dev            # console on :3001, served at http://localhost:9000/admin
+```
+
+Development mode allows the emergency account `admin` / `admin` (Emergency access link). Build the image yourself with `docker build -f deploy/Dockerfile -t secureone:dev .` (give Docker about 4 GB of memory).
 
 ---
 
-## Chosen stack
+## Settings
 
-| Layer | Choice |
-|---|---|
-| Backend | Java + Spring Boot + Spring Authorization Server |
-| Frontend | Next.js + TypeScript + Tailwind |
-| Database | PostgreSQL (`platform` schema + per-app schemas) |
-| Cache | Redis |
-| Migrations | Flyway (`public` history + `postgresql/` scripts) |
-| Deploy | Docker Compose (dev) → Kubernetes (scale) |
+Every setting is read when the container starts: an environment variable, or a file of the same name in `/run/secrets` (Docker and Kubernetes secrets). If something required is missing, the container stops and the log names the setting.
 
-Details: [docs/02-tech-stack.md](docs/02-tech-stack.md).
+| Setting | Required | Notes |
+|---|---|---|
+| `SECUREONE_DB_URL`, `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | always | PostgreSQL 16+; keep `?currentSchema=platform`. The user needs `CREATEROLE` on the first start |
+| `SECUREONE_REDIS_URL` | always | `redis://host:6379`, or `rediss://:password@host:6380` |
+| `SECUREONE_ISSUER_URL`, `SECUREONE_PUBLIC_BASE_URL` | always | Public address; `https://` in production |
+| `SECUREONE_ENCRYPTION_KEY` | production | `echo "base64:$(openssl rand -base64 32)"`; back it up separately |
+| `SECUREONE_OTP_PEPPER` | production | `openssl rand -hex 32` |
+| `SECUREONE_JWK_PRIVATE_KEY_PEM` | production | `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048`; best as a secret file |
+| `SECUREONE_BOOTSTRAP_ADMIN_EMAIL`, `SECUREONE_BOOTSTRAP_ADMIN_PASSWORD` | first start | Creates the first admin once; ignored afterwards. Without them, use the setup code from the log at `/admin/setup` |
+| `SECUREONE_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD` | recommended | Email (can also be set in the console) |
+| `SECUREONE_CONFIG_IMPORT` | optional | Folder of tenant configuration files applied at every start |
+| `SECUREONE_ENV` | optional | `production` (image default) or `development` |
+
+All settings with defaults: [docs/24 "All settings"](docs/24-deployment-image-env-and-enterprise.md#all-settings). Ports: publish **9000**; keep **9001** (health, metrics) internal.
+
+**Upgrade**: back up the database, change the image tag, start it; the database upgrades itself. **Backups**: database dumps plus the secrets (above all the encryption key). See [docs/26](docs/26-configuration-as-code-and-upgrades.md) and [docs/24 "Backups"](docs/24-deployment-image-env-and-enterprise.md#backups).
 
 ---
 
-## Documentation index
+## Connect your first app
 
-**Start here:** [docs/README.md](docs/README.md) — platform docs + application integration docs (Confluence-style hub).
+1. In the console: **Connect an app**, pick the kind of app (web, single-page, mobile, backend, TV/CLI) and framework.
+2. Copy the generated setup code; try **Test sign-in** before writing any code.
+3. Or start from a [sample app](samples/README.md): React SPA, Next.js, Express API, device-code CLI.
+
+Guide: [docs/23 Application integration](docs/23-application-integration-guide.md).
+
+---
+
+## Documentation
+
+**Start here:** [docs/README.md](docs/README.md). The same docs are in the console at `/admin/confluence`.
 
 | # | Document | What's inside |
 |---|---|---|
 | 01 | [Overview](docs/01-overview.md) | Vision, goals, glossary |
-| 02 | [Tech Stack](docs/02-tech-stack.md) | Stack decisions |
 | 03 | [Architecture](docs/03-architecture.md) | Components, flows, deployment |
-| 04 | [Data Model](docs/04-data-model.md) | Entities, ERD, tables |
-| 05 | [Auth Standards](docs/05-auth-standards.md) | OAuth2/OIDC, tokens, MFA |
-| 06 | [Database Strategy](docs/06-database.md) | Platform + app schemas, Flyway, isolation |
+| 05 | [Auth standards](docs/05-auth-standards.md) | OAuth 2.1 / OIDC, tokens, MFA |
 | 07 | [Security](docs/07-security.md) | Security practices |
 | 08 | [Roadmap](docs/08-roadmap.md) | Phased delivery |
-| 09 | [Installation](docs/09-installation.md) | Local setup, env vars, smoke tests |
-| 16 | [Environment & operations](docs/16-environment-setup-and-operations.md) | Docker, config, bootstrap, schedulers |
-| 17 | [Schemas & tables](docs/17-database-schemas-and-tables.md) | PostgreSQL schemas, tables, FK connections |
-| 18 | [Flyway migrations](docs/18-flyway-migration-files.md) | Full V1–V45 + app schema SQL |
-| 10 | [Enterprise](docs/10-enterprise.md) | Federation, IGA, scale (phased) |
-| 11 | [Admin Control](docs/11-admin-control.md) | Admin scopes, settings layers |
-| 12 | [API documentation](docs/12-api-documentation.md) | OpenAPI, Swagger groups |
-| 13 | [Auth UI integration](docs/13-auth-ui-integration.md) | Hosted vs native login |
-| 14 | [Application RBAC](docs/14-application-rbac-management.md) | Groups, roles, permissions |
-| **15** | **[Applications & OAuth clients](docs/15-applications-and-oauth-clients.md)** | **Product vs client, schema provisioning, isolate** |
-| 22 | [Operator getting started](docs/22-operator-getting-started.md) | Install & run day to day |
-| 23 | [Application integration](docs/23-application-integration-guide.md) | Signup/signin APIs for product apps |
-| **24** | **[Deployment: image + env & enterprise](docs/24-deployment-image-env-and-enterprise.md)** | **Image+env deploy vs source/Helm; admin + clients** |
-| — | **[Documentation hub](docs/README.md)** | **Platform + application integration index** |
-| — | **[Application integrator guide](docs/applications/README.md)** | **Setup, APIs, samples (per-app)** |
-| — | [Diagrams](docs/diagrams/README.md) | Mermaid + draw.io sources (inline in Confluence) |
-| — | [Decision Records](docs/decisions/README.md) | ADRs |
-
-### App READMEs
-
-- [auth-server](apps/auth-server/) — Spring Boot API (see `application.yml`, `db/migration/`)
-- [admin-web](apps/admin-web/README.md) — Next.js console
-
-### Integration samples
-
-- [External Test Client](samples/external-test-client/README.md) — SPA OAuth sample (`external-test-client`)
-- [Nook Commerce](../secureone-ecommerce) — demo storefront (OIDC + PKCE)
+| 15 | [Applications & OAuth clients](docs/15-applications-and-oauth-clients.md) | Applications vs clients, per-app schemas |
+| 22 | [Operator getting started](docs/22-operator-getting-started.md) | Day-to-day operation |
+| 23 | [Application integration](docs/23-application-integration-guide.md) | Connecting apps, errors explained |
+| **24** | **[Deployment](docs/24-deployment-image-env-and-enterprise.md)** | **Image, all settings, backups, Redis, Helm** |
+| 25 | [Roles and access](docs/25-roles-and-access.md) | Who sees and can do what |
+| **26** | **[Configuration as code and upgrades](docs/26-configuration-as-code-and-upgrades.md)** | **Tenant files, upgrades, rollback** |
+| — | [Runbooks](docs/runbooks/) | Deploy, rollback, incidents, key rotation |
+| — | [Decision records](docs/decisions/README.md) | ADRs |
 
 ---
 
@@ -108,24 +177,21 @@ Details: [docs/02-tech-stack.md](docs/02-tech-stack.md).
 
 ```
 secureone/
-├── README.md
-├── docs/                       # design & reference documentation
-├── deploy/
-│   ├── docker-compose.yml      # Dev: Postgres, Redis, MailHog
-│   ├── Dockerfile.auth-server  # auth-server image
-│   └── Dockerfile.admin-web    # admin-web image (+ docs for Confluence)
 ├── apps/
-│   ├── auth-server/            # Spring Boot + Spring Authorization Server
-│   └── admin-web/              # Next.js admin dashboard
-├── samples/
-│   └── external-test-client/   # integration sample
-└── scripts/                    # reset-db, reseed-catalog, smoke tests
+│   ├── auth-server/            # Spring Boot + Spring Authorization Server (Java 25)
+│   └── admin-web/              # Next.js console, served by the auth-server at /admin
+├── deploy/
+│   ├── Dockerfile              # the single SecureOne image
+│   ├── docker-compose.example.yml   # production-style single server (secrets, backups)
+│   ├── generate-secrets.sh     # creates the secrets for the example
+│   ├── docker-compose.quickstart.yml  # evaluation with MailHog
+│   ├── docker-compose.yml      # development: PostgreSQL, Redis, MailHog
+│   └── helm/secureone/         # Kubernetes chart (with migration job)
+├── samples/                    # React SPA, Next.js, Express API, device-code CLI
+├── docs/                       # documentation (also in the console)
+└── scripts/                    # development helpers
 ```
 
----
+## Stack
 
-## Status
-
-**Implemented:** Multi-tenant auth-server, admin console, platform schema (V45), OAuth client registry, per-application schema provisioning, application console (users/roles/groups/settings), OpenAPI docs, **SecureOne Confluence** (standalone in-app docs browser with inline draw.io).
-
-**In progress / planned:** Full MFA, SAML, SCIM, SDK, enterprise tiers — see [Roadmap](docs/08-roadmap.md).
+Java 25 · Spring Boot 4 · Spring Authorization Server · PostgreSQL 16 (Flyway, row-level security) · Redis 7 · Next.js 16 · TypeScript · Tailwind. Details: [docs/02](docs/02-tech-stack.md).

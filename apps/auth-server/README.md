@@ -17,7 +17,7 @@ Spring Boot application: **Spring Authorization Server** (OAuth 2.1 / OIDC), adm
 - **http://localhost:9000/docs** — Swagger UI
 - **GET /api/info** — service metadata (`confluence`, `confluenceApi`, `confluenceDiscovery` URLs)
 
-Admin API auth: a console session token (`Authorization: SecureOne-Admin-Session <token>`) from `POST /api/admin/v1/auth/login` plus an authenticator code (`/api/admin/v1/auth/mfa/verify`). HTTP Basic is refused. The configured account (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`, `admin` / `admin` in dev) is the break-glass login; in production it needs `SECUREONE_BREAK_GLASS_ENABLED=true`. See docs/25-roles-and-access.md.
+Admin API auth: a console session token (`Authorization: SecureOne-Admin-Session <token>`) from `POST /api/admin/v1/auth/login` plus an authenticator code (`/api/admin/v1/auth/mfa/verify`). HTTP Basic is refused. The configured account (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`, `admin` / `admin` in dev) is the break-glass login; in production it needs `SECUREONE_BREAK_GLASS_ENABLED=true`. See docs/26-roles-and-access.md.
 
 ## Configuration
 

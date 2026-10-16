@@ -18,6 +18,11 @@ public class IdentifierResolver {
     }
 
     public Optional<UserAccount> resolve(UUID tenantId, String identifier) {
+        return resolve(tenantId, identifier, null);
+    }
+
+    /** {@code phoneRegion}: country for a phone number typed without +country code (app policy). */
+    public Optional<UserAccount> resolve(UUID tenantId, String identifier, String phoneRegion) {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
         }
@@ -25,7 +30,7 @@ public class IdentifierResolver {
         if (trimmed.contains("@")) {
             return users.findByTenantIdAndEmail(tenantId, trimmed.toLowerCase(Locale.ROOT));
         }
-        String phone = PhoneNormalizer.toE164(trimmed, "US");
+        String phone = PhoneNormalizer.toE164(trimmed, phoneRegion);
         if (phone != null) {
             return users.findByTenantIdAndPhone(tenantId, phone);
         }

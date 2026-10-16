@@ -43,7 +43,7 @@ function ApplicationProductForm({ tenants, close }: { tenants: Tenant[]; close: 
       <FormError state={state} />
       <div className="grid grid-cols-2 gap-4">
         <FieldRow label="Display name">
-          <Input name="name" placeholder="Flipkart" required />
+          <Input name="name" placeholder="Demo Store" required />
         </FieldRow>
         <FieldRow label="Tenant">
           <Select name="tenantId" defaultValue={tenants[0]?.id} disabled={tenants.length === 0} required>
@@ -56,8 +56,8 @@ function ApplicationProductForm({ tenants, close }: { tenants: Tenant[]; close: 
           </Select>
         </FieldRow>
       </div>
-      <FieldRow label="Slug" hint="Used for schema name (e.g. flipkart → flipkart schema)">
-        <Input name="slug" placeholder="flipkart" />
+      <FieldRow label="Slug" hint="Used for schema name (e.g. demostore → demostore schema)">
+        <Input name="slug" placeholder="demostore" />
       </FieldRow>
       <FieldRow label="Description" hint="Optional">
         <Textarea name="description" rows={2} placeholder="Customer-facing product" />

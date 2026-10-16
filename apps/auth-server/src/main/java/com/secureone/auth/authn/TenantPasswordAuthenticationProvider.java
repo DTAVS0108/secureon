@@ -1,6 +1,10 @@
 package com.secureone.auth.authn;
 
 import com.secureone.auth.account.PasswordExpiryService;
+import com.secureone.auth.application.ApplicationEffectiveSettingsService;
+import java.util.UUID;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import com.secureone.auth.platform.AuthSettingsService;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserCredentialRepository;
@@ -23,6 +27,8 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
     private final AuthSettingsService authSettings;
     private final PasswordExpiryService passwordExpiry;
     private final AccountLockoutService lockout;
+    private final ApplicationEffectiveSettingsService effectiveSettings;
+    private final SignInApplicationResolver signInApplication;
 
     public TenantPasswordAuthenticationProvider(
             TenantUserDetailsService userDetailsService,
@@ -30,22 +36,38 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
             PasswordEncoder passwordEncoder,
             AuthSettingsService authSettings,
             PasswordExpiryService passwordExpiry,
-            AccountLockoutService lockout) {
+            AccountLockoutService lockout,
+            ApplicationEffectiveSettingsService effectiveSettings,
+            SignInApplicationResolver signInApplication) {
         this.userDetailsService = userDetailsService;
         this.credentials = credentials;
         this.passwordEncoder = passwordEncoder;
         this.authSettings = authSettings;
         this.passwordExpiry = passwordExpiry;
         this.lockout = lockout;
+        this.effectiveSettings = effectiveSettings;
+        this.signInApplication = signInApplication;
+    }
+
+    private static boolean isConsoleSignIn() {
+        return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs
+                && attrs.getRequest().getRequestURI().startsWith("/api/admin/v1/auth/");
     }
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        if (!authSettings.isAuthMethodEnabled("m_password")) {
-            throw new DisabledException("Password login is disabled in platform settings.");
-        }
-        if (!authSettings.isAuthMethodImplemented("m_password")) {
-            throw new DisabledException("Password login is not available.");
+        // The application being signed in to decides (its overrides, else platform defaults). Console
+        // sign-in has its own rules (MFA) and must not be locked out by an app's end-user settings.
+        UUID applicationId = signInApplication.current();
+        if (!isConsoleSignIn()) {
+            if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_password")) {
+                throw new DisabledException(applicationId != null
+                        ? "Password sign-in is turned off for this application."
+                        : "Password login is disabled in platform settings.");
+            }
+            if (!effectiveSettings.isAuthMethodImplemented(applicationId, "m_password")) {
+                throw new DisabledException("Password login is not available.");
+            }
         }
         String username = authentication.getName();
         if (username == null || !username.contains(":")) {
@@ -61,7 +83,7 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
                 .findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(account.getId())
                 .orElseThrow(() -> new BadCredentialsException("No password credential on file"));
         if (!passwordEncoder.matches(password, cred.getPasswordHash())) {
-            lockout.recordFailedAttempt(account.getId());
+            lockout.recordFailedAttempt(account.getId(), applicationId);
             throw new BadCredentialsException("Password does not match");
         }
         passwordExpiry.enforceLoginAllowed(account, cred, null);

@@ -1,5 +1,6 @@
 package com.secureone.auth.authn;
 
+import com.secureone.auth.application.ApplicationEffectiveSettingsService;
 import com.secureone.auth.platform.AuthSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -7,11 +8,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -21,18 +24,27 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthPublicController {
 
     private final AuthSettingsService authSettings;
+    private final ApplicationEffectiveSettingsService effectiveSettings;
 
-    public AuthPublicController(AuthSettingsService authSettings) {
+    public AuthPublicController(
+            AuthSettingsService authSettings, ApplicationEffectiveSettingsService effectiveSettings) {
         this.authSettings = authSettings;
+        this.effectiveSettings = effectiveSettings;
     }
 
+    /**
+     * Sign-in methods for a login page. With {@code applicationId}, availability is the application's
+     * effective setting (what sign-in will actually accept), not the platform default.
+     */
     @GetMapping("/methods")
-    public List<Map<String, Object>> methods() {
+    public List<Map<String, Object>> methods(@RequestParam(required = false) UUID applicationId) {
         return authSettings.getAuthMethods().stream()
                 .map(m -> {
                     String id = String.valueOf(m.get("id"));
-                    boolean enabled = Boolean.TRUE.equals(m.get("enabled"));
                     boolean implemented = !Boolean.FALSE.equals(m.get("implemented"));
+                    boolean enabled = applicationId != null
+                            ? effectiveSettings.isMethodAvailable(applicationId, id)
+                            : Boolean.TRUE.equals(m.get("enabled"));
                     return Map.<String, Object>of(
                             "id", id,
                             "name", m.get("name"),

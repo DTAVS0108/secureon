@@ -85,6 +85,18 @@ public class WebhookEndpointService {
         return toResponse(endpoints.save(endpoint));
     }
 
+    /** Sets the signing secret to a value the operator supplies (configuration files). */
+    public void setSecret(UUID tenantId, UUID id, String rawSecret) {
+        WebhookEndpoint endpoint = requireEndpoint(tenantId, id);
+        endpoint.setSecretEncrypted(secrets.encrypt(rawSecret));
+        endpoints.save(endpoint);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean secretMatches(UUID tenantId, UUID id, String rawSecret) {
+        return rawSecret != null && rawSecret.equals(secrets.decrypt(requireEndpoint(tenantId, id).getSecretEncrypted()));
+    }
+
     public void delete(UUID tenantId, UUID id) {
         WebhookEndpoint endpoint = requireEndpoint(tenantId, id);
         endpoints.delete(endpoint);

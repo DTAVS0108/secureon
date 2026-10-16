@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -70,6 +71,9 @@ public class ApplicationPublicAccountService {
         return authOtp.requestLoginOtp(applicationId, identifier, channel);
     }
 
+    // Sign-in steps run their own transactions; inside one shared transaction a rejected attempt marks
+    // it rollback-only (500 on commit) and would roll back the failed-attempt counters too.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ResponseEntity<?> verifyLoginOtp(
             UUID applicationId,
             String challengeId,
@@ -83,18 +87,22 @@ public class ApplicationPublicAccountService {
     public Map<String, Object> confirmSignupOtp(UUID applicationId, String challengeId, String code, String channel) {
         tenants.requireActiveApplication(applicationId);
         var user = "phone".equalsIgnoreCase(channel) || "sms".equalsIgnoreCase(channel)
-                ? verification.confirmPhoneOtp(UUID.fromString(challengeId), code)
-                : verification.confirmEmailOtp(UUID.fromString(challengeId), code);
+                ? verification.confirmPhoneOtp(UUID.fromString(challengeId), code, applicationId)
+                : verification.confirmEmailOtp(UUID.fromString(challengeId), code, applicationId);
         memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
         return Map.of("verified", true, "email", user.getEmail());
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ResponseEntity<?> sessionLogin(
             UUID applicationId, String identifier, String password, HttpServletRequest request, HttpServletResponse response) {
         tenants.requireActiveApplication(applicationId);
-        UserAccount user = tenants.findUserByIdentifier(applicationId, identifier)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
         String tenantSlug = tenants.requireTenantSlug(applicationId);
-        return sessions.sessionLogin(tenantSlug, user.getEmail(), password, applicationId, request, response);
+        // An unknown identifier goes through the same authentication as a known one, so the status,
+        // message and work done do not reveal whether the account exists.
+        String loginEmail = tenants.findUserByIdentifier(applicationId, identifier)
+                .map(UserAccount::getEmail)
+                .orElse(identifier);
+        return sessions.sessionLogin(tenantSlug, loginEmail, password, applicationId, request, response);
     }
 }

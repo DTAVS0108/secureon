@@ -1,6 +1,7 @@
 package com.secureone.auth.mfa;
 
 import com.secureone.auth.authn.AuthContextAttributes;
+import com.secureone.auth.authn.SignedInAuthentication;
 import com.secureone.auth.trusteddevice.TrustedDeviceService;
 import com.secureone.auth.authn.LoginSuccessHandler;
 import com.secureone.auth.authn.TenantUserDetailsService;
@@ -17,8 +18,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -82,16 +83,20 @@ public class MfaLoginService {
 
     public boolean shouldChallengeFormLogin(
             Authentication authentication, UUID applicationId, HttpServletRequest request) {
-        if (applicationId == null) {
-            return false;
-        }
+        // applicationId may be null: platform MFA policy applies then.
+        UserAccount user = resolveUser(authentication);
+        return policy.requiresMfaStepUp(user, applicationId, request);
+    }
+
+    /** MFA is required for this app but the user has no authenticator: the sign-in must not complete. */
+    public boolean enrollmentRequiredButMissing(Authentication authentication, UUID applicationId) {
         UserAccount user = resolveUser(authentication);
         try {
             policy.assertMfaEnrolledIfRequired(user, applicationId);
-        } catch (IllegalStateException ex) {
             return false;
+        } catch (IllegalStateException ex) {
+            return true;
         }
-        return policy.requiresMfaStepUp(user, applicationId, request);
     }
 
     public MfaChallengeResponse issueChallenge(UserAccount user, String tenantSlug, UUID applicationId) {
@@ -137,8 +142,10 @@ public class MfaLoginService {
             return ResponseEntity.status(HttpStatus.GONE)
                     .body(ProblemDetail.forStatusAndDetail(HttpStatus.GONE, "MFA challenge expired or invalid."));
         }
-        int attempts = challenges.incrementAttempts(challengeId, Duration.ofSeconds(policy.challengeTtlSeconds()));
-        if (attempts > policy.maxChallengeAttempts()) {
+        // The application signed in to decides (its MFA policy override, else platform defaults).
+        int attempts = challenges.incrementAttempts(
+                challengeId, Duration.ofSeconds(policy.challengeTtlSeconds(pending.applicationId())));
+        if (attempts > policy.maxChallengeAttempts(pending.applicationId())) {
             challenges.delete(challengeId);
             challenges.clearAttempts(challengeId);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -166,7 +173,8 @@ public class MfaLoginService {
     private Authentication rebuildAuthentication(MfaPendingChallenge pending) {
         String username = pending.tenantSlug() + ":" + pending.email();
         UserDetails user = userDetailsService.loadUserByUsername(username);
-        return new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        return SignedInAuthentication.of(
+                user, FactorGrantedAuthority.PASSWORD_AUTHORITY, SignedInAuthentication.MFA_FACTOR);
     }
 
     private void establishSession(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {

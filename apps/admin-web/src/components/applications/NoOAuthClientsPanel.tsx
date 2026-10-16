@@ -1,7 +1,7 @@
-import Link from "next/link";
-import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import type { NoOAuthClientsVariant } from "@/lib/oauth-client-registry";
+import Link from "next/link";
 
 const COPY: Record<
   NoOAuthClientsVariant,
@@ -36,7 +36,7 @@ export function NoOAuthClientsPanel({
     <Card className={className ?? "p-6"}>
       <h2 className="text-base font-semibold text-ui">{copy.title}</h2>
       <p className="mt-2 text-sm text-muted">{copy.body}</p>
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-3 justify-center">
         {copy.showRegistryLink && (
           <ButtonLink href="/applications" size="sm">
             Go to OAuth clients

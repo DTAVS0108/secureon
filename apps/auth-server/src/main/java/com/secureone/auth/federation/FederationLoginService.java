@@ -2,6 +2,8 @@ package com.secureone.auth.federation;
 
 import com.secureone.auth.application.ApplicationAccessService;
 import com.secureone.auth.authn.LoginSuccessHandler;
+import com.secureone.auth.authn.OAuthLoginRedirectSupport;
+import com.secureone.auth.authn.SignedInAuthentication;
 import com.secureone.auth.authn.TenantUserDetailsService;
 import com.secureone.auth.federation.IdentityProviderService.FederationUserProfile;
 import com.secureone.auth.mfa.MfaLoginService;
@@ -16,8 +18,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,6 +41,8 @@ public class FederationLoginService {
     private final SecurityContextRepository securityContextRepository;
     private final LoginSuccessHandler loginSuccessHandler;
     private final MfaLoginService mfaLogin;
+    private final SamlLoginService saml;
+    private final SamlLogoutService samlLogout;
 
     public FederationLoginService(
             IdentityProviderService providers,
@@ -50,7 +54,9 @@ public class FederationLoginService {
             ApplicationAccessService access,
             SecurityContextRepository securityContextRepository,
             LoginSuccessHandler loginSuccessHandler,
-            MfaLoginService mfaLogin) {
+            MfaLoginService mfaLogin,
+            SamlLoginService saml,
+            SamlLogoutService samlLogout) {
         this.providers = providers;
         this.states = states;
         this.identities = identities;
@@ -61,14 +67,31 @@ public class FederationLoginService {
         this.securityContextRepository = securityContextRepository;
         this.loginSuccessHandler = loginSuccessHandler;
         this.mfaLogin = mfaLogin;
+        this.saml = saml;
+        this.samlLogout = samlLogout;
     }
 
-    public String startLogin(
-            UUID tenantId, UUID applicationId, String alias, String continueUrl, HttpServletResponse response) {
+    /**
+     * Sends the browser to the external IdP: an OAuth/OIDC authorization redirect, or a SAML AuthnRequest.
+     * A continue URL is kept only when it is an OAuth endpoint on this server (no open redirect).
+     */
+    public ResponseEntity<?> startLogin(
+            UUID tenantId,
+            UUID applicationId,
+            String alias,
+            String continueUrl,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         IdentityProvider provider = providers.requireEnabledProvider(tenantId, applicationId, alias);
+        String safeContinue = OAuthLoginRedirectSupport.isSafeContinue(request, continueUrl) ? continueUrl.trim() : null;
         String state = states.issue(new FederationStateStore.PendingState(
-                provider.getId(), tenantId, applicationId, continueUrl));
-        return providers.buildAuthorizationRedirect(provider, state);
+                provider.getId(), tenantId, applicationId, safeContinue));
+        if (FederationProviderType.SAML.name().equalsIgnoreCase(provider.getType())) {
+            return saml.start(provider, state, request, response);
+        }
+        return ResponseEntity.status(302)
+                .header("Location", providers.buildAuthorizationRedirect(provider, state))
+                .build();
     }
 
     public ResponseEntity<?> handleCallback(
@@ -85,6 +108,56 @@ public class FederationLoginService {
             throw new IllegalArgumentException("Federation state mismatch.");
         }
         FederationUserProfile profile = providers.exchangeCode(provider, code);
+        return completeLogin(provider, pending, profile, request, response);
+    }
+
+    /** The IdP posted a SAML response for this provider; RelayState carries our federation state. */
+    public ResponseEntity<?> handleSamlResponse(
+            UUID providerId, String relayState, HttpServletRequest request, HttpServletResponse response) {
+        FederationStateStore.PendingState pending = states.peek(relayState)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired federation state."));
+        if (!providerId.equals(pending.providerId())) {
+            throw new IllegalArgumentException("Federation state mismatch.");
+        }
+        IdentityProvider provider = providers.requireEnabledSamlProvider(providerId, pending.applicationId());
+        // Validates signature, audience, recipient, validity window and InResponseTo before anything else.
+        SamlLoginService.SamlLogin login = saml.acceptResponse(provider, request, response);
+        states.consume(relayState);
+        ResponseEntity<?> result = completeLogin(provider, pending, login.profile(), request, response);
+        samlLogout.rememberSession(request, providerId, login);
+        return result;
+    }
+
+    /**
+     * IdP-initiated sign-in (the user opened the app from the IdP's portal): a response with no request of
+     * ours. Only for providers the operator opted in ({@code allowIdpInitiated}); the response must not
+     * answer an AuthnRequest (no InResponseTo), is accepted once (replay cache), and the user lands on the
+     * operator-configured {@code landingUrl} (or the signed-in page).
+     */
+    public ResponseEntity<?> handleUnsolicitedSamlResponse(
+            UUID providerId, HttpServletRequest request, HttpServletResponse response) {
+        IdentityProvider provider = providers.requireEnabledSamlProvider(providerId, null);
+        if (!bool(provider.getConfig().get("allowIdpInitiated"))) {
+            throw new IllegalArgumentException("IdP-initiated sign-in is not allowed for this provider; start sign-in from the application.");
+        }
+        SamlLoginService.SamlLogin login = saml.acceptResponse(provider, request, response);
+        Object landing = provider.getConfig().get("landingUrl");
+        FederationStateStore.PendingState pending = new FederationStateStore.PendingState(
+                provider.getId(),
+                provider.getTenantId(),
+                provider.getApplicationId(),
+                landing == null || String.valueOf(landing).isBlank() ? null : String.valueOf(landing).trim());
+        ResponseEntity<?> result = completeLogin(provider, pending, login.profile(), request, response);
+        samlLogout.rememberSession(request, providerId, login);
+        return result;
+    }
+
+    private ResponseEntity<?> completeLogin(
+            IdentityProvider provider,
+            FederationStateStore.PendingState pending,
+            FederationUserProfile profile,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         if (profile.email() == null || profile.email().isBlank()) {
             throw new IllegalArgumentException("Identity provider did not return a verified email address.");
         }
@@ -97,7 +170,7 @@ public class FederationLoginService {
         Tenant tenant = tenants.findById(pending.tenantId()).orElseThrow();
         UserDetails details = userDetailsService.buildSessionPrincipal(tenant.getSlug(), user);
         Authentication authentication =
-                new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
+                SignedInAuthentication.of(details, FactorGrantedAuthority.AUTHORIZATION_CODE_AUTHORITY);
         if (pending.applicationId() != null && mfaLogin.shouldChallengeFormLogin(authentication, pending.applicationId())) {
             return mfaLogin.completePasswordLogin(authentication, pending.applicationId(), request, response);
         }

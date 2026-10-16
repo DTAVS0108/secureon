@@ -27,11 +27,20 @@ public final class PublicManifestDefaults {
 
     @SuppressWarnings("unchecked")
     public static Map<String, Object> merge(Map<String, Object> platform, Map<String, Object> appOverride) {
-        Map<String, Object> merged = deepCopy(platform != null ? platform : platformDefaults());
-        if (appOverride == null || appOverride.isEmpty()) {
-            return merged;
+        // Code defaults go underneath the stored platform value, so a section added after the platform
+        // row was first saved resolves to its default rather than to "missing" (treated as off).
+        Map<String, Object> merged = platformDefaults();
+        overlay(merged, platform);
+        overlay(merged, appOverride);
+        return merged;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void overlay(Map<String, Object> merged, Map<String, Object> patchMap) {
+        if (patchMap == null || patchMap.isEmpty()) {
+            return;
         }
-        appOverride.forEach((k, v) -> {
+        patchMap.forEach((k, v) -> {
             if (v == null) return;
             if ("sections".equals(k) && v instanceof Map<?, ?> patch && merged.get("sections") instanceof Map<?, ?> base) {
                 Map<String, Object> sections = (Map<String, Object>) merged.get("sections");
@@ -40,20 +49,5 @@ public final class PublicManifestDefaults {
                 merged.put(k, v);
             }
         });
-        return merged;
-    }
-
-    private static Map<String, Object> deepCopy(Map<String, Object> source) {
-        Map<String, Object> copy = new LinkedHashMap<>();
-        source.forEach((k, v) -> {
-            if (v instanceof Map<?, ?> map) {
-                Map<String, Object> nested = new LinkedHashMap<>();
-                map.forEach((nk, nv) -> nested.put(nk.toString(), nv));
-                copy.put(k, nested);
-            } else {
-                copy.put(k, v);
-            }
-        });
-        return copy;
     }
 }

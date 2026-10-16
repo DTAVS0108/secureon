@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
+import { withBasePath } from "@/lib/config";
 
 const DRAWIO_EMBED_ORIGIN = "https://embed.diagrams.net";
 const DRAWIO_EMBED_URL = `${DRAWIO_EMBED_ORIGIN}/?embed=1&ui=min&spin=1&proto=json&noSaveBtn=1&noExitBtn=1`;
@@ -52,7 +53,7 @@ export function DrawioEmbed({ assetPath, title }: DrawioEmbedProps) {
       setError("Diagram viewer timed out. Check your internet connection or download the source file.");
     }, LOAD_TIMEOUT_MS);
 
-    fetch(`/api/confluence/assets/${assetPath}`, { credentials: "include" })
+    fetch(withBasePath(`/api/confluence/assets/${assetPath}`), { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
@@ -98,7 +99,7 @@ export function DrawioEmbed({ assetPath, title }: DrawioEmbedProps) {
       <div className="my-4 rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-600 dark:text-red-400">
         <p>Could not load diagram: {error ?? "unknown error"}</p>
         <a
-          href={`/api/confluence/assets/${assetPath}`}
+          href={withBasePath(`/api/confluence/assets/${assetPath}`)}
           className="mt-2 inline-block text-brand hover:underline"
           download
         >

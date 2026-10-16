@@ -4,8 +4,10 @@ import com.secureone.auth.account.AccountVerificationService;
 import com.secureone.auth.account.otp.OtpChallengeService;
 import com.secureone.auth.account.otp.OtpChannel;
 import com.secureone.auth.account.otp.OtpPurpose;
+import com.secureone.auth.admin.ResourceNotFoundException;
 import com.secureone.auth.application.ApplicationEffectiveSettingsService;
 import com.secureone.auth.application.ApplicationTenantResolver;
+import com.secureone.auth.mfa.MfaLoginService;
 import com.secureone.auth.notify.EmailNotificationService;
 import com.secureone.auth.notify.SmsNotificationService;
 import com.secureone.auth.platform.VerificationPolicyService;
@@ -16,15 +18,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @Transactional
@@ -38,9 +41,8 @@ public class AuthOtpService {
     private final EmailNotificationService email;
     private final SmsNotificationService sms;
     private final TenantUserDetailsService userDetailsService;
-    private final SecurityContextRepository securityContextRepository;
-    private final LoginSuccessHandler loginSuccessHandler;
     private final UserAccountRepository users;
+    private final MfaLoginService mfaLogin;
 
     public AuthOtpService(
             ApplicationTenantResolver tenants,
@@ -51,9 +53,9 @@ public class AuthOtpService {
             EmailNotificationService email,
             SmsNotificationService sms,
             TenantUserDetailsService userDetailsService,
-            SecurityContextRepository securityContextRepository,
-            LoginSuccessHandler loginSuccessHandler,
-            UserAccountRepository users) {
+            UserAccountRepository users,
+            MfaLoginService mfaLogin) {
+        this.mfaLogin = mfaLogin;
         this.tenants = tenants;
         this.identifiers = identifiers;
         this.otpChallenges = otpChallenges;
@@ -62,8 +64,6 @@ public class AuthOtpService {
         this.email = email;
         this.sms = sms;
         this.userDetailsService = userDetailsService;
-        this.securityContextRepository = securityContextRepository;
-        this.loginSuccessHandler = loginSuccessHandler;
         this.users = users;
     }
 
@@ -73,25 +73,38 @@ public class AuthOtpService {
             throw new IllegalArgumentException("Identifier type not allowed for login.");
         }
         UUID tenantId = tenants.requireTenantId(applicationId);
-        tenants.findUserByIdentifier(applicationId, identifier).ifPresent(user -> {
-            OtpChannel channel = resolveLoginChannel(channelHint, identifier);
-            ensureLoginOtpAllowed(applicationId, channel);
-            var issued = otpChallenges.issue(
-                    user.getId(),
-                    tenantId,
-                    applicationId,
-                    OtpPurpose.LOGIN,
-                    channel,
-                    channel == OtpChannel.SMS ? user.getPhone() : user.getEmail(),
-                    null,
-                    null);
-            deliverLoginOtp(applicationId, user, channel, issued.code());
-        });
+        OtpChannel channel = resolveLoginChannel(channelHint, identifier);
+        // Checked before the lookup: a disabled method must answer the same for every identifier.
+        ensureLoginOtpAllowed(applicationId, channel);
+        // Every request gets a challenge id. For an unknown identifier (or one without a phone for SMS)
+        // it is a decoy that no code will ever match, so the response does not reveal whether the
+        // account exists, and the client always has an id to send to verify.
+        UUID challengeId = tenants.findUserByIdentifier(applicationId, identifier)
+                .filter(AuthOtpService::isActiveOrPending)
+                .filter(user -> channel != OtpChannel.SMS || (user.getPhone() != null && !user.getPhone().isBlank()))
+                .map(user -> {
+                    var issued = otpChallenges.issue(
+                            user.getId(),
+                            tenantId,
+                            applicationId,
+                            OtpPurpose.LOGIN,
+                            channel,
+                            channel == OtpChannel.SMS ? user.getPhone() : user.getEmail(),
+                            null,
+                            null);
+                    deliverLoginOtp(applicationId, user, channel, issued.code());
+                    return issued.challengeId();
+                })
+                .orElseGet(UUID::randomUUID);
         Map<String, Object> generic = new LinkedHashMap<>();
         generic.put("message", "If an account exists, a sign-in code has been sent.");
+        generic.put("challengeId", challengeId.toString());
+        generic.put("channel", channel == OtpChannel.SMS ? "sms" : "email");
         return generic;
     }
 
+    // Own transactions per step (see ApplicationPublicAccountService.sessionLogin).
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ResponseEntity<?> verifyLoginOtp(
             UUID applicationId,
             UUID challengeId,
@@ -100,10 +113,14 @@ public class AuthOtpService {
             HttpServletResponse response) {
         tenants.requireActiveApplication(applicationId);
         var challenge = otpChallenges.verify(challengeId, code);
-        if (!OtpPurpose.LOGIN.name().equals(challenge.getPurpose())) {
+        if (!OtpPurpose.LOGIN.name().equals(challenge.getPurpose())
+                || !applicationId.equals(challenge.getApplicationId())) {
             throw new IllegalArgumentException("Invalid challenge.");
         }
         UserAccount user = tenants.findUserById(challenge.getUserId()).orElseThrow();
+        if (!isActiveOrPending(user)) {
+            throw new ResourceNotFoundException("Invalid or expired code.");
+        }
         if (OtpChannel.EMAIL.name().equals(challenge.getChannel())) {
             user.setEmailVerified(true);
         } else if (OtpChannel.SMS.name().equals(challenge.getChannel())) {
@@ -113,14 +130,19 @@ public class AuthOtpService {
         users.save(user);
         String tenantSlug = tenants.requireTenantSlug(applicationId);
         UserDetails details = userDetailsService.buildSessionPrincipal(tenantSlug, user);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-        user.setLastLoginAt(java.time.Instant.now());
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
-        return ResponseEntity.noContent().build();
+        Authentication authentication = SignedInAuthentication.of(details, FactorGrantedAuthority.OTT_AUTHORITY);
+        // Same completion as a password sign-in: the app's MFA requirement and step-up apply, so a
+        // passwordless code is not a way around them. 204 with a session, or 428 with an MFA challenge.
+        try {
+            return mfaLogin.completePasswordLogin(authentication, applicationId, request, response);
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage()));
+        }
+    }
+
+    private static boolean isActiveOrPending(UserAccount user) {
+        return "ACTIVE".equalsIgnoreCase(user.getStatus()) || "PENDING".equalsIgnoreCase(user.getStatus());
     }
 
     private void deliverLoginOtp(UUID applicationId, UserAccount user, OtpChannel channel, String code) {
@@ -135,18 +157,18 @@ public class AuthOtpService {
     private void ensureLoginOtpAllowed(UUID applicationId, OtpChannel channel) {
         if (channel == OtpChannel.SMS) {
             if (!verificationPolicy.allowsLoginPasswordlessMode(applicationId, "phone_otp")) {
-                throw new IllegalStateException("SMS OTP login is not allowed by verification policy.");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SMS OTP login is not allowed for this application.");
             }
             if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_sms")) {
-                throw new IllegalStateException("SMS OTP login is disabled.");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SMS OTP login is disabled.");
             }
             return;
         }
         if (!verificationPolicy.allowsLoginPasswordlessMode(applicationId, "email_otp")) {
-            throw new IllegalStateException("Email OTP login is not allowed by verification policy.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email OTP login is not allowed for this application.");
         }
         if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_email_otp")) {
-            throw new IllegalStateException("Email OTP login is disabled.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email OTP login is disabled.");
         }
     }
 

@@ -16,6 +16,8 @@ const GRANT_OPTIONS = [
   { value: "authorization_code", label: "authorization_code" },
   { value: "refresh_token", label: "refresh_token" },
   { value: "client_credentials", label: "client_credentials" },
+  { value: "urn:ietf:params:oauth:grant-type:device_code", label: "device_code (TVs, CLIs)" },
+  { value: "urn:ietf:params:oauth:grant-type:token-exchange", label: "token-exchange" },
 ];
 
 const TEMPLATE_BY_TYPE: Record<
@@ -184,7 +186,7 @@ function OAuthClientForm({
                 </Select>
               </FieldRow>
               <FieldRow label="Application name" hint="Used for auto-created product and schema">
-                <Input name="applicationName" placeholder="Flipkart" />
+                <Input name="applicationName" placeholder="Demo Store" />
               </FieldRow>
             </>
           )}
@@ -213,7 +215,7 @@ function OAuthClientForm({
       </div>
       {!client && (
         <FieldRow label="Client ID" hint="Optional — defaults to application slug">
-          <Input name="clientId" placeholder="flipkart-web" />
+          <Input name="clientId" placeholder="demostore-web" />
         </FieldRow>
       )}
       <FieldRow label="Grant types">
@@ -250,6 +252,18 @@ function OAuthClientForm({
             className="rounded border-ui"
           />
           Require PKCE
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          Token subject (sub)
+          <select
+            name="subjectType"
+            defaultValue={client?.subjectType ?? "user_id"}
+            className="rounded border-ui bg-ui-elevated px-2 py-1 text-sm"
+            title="user_id: the account ID, which never changes. Legacy: tenant:email, which changes if the user changes email."
+          >
+            <option value="user_id">User ID (stable)</option>
+            <option value="legacy">Legacy (tenant:email)</option>
+          </select>
         </label>
         <span className="text-xs text-muted">
           Auth at token endpoint:{" "}

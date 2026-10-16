@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Release.Name }}-ingress
+  name: {{ .Release.Name }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   tls:
@@ -13,18 +13,12 @@ spec:
     - host: {{ .Values.ingress.host }}
       http:
         paths:
+          # Everything, including the admin console at /admin, is served by the one service.
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ .Release.Name }}-auth-server
+                name: {{ .Release.Name }}
                 port:
-                  number: {{ .Values.authServer.service.port }}
-          - path: /admin
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Release.Name }}-admin-web
-                port:
-                  number: {{ .Values.adminWeb.service.port }}
+                  number: {{ .Values.service.port }}
 {{- end }}

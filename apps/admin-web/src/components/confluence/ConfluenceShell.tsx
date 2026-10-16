@@ -1,4 +1,5 @@
 import { ConfluenceSidebar } from "./ConfluenceSidebar";
+import { withBasePath } from "@/lib/config";
 
 export function ConfluenceShell({
   activeSlug,
@@ -21,7 +22,7 @@ export function ConfluenceShell({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <a
-            href={`/confluence/print/${activeSlug}`}
+            href={withBasePath(`/confluence/print/${activeSlug}`)}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg border border-ui px-3 py-2 text-sm font-medium text-soft transition-colors hover:bg-ui-elevated"
@@ -30,7 +31,7 @@ export function ConfluenceShell({
             Download PDF
           </a>
           <a
-            href="/confluence/print/all"
+            href={withBasePath("/confluence/print/all")}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg border border-ui px-3 py-2 text-sm font-medium text-soft transition-colors hover:bg-ui-elevated"

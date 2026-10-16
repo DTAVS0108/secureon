@@ -65,14 +65,16 @@ export default async function TenantDetailPage({
                   OAuth clients
                 </ButtonLink>
                 <TenantFormModal tenant={tenant} triggerLabel="Edit" triggerVariant="secondary" />
-                <ConfirmDialog
-                  action={tenantDeleteAction}
-                  id={tenant.id}
-                  triggerLabel="Delete"
-                  triggerVariant="danger"
-                  title={`Delete ${tenant.name}?`}
-                  message="This removes the tenant and all associated configuration. This action cannot be undone."
-                />
+                {!tenant.system && (
+                  <ConfirmDialog
+                    action={tenantDeleteAction}
+                    id={tenant.id}
+                    triggerLabel="Delete"
+                    triggerVariant="danger"
+                    title={`Delete ${tenant.name}?`}
+                    message="This removes the tenant and all associated configuration. This action cannot be undone."
+                  />
+                )}
               </>
             )}
           </>

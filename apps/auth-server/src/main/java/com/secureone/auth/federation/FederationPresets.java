@@ -54,10 +54,23 @@ public final class FederationPresets {
         return out;
     }
 
+    /**
+     * SAML IdPs: either {@code metadataUrl}, or {@code idpEntityId} + {@code ssoUrl} + {@code idpCertificate}
+     * (PEM). The email comes from {@code emailAttribute}, common email attributes, or an email NameID.
+     * {@code trustEmail}: the IdP is the organization's directory, so its email counts as verified.
+     */
     private static Map<String, Object> samlDefaults() {
-        Map<String, Object> out = commonDefaults();
+        Map<String, Object> out = new LinkedHashMap<>();
         out.put("metadataUrl", "");
-        out.put("entityId", "");
+        out.put("idpEntityId", "");
+        out.put("ssoUrl", "");
+        out.put("ssoBinding", "REDIRECT");
+        out.put("idpCertificate", "");
+        out.put("nameIdFormat", "");
+        out.put("emailAttribute", "");
+        out.put("trustEmail", true);
+        out.put("jitProvisioning", true);
+        out.put("linkByEmail", false);
         return out;
     }
 

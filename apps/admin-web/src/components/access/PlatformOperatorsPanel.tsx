@@ -13,6 +13,7 @@ import {
   removePlatformOperator,
   type PlatformOperator,
 } from "@/lib/api/access-governance";
+import { LocalTime } from "@/components/ui/LocalTime";
 
 /** Named platform super admins (accounts in the reserved "platform" tenant). */
 export function PlatformOperatorsPanel() {
@@ -108,11 +109,11 @@ export function PlatformOperatorsPanel() {
                 <Badge tone={r.status === "ACTIVE" ? "success" : "warning"}>{r.status}</Badge>
               </TD>
               <TD className="text-sm text-soft">
-                {new Date(r.grantedAt).toLocaleDateString()}
+                <LocalTime value={r.grantedAt} />
                 {r.grantedBy && <p className="text-xs text-faint">by {r.grantedBy}</p>}
               </TD>
               <TD className="text-sm text-soft">
-                {r.lastLoginAt ? new Date(r.lastLoginAt).toLocaleString() : "Never"}
+                {r.lastLoginAt ? <LocalTime value={r.lastLoginAt} format="datetime" /> : "Never"}
               </TD>
               <TD>
                 <Button
