@@ -42,21 +42,26 @@ export function FormActions({
   submitLabel = "Save",
   submitDisabled = false,
   sticky = false,
+  summary,
 }: {
   pending: boolean;
   close: () => void;
   submitLabel?: string;
   submitDisabled?: boolean;
+  /** Dialog footer: stays at the bottom of the dialog while the content scrolls under it. */
   sticky?: boolean;
+  /** Shown on the left of the footer, e.g. "3 roles · 2 members selected". */
+  summary?: React.ReactNode;
 }) {
   return (
     <div
       className={
         sticky
-          ? "sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-ui bg-[var(--background)] px-5 py-4"
-          : "flex justify-end gap-2 border-t border-ui pt-4"
+          ? "sticky bottom-0 z-10 -mx-5 -mb-5 mt-6 flex flex-wrap items-center justify-end gap-2 rounded-b-2xl border-t border-ui bg-[var(--background)]/95 px-5 py-3.5 shadow-[0_-12px_24px_-16px_rgba(0,0,0,0.5)] backdrop-blur"
+          : "flex flex-wrap items-center justify-end gap-2 border-t border-ui pt-4"
       }
     >
+      {summary && <p className="mr-auto text-xs text-muted">{summary}</p>}
       <Button type="button" variant="secondary" onClick={close} disabled={pending}>
         Cancel
       </Button>

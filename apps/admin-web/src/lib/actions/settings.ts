@@ -184,12 +184,9 @@ export async function loadApplicationSmtpAndTemplatesAction(applicationId: strin
   emailTestUiEnabled: boolean;
   error?: string;
 }> {
-  const {
-    fetchApplicationSmtp,
-    fetchApplicationEmailTemplates,
-    fetchApplicationFeatureFlags,
-  } = await import("@/lib/api/application-settings");
-  const { normalizeFeatureFlags } = await import("@/lib/auth-settings-normalize");
+  const { fetchApplicationSmtp, fetchApplicationEmailTemplates } = await import(
+    "@/lib/api/application-settings"
+  );
 
   let smtp: SmtpSettings = {};
   let templates: EmailTemplatesMap = {};
@@ -209,9 +206,10 @@ export async function loadApplicationSmtpAndTemplatesAction(applicationId: strin
   }
 
   try {
-    const flags = normalizeFeatureFlags(await fetchApplicationFeatureFlags(applicationId));
-    const testFlag = flags.find((f) => f.key === "notification_email_test_ui");
-    emailTestUiEnabled = testFlag ? testFlag.enabled : true;
+    // A console control (Platform settings → Feature flags), the same for every application.
+    const { fetchAdminContext } = await import("@/lib/api/context");
+    const { appFlagOn, APP_FLAG } = await import("@/lib/app-feature-flags");
+    emailTestUiEnabled = appFlagOn((await fetchAdminContext()).consoleFlags, APP_FLAG.emailTestConsole);
   } catch {
     emailTestUiEnabled = true;
   }

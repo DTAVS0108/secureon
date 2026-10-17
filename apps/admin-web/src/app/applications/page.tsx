@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { ApplicationsWithoutClients } from "@/components/applications/ApplicationsWithoutClients";
 import { ClientRegistry } from "@/components/applications/ClientRegistry";
 import { RegisterApplicationWithClientFormModal } from "@/components/forms/RegisterApplicationWithClientFormModal";
 import { OAuthClientFormModal } from "@/components/forms/OAuthClientFormModal";
@@ -12,7 +14,7 @@ import { requirePlatformAccess } from "@/lib/platform-access";
 export const dynamic = "force-dynamic";
 
 export default async function ApplicationsPage() {
-  await requirePlatformAccess();
+  const ctx = await requirePlatformAccess();
   const [clients, applications, tenants] = await Promise.all([
     listOAuthClients(),
     listApplications(),
@@ -26,14 +28,31 @@ export default async function ApplicationsPage() {
         description="Register application products with OAuth credentials. Use one form for a new product + first client, or add extra OAuth clients to an existing application."
         actions={
           <div className="flex flex-wrap gap-2">
-            <ButtonLink href="/connect">Connect an app</ButtonLink>
-            <RegisterApplicationWithClientFormModal tenants={tenants} triggerVariant="secondary" />
-            <OAuthClientFormModal
-              applications={applications}
-              tenants={tenants}
-              triggerLabel="+ Add OAuth client"
-              triggerVariant="secondary"
-            />
+            {ctx.connectAppEnabled !== false && (
+              <Tooltip
+                align="end"
+                content="Recommended. Pick the kind of app (web, single-page, mobile, backend, TV or command line) and its framework. SecureOne creates the application and client with secure settings, gives you ready-to-use code and a test sign-in."
+              >
+                <ButtonLink href="/connect">Connect an app</ButtonLink>
+              </Tooltip>
+            )}
+            <Tooltip
+              align="end"
+              content="A new application (your product: its users, roles and permissions) together with its first OAuth client, in one form. You choose every OAuth setting yourself: grant types, scopes, PKCE, redirect URLs."
+            >
+              <RegisterApplicationWithClientFormModal tenants={tenants} triggerVariant="secondary" />
+            </Tooltip>
+            <Tooltip
+              align="end"
+              content="Another OAuth client for an application that already exists, for example a mobile app next to the web app. Both share the application's users and roles."
+            >
+              <OAuthClientFormModal
+                applications={applications}
+                tenants={tenants}
+                triggerLabel="+ Add OAuth client"
+                triggerVariant="secondary"
+              />
+            </Tooltip>
           </div>
         }
       />
@@ -49,6 +68,7 @@ export default async function ApplicationsPage() {
       </div>
 
       <ClientRegistry clients={clients} tenants={tenants} applications={applications} />
+      <ApplicationsWithoutClients applications={applications} tenants={tenants} />
     </div>
   );
 }

@@ -19,12 +19,15 @@ export function PermissionMatrix({
   onChange,
   readOnly = false,
   compact = false,
+  groupToggle = false,
 }: {
   permissions: Permission[];
   selectedIds: Set<string>;
   onChange?: (ids: Set<string>) => void;
   readOnly?: boolean;
   compact?: boolean;
+  /** Show "Select all / Clear" per resource. Only for callers whose onChange accepts several changes. */
+  groupToggle?: boolean;
 }) {
   const groups = groupByResource(permissions);
 
@@ -38,8 +41,11 @@ export function PermissionMatrix({
     <div className={cn("space-y-4", compact && "space-y-3")}>
       {[...groups.entries()].map(([resource, items]) => (
         <div key={resource} className="rounded-lg border border-ui">
-          <div className="border-b border-ui bg-ui-elevated px-3 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-ui bg-ui-elevated px-3 py-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">{resource}</p>
+            {!readOnly && onChange && groupToggle && (
+              <ResourceToggle items={items} selectedIds={selectedIds} onChange={onChange} />
+            )}
           </div>
           <ul className="divide-y divide-ui">
             {items.map((p) => {
@@ -82,5 +88,37 @@ export function PermissionMatrix({
         </div>
       ))}
     </div>
+  );
+}
+
+/** "Select all" / "Clear" for one resource's permissions. */
+function ResourceToggle({
+  items,
+  selectedIds,
+  onChange,
+}: {
+  items: Permission[];
+  selectedIds: Set<string>;
+  onChange: (ids: Set<string>) => void;
+}) {
+  const chosen = items.filter((p) => selectedIds.has(p.id)).length;
+  const all = chosen === items.length;
+  return (
+    <span className="flex items-center gap-2 text-[11px]">
+      <span className="tabular-nums text-faint">
+        {chosen}/{items.length}
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          const next = new Set(selectedIds);
+          items.forEach((p) => (all ? next.delete(p.id) : next.add(p.id)));
+          onChange(next);
+        }}
+        className="font-medium text-brand hover:underline"
+      >
+        {all ? "Clear" : "Select all"}
+      </button>
+    </span>
   );
 }

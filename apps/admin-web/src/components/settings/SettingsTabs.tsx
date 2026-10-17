@@ -1,5 +1,6 @@
 "use client";
 
+import { PlatformFeaturesCard } from "./PlatformFeaturesCard";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
@@ -65,11 +66,38 @@ function resolveInitialTabState(initialTab?: SettingsTabId): { tab: Tab; authSub
   return { tab: resolved, authSubTab: "login" };
 }
 
-const AUTH_SUB_TABS: { id: AuthSubTabId; label: string; exposureKeys: string[] | null; requiresMfaTab?: boolean }[] = [
-  { id: "login", label: "Sign-in methods", exposureKeys: ["auth-methods"] },
-  { id: "verification", label: "Verification & OTP", exposureKeys: ["verification-policy", "sms"] },
-  { id: "mfa", label: "MFA", exposureKeys: ["auth-methods"], requiresMfaTab: true },
-  { id: "password", label: "Password policy", exposureKeys: ["password-policy"] },
+const AUTH_SUB_TABS: {
+  id: AuthSubTabId;
+  label: string;
+  description: string;
+  exposureKeys: string[] | null;
+  requiresMfaTab?: boolean;
+}[] = [
+  {
+    id: "login",
+    label: "Sign-in methods",
+    description: "How people sign in: password, magic link, passkeys, and external identity providers.",
+    exposureKeys: ["auth-methods"],
+  },
+  {
+    id: "verification",
+    label: "Verification & OTP",
+    description: "Codes and links for sign-up, passwordless sign-in and password recovery, and the SMS provider.",
+    exposureKeys: ["verification-policy", "sms"],
+  },
+  {
+    id: "mfa",
+    label: "MFA",
+    description: "Second factors and when they are asked for.",
+    exposureKeys: ["auth-methods"],
+    requiresMfaTab: true,
+  },
+  {
+    id: "password",
+    label: "Password policy",
+    description: "Complexity, expiry, reuse and account lockout.",
+    exposureKeys: ["password-policy"],
+  },
 ];
 
 export type SettingsScope =
@@ -404,22 +432,33 @@ export function SettingsTabs({
       )}
       {tab === "auth" && exposureReady && (
         <>
-          <div className="mb-6 flex flex-wrap gap-1 border-b border-ui">
-            {visibleAuthSubTabs.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                onClick={() => setAuthSubTab(sub.id)}
-                className={cn(
-                  "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-                  authSubTab === sub.id
-                    ? "border-ui-primary text-brand"
-                    : "border-transparent text-muted hover:text-ui",
-                )}
-              >
-                {sub.label}
-              </button>
-            ))}
+          <div className="mb-6">
+            <div
+              role="tablist"
+              aria-label="Authentication sections"
+              className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-ui bg-ui-elevated/50 p-1"
+            >
+              {visibleAuthSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={authSubTab === sub.id}
+                  onClick={() => setAuthSubTab(sub.id)}
+                  className={cn(
+                    "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+                    authSubTab === sub.id
+                      ? "bg-ui-surface text-brand shadow-sm ring-1 ring-[var(--ui-border)]"
+                      : "text-muted hover:text-ui",
+                  )}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {visibleAuthSubTabs.find((sub) => sub.id === authSubTab)?.description}
+            </p>
           </div>
           {authSubTab === "verification" && (
             <VerificationSettingsPanel applicationId={applicationId} />
@@ -448,6 +487,7 @@ export function SettingsTabs({
           )}
         </>
       )}
+      {exposureReady && tab === "flags" && scopeMode === "platform" && <PlatformFeaturesCard />}
       {exposureReady && tab === "flags" && (
         <AuthenticationSettingsPanel
           applicationId={applicationId}

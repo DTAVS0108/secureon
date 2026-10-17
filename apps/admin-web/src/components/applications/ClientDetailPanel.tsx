@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OAuthClientFormModal } from "@/components/forms/OAuthClientFormModal";
+import { ClientSetupCode } from "@/components/applications/ClientSetupCode";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -140,6 +141,10 @@ export function ClientDetailPanel({
             <EndpointRow label="Discovery" value={discoveryUrl} />
           </div>
         </Card>
+
+        <div className="lg:col-span-2">
+          <ClientSetupCode client={client} />
+        </div>
 
         <Card padded={false}>
           <CardHeader title="Redirect URIs" />

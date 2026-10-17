@@ -42,7 +42,8 @@ const SECTIONS: { key: string; label: string; description: string; info?: string
   {
     key: "feature-flags",
     label: "Feature flags",
-    description: "Capability toggles scoped to this application.",
+    description:
+      "Lets each application turn off application features (self-registration, recovery, LDAP) that are on here. Console controls are never shown to applications.",
   },
   {
     key: "token-policy",

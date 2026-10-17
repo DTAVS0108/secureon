@@ -250,6 +250,10 @@ public class ApplicationPublicManifestService {
     private static List<Map<String, Object>> sanitizeFeatureFlags(List<Map<String, Object>> flags) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> f : flags) {
+            // Client apps only need product capabilities, not the console's own controls.
+            if (!com.secureone.auth.platform.FeatureFlagDefaults.isApplicationScoped(String.valueOf(f.get("key")))) {
+                continue;
+            }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("key", f.get("key"));
             row.put("name", f.get("name"));

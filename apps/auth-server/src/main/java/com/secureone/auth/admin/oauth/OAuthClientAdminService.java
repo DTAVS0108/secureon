@@ -106,6 +106,7 @@ public class OAuthClientAdminService {
                 RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
         client.setRequirePkce(request.pkceRequired() != null ? request.pkceRequired() : defaultPkceRequired(type));
         client.setSubjectType(request.subjectType() != null ? subjectType(request.subjectType()) : OAuthClient.SUBJECT_USER_ID);
+        client.setSetupFramework(setupFramework(request.setupFramework()));
         client.setTokenEndpointAuthMethod(
                 request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()
                         ? request.tokenEndpointAuthMethod()
@@ -146,6 +147,7 @@ public class OAuthClientAdminService {
         }
         if (request.pkceRequired() != null) client.setRequirePkce(request.pkceRequired());
         if (request.subjectType() != null) client.setSubjectType(subjectType(request.subjectType()));
+        if (request.setupFramework() != null) client.setSetupFramework(setupFramework(request.setupFramework()));
         if (request.tokenEndpointAuthMethod() != null) {
             client.setTokenEndpointAuthMethod(request.tokenEndpointAuthMethod());
         }
@@ -283,7 +285,20 @@ public class OAuthClientAdminService {
                 client.getCreatedAt(),
                 client.getUpdatedAt(),
                 oAuthEndpoints(),
-                client.getSubjectType());
+                client.getSubjectType(),
+                client.getSetupFramework());
+    }
+
+    /** A framework id such as "electron" or "python-bff"; blank clears it. */
+    private static String setupFramework(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim().toLowerCase(Locale.ROOT);
+        if (!value.matches("[a-z0-9][a-z0-9-]{0,63}")) {
+            throw new IllegalArgumentException("setupFramework must be a framework id such as \"electron\".");
+        }
+        return value;
     }
 
     private static String subjectType(String raw) {

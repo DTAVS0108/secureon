@@ -88,11 +88,9 @@ public class AdminAccessService {
         if (attrs != null && attrs.getAttribute(cacheKey, RequestAttributes.SCOPE_REQUEST) instanceof Boolean cached) {
             return cached;
         }
-        String email = operators.resolveEmail(authentication, null);
-        boolean result = tenants.findBySlug(PlatformOperators.PLATFORM_TENANT_SLUG)
-                .flatMap(tenant -> users.findByTenantIdAndEmail(tenant.getId(), email))
-                .map(user -> platformOperators.isOperator(user.getId()))
-                .orElse(false);
+        // Platform-scoped lookup: this request may be scoped to another tenant (?tenantId=), where
+        // row-level security would hide the operator's account and refuse a real platform operator.
+        boolean result = platformOperators.isOperatorEmail(operators.resolveEmail(authentication, null));
         if (attrs != null) {
             attrs.setAttribute(cacheKey, result, RequestAttributes.SCOPE_REQUEST);
         }

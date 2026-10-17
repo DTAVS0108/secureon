@@ -9,6 +9,8 @@ import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { cn } from "@/lib/cn";
 import { buildAppPath } from "@/lib/app-routes";
 import { useAdminContext } from "./AdminContextProvider";
+import { useAppFlags } from "@/hooks/useAppFlags";
+import { APP_FLAG } from "@/lib/app-feature-flags";
 import { ConnectAppLink } from "./ConnectAppLink";
 import { canAccessSection } from "@/lib/auth/permissions";
 
@@ -22,8 +24,11 @@ export function AppSidebar({
   const pathname = usePathname();
   const ctx = useAdminContext();
   const app = ctx.applications.find((a) => a.id === applicationId);
+  const flags = useAppFlags();
   const items = appNav(applicationId).filter((item) => {
     const section = item.href.split("/").pop() ?? "";
+    if (section === "audit" && !flags.on(APP_FLAG.auditLog)) return false;
+    if (section === "sessions" && !flags.on(APP_FLAG.sessions)) return false;
     return canAccessSection(superAdmin, app, section);
   });
   const tenantSuper = isTenantSuperAdmin(ctx);
@@ -63,7 +68,7 @@ export function AppSidebar({
         })}
       </nav>
 
-      {canConnect && <ConnectAppLink pathname={pathname} />}
+      {canConnect && ctx.connectAppEnabled !== false && <ConnectAppLink pathname={pathname} />}
 
       {showPlatformAdmin && (
         <div className="shrink-0 border-t border-ui pt-4">

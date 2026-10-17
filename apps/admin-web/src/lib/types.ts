@@ -60,6 +60,8 @@ export type OAuthClient = {
   tokenEndpointAuthMethod: string;
   /** Token "sub": "user_id" (account UUID, stable) or "legacy" ("tenant:email"). */
   subjectType?: "user_id" | "legacy";
+  /** Framework chosen in Connect an app, e.g. "electron" (setup code on the client page). */
+  setupFramework?: string | null;
   clientSecretConfigured: boolean;
   createdAt: string;
   updatedAt: string;
@@ -235,6 +237,11 @@ export type FeatureFlag = {
   category?: string;
   /** Platform master switch; when false, application cannot enable this flag. */
   platformEnabled?: boolean;
+  /**
+   * "application": a main or advanced feature applications may turn off for themselves.
+   * "platform": a console control decided in Platform settings only.
+   */
+  scope?: "application" | "platform";
 };
 
 export type PasswordRequirement = {

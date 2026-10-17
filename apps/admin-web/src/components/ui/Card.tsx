@@ -1,5 +1,5 @@
-import { cn } from "@/lib/cn";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { cn } from "@/lib/cn";
 
 export function Card({
   children,
@@ -13,7 +13,7 @@ export function Card({
   return (
     <section
       className={cn(
-        "rounded-[var(--ui-radius)] border border-ui bg-ui-surface text-[var(--ui-text)]",
+        "rounded-[var(--ui-radius)] border border-ui bg-ui-surface text-[var(--ui-text)] my-4",
         padded && "p-5",
         className,
       )}

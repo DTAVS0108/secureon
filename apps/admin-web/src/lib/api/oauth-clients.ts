@@ -29,6 +29,7 @@ type OAuthClientDto = {
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
   subjectType?: "user_id" | "legacy";
+  setupFramework?: string | null;
   clientSecretConfigured: boolean;
   createdAt: string;
   updatedAt: string;
@@ -54,6 +55,7 @@ function mapClient(dto: OAuthClientDto): OAuthClient {
     tokenEndpointAuthMethod:
       dto.tokenEndpointAuthMethod ?? (type === "web" || type === "m2m" ? "client_secret_basic" : "none"),
     subjectType: dto.subjectType ?? "legacy",
+    setupFramework: dto.setupFramework ?? null,
     clientSecretConfigured: dto.clientSecretConfigured ?? false,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt ?? dto.createdAt,
@@ -92,6 +94,8 @@ export type OAuthClientWriteInput = {
   pkceRequired?: boolean;
   tokenEndpointAuthMethod?: string;
   subjectType?: string;
+  /** Framework chosen in Connect an app (setup code on the client page). */
+  setupFramework?: string;
 };
 
 export async function createOAuthClientApi(
@@ -122,6 +126,14 @@ export async function updateOAuthClientApi(
       body: JSON.stringify(input),
     }),
   );
+}
+
+/** Remembers which framework's setup code the client page shows (console display only). */
+export async function saveOAuthClientSetupFrameworkApi(id: string, setupFramework: string): Promise<void> {
+  await apiFetch(`/api/admin/v1/oauth-clients/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ setupFramework }),
+  });
 }
 
 export async function rotateOAuthClientSecretApi(id: string): Promise<string> {

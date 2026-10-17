@@ -78,6 +78,7 @@ export function normalizeFeatureFlags(raw: unknown): FeatureFlag[] {
             : undefined,
       platformEnabled:
         row.platformEnabled === undefined ? undefined : coerceBool(row.platformEnabled, false),
+      scope: row.scope === "application" || row.scope === "platform" ? row.scope : undefined,
     });
   }
   return out;

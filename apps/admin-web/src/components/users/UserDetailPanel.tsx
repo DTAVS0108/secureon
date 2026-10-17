@@ -378,56 +378,9 @@ export function UserDetailPanel({
               )}
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col border-t border-ui pt-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Account sections
-              </p>
-              <div className="mt-3 grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                <SectionShortcut
-                  title="Security"
-                  description="Account access, email verification, password emails, and MFA shortcuts."
-                  onClick={() => setTab("security")}
-                />
-                {showMfaTab && (
-                  <SectionShortcut
-                    title="MFA"
-                    description={
-                      visibleMfaFactors.length > 0
-                        ? `${visibleMfaFactors.length} enrolled factor(s)`
-                        : "No factors enrolled yet"
-                    }
-                    onClick={() => setTab("mfa")}
-                  />
-                )}
-                <SectionShortcut
-                  title="Roles"
-                  description={
-                    user.roleIds.length > 0
-                      ? `${user.roleIds.length} role(s) assigned`
-                      : "No roles assigned"
-                  }
-                  onClick={() => setTab("roles")}
-                />
-                {showAuthTab && (
-                  <SectionShortcut
-                    title="Sign-in methods"
-                    description="Per-user allow list for app-enabled authentication."
-                    onClick={() => setTab("auth")}
-                  />
-                )}
-                <SectionShortcut
-                  title="Sign-ins"
-                  description={
-                    logins.length > 0
-                      ? `${logins.length} event(s) for this app`
-                      : "No sign-in history yet"
-                  }
-                  onClick={() => setTab("signins")}
-                />
-              </div>
-
+            <div className="flex min-h-0 flex-1 flex-col">
               {logins.length > 0 && (
-                <div className="mt-6">
+                <div className="mt-6 border-t border-ui pt-6">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                       Recent sign-ins
@@ -674,28 +627,6 @@ function SignInRow({
         <p className="mt-1 text-xs text-faint"><LocalTime value={login.timestamp} format="datetime" /></p>
       </div>
     </li>
-  );
-}
-
-function SectionShortcut({
-  title,
-  description,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-full min-h-[5.5rem] flex-col rounded-xl border border-ui bg-ui-elevated/40 px-4 py-3 text-left transition-colors hover:border-brand/40 hover:bg-brand-muted/20"
-    >
-      <span className="text-sm font-medium text-ui">{title}</span>
-      <span className="mt-1 flex-1 text-xs text-muted">{description}</span>
-      <span className="mt-2 text-xs font-medium text-brand">Open →</span>
-    </button>
   );
 }
 

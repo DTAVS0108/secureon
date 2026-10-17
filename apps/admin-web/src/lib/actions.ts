@@ -252,7 +252,7 @@ export async function applicationProductDeleteAction(fd: FormData): Promise<{ er
   revalidatePath("/app");
   revalidatePath("/audit");
   const ctx = await fetchAdminContext().catch(() => null);
-  redirect(ctx && !ctx.platformSuperAdmin ? "/connect" : "/applications");
+  redirect(ctx && !ctx.platformSuperAdmin ? (ctx.connectAppEnabled !== false ? "/connect" : "/app") : "/applications");
 }
 
 export async function applicationIsolateAction(fd: FormData): Promise<FormState> {

@@ -46,7 +46,9 @@ export default async function ApplicationClientPage({
         breadcrumb={
           platform
             ? <Link href="/applications" className="hover:underline">OAuth clients</Link>
-            : <Link href="/connect" className="hover:underline">Connect an app</Link>
+            : ctx.connectAppEnabled !== false
+              ? <Link href="/connect" className="hover:underline">Connect an app</Link>
+              : <Link href={`/app/${client.applicationId}/users`} className="hover:underline">{client.applicationName}</Link>
         }
         title={client.clientId}
         description={`OAuth client for ${client.applicationName}`}

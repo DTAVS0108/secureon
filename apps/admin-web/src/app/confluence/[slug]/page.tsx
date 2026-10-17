@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { ConfluenceMarkdown } from "@/components/confluence/ConfluenceMarkdown";
 import { ConfluenceShell } from "@/components/confluence/ConfluenceShell";
-import { requireConfluenceAccess } from "@/lib/confluence/access";
 import { docsRootExists, loadConfluenceDoc } from "@/lib/confluence/loader";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +10,6 @@ export default async function ConfluenceDocPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireConfluenceAccess();
   const { slug } = await params;
 
   if (!(await docsRootExists())) {

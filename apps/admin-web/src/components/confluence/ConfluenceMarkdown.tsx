@@ -4,7 +4,8 @@ import { Children, isValidElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { DrawioEmbed } from "./DrawioEmbed";
+import { DrawioEmbed, HiddenDrawio } from "./DrawioEmbed";
+import { FullscreenFrame } from "./FullscreenFrame";
 import { MermaidDiagram } from "./MermaidDiagram";
 import { withBasePath } from "@/lib/config";
 
@@ -57,6 +58,19 @@ export function ConfluenceMarkdown({ content }: { content: string }) {
               </a>
             );
           },
+          img: ({ src, alt }) =>
+            typeof src === "string" ? (
+              <FullscreenFrame className="my-4 inline-block rounded-lg border border-ui bg-white p-2">
+                {(fullscreen) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- docs images are served from /api/confluence/assets
+                  <img
+                    src={src.startsWith("/") ? withBasePath(src) : src}
+                    alt={alt ?? ""}
+                    className={fullscreen ? undefined : "max-w-full"}
+                  />
+                )}
+              </FullscreenFrame>
+            ) : null,
           table: ({ children }) => (
             <div className="my-4 overflow-x-auto rounded-lg border border-ui">
               <table className="w-full min-w-[480px] border-collapse text-sm">{children}</table>
@@ -79,6 +93,10 @@ export function ConfluenceMarkdown({ content }: { content: string }) {
             );
           },
           code: ({ className, children }) => {
+            if (className?.includes("language-drawio-hidden")) {
+              const assetPath = String(children).replace(/\n$/, "").trim();
+              return <HiddenDrawio assetPath={assetPath} title={drawioTitleFromPath(assetPath)} />;
+            }
             if (className?.includes("language-drawio")) {
               const assetPath = String(children).replace(/\n$/, "").trim();
               return <DrawioEmbed assetPath={assetPath} title={drawioTitleFromPath(assetPath)} />;

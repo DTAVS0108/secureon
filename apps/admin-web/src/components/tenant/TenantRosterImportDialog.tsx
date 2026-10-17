@@ -148,7 +148,7 @@ export function TenantRosterImportDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative my-8 w-full max-w-2xl rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl"
+        className="relative my-8 w-full max-w-[max(36rem,60vw)] rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl"
       >
         <div className="border-b border-ui px-5 py-4">
           <h2 className="text-base font-semibold text-ui">Import from application</h2>

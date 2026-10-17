@@ -73,6 +73,10 @@ public class OAuthClient {
     @Column(name = "status", nullable = false)
     private String status = "ACTIVE";
 
+    /** Framework chosen in "Connect an app" (console display of setup code only). */
+    @Column(name = "setup_framework")
+    private String setupFramework;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -92,5 +96,13 @@ public class OAuthClient {
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    public String getSetupFramework() {
+        return setupFramework;
+    }
+
+    public void setSetupFramework(String setupFramework) {
+        this.setupFramework = setupFramework;
     }
 }

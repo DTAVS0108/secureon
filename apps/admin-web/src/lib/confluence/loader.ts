@@ -26,8 +26,20 @@ function resolveDocsRelativeAssetPath(pageDir: string, href: string): string | n
   return assetPath;
 }
 
-function drawioFence(assetPath: string): string {
-  return `\n\n\`\`\`drawio\n${assetPath}\n\`\`\`\n`;
+/** `drawio-hidden` renders collapsed: used when the page also draws the same diagram in Mermaid. */
+function drawioFence(assetPath: string, hidden: boolean): string {
+  const language = hidden ? "drawio-hidden" : "drawio";
+  return `\n\n\`\`\`${language}\n${assetPath}\n\`\`\`\n`;
+}
+
+/** True when a Mermaid block follows in the same section, before the next heading or draw.io link. */
+function hasMermaidTwin(lines: string[], from: number): boolean {
+  for (let i = from + 1; i < lines.length; i++) {
+    const next = lines[i].trimStart();
+    if (next.startsWith("```mermaid")) return true;
+    if (next.startsWith("#") || /\.drawio/i.test(next)) return false;
+  }
+  return false;
 }
 
 /** Embed draw.io viewers inline in doc pages; index table links point at parent docs. */
@@ -36,7 +48,7 @@ function processDrawioEmbeds(content: string, pageFile: string): string {
   const lines = content.split("\n");
   const out: string[] = [];
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const isTableRow = line.trimStart().startsWith("|");
 
     if (isTableRow && /\.drawio/i.test(line)) {
@@ -63,7 +75,7 @@ function processDrawioEmbeds(content: string, pageFile: string): string {
       });
 
       out.push(rewritten);
-      if (embedPath) out.push(drawioFence(embedPath));
+      if (embedPath) out.push(drawioFence(embedPath, hasMermaidTwin(lines, index)));
       continue;
     }
 
@@ -96,7 +108,11 @@ function rewriteMarkdownLinks(content: string, pageFile: string): string {
       return `[${text}](/api/confluence/assets/${assetPath})`;
     }
 
+    // Resolve relative to the page's folder first, so `README.md` or `../x.md` inside a subfolder
+    // (docs/user-guide/) finds the right page before the bare file-name fallbacks.
+    const resolved = path.posix.normalize(path.posix.join(pageDir, filePart));
     const slug =
+      slugByFile.get(resolved) ??
       slugByFile.get(filePart) ??
       slugByFile.get(normalized) ??
       slugByFile.get(filePart.split("/").pop() ?? "");

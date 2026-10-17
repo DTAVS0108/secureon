@@ -22,6 +22,8 @@ export default async function ConnectPage({
   searchParams: Promise<{ applicationId?: string }>;
 }) {
   const ctx = await getPlatformAccessContext();
+  // Platform settings → Feature flags → Connect an app.
+  if (ctx.connectAppEnabled === false) notFound();
   const { applicationId } = await searchParams;
 
   if (ctx.platformSuperAdmin) {

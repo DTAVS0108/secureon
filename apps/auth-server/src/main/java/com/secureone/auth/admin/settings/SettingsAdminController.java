@@ -7,6 +7,7 @@ import com.secureone.auth.notify.PlatformMailSenderProvider;
 import com.secureone.auth.notify.PlatformSmsSettingsService;
 import com.secureone.auth.notify.PlatformSmtpSettingsService;
 import com.secureone.auth.platform.AuthSettingsService;
+import com.secureone.auth.platform.PlatformFeatures;
 import com.secureone.auth.platform.PlatformSettingsService;
 import com.secureone.auth.platform.SettingsExposureService;
 import com.secureone.auth.platform.VerificationPolicyService;
@@ -36,6 +37,7 @@ public class SettingsAdminController {
     private final SettingsExposureService exposure;
     private final VerificationPolicyService verificationPolicy;
     private final PlatformSmsSettingsService smsSettings;
+    private final PlatformFeatures platformFeatures;
 
     public SettingsAdminController(
             EmailNotificationService emailService,
@@ -45,7 +47,8 @@ public class SettingsAdminController {
             AuthSettingsService authSettings,
             SettingsExposureService exposure,
             VerificationPolicyService verificationPolicy,
-            PlatformSmsSettingsService smsSettings) {
+            PlatformSmsSettingsService smsSettings,
+            PlatformFeatures platformFeatures) {
         this.emailService = emailService;
         this.platformSettings = platformSettings;
         this.platformSmtp = platformSmtp;
@@ -54,6 +57,7 @@ public class SettingsAdminController {
         this.exposure = exposure;
         this.verificationPolicy = verificationPolicy;
         this.smsSettings = smsSettings;
+        this.platformFeatures = platformFeatures;
     }
 
     /** Which setting sections applications may customize (platform super admin). */
@@ -136,6 +140,17 @@ public class SettingsAdminController {
     @PutMapping("/password-policy")
     public Map<String, Object> updatePasswordPolicy(@RequestBody Map<String, Object> body) {
         return authSettings.savePasswordPolicy(body);
+    }
+
+    /** Platform-only console features, e.g. configuration as code (applications cannot override). */
+    @GetMapping("/platform-features")
+    public Map<String, Object> getPlatformFeatures() {
+        return platformFeatures.get();
+    }
+
+    @PutMapping("/platform-features")
+    public Map<String, Object> updatePlatformFeatures(@RequestBody Map<String, Object> body) {
+        return platformFeatures.update(body);
     }
 
     @GetMapping("/feature-flags")

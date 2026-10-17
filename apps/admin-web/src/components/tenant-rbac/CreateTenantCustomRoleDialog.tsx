@@ -95,7 +95,7 @@ export function CreateTenantCustomRoleDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-tenant-role-title"
-        className="relative z-[10000] my-8 w-full max-w-lg rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl"
+        className="relative z-[10000] my-8 w-full max-w-[max(36rem,60vw)] rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4 border-b border-ui px-5 py-4">
           <div>

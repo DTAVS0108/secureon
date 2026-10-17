@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppFlags } from "@/hooks/useAppFlags";
+import { APP_FLAG } from "@/lib/app-feature-flags";
 import { AdminRecipientsPicker } from "@/components/settings/AdminRecipientsPicker";
 import { EmailTemplatesSettings } from "@/components/settings/EmailTemplatesSettings";
 import { EmailTestPanel } from "@/components/settings/EmailTestPanel";
@@ -88,6 +90,7 @@ export function NotificationsSettings({
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
+  const flags = useAppFlags();
   const [notifications, setNotifications] = useState<NotificationSettings>({});
   const [email, setEmail] = useState<EmailSettings>({});
   const [smtp, setSmtp] = useState<SmtpSettings>({});
@@ -353,6 +356,7 @@ export function NotificationsSettings({
           });
         }}
       />
+      {flags.on(APP_FLAG.emailTemplates) && (
       <EmailTemplatesSettings
         applicationId={applicationId}
         templates={templates}
@@ -364,6 +368,7 @@ export function NotificationsSettings({
           patchCachedNotificationsBundle(applicationId, { templates: next });
         }}
       />
+      )}
       {emailTestUiEnabled && (
         <EmailTestPanel
           applicationId={applicationId}

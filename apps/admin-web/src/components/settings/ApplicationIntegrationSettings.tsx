@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppFlags } from "@/hooks/useAppFlags";
+import { APP_FLAG } from "@/lib/app-feature-flags";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
@@ -150,6 +152,8 @@ export function ApplicationIntegrationSettings({
 }) {
   const { toast } = useToast();
   const adminContext = useAdminContext();
+  // Checklist, API reference and health check each have a feature flag (off by default).
+  const flags = useAppFlags();
   const [config, setConfig] = useState<ClientIntegrationConfig>(DEFAULT_CONFIG);
   const [app, setApp] = useState<ApplicationProduct | null>(null);
   const [oauthClients, setOauthClients] = useState<OAuthClient[]>([]);
@@ -398,6 +402,7 @@ export function ApplicationIntegrationSettings({
         </Card>
       )}
 
+      {flags.on(APP_FLAG.integrationChecklist) && (
       <Card padded={false}>
         <CardHeader
           title="Integration checklist"
@@ -442,7 +447,9 @@ export function ApplicationIntegrationSettings({
           />
         </div>
       </Card>
+      )}
 
+      {flags.on(APP_FLAG.apiReference) && (
       <Card padded={false}>
         <CardHeader
           title="API reference"
@@ -462,7 +469,9 @@ export function ApplicationIntegrationSettings({
         </p>
         <ApiReferenceList endpoints={filteredCatalog} applicationId={applicationId} />
       </Card>
+      )}
 
+      {flags.on(APP_FLAG.apiHealthCheck) && (
       <Card padded={false}>
         <CardHeader
           title="API health check"
@@ -501,6 +510,7 @@ export function ApplicationIntegrationSettings({
           )}
         </div>
       </Card>
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import "./globals.css";
 import "@/lib/api/server-auth";
 import { ConsoleProviders } from "@/components/ConsoleProviders";
 import { loadAdminContextSafe } from "@/lib/api/app-workspace";
-import type { AdminContext } from "@/lib/api/context";
+import { fetchAdminContext, type AdminContext } from "@/lib/api/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { getServerThemeBootstrap } from "@/lib/theme/server";
@@ -58,8 +58,14 @@ export default async function RootLayout({
     pathname.startsWith("/login/") ||
     pathname === "/setup" ||
     pathname.startsWith("/api/");
+  // Documentation is public: use the operator's context when signed in, an empty one otherwise.
+  const isPublicDocs = pathname === "/confluence" || pathname.startsWith("/confluence/");
   const [ctx, theme] = await Promise.all([
-    isBareRoute ? Promise.resolve(EMPTY_ADMIN_CONTEXT) : loadAdminContextSafe(),
+    isBareRoute
+      ? Promise.resolve(EMPTY_ADMIN_CONTEXT)
+      : isPublicDocs
+        ? fetchAdminContext().catch(() => EMPTY_ADMIN_CONTEXT)
+        : loadAdminContextSafe(),
     getServerThemeBootstrap(),
   ]);
 

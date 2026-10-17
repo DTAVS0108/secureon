@@ -1,5 +1,6 @@
 package com.secureone.auth.admin;
 
+import com.secureone.auth.platform.PlatformFeatures;
 import com.secureone.auth.admin.console.AdminConsoleCapabilityService;
 import com.secureone.auth.admin.role.RoleApplicationLookup;
 import com.secureone.auth.application.Application;
@@ -53,6 +54,7 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
     private final RoleApplicationLookup rbacLookup;
     private final UserAccountRepository users;
     private final ApplicationRepository applications;
+    private final PlatformFeatures platformFeatures;
 
     public AdminAccessInterceptor(
             AdminAccessService access,
@@ -60,13 +62,15 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
             AdminConsoleCapabilityService consoleCapabilities,
             RoleApplicationLookup rbacLookup,
             UserAccountRepository users,
-            ApplicationRepository applications) {
+            ApplicationRepository applications,
+            PlatformFeatures platformFeatures) {
         this.access = access;
         this.permissions = permissions;
         this.consoleCapabilities = consoleCapabilities;
         this.rbacLookup = rbacLookup;
         this.users = users;
         this.applications = applications;
+        this.platformFeatures = platformFeatures;
     }
 
     @Override
@@ -102,6 +106,18 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
         if (path.startsWith("/api/admin/v1/config/")) {
             // Configuration files can create tenants and change any of their applications.
             access.requirePlatformSettingsAccess(auth, actAs);
+            if (!platformFeatures.configAsCodeEnabled()) {
+                // Off unless a platform operator turns it on (Platform settings → Feature flags).
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.setContentType("application/json");
+                try {
+                    response.getWriter().write("{\"detail\":\"Configuration as code is turned off. "
+                            + "Turn it on in Platform settings → Feature flags.\"}");
+                } catch (java.io.IOException ignored) {
+                    // Status is already set.
+                }
+                return false;
+            }
             return true;
         }
 

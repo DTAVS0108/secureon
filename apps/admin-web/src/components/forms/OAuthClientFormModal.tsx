@@ -57,6 +57,7 @@ export function OAuthClientFormModal({
   triggerLabel,
   triggerVariant = "primary",
   triggerSize = "md",
+  defaultApplicationId,
 }: {
   client?: OAuthClient;
   applications: ApplicationProduct[];
@@ -64,6 +65,8 @@ export function OAuthClientFormModal({
   triggerLabel: React.ReactNode;
   triggerVariant?: "primary" | "secondary" | "ghost" | "danger";
   triggerSize?: "sm" | "md";
+  /** New client: preselect this application (e.g. "Add OAuth client" on an application's row). */
+  defaultApplicationId?: string;
 }) {
   const editing = Boolean(client);
   return (
@@ -84,6 +87,7 @@ export function OAuthClientFormModal({
           client={client}
           applications={applications}
           tenants={tenants ?? []}
+          defaultApplicationId={defaultApplicationId}
           close={close}
         />
       )}
@@ -95,11 +99,13 @@ function OAuthClientForm({
   client,
   applications,
   tenants,
+  defaultApplicationId,
   close,
 }: {
   client?: OAuthClient;
   applications: ApplicationProduct[];
   tenants: Tenant[];
+  defaultApplicationId?: string;
   close: () => void;
 }) {
   const action = client ? oauthClientUpdateAction : oauthClientCreateAction;
@@ -114,7 +120,8 @@ function OAuthClientForm({
     client?.tokenEndpointAuthMethod ?? TEMPLATE_BY_TYPE.web.tokenEndpointAuthMethod,
   );
   const [newSecret, setNewSecret] = useState<string | null>(null);
-  const [autoCreate, setAutoCreate] = useState(!client && applications.length === 0);
+  // Matches the Application product select: "Auto-create from client" unless an application is preselected.
+  const [autoCreate, setAutoCreate] = useState(!client && !defaultApplicationId);
 
   useCloseOnSuccess(state, close, (s) => {
     if (s.createdClientSecret) {
@@ -162,7 +169,7 @@ function OAuthClientForm({
           <FieldRow label="Application product" hint="Optional — auto-creates application + schema when empty">
             <Select
               name="applicationId"
-              defaultValue=""
+              defaultValue={defaultApplicationId ?? ""}
               onChange={(e) => setAutoCreate(!e.target.value)}
             >
               <option value="">Auto-create from client</option>

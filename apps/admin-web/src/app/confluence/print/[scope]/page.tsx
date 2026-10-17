@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { ConfluenceMarkdown } from "@/components/confluence/ConfluenceMarkdown";
 import { PdfPrintBar } from "@/components/confluence/PdfPrintBar";
-import { requireConfluenceAccess } from "@/lib/confluence/access";
 import { CONFLUENCE_CATEGORIES } from "@/lib/confluence/catalog";
 import { docsRootExists, loadConfluenceDoc, type LoadedConfluenceDoc } from "@/lib/confluence/loader";
 
@@ -30,7 +29,6 @@ export default async function ConfluencePrintPage({
 }: {
   params: Promise<{ scope: string }>;
 }) {
-  await requireConfluenceAccess();
   const { scope } = await params;
 
   if (!(await docsRootExists())) notFound();

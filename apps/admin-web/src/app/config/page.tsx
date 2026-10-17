@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ConfigWorkspace } from "@/components/config/ConfigWorkspace";
 import { listTenants } from "@/lib/api/tenants";
@@ -6,7 +7,9 @@ import { requirePlatformAccess } from "@/lib/platform-access";
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage() {
-  await requirePlatformAccess();
+  const ctx = await requirePlatformAccess();
+  // Off unless turned on in Platform settings → Feature flags; the API refuses too.
+  if (!ctx.configAsCodeEnabled) notFound();
   const tenants = await listTenants();
   return (
     <div className="w-full min-w-0">

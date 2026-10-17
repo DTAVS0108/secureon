@@ -55,7 +55,75 @@ public final class FeatureFlagDefaults {
                 true,
                 100,
                 "notifications"));
+        flags.add(flag(
+                "email_templates",
+                "Email templates",
+                "Show the Email templates editor under Application → Notifications",
+                true,
+                100,
+                "notifications"));
+        flags.add(flag(
+                "federation_add_provider",
+                "Add sign-in provider",
+                "Allow adding Google, GitHub, OIDC and SAML providers under Authentication → Identity federation",
+                true,
+                100,
+                "identity"));
+        flags.add(flag(
+                "integration_checklist",
+                "Integration checklist",
+                "Show the go-live checklist and notes on the Integration tab",
+                false,
+                0,
+                "integration"));
+        flags.add(flag(
+                "api_reference",
+                "API reference",
+                "Show the API reference (endpoints, request and response shapes) on the Integration tab",
+                false,
+                0,
+                "integration"));
+        flags.add(flag(
+                "api_health_check",
+                "API health check",
+                "Show the API health check on the Integration tab",
+                false,
+                0,
+                "integration"));
+        flags.add(flag(
+                "audit_log",
+                "Audit log",
+                "Show the Audit log page in this application's console",
+                true,
+                100,
+                "console"));
+        flags.add(flag(
+                "sessions",
+                "Sessions",
+                "Show the Sessions page (sign-in history) in this application's console",
+                true,
+                100,
+                "console"));
         return flags;
+    }
+
+    /**
+     * Flags an application may override: product capabilities (main and advanced features). Every other
+     * flag is a console control decided in Platform settings only; applications never see or change it.
+     */
+    private static final Set<String> APPLICATION_SCOPED =
+            Set.of("self_service_recovery", "recovery_otp", "self_registration", "ldap");
+
+    public static final String SCOPE_APPLICATION = "application";
+    public static final String SCOPE_PLATFORM = "platform";
+
+    /** {@code application} (applications may override) or {@code platform} (platform settings only). */
+    public static String scopeOf(String key) {
+        return APPLICATION_SCOPED.contains(key) ? SCOPE_APPLICATION : SCOPE_PLATFORM;
+    }
+
+    public static boolean isApplicationScoped(String key) {
+        return APPLICATION_SCOPED.contains(key);
     }
 
     private static Map<String, Object> flag(
@@ -67,6 +135,7 @@ public final class FeatureFlagDefaults {
         row.put("enabled", enabled);
         row.put("rollout", rollout);
         row.put("category", category);
+        row.put("scope", scopeOf(key));
         return row;
     }
 }

@@ -5,6 +5,7 @@ import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { UserDetailPanel } from "@/components/users/UserDetailPanel";
 import { UserImportExportMenu } from "@/components/users/UserImportExportMenu";
+import { ActiveFilterChips, UserFilters, type FilterSection } from "@/components/users/UserFilters";
 import { UserFormModal } from "@/components/forms/UserFormModal";
 import Link from "next/link";
 import { fetchUserDirectorySettings, type UserDirectorySettings } from "@/lib/api/user-directory";
@@ -85,6 +86,8 @@ export function UsersWorkspaceHeaderActions({
 
 type CreatedSort = "asc" | "desc";
 
+const USER_STATUSES = ["active", "invited", "suspended", "disabled"] as const;
+
 export function UsersWorkspace({
   users: initialUsers,
   roles,
@@ -114,8 +117,8 @@ export function UsersWorkspace({
   const selectedId = searchParams.get("user");
   const [users, setUsers] = useState(initialUsers);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [createdSort, setCreatedSort] = useState<CreatedSort>("desc");
   const [directory, setDirectory] = useState<UserDirectorySettings | null>(null);
 
@@ -206,18 +209,18 @@ export function UsersWorkspace({
     }
   }, [selectedId, users, searchParams, pathname, router]);
 
+  const hasRole = useCallback(
+    (u: User, roleId: string) =>
+      u.roleIds.includes(roleId) ||
+      (u.roleNames ?? []).includes(roles.find((r) => r.id === roleId)?.name ?? ""),
+    [roles],
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return users.filter((u) => {
-      if (statusFilter !== "ALL" && u.status !== statusFilter) return false;
-      if (roleFilter !== "ALL") {
-        const hasRole =
-          u.roleIds.includes(roleFilter) ||
-          (u.roleNames ?? []).includes(
-            roles.find((r) => r.id === roleFilter)?.name ?? "",
-          );
-        if (!hasRole) return false;
-      }
+      if (statusFilter.length > 0 && !statusFilter.includes(u.status)) return false;
+      if (roleFilter.length > 0 && !roleFilter.some((roleId) => hasRole(u, roleId))) return false;
       if (!q) return true;
       const name = `${u.firstName} ${u.lastName}`.toLowerCase();
       const roleText = (u.roleNames ?? []).join(" ").toLowerCase();
@@ -228,7 +231,39 @@ export function UsersWorkspace({
         roleText.includes(q)
       );
     });
-  }, [users, query, statusFilter, roleFilter, roles]);
+  }, [users, query, statusFilter, roleFilter, hasRole]);
+
+  const filterSections: FilterSection[] = useMemo(
+    () => [
+      {
+        id: "status",
+        label: "Status",
+        options: USER_STATUSES.map((s) => ({
+          value: s,
+          label: s.charAt(0).toUpperCase() + s.slice(1),
+          count: users.filter((u) => u.status === s).length,
+        })),
+        selected: statusFilter,
+        onChange: setStatusFilter,
+      },
+      ...(roles.length > 0
+        ? [
+            {
+              id: "role",
+              label: "Role",
+              options: roles.map((r) => ({
+                value: r.id,
+                label: r.name,
+                count: users.filter((u) => hasRole(u, r.id)).length,
+              })),
+              selected: roleFilter,
+              onChange: setRoleFilter,
+            },
+          ]
+        : []),
+    ],
+    [users, roles, statusFilter, roleFilter, hasRole],
+  );
 
   const displayed = useMemo(() => {
     const rows = [...filtered];
@@ -292,54 +327,6 @@ export function UsersWorkspace({
         <SummaryCard label="Application" value={appName} isText />
       </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2">
-        {(["ALL", "active", "invited", "suspended", "disabled"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusFilter(s)}
-            className={`rounded-full border px-2.5 py-1 text-xs capitalize transition-colors ${
-              statusFilter === s
-                ? "border-brand bg-brand-muted text-brand"
-                : "border-ui text-muted hover:bg-ui-elevated"
-            }`}
-          >
-            {s === "ALL" ? "All" : s}
-          </button>
-        ))}
-      </div>
-
-      {roles.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-faint">Role</span>
-          <button
-            type="button"
-            onClick={() => setRoleFilter("ALL")}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-              roleFilter === "ALL"
-                ? "border-brand bg-brand-muted text-brand"
-                : "border-ui text-muted hover:bg-ui-elevated"
-            }`}
-          >
-            All roles
-          </button>
-          {roles.map((role) => (
-            <button
-              key={role.id}
-              type="button"
-              onClick={() => setRoleFilter(role.id)}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                roleFilter === role.id
-                  ? "border-brand bg-brand-muted text-brand"
-                  : "border-ui text-muted hover:bg-ui-elevated"
-              }`}
-            >
-              {role.name}
-            </button>
-          ))}
-        </div>
-      )}
-
       <Card padded={false} className="flex min-h-0 flex-1 flex-col">
         <CardHeader
           title="Users"
@@ -355,12 +342,18 @@ export function UsersWorkspace({
           </p>
         )}
         <div className="border-b border-ui px-4 py-3">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, email, username, role…"
-            aria-label="Search users"
-          />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, email, username, role…"
+                aria-label="Search users"
+              />
+            </div>
+            <UserFilters sections={filterSections} resultCount={displayed.length} />
+          </div>
+          <ActiveFilterChips sections={filterSections} />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -474,12 +467,10 @@ export function UsersWorkspace({
               </tbody>
             </table>
           </div>
-          <UserListFooter
-            applicationId={applicationId}
-            directory={directory}
-            formProps={formProps}
-            showQuickStart={displayed.length <= 4}
-          />
+          <p className="mt-auto border-t border-ui px-5 py-3 text-center text-xs text-faint">
+            Click a row or <strong className="font-medium text-muted">Manage</strong> to edit profile,
+            security, MFA, roles, and sign-in methods.
+          </p>
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
@@ -503,94 +494,6 @@ export function UsersWorkspace({
         )}
         </div>
       </Card>
-    </div>
-  );
-}
-
-function UserListFooter({
-  applicationId,
-  directory,
-  formProps,
-  showQuickStart,
-}: {
-  applicationId: string;
-  directory: UserDirectorySettings | null;
-  formProps: {
-    tenants: Tenant[];
-    roles: Role[];
-    tenantId: string;
-    applicationId: string;
-    lockToApp: true;
-    onCreated: (id: string) => void;
-  };
-  showQuickStart: boolean;
-}) {
-  return (
-    <div className="mt-auto border-t border-ui">
-      {showQuickStart && (
-        <div className="grid gap-3 px-5 py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <QuickStartTile
-            title="Invite a user"
-            description="Send an invitation and assign roles for this application."
-            action={<UserFormModal {...formProps} triggerLabel="Invite" triggerSize="sm" />}
-          />
-          <QuickStartTile
-            title="Import users"
-            description="Bulk load from CSV or Excel (save as CSV) when import is enabled."
-            action={
-              directory?.importEnabled ? (
-                <Link
-                  href={`/app/${applicationId}/settings`}
-                  className="text-sm font-medium text-brand hover:underline"
-                >
-                  Configure sources →
-                </Link>
-              ) : (
-                <Link
-                  href={`/app/${applicationId}/settings`}
-                  className="text-sm font-medium text-brand hover:underline"
-                >
-                  Enable in settings →
-                </Link>
-              )
-            }
-          />
-          <QuickStartTile
-            title="Authentication"
-            description="Control sign-in methods, MFA, and per-user access in settings."
-            action={
-              <Link
-                href={`/app/${applicationId}/settings`}
-                className="text-sm font-medium text-brand hover:underline"
-              >
-                Open settings →
-              </Link>
-            }
-          />
-        </div>
-      )}
-      <p className="px-5 py-3 text-center text-xs text-faint">
-        Click a row or <strong className="font-medium text-muted">Manage</strong> to edit profile,
-        security, MFA, roles, and sign-in methods.
-      </p>
-    </div>
-  );
-}
-
-function QuickStartTile({
-  title,
-  description,
-  action,
-}: {
-  title: string;
-  description: string;
-  action: ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-ui bg-ui-elevated/40 px-4 py-4">
-      <p className="text-sm font-medium text-ui">{title}</p>
-      <p className="mt-1 text-xs text-muted">{description}</p>
-      <div className="mt-3">{action}</div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ public final class FeatureFlagMerge {
     public static List<Map<String, Object>> merge(List<Map<String, Object>> platform, Object override) {
         Set<String> allowed = FeatureFlagDefaults.catalogKeys();
         if (!(override instanceof List<?> overrideList) || overrideList.isEmpty()) {
-            return filterCatalog(copy(platform), allowed);
+            return withScope(filterCatalog(copy(platform), allowed));
         }
         Map<String, Map<String, Object>> byKey = new LinkedHashMap<>();
         for (Map<String, Object> item : platform) {
@@ -40,18 +40,18 @@ public final class FeatureFlagMerge {
                 byKey.put(key, new HashMap<>(patch));
             }
         }
-        return new ArrayList<>(byKey.values());
+        return withScope(new ArrayList<>(byKey.values()));
     }
 
     /** Runtime + manifest: application flag is ON only when platform and app are both ON. */
     public static List<Map<String, Object>> resolveEffective(List<Map<String, Object>> platform, Object override) {
-        return applyPlatformGate(merge(platform, override), platform);
+        return applyPlatformGate(merge(platform, applicationOverrides(override)), platform);
     }
 
     /** Admin API: effective {@code enabled} plus {@code platformEnabled} for UI gating. */
     public static List<Map<String, Object>> forApplicationAdmin(
             List<Map<String, Object>> platform, Object override) {
-        List<Map<String, Object>> merged = merge(platform, override);
+        List<Map<String, Object>> merged = merge(platform, applicationOverrides(override));
         Map<String, Boolean> platformOn = enabledByKey(platform);
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> flag : merged) {
@@ -63,6 +63,46 @@ public final class FeatureFlagMerge {
             out.add(row);
         }
         return out;
+    }
+
+    /** Application overrides may only hold application-scoped flags (console controls are platform-only). */
+    public static List<Map<String, Object>> applicationScopedOnly(List<Map<String, Object>> appFlags) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> row : appFlags) {
+            String key = flagKey(row);
+            if (key != null && FeatureFlagDefaults.isApplicationScoped(key)) {
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * An application's saved overrides, without console controls: those are platform decisions, so an
+     * application value (saved before scopes existed, or sent anyway) never applies.
+     */
+    @SuppressWarnings("unchecked")
+    private static Object applicationOverrides(Object override) {
+        if (!(override instanceof List<?> list)) {
+            return override;
+        }
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Object raw : list) {
+            if (raw instanceof Map<?, ?> row) {
+                rows.add((Map<String, Object>) row);
+            }
+        }
+        return applicationScopedOnly(rows);
+    }
+
+    private static List<Map<String, Object>> withScope(List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            String key = flagKey(row);
+            if (key != null) {
+                row.put("scope", FeatureFlagDefaults.scopeOf(key));
+            }
+        }
+        return rows;
     }
 
     /** Prevent persisting app ON when platform has the flag OFF. */

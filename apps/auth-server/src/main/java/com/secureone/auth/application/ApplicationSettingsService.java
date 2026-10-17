@@ -518,6 +518,8 @@ public class ApplicationSettingsService {
         requireApplication(applicationId);
         List<Map<String, Object>> platform = authSettings.getFeatureFlags();
         List<Map<String, Object>> sanitized = FeatureFlagSanitizer.sanitize(stripMeta(copyList(body)));
+        // Only application features can be overridden; console controls stay platform decisions.
+        sanitized = FeatureFlagMerge.applicationScopedOnly(sanitized);
         sanitized = FeatureFlagMerge.clampAppOverridesToPlatform(platform, sanitized);
         saveAppRaw(applicationId, "feature_flags", sanitized);
         return getFeatureFlags(applicationId);

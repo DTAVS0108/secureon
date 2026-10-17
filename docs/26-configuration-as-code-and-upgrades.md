@@ -6,6 +6,8 @@ Two things that make SecureOne safe to run for years: keeping each tenant's setu
 
 ## Part 1 — Configuration as code
 
+> **Off by default in the console and the API.** A platform operator turns it on in **Platform settings › Feature flags › Platform features** (setting `platform_features.configAsCode`, API `PUT /api/admin/v1/settings/platform-features` with `{"configAsCode": true}`). While it is off, `/admin/config` is not found and `/api/admin/v1/config/…` answers 404. Start-up import with `SECUREONE_CONFIG_IMPORT` is not affected.
+
 ### What a configuration file holds
 
 Two kinds of file (YAML or JSON): one **per tenant** (`kind: TenantConfiguration`) and one for the **platform** (`kind: PlatformConfiguration`).

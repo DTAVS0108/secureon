@@ -34,7 +34,9 @@ public final class OAuthClientAdminDtos {
             Instant createdAt,
             Instant updatedAt,
             OAuthEndpoints oAuthEndpoints,
-            String subjectType) {}
+            String subjectType,
+            /** Framework chosen in Connect an app (e.g. "electron"); null when not set. */
+            String setupFramework) {}
 
     public record OAuthClientCreateRequest(
             UUID applicationId,
@@ -49,7 +51,8 @@ public final class OAuthClientAdminDtos {
             List<String> postLogoutRedirectUris,
             Boolean pkceRequired,
             String tokenEndpointAuthMethod,
-            String subjectType) {}
+            String subjectType,
+            @Size(max = 64) String setupFramework) {}
 
     public record OAuthClientUpdateRequest(
             @Size(max = 32) String type,
@@ -60,7 +63,9 @@ public final class OAuthClientAdminDtos {
             List<String> postLogoutRedirectUris,
             Boolean pkceRequired,
             String tokenEndpointAuthMethod,
-            String subjectType) {}
+            String subjectType,
+            /** null keeps the current value; "" clears it. */
+            @Size(max = 64) String setupFramework) {}
 
     public record OAuthClientCreateResult(OAuthClientResponse client, String clientSecret) {}
 

@@ -19,6 +19,8 @@ import {
   type ConnectKind,
 } from "@/lib/connect/catalog";
 import { setupFor, type SnippetValues } from "@/lib/connect/snippets";
+import { buildSetupMarkdown, downloadTextFile } from "@/lib/connect/setup-file";
+import { CodeBlock } from "./CodeBlock";
 import { publicAuthServerUrl } from "@/lib/config";
 import { cn } from "@/lib/cn";
 import type { ApplicationProduct, Tenant } from "@/lib/types";
@@ -29,6 +31,7 @@ const KIND_SUFFIX: Record<ConnectKind, string> = {
   web: "web",
   spa: "spa",
   native: "mobile",
+  desktop: "desktop",
   service: "service",
   device: "device",
   api: "api",
@@ -64,11 +67,14 @@ export function ConnectWizard({
   const [appScheme, setAppScheme] = useState("");
   const [audiences, setAudiences] = useState("");
   const [includeTest, setIncludeTest] = useState(true);
+  // The secret goes into the downloaded setup file only when asked for (it is shown only once).
+  const [secretInFile, setSecretInFile] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
 
   const info = kind ? kindInfo(kind) : null;
+  const frameworkLabel = kind ? (frameworksFor(kind).find((f) => f.id === framework)?.label ?? framework) : framework;
   const tenantApps = applications.filter((a) => a.tenantId === tenantId);
   const appLabel = applicationId ? tenantApps.find((a) => a.id === applicationId)?.name ?? "" : applicationName;
   const fw = kind ? frameworksFor(kind).find((f) => f.id === framework) : undefined;
@@ -138,6 +144,7 @@ export function ConnectWizard({
       clientId,
       redirectUris: redirects,
       postLogoutRedirectUris: info?.redirects ? [postLogoutUri.trim()] : [],
+      framework,
     });
     setBusy(false);
     if (result.ok) setCreated(result);
@@ -348,6 +355,54 @@ export function ConnectWizard({
                 Users & roles
               </Link>
             </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-ui bg-ui-elevated/40 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-ui">Keep a copy for later</p>
+                <p className="text-xs text-muted">
+                  Downloads a Markdown file with these values, the endpoints and the setup code for {frameworkLabel}.
+                </p>
+              </div>
+              {created.clientSecret && (
+                <label className="flex items-center gap-2 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    checked={secretInFile}
+                    onChange={(e) => setSecretInFile(e.target.checked)}
+                    className="h-4 w-4 accent-[var(--ui-primary)]"
+                  />
+                  Include the client secret
+                </label>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  downloadTextFile(
+                    `${created.clientId}-secureone-setup.md`,
+                    buildSetupMarkdown({
+                      appName: appLabel || created.clientId,
+                      kindTitle: info?.title ?? "",
+                      frameworkId: framework,
+                      frameworkLabel,
+                      values,
+                      clientSecret: secretInFile ? created.clientSecret : null,
+                      confidential: Boolean(info?.client?.confidential),
+                      grantTypes: info?.client?.grantTypes ?? [],
+                      showRedirects: Boolean(info?.redirects),
+                      createdAt: new Date(),
+                    }),
+                  )
+                }
+              >
+                Download setup (.md)
+              </Button>
+            </div>
+            {secretInFile && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                The file will contain the client secret. Keep it in a password manager or secret store, not in Git or chat.
+              </p>
+            )}
           </div>
         </Card>
       )}
@@ -419,20 +474,6 @@ function SetupGuide({
   );
 }
 
-function CodeBlock({ title, language, code }: { title: string; language: string; code: string }) {
-  return (
-    <div className="overflow-hidden rounded-lg border border-ui">
-      <div className="flex items-center justify-between gap-2 border-b border-ui bg-black/5 px-3 py-1.5 dark:bg-white/5">
-        <span className="font-mono text-xs text-muted">{title}</span>
-        <CopyValue value={code} />
-      </div>
-      <pre className="max-h-112 overflow-auto p-3 font-mono text-[12px] leading-relaxed text-ui" data-language={language}>
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
-
 function Value({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -457,6 +498,8 @@ function describeTemplate(kind: ConnectKind): string {
     case "spa":
     case "native":
       return "Public client: authorization code with PKCE, refresh tokens, no secret.";
+    case "desktop":
+      return "Public client: authorization code with PKCE through the system browser and a loopback address, refresh tokens, no secret.";
     case "service":
       return "Confidential client: client credentials (no user), secret for the service.";
     case "device":

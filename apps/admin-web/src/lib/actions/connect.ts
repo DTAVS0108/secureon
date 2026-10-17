@@ -1,6 +1,7 @@
 "use server";
 
 // Shared API helpers called here run as the signed-in user (registers the lookup).
+import { fetchAdminContext } from "@/lib/api/context";
 import "@/lib/api/server-auth";
 
 import { revalidatePath } from "next/cache";
@@ -17,6 +18,8 @@ export type ConnectInput = {
   clientId: string;
   redirectUris: string[];
   postLogoutRedirectUris: string[];
+  /** The framework picked in the wizard; the client page shows its setup code later. */
+  framework?: string;
 };
 
 export type ConnectResult =
@@ -25,6 +28,11 @@ export type ConnectResult =
 
 /** Creates the application (if new) and an OAuth client with the kind's secure defaults. */
 export async function connectAppAction(input: ConnectInput): Promise<ConnectResult> {
+  // Platform settings → Feature flags → Connect an app: refuse here too, not only in the menus.
+  const ctx = await fetchAdminContext().catch(() => null);
+  if (ctx?.connectAppEnabled === false) {
+    return { ok: false, error: "Connect an app is turned off. Use Register application & OAuth client instead." };
+  }
   const kind = kindInfo(input.kind);
   if (!kind?.client) return { ok: false, error: "Nothing to register for this kind of app." };
   if (!input.tenantId) return { ok: false, error: "Choose the tenant whose users will sign in." };
@@ -54,6 +62,7 @@ export async function connectAppAction(input: ConnectInput): Promise<ConnectResu
       postLogoutRedirectUris: kind.redirects ? input.postLogoutRedirectUris.filter(Boolean) : [],
       pkceRequired: t.pkceRequired,
       tokenEndpointAuthMethod: t.tokenEndpointAuthMethod,
+      setupFramework: input.framework || undefined,
     });
     revalidatePath("/applications");
     revalidatePath("/app");

@@ -78,14 +78,6 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     superAdminOnly: true,
   },
   {
-    label: "SecureOne Confluence",
-    href: "/confluence",
-    description: "Platform & integration documentation",
-    superAdminOnly: true,
-    openInNewTab: true,
-  },
-  { label: "Platform settings", href: "/settings", description: "Global defaults", superAdminOnly: true },
-  {
     label: "Configuration as code",
     href: "/config",
     description: "Export a tenant to a file; preview and apply files",
@@ -97,6 +89,14 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     description: "Platform operators and who holds privileged roles",
     superAdminOnly: true,
   },
+  {
+    label: "SecureOne Confluence",
+    href: "/confluence",
+    description: "Platform & integration documentation",
+    superAdminOnly: true,
+    openInNewTab: true,
+  },
+  { label: "Platform settings", href: "/settings", description: "Global defaults", superAdminOnly: true },
 ];
 
 /** Tenant operator nav — application console + documentation. */

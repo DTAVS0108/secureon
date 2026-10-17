@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 import { cn } from "@/lib/cn";
 
@@ -20,7 +21,8 @@ export function Modal({
   triggerSize?: "sm" | "md";
   title: string;
   description?: string;
-  width?: "md" | "lg" | "xl";
+  /** Kept for callers; every dialog is now 60% of the screen wide. */
+  width?: "md" | "lg" | "xl" | "2xl";
   children: (close: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -41,18 +43,21 @@ export function Modal({
       <Button variant={triggerVariant} size={triggerSize} onClick={() => setOpen(true)}>
         {triggerLabel}
       </Button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+      {open && createPortal(
+        // Rendered on <body>: inside a card or panel the dialog would join that element's stacking
+        // context, and the page's top bar or tabs could paint over it whatever its z-index.
+        <div className="fixed inset-0 z-100 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
+            data-width={width}
             className={cn(
-              "relative z-10 my-4 flex max-h-[min(90vh,48rem)] w-full flex-col rounded-2xl border border-black/10 bg-[var(--background)] shadow-2xl dark:border-white/10",
-              width === "xl" ? "max-w-3xl" : width === "lg" ? "max-w-2xl" : "max-w-lg",
+              // 60% of the screen (never below 36rem; full width on small screens).
+              "relative z-10 my-4 flex max-h-[90vh] w-full max-w-[max(36rem,60vw)] flex-col rounded-2xl border border-black/10 bg-[var(--background)] shadow-2xl dark:border-white/10",
             )}
           >
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-black/10 px-5 py-4 dark:border-white/10">
@@ -75,7 +80,8 @@ export function Modal({
               {children(() => setOpen(false))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

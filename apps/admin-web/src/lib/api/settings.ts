@@ -112,3 +112,17 @@ export async function saveEmailSettings(body: EmailSettings): Promise<void> {
   });
 }
 
+
+/** Platform-only console features (applications cannot override). */
+export type PlatformFeatures = { configAsCode: boolean; connectApp: boolean; clientSetupCode: boolean };
+
+export async function fetchPlatformFeatures(): Promise<PlatformFeatures> {
+  return apiFetch<PlatformFeatures>("/api/admin/v1/settings/platform-features");
+}
+
+export async function savePlatformFeatures(changes: Partial<PlatformFeatures>): Promise<PlatformFeatures> {
+  return apiFetch<PlatformFeatures>("/api/admin/v1/settings/platform-features", {
+    method: "PUT",
+    body: JSON.stringify(changes),
+  });
+}

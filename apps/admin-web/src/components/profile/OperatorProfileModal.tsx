@@ -44,7 +44,7 @@ export function OperatorProfileModal({
         aria-modal="true"
         aria-labelledby="operator-profile-title"
         className={cn(
-          "relative z-[10000] my-4 flex max-h-[min(90vh,48rem)] w-full max-w-lg flex-col",
+          "relative z-[10000] my-4 flex max-h-[min(90vh,48rem)] w-full max-w-[max(36rem,60vw)] flex-col",
           "rounded-2xl border border-ui bg-[var(--ui-surface)] shadow-2xl",
         )}
       >

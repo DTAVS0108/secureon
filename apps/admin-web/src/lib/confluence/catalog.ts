@@ -29,6 +29,80 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
     ],
   },
   {
+    id: "user-guide",
+    label: "User guide",
+    description: "The console page by page: every button, form and field",
+    pages: [
+      { slug: "user-guide", title: "User guide", file: "user-guide/README.md", description: "Roles, chapters and conventions" },
+      {
+        slug: "guide-sign-in",
+        title: "Sign-in, setup and My profile",
+        file: "user-guide/01-sign-in-and-profile.md",
+        description: "First-run setup, sign-in tabs, authenticator, recovery codes",
+      },
+      {
+        slug: "guide-console-layout",
+        title: "Console layout and navigation",
+        file: "user-guide/02-console-layout.md",
+        description: "Top bar, sidebars, what each role sees",
+      },
+      {
+        slug: "guide-connect-an-app",
+        title: "Connect an app",
+        file: "user-guide/03-connect-an-app.md",
+        description: "The guided wizard, field by field",
+      },
+      {
+        slug: "guide-oauth-clients",
+        title: "OAuth clients",
+        file: "user-guide/04-oauth-clients.md",
+        description: "Register application & OAuth client, templates, grants, client page",
+      },
+      {
+        slug: "guide-tenants",
+        title: "Tenants",
+        file: "user-guide/05-tenants.md",
+        description: "Tenant page panels, roster, console access, tenant roles",
+      },
+      {
+        slug: "guide-application-console",
+        title: "Application console",
+        file: "user-guide/06-application-console.md",
+        description: "Users, groups, roles, permissions, audit, logs, sessions",
+      },
+      {
+        slug: "guide-settings",
+        title: "Settings",
+        file: "user-guide/07-settings.md",
+        description: "Platform and application settings, tab by tab",
+      },
+      {
+        slug: "guide-access-review",
+        title: "Access review and operators",
+        file: "user-guide/08-access-review-and-operators.md",
+        description: "Privileged access review, platform operators",
+      },
+      {
+        slug: "guide-configuration-as-code",
+        title: "Configuration as code (console)",
+        file: "user-guide/09-configuration-as-code.md",
+        description: "Export, preview and apply files",
+      },
+      {
+        slug: "guide-end-user-pages",
+        title: "End-user pages",
+        file: "user-guide/10-end-user-pages.md",
+        description: "Hosted sign-in, sign-up, recovery, account security",
+      },
+      {
+        slug: "guide-common-tasks",
+        title: "Common tasks",
+        file: "user-guide/11-common-tasks.md",
+        description: "Step-by-step recipes and what is coming soon",
+      },
+    ],
+  },
+  {
     id: "platform-fundamentals",
     label: "Platform — fundamentals",
     description: "Vision, architecture, data & security",
@@ -209,8 +283,11 @@ export function buildFileToSlugMap(): Map<string, string> {
     map.set(p.file, p.slug);
     map.set(`./${p.file}`, p.slug);
     map.set(`../${p.file}`, p.slug);
+  }
+  // Bare file names last and never over an exact path: several folders have a README.md.
+  for (const p of pages) {
     const base = p.file.split("/").pop();
-    if (base) map.set(base, p.slug);
+    if (base && !map.has(base)) map.set(base, p.slug);
   }
   return map;
 }

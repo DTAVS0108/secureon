@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/session-shared";
 
-const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/auth/logout", "/setup", "/api/setup"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/setup",
+  "/api/setup",
+  // Documentation is public: the same docs/ folder is published in the open-source repository.
+  "/confluence",
+  "/api/confluence",
+];
 
 function withPathname(request: NextRequest, pathname: string, response?: NextResponse) {
   const res = response ?? NextResponse.next({ request });

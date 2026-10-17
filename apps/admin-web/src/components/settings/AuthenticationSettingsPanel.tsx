@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/cn";
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { ComingSoonBadge } from "@/components/ui/Badge";
@@ -150,6 +151,15 @@ export function AuthenticationSettingsPanel({
               />
             </Card>
           )}
+          {loaded && primary.length > 0 && !primary.some((m) => m.enabled && !isAuthMethodComingSoon(m)) && (
+            <p
+              role="alert"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200"
+            >
+              No primary sign-in method is on, so nobody can sign in{applicationId ? " to this application" : ""}.
+              Turn on at least one, for example <strong>Password</strong>.
+            </p>
+          )}
           <MethodSection
             title="Primary login"
             description="How users authenticate first"
@@ -220,112 +230,13 @@ export function AuthenticationSettingsPanel({
       )}
 
       {tab === "password" && passwordPolicy && (
-        <Card padded={false}>
-          <CardHeader
-            title="Password policy"
-            description="Enforced on signup, set-password, reset, and admin set-password flows"
-          />
-          <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
-            <FieldRow label="Minimum length">
-              <Input
-                type="number"
-                value={passwordPolicy.minLength}
-                onChange={(e) => {
-                  const next = { ...passwordPolicy, minLength: Number(e.target.value) };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </FieldRow>
-            <FieldRow label="Password expiry (days)" hint="0 = never expires">
-              <Input
-                type="number"
-                value={passwordPolicy.expiryDays}
-                onChange={(e) => {
-                  const next = { ...passwordPolicy, expiryDays: Number(e.target.value) };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </FieldRow>
-            <FieldRow label="Password history" hint="Block reuse of the last N passwords (0 = off)">
-              <Input
-                type="number"
-                value={passwordPolicy.historyCount}
-                onChange={(e) => {
-                  const next = { ...passwordPolicy, historyCount: Number(e.target.value) };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </FieldRow>
-            <FieldRow label="Lock account after failed sign-ins" hint="wrong passwords or codes in a row">
-              <Input
-                type="number"
-                min={1}
-                value={passwordPolicy.maxFailedAttempts ?? 5}
-                onChange={(e) => {
-                  const next = { ...passwordPolicy, maxFailedAttempts: Number(e.target.value) };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </FieldRow>
-            <FieldRow label="Lockout duration (minutes)">
-              <Input
-                type="number"
-                min={1}
-                value={passwordPolicy.lockoutDurationMinutes ?? 15}
-                onChange={(e) => {
-                  const next = { ...passwordPolicy, lockoutDurationMinutes: Number(e.target.value) };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </FieldRow>
-            <FieldRow label="Hash algorithm" hint="bcrypt only (stored on each credential)">
-              <Input value={passwordPolicy.hashAlgorithm} disabled />
-            </FieldRow>
-            <div className="md:col-span-2 space-y-2">
-              <PolicyToggle
-                label="Require uppercase"
-                on={passwordPolicy.requireUppercase}
-                onChange={(v) => {
-                  const next = { ...passwordPolicy, requireUppercase: v };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-              <PolicyToggle
-                label="Require number"
-                on={passwordPolicy.requireNumber}
-                onChange={(v) => {
-                  const next = { ...passwordPolicy, requireNumber: v };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-              <PolicyToggle
-                label="Require symbol"
-                on={passwordPolicy.requireSymbol}
-                onChange={(v) => {
-                  const next = { ...passwordPolicy, requireSymbol: v };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-              <PolicyToggle
-                label="Block leaked passwords (Have I Been Pwned)"
-                on={passwordPolicy.breachCheck ?? false}
-                onChange={(v) => {
-                  const next = { ...passwordPolicy, breachCheck: v };
-                  setPasswordPolicy(next);
-                  scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
-                }}
-              />
-            </div>
-          </div>
-        </Card>
+        <PasswordPolicyEditor
+          policy={passwordPolicy}
+          onChange={(next) => {
+            setPasswordPolicy(next);
+            scheduleSave(() => savePasswordPolicyAction(next, applicationId), "password-policy");
+          }}
+        />
       )}
 
       {tab === "password" && !passwordPolicy && loaded && (
@@ -411,6 +322,8 @@ function MfaTabToggle({
 const FLAG_GROUPS: { title: string; categories: string[] }[] = [
   { title: "Identity & sign-in", categories: ["identity"] },
   { title: "Notifications", categories: ["notifications"] },
+  { title: "Integration tab", categories: ["integration"] },
+  { title: "Application console", categories: ["console"] },
 ];
 
 function flagCategory(flag: FeatureFlag): string {
@@ -449,19 +362,33 @@ function FeatureFlagsPanel({
     }
   }
 
-  const grouped = FLAG_GROUPS.map((group) => ({
-    ...group,
-    items: flags.filter((f) => group.categories.includes(flagCategory(f))),
-  })).filter((g) => g.items.length > 0);
-  const uncategorized = flags.filter(
-    (f) => !FLAG_GROUPS.some((g) => g.categories.includes(flagCategory(f))),
-  );
+  const isApplication = Boolean(applicationId);
+  // Applications see only main and advanced features the platform has on; console controls never.
+  const sections: { title: string | null; note: string | null; flags: FeatureFlag[] }[] = isApplication
+    ? [{ title: null, note: null, flags: flags.filter((f) => f.scope !== "platform" && f.platformEnabled !== false) }]
+    : [
+        {
+          title: "Application features",
+          note: "Main and advanced features. While one is on here, each application's admin may turn it off for their application; while it is off here, applications don't see it.",
+          flags: flags.filter((f) => f.scope !== "platform"),
+        },
+        {
+          title: "Console controls",
+          note: "Parts of the admin console, decided here for every application. Applications don't see or change these.",
+          flags: flags.filter((f) => f.scope === "platform"),
+        },
+      ];
+  const hasVisible = sections.some((section) => section.flags.length > 0);
 
   return (
     <Card padded={false}>
       <CardHeader
         title="Feature flags"
-        description="Capability toggles and which settings tabs appear for this application"
+        description={
+          isApplication
+            ? "Features the platform allows for this application; turn off what this application should not offer."
+            : "Defaults for every application, and switches for parts of the admin console."
+        }
       />
       {applicationId && platformExposesOAuthTokens && (
         <section className="border-t border-ui">
@@ -490,18 +417,45 @@ function FeatureFlagsPanel({
           </ul>
         </section>
       )}
-      {grouped.map((group) => (
-        <section key={group.title} className="border-t border-ui first:border-t-0">
-          <p className="px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">{group.title}</p>
-          <FlagList flags={flags} keys={group.items.map((f) => f.key)} onChange={onChange} />
-        </section>
-      ))}
-      {uncategorized.length > 0 && (
-        <section className="border-t border-ui">
-          <p className="px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">Other</p>
-          <FlagList flags={flags} keys={uncategorized.map((f) => f.key)} onChange={onChange} />
-        </section>
+      {isApplication && !hasVisible && (
+        <p className="border-t border-ui px-5 py-6 text-sm text-muted">
+          No features are open to this application. A platform operator turns them on in Platform settings →
+          Feature flags → Application features.
+        </p>
       )}
+      {sections
+        .filter((section) => section.flags.length > 0)
+        .map((section) => {
+          const grouped = FLAG_GROUPS.map((group) => ({
+            ...group,
+            items: section.flags.filter((f) => group.categories.includes(flagCategory(f))),
+          })).filter((g) => g.items.length > 0);
+          const uncategorized = section.flags.filter(
+            (f) => !FLAG_GROUPS.some((g) => g.categories.includes(flagCategory(f))),
+          );
+          return (
+            <div key={section.title ?? "flags"} className="border-t border-ui first:border-t-0">
+              {section.title && (
+                <div className="bg-ui-elevated/40 px-5 py-3">
+                  <h3 className="text-sm font-semibold text-ui">{section.title}</h3>
+                  {section.note && <p className="mt-0.5 text-xs text-muted">{section.note}</p>}
+                </div>
+              )}
+              {grouped.map((group) => (
+                <section key={group.title} className="border-t border-ui">
+                  <p className="px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">{group.title}</p>
+                  <FlagList flags={flags} keys={group.items.map((f) => f.key)} onChange={onChange} />
+                </section>
+              ))}
+              {uncategorized.length > 0 && (
+                <section className="border-t border-ui">
+                  <p className="px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">Other</p>
+                  <FlagList flags={flags} keys={uncategorized.map((f) => f.key)} onChange={onChange} />
+                </section>
+              )}
+            </div>
+          );
+        })}
     </Card>
   );
 }
@@ -572,29 +526,42 @@ function MethodSection({
   readOnly?: boolean;
   onToggle: (next: AuthMethod[]) => void;
 }) {
+  // Available methods first; "coming soon" ones last and dimmed.
+  const ordered = [...methods].sort(
+    (a, b) => Number(isAuthMethodComingSoon(a)) - Number(isAuthMethodComingSoon(b)),
+  );
+  const enabledCount = methods.filter((m) => m.enabled && !isAuthMethodComingSoon(m)).length;
   return (
     <Card padded={false} className={readOnly ? "opacity-90" : undefined}>
-      <CardHeader title={title} description={description} />
-      <ul className="divide-y divide-ui">
-        {methods.map((m, idx) => {
+      <CardHeader
+        title={title}
+        description={description}
+        action={<span className="whitespace-nowrap text-xs text-muted">{enabledCount} on</span>}
+      />
+      <ul className="grid gap-3 p-4 sm:grid-cols-2">
+        {ordered.map((m) => {
           const comingSoon = isAuthMethodComingSoon(m);
           return (
-            <li key={m.id} className="flex items-center justify-between gap-4 px-5 py-4">
-              <div>
-                <div className="flex items-center gap-2">
+            <li
+              key={m.id}
+              className={cn(
+                "flex items-start justify-between gap-3 rounded-xl border px-4 py-3 transition-colors",
+                m.enabled && !comingSoon ? "border-ui-primary bg-brand-muted/30" : "border-ui",
+                comingSoon && "opacity-60",
+              )}
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className={`text-sm font-medium ${comingSoon ? "text-muted" : "text-ui"}`}>{m.name}</p>
                   {comingSoon && <ComingSoonBadge />}
                 </div>
-                <p className="text-xs text-muted">
-                  {m.description}
-                  {comingSoon && " — not available yet."}
-                </p>
+                <p className="mt-0.5 text-xs leading-snug text-muted">{m.description}</p>
               </div>
               <Toggle
                 checked={m.enabled}
                 disabled={readOnly || (comingSoon && !m.enabled)}
                 onChange={(enabled) => {
-                  const next = methods.map((x, i) => (i === idx ? { ...x, enabled } : x));
+                  const next = methods.map((x) => (x.id === m.id ? { ...x, enabled } : x));
                   onToggle(next);
                 }}
                 aria-label={m.name}
@@ -623,5 +590,99 @@ function PolicyToggle({
       <span className="text-sm text-ui">{label}</span>
       <Toggle checked={on} disabled={disabled} onChange={onChange} aria-label={label} />
     </div>
+  );
+}
+
+/** "Passwords need at least 12 characters, an upper-case letter, a number and a symbol." */
+function describePolicy(p: PasswordPolicy): string {
+  const parts = [`at least ${p.minLength} characters`];
+  if (p.requireUppercase) parts.push("an upper-case letter");
+  if (p.requireNumber) parts.push("a number");
+  if (p.requireSymbol) parts.push("a symbol");
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  const extras: string[] = [];
+  if (p.breachCheck) extras.push("passwords found in public breaches are refused");
+  if (p.historyCount > 0) extras.push(`the last ${p.historyCount} passwords cannot be reused`);
+  if (p.expiryDays > 0) extras.push(`passwords expire after ${p.expiryDays} days`);
+  extras.push(
+    `${p.maxFailedAttempts ?? 5} wrong attempts in a row lock the account for ${p.lockoutDurationMinutes ?? 15} minutes`,
+  );
+  return `Passwords need ${list}. ${extras.map((e) => e.charAt(0).toUpperCase() + e.slice(1)).join(". ")}.`;
+}
+
+function PasswordPolicyEditor({
+  policy,
+  onChange,
+}: {
+  policy: PasswordPolicy;
+  onChange: (next: PasswordPolicy) => void;
+}) {
+  const set = (patch: Partial<PasswordPolicy>) => onChange({ ...policy, ...patch });
+  return (
+    <Card padded={false}>
+      <CardHeader
+        title="Password policy"
+        description="Enforced on sign-up, set-password, reset and admin set-password."
+      />
+      <div className="border-b border-ui bg-ui-elevated/40 px-5 py-3 text-sm text-ui">{describePolicy(policy)}</div>
+      {policy.minLength < 8 && (
+        <p className="mx-5 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+          A minimum below 8 characters is weak. 12 or more is recommended.
+        </p>
+      )}
+      <div className="grid gap-6 p-5 lg:grid-cols-3">
+        <PolicyGroup title="Complexity">
+          <FieldRow label="Minimum length">
+            <Input type="number" min={1} value={policy.minLength} onChange={(e) => set({ minLength: Number(e.target.value) })} />
+          </FieldRow>
+          <PolicyToggle label="Require upper-case letter" on={policy.requireUppercase} onChange={(v) => set({ requireUppercase: v })} />
+          <PolicyToggle label="Require number" on={policy.requireNumber} onChange={(v) => set({ requireNumber: v })} />
+          <PolicyToggle label="Require symbol" on={policy.requireSymbol} onChange={(v) => set({ requireSymbol: v })} />
+          <PolicyToggle
+            label="Block leaked passwords (Have I Been Pwned)"
+            on={policy.breachCheck ?? false}
+            onChange={(v) => set({ breachCheck: v })}
+          />
+        </PolicyGroup>
+        <PolicyGroup title="Expiry & reuse">
+          <FieldRow label="Password expiry (days)" hint="0 = never expires">
+            <Input type="number" min={0} value={policy.expiryDays} onChange={(e) => set({ expiryDays: Number(e.target.value) })} />
+          </FieldRow>
+          <FieldRow label="Password history" hint="block reuse of the last N (0 = off)">
+            <Input type="number" min={0} value={policy.historyCount} onChange={(e) => set({ historyCount: Number(e.target.value) })} />
+          </FieldRow>
+          <FieldRow label="Hash algorithm" hint="bcrypt, stored on each credential">
+            <Input value={policy.hashAlgorithm} disabled />
+          </FieldRow>
+        </PolicyGroup>
+        <PolicyGroup title="Lockout">
+          <FieldRow label="Lock after failed sign-ins" hint="wrong passwords or codes in a row">
+            <Input
+              type="number"
+              min={1}
+              value={policy.maxFailedAttempts ?? 5}
+              onChange={(e) => set({ maxFailedAttempts: Number(e.target.value) })}
+            />
+          </FieldRow>
+          <FieldRow label="Lockout duration (minutes)" hint="admins can unlock sooner">
+            <Input
+              type="number"
+              min={1}
+              value={policy.lockoutDurationMinutes ?? 15}
+              onChange={(e) => set({ lockoutDurationMinutes: Number(e.target.value) })}
+            />
+          </FieldRow>
+        </PolicyGroup>
+      </div>
+    </Card>
+  );
+}
+
+function PolicyGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{title}</h3>
+      {children}
+    </section>
   );
 }

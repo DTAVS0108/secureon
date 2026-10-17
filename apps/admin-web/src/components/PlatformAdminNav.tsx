@@ -5,6 +5,7 @@ import { SUPER_ADMIN_NAV, TENANT_NAV_GROUP, tenantNavGroupForOperator } from "./
 import { SidebarNavGroup } from "./SidebarNavGroup";
 import { SidebarNavItem } from "./SidebarNavItem";
 import { cn } from "@/lib/cn";
+import { useAdminContext } from "./AdminContextProvider";
 import type { SidebarNavGroupConfig } from "./nav";
 
 export type PlatformAdminNavVariant = "full" | "tenant-only";
@@ -19,6 +20,7 @@ export function PlatformAdminNav({
   variant?: PlatformAdminNavVariant;
   tenantId?: string | null;
 }) {
+  const ctx = useAdminContext();
   const tenantGroup: SidebarNavGroupConfig =
     variant === "tenant-only" && tenantId
       ? tenantNavGroupForOperator(tenantId)
@@ -36,7 +38,12 @@ export function PlatformAdminNav({
     );
   }
 
-  const [first, ...rest] = SUPER_ADMIN_NAV;
+  // Configuration as code shows only when turned on in Platform settings → Feature flags.
+  const [first, ...rest] = SUPER_ADMIN_NAV.filter(
+    (item) =>
+      (item.href !== "/config" || ctx.configAsCodeEnabled) &&
+      (item.href !== "/connect" || ctx.connectAppEnabled !== false),
+  );
 
   return (
     <nav className="flex flex-col gap-0.5">

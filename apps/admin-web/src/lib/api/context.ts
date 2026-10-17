@@ -38,6 +38,14 @@ export type AdminContext = {
   sessionExpiresAt: string | null;
   /** Session ends after this many seconds without activity. */
   sessionIdleTimeoutSeconds: number;
+  /** Platform settings → Feature flags → Configuration as code is on (platform operators only). */
+  configAsCodeEnabled?: boolean;
+  /** Platform settings → Feature flags → Connect an app (on unless turned off). */
+  connectAppEnabled?: boolean;
+  /** Platform settings → Feature flags → Client setup code (OAuth client pages; on unless turned off). */
+  clientSetupCodeEnabled?: boolean;
+  /** Console controls decided in Platform settings → Feature flags (e.g. audit_log: true). */
+  consoleFlags?: Record<string, boolean>;
 };
 
 export async function fetchAdminContext(): Promise<AdminContext> {
@@ -57,6 +65,10 @@ export async function fetchAdminContext(): Promise<AdminContext> {
     breakGlass?: boolean;
     sessionExpiresAt?: string | null;
     sessionIdleTimeoutSeconds?: number;
+    configAsCodeEnabled?: boolean;
+    connectAppEnabled?: boolean;
+    clientSetupCodeEnabled?: boolean;
+    consoleFlags?: Record<string, boolean>;
   }>("/api/admin/v1/context");
   return {
     platformSuperAdmin: raw.platformSuperAdmin,
@@ -79,5 +91,9 @@ export async function fetchAdminContext(): Promise<AdminContext> {
     breakGlass: raw.breakGlass ?? false,
     sessionExpiresAt: raw.sessionExpiresAt ?? null,
     sessionIdleTimeoutSeconds: raw.sessionIdleTimeoutSeconds ?? 1800,
+    configAsCodeEnabled: raw.configAsCodeEnabled ?? false,
+    connectAppEnabled: raw.connectAppEnabled ?? true,
+    clientSetupCodeEnabled: raw.clientSetupCodeEnabled ?? true,
+    consoleFlags: raw.consoleFlags ?? {},
   };
 }

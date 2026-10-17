@@ -72,7 +72,7 @@ export function PlatformSidebar({
             />
           );
         })}
-        {canConnect && <ConnectAppLink pathname={pathname} />}
+        {canConnect && ctx.connectAppEnabled !== false && <ConnectAppLink pathname={pathname} />}
         {showPlatformAdmin && (
           <div className="mt-3 border-t border-ui pt-3">
             <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-faint">

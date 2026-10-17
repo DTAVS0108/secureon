@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppFlags } from "@/hooks/useAppFlags";
+import { APP_FLAG } from "@/lib/app-feature-flags";
 import { useCallback, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
@@ -72,6 +74,9 @@ export function FederationProvidersPanel({
   applicationId?: string;
   tenantId?: string | null;
 }) {
+  // Applications can hide "Add provider" with the federation_add_provider feature flag.
+  const flags = useAppFlags();
+  const canAdd = !applicationId || flags.on(APP_FLAG.federationAddProvider);
   const { toast } = useToast();
   const [providers, setProviders] = useState<FederationProvider[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -245,6 +250,7 @@ export function FederationProvidersPanel({
         )}
       </Card>
 
+      {canAdd && (
       <Card padded={false}>
         <CardHeader
           title="Add provider"
@@ -379,6 +385,7 @@ export function FederationProvidersPanel({
           </Button>
         </div>
       </Card>
+      )}
     </div>
   );
 }

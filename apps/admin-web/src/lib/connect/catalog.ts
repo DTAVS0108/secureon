@@ -3,7 +3,7 @@
  * ready-to-paste setup for, and the OAuth client settings each kind should get (secure defaults).
  */
 
-export type ConnectKind = "web" | "spa" | "native" | "service" | "device" | "api";
+export type ConnectKind = "web" | "spa" | "native" | "desktop" | "service" | "device" | "api";
 
 export type ClientTemplate = {
   /** OAuth client type stored by the admin API. */
@@ -32,7 +32,7 @@ export const KINDS: KindInfo[] = [
     id: "web",
     title: "Web app with a server",
     description: "Pages rendered or backed by your server, which keeps a client secret.",
-    examples: "Next.js, Spring Boot, Express, ASP.NET Core",
+    examples: "Next.js, Spring Boot, Express, ASP.NET Core, Python (Flask, Django, FastAPI)",
     redirects: true,
     client: {
       type: "web",
@@ -63,6 +63,21 @@ export const KINDS: KindInfo[] = [
     title: "Mobile app",
     description: "iOS or Android app; sign-in opens the system browser and returns to the app.",
     examples: "React Native, Android, iOS, Flutter",
+    redirects: true,
+    client: {
+      type: "native",
+      grantTypes: ["authorization_code", "refresh_token"],
+      scopes: ["openid", "profile", "email"],
+      tokenEndpointAuthMethod: "none",
+      pkceRequired: true,
+      confidential: false,
+    },
+  },
+  {
+    id: "desktop",
+    title: "Desktop app",
+    description: "Windows, macOS or Linux app; sign-in opens the system browser and returns to a local loopback address.",
+    examples: "Electron, .NET (WPF, WinUI, MAUI), Python",
     redirects: true,
     client: {
       type: "native",
@@ -130,15 +145,26 @@ export const FRAMEWORKS: FrameworkInfo[] = [
   { id: "spring", kind: "web", label: "Spring Boot", appUrl: "http://localhost:8080", callbackPath: "/login/oauth2/code/secureone", logoutPath: "/" },
   { id: "express", kind: "web", label: "Node.js / Express", appUrl: "http://localhost:3000", callbackPath: "/callback", logoutPath: "/" },
   { id: "aspnet", kind: "web", label: "ASP.NET Core", appUrl: "https://localhost:5001", callbackPath: "/signin-oidc", logoutPath: "/signout-callback-oidc" },
+  { id: "flask", kind: "web", label: "Python (Flask)", appUrl: "http://localhost:5000", callbackPath: "/auth/callback", logoutPath: "/" },
+  { id: "django", kind: "web", label: "Python (Django)", appUrl: "http://localhost:8000", callbackPath: "/oidc/callback/", logoutPath: "/" },
+  // Python signs users in and keeps the tokens; the frontend (React, Vue, Angular…) calls it with a session cookie.
+  // Dev URLs go through the frontend's dev server, which proxies /auth and /api to Python (same origin).
+  { id: "python-bff", kind: "web", label: "Python backend + any frontend (FastAPI)", appUrl: "http://localhost:5173", callbackPath: "/auth/callback", logoutPath: "/" },
 
   { id: "react", kind: "spa", label: "React", appUrl: "http://localhost:5173", callbackPath: "/", logoutPath: "/" },
   { id: "angular", kind: "spa", label: "Angular", appUrl: "http://localhost:4200", callbackPath: "/", logoutPath: "/" },
+  { id: "vue", kind: "spa", label: "Vue", appUrl: "http://localhost:5173", callbackPath: "/callback", logoutPath: "/" },
   { id: "javascript", kind: "spa", label: "Plain JavaScript", appUrl: "http://localhost:5173", callbackPath: "/callback.html", logoutPath: "/" },
 
   { id: "react-native", kind: "native", label: "React Native" },
   { id: "android", kind: "native", label: "Android (Kotlin)" },
   { id: "ios", kind: "native", label: "iOS (Swift)" },
   { id: "flutter", kind: "native", label: "Flutter" },
+
+  // Desktop: RFC 8252 loopback redirect on 127.0.0.1 (a fixed port, registered on the client).
+  { id: "electron", kind: "desktop", label: "Electron", appUrl: "http://127.0.0.1:8765", callbackPath: "/callback", logoutPath: "/" },
+  { id: "dotnet-desktop", kind: "desktop", label: ".NET (WPF, WinUI, MAUI)", appUrl: "http://127.0.0.1:8765", callbackPath: "/callback", logoutPath: "/" },
+  { id: "python-desktop", kind: "desktop", label: "Python", appUrl: "http://127.0.0.1:8765", callbackPath: "/callback", logoutPath: "/" },
 
   { id: "curl", kind: "service", label: "curl" },
   { id: "node", kind: "service", label: "Node.js" },
@@ -147,11 +173,13 @@ export const FRAMEWORKS: FrameworkInfo[] = [
 
   { id: "shell", kind: "device", label: "curl / shell" },
   { id: "node-cli", kind: "device", label: "Node.js CLI" },
+  { id: "python-cli", kind: "device", label: "Python CLI" },
 
   { id: "spring-api", kind: "api", label: "Spring Boot" },
   { id: "node-api", kind: "api", label: "Node.js (Express)" },
   { id: "aspnet-api", kind: "api", label: "ASP.NET Core" },
-  { id: "python-api", kind: "api", label: "Python" },
+  { id: "fastapi-api", kind: "api", label: "Python (FastAPI)" },
+  { id: "python-api", kind: "api", label: "Python (any framework)" },
 ];
 
 export function kindInfo(kind: ConnectKind): KindInfo {

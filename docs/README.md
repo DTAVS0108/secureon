@@ -9,6 +9,7 @@ Central index for **platform** documentation (operators) and **application integ
 | **Platform owner / operator** — install, configure tenants, run day to day | **[22 — Operator getting started](22-operator-getting-started.md)** |
 | **DevOps / architect** — image+env deploy or enterprise from source | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** |
 | **App developer** — integrate your own frontend (signup, signin, APIs) | **[23 — Application integration guide](23-application-integration-guide.md)** |
+| **Console user** — what every page, button and field does | **[User guide](user-guide/README.md)** |
 
 Browse everything in **SecureOne Confluence**: http://localhost:9000/admin/confluence
 
@@ -53,6 +54,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **New developer — integrate your app (e.g. an online store)** | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | **Roles — who sees and can do what** | **[25 — Roles and access](25-roles-and-access.md)** |
 | **Tenant setup in files; upgrades and rollback** | **[26 — Configuration as code and upgrades](26-configuration-as-code-and-upgrades.md)** |
+| **Using the console — page by page, field by field** | **[User guide](user-guide/README.md)** |
 | Vision & glossary | [01 — Overview](01-overview.md) |
 | Stack choices | [02 — Tech Stack](02-tech-stack.md) |
 | System architecture & flows | [03 — Architecture](03-architecture.md) |

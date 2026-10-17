@@ -1,6 +1,5 @@
 import fs from "fs/promises";
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth/session-server";
 import {
   contentTypeForAsset,
   resolveDocsAssetPath,
@@ -11,11 +10,6 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   if (!(await docsRootExists())) {
     return NextResponse.json({ error: "Documentation root not available" }, { status: 503 });
   }

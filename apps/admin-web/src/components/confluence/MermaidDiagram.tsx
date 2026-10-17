@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
+import { FullscreenFrame } from "./FullscreenFrame";
 
 function mermaidElementId(id: string): string {
   return `mermaid-${id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -11,6 +12,7 @@ export function MermaidDiagram({ source }: { source: string }) {
   const reactId = useId();
   const [svg, setSvg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actualSize, setActualSize] = useState(false);
 
   useDeferredEffect(() => {
     let cancelled = false;
@@ -65,11 +67,27 @@ export function MermaidDiagram({ source }: { source: string }) {
     );
   }
 
+  // Natural width from the viewBox, for "actual size" in full screen (very wide diagrams are tiny when fitted).
+  const naturalWidth = Number(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+)/.exec(svg)?.[1] ?? 0);
+
   return (
-    <figure
-      data-mermaid-status="ready"
-      className="mermaid-diagram my-4 overflow-x-auto rounded-lg border border-ui bg-white p-4"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <FullscreenFrame className="my-4 rounded-lg border border-ui bg-white">
+      {(fullscreen) => (
+        <figure
+          data-mermaid-status="ready"
+          title={fullscreen ? (actualSize ? "Click to fit the screen" : "Click for actual size") : undefined}
+          onClick={fullscreen ? () => setActualSize((v) => !v) : undefined}
+          className={
+            fullscreen
+              ? actualSize
+                ? "mermaid-diagram mermaid-actual cursor-zoom-out self-start"
+                : "mermaid-diagram mermaid-fullscreen h-full w-full cursor-zoom-in"
+              : "mermaid-diagram overflow-x-auto p-4"
+          }
+          style={actualSize && naturalWidth ? ({ "--mermaid-natural-width": `${naturalWidth}px` } as React.CSSProperties) : undefined}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      )}
+    </FullscreenFrame>
   );
 }

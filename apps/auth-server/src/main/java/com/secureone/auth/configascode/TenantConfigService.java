@@ -641,7 +641,7 @@ public class TenantConfigService {
                         var created = clientAdmin.create(new OAuthClientCreateRequest(
                                 app.value, null, tenant.value, target, spec2.type(), spec2.status(), spec2.grantTypes(),
                                 spec2.scopes(), spec2.redirectUris(), spec2.postLogoutRedirectUris(), spec2.pkceRequired(),
-                                spec2.tokenEndpointAuthMethod(), spec2.subjectType()));
+                                spec2.tokenEndpointAuthMethod(), spec2.subjectType(), null));
                         if (secretValue != null) {
                             clientAdmin.setClientSecret(created.client().id(), secretValue);
                         } else if (created.clientSecret() != null) {
@@ -673,7 +673,7 @@ public class TenantConfigService {
                                 clientAdmin.update(existing.id(), new OAuthClientUpdateRequest(
                                         spec2.type(), spec2.status(), spec2.grantTypes(), spec2.scopes(), spec2.redirectUris(),
                                         spec2.postLogoutRedirectUris(), spec2.pkceRequired(), spec2.tokenEndpointAuthMethod(),
-                                        spec2.subjectType()));
+                                        spec2.subjectType(), null));
                             }
                             if (secretChanged) {
                                 clientAdmin.setClientSecret(existing.id(), secretValue);

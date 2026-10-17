@@ -1,5 +1,8 @@
 package com.secureone.auth.admin;
 
+import com.secureone.auth.platform.AuthSettingsService;
+import com.secureone.auth.platform.FeatureFlagDefaults;
+import com.secureone.auth.platform.PlatformFeatures;
 import com.secureone.auth.admin.AdminAccessService.ApplicationSummary;
 import com.secureone.auth.admin.console.AdminConsoleCapabilityService;
 import com.secureone.auth.application.ApplicationRepository;
@@ -36,6 +39,8 @@ public class AdminContextController {
     private final TenantRepository tenants;
     private final UserAccountRepository users;
     private final AdminSessionService sessions;
+    private final PlatformFeatures platformFeatures;
+    private final AuthSettingsService authSettings;
 
     public AdminContextController(
             AdminAccessService access,
@@ -46,7 +51,9 @@ public class AdminContextController {
             OAuthClientRepository oauthClients,
             TenantRepository tenants,
             UserAccountRepository users,
-            AdminSessionService sessions) {
+            AdminSessionService sessions,
+            PlatformFeatures platformFeatures,
+            AuthSettingsService authSettings) {
         this.access = access;
         this.permissions = permissions;
         this.consoleCapabilities = consoleCapabilities;
@@ -56,6 +63,8 @@ public class AdminContextController {
         this.tenants = tenants;
         this.users = users;
         this.sessions = sessions;
+        this.platformFeatures = platformFeatures;
+        this.authSettings = authSettings;
     }
 
     public record ApplicationContextItem(
@@ -86,7 +95,19 @@ public class AdminContextController {
             List<ApplicationContextItem> applications,
             boolean breakGlass,
             java.time.Instant sessionExpiresAt,
-            long sessionIdleTimeoutSeconds) {}
+            long sessionIdleTimeoutSeconds,
+            /** Platform settings → Feature flags → Configuration as code (platform operators only). */
+            boolean configAsCodeEnabled,
+            /** Platform settings → Feature flags → Connect an app (all operators). */
+            boolean connectAppEnabled,
+            /** Platform settings → Feature flags → Client setup code (OAuth client pages). */
+            boolean clientSetupCodeEnabled,
+            /**
+             * Console controls (platform-scoped feature flags such as audit_log or api_reference) and whether
+             * each is on. Decided in platform settings for every application; sent here so the console never
+             * depends on an application's settings being readable.
+             */
+            Map<String, Boolean> consoleFlags) {}
 
     @GetMapping
     public AdminContextResponse context(
@@ -161,7 +182,22 @@ public class AdminContextController {
                 access.isBreakGlass(authentication),
                 request.getAttribute(AdminCredentialAuthenticationFilter.SESSION_EXPIRES_AT_ATTR)
                         instanceof java.time.Instant expiresAt ? expiresAt : null,
-                sessions.idleTimeoutSeconds());
+                sessions.idleTimeoutSeconds(),
+                superAdmin && platformFeatures.configAsCodeEnabled(),
+                platformFeatures.connectAppEnabled(),
+                platformFeatures.clientSetupCodeEnabled(),
+                consoleFlags());
+    }
+
+    private Map<String, Boolean> consoleFlags() {
+        Map<String, Boolean> out = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> flag : authSettings.getFeatureFlags()) {
+            String key = String.valueOf(flag.get("key"));
+            if (!FeatureFlagDefaults.isApplicationScoped(key)) {
+                out.put(key, Boolean.TRUE.equals(flag.get("enabled")));
+            }
+        }
+        return out;
     }
 
     private String resolveDisplayName(String email, Authentication authentication) {

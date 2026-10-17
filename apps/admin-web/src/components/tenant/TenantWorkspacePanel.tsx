@@ -1,5 +1,6 @@
 "use client";
 
+import { ActiveFilterChips, UserFilters, type FilterSection } from "@/components/users/UserFilters";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -51,16 +52,13 @@ import { statusTone } from "@/lib/status";
 import type { Role, Status, Tenant } from "@/lib/types";
 import { LocalTime } from "@/components/ui/LocalTime";
 
-const STATUS_FILTERS = ["ALL", "active", "invited", "pending", "suspended", "disabled"] as const;
-const SOURCE_FILTERS = [
-  "ALL",
-  "direct",
-  "imported",
-  "console_access",
-  "console_only",
-] as const;
-const CONSOLE_FILTERS = ["ALL", "with_console", "without_console"] as const;
-const VERIFIED_FILTERS = ["ALL", "verified", "unverified"] as const;
+const STATUS_OPTIONS = ["active", "invited", "suspended", "disabled"] as const;
+const SOURCE_OPTIONS: { value: string; label: string }[] = [
+  { value: "direct", label: "Added directly" },
+  { value: "imported", label: "Imported from an app" },
+  { value: "console_access", label: "Console access" },
+  { value: "console_only", label: "Console only" },
+];
 
 function normalizeStatus(status: string): string {
   const s = status.toLowerCase();
@@ -108,13 +106,12 @@ export function TenantWorkspacePanel({
   );
   const [data, setData] = useState(workspace);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("ALL");
-  const [sourceFilter, setSourceFilter] = useState<(typeof SOURCE_FILTERS)[number]>("ALL");
-  const [consoleFilter, setConsoleFilter] =
-    useState<(typeof CONSOLE_FILTERS)[number]>("ALL");
-  const [verifiedFilter, setVerifiedFilter] =
-    useState<(typeof VERIFIED_FILTERS)[number]>("ALL");
-  const [appFilter, setAppFilter] = useState("ALL");
+  // Filters: options within one section are or-ed, sections are and-ed (empty = no filter).
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<string[]>([]);
+  const [consoleFilter, setConsoleFilter] = useState<string[]>([]);
+  const [verifiedFilter, setVerifiedFilter] = useState<string[]>([]);
+  const [appFilter, setAppFilter] = useState<string[]>([]);
   const [importAppId, setImportAppId] = useState(workspace.applications[0]?.id ?? "");
   const [directory, setDirectory] = useState<Awaited<
     ReturnType<typeof fetchUserDirectorySettings>
@@ -196,15 +193,15 @@ export function TenantWorkspacePanel({
   const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tenantUsers.filter((u) => {
-      const status = normalizeStatus(u.status);
-      if (statusFilter !== "ALL" && status !== statusFilter) return false;
-      if (sourceFilter !== "ALL" && u.rosterSource !== sourceFilter) return false;
-      if (appFilter !== "ALL" && !u.applicationIds.includes(appFilter)) return false;
-      const hasConsole = consoleByUser.has(u.id);
-      if (consoleFilter === "with_console" && !hasConsole) return false;
-      if (consoleFilter === "without_console" && hasConsole) return false;
-      if (verifiedFilter === "verified" && !u.emailVerified) return false;
-      if (verifiedFilter === "unverified" && u.emailVerified) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(normalizeStatus(u.status))) return false;
+      if (sourceFilter.length > 0 && !sourceFilter.includes(u.rosterSource ?? "")) return false;
+      if (appFilter.length > 0 && !appFilter.some((id) => u.applicationIds.includes(id))) return false;
+      if (consoleFilter.length > 0 && !consoleFilter.includes(consoleByUser.has(u.id) ? "with" : "without")) {
+        return false;
+      }
+      if (verifiedFilter.length > 0 && !verifiedFilter.includes(u.emailVerified ? "verified" : "unverified")) {
+        return false;
+      }
       if (!q) return true;
       const sourceLabel = rosterSourceLabel(u.rosterSource, u.sourceApplicationName).toLowerCase();
       return (
@@ -216,6 +213,65 @@ export function TenantWorkspacePanel({
       );
     });
   }, [tenantUsers, query, statusFilter, sourceFilter, appFilter, consoleFilter, verifiedFilter, consoleByUser]);
+
+  const filterSections: FilterSection[] = useMemo(() => {
+    const count = (match: (u: TenantWorkspaceUser) => boolean) => tenantUsers.filter(match).length;
+    return [
+      {
+        id: "status",
+        label: "Status",
+        options: STATUS_OPTIONS.map((st) => ({
+          value: st,
+          label: st.charAt(0).toUpperCase() + st.slice(1),
+          count: count((u) => normalizeStatus(u.status) === st),
+        })),
+        selected: statusFilter,
+        onChange: setStatusFilter,
+      },
+      {
+        id: "source",
+        label: "Source",
+        options: SOURCE_OPTIONS.map((o) => ({ ...o, count: count((u) => u.rosterSource === o.value) })),
+        selected: sourceFilter,
+        onChange: setSourceFilter,
+      },
+      ...(data.applications.length > 0
+        ? [
+            {
+              id: "app",
+              label: "Application",
+              options: data.applications.map((a) => ({
+                value: a.id,
+                label: a.name,
+                count: count((u) => u.applicationIds.includes(a.id)),
+              })),
+              selected: appFilter,
+              onChange: setAppFilter,
+            },
+          ]
+        : []),
+      {
+        id: "console",
+        label: "Console access",
+        options: [
+          { value: "with", label: "Has console access", count: count((u) => consoleByUser.has(u.id)) },
+          { value: "without", label: "No console access", count: count((u) => !consoleByUser.has(u.id)) },
+        ],
+        selected: consoleFilter,
+        onChange: setConsoleFilter,
+      },
+      {
+        id: "email",
+        label: "Email",
+        options: [
+          { value: "verified", label: "Verified", count: count((u) => u.emailVerified) },
+          { value: "unverified", label: "Unverified", count: count((u) => !u.emailVerified) },
+        ],
+        selected: verifiedFilter,
+        onChange: setVerifiedFilter,
+      },
+    ];
+  }, [tenantUsers, data.applications, consoleByUser, statusFilter, sourceFilter, appFilter, consoleFilter, verifiedFilter]);
 
   function applyUserPatch(patch: TenantWorkspaceUserPatch) {
     setData((prev) => ({
@@ -376,9 +432,14 @@ export function TenantWorkspacePanel({
                 </TD>
                 <TD>{app.userCount}</TD>
                 <TD>
-                  <Link href={buildAppPath(app.id, "users")} className="text-sm link-brand">
-                    Open console →
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-end gap-4">
+                    <Link href={buildAppPath(app.id, "settings")} className="text-sm text-muted hover:text-ui">
+                      Settings
+                    </Link>
+                    <Link href={buildAppPath(app.id, "users")} className="text-sm link-brand">
+                      Open console →
+                    </Link>
+                  </div>
                 </TD>
               </TR>
             ))}
@@ -391,155 +452,79 @@ export function TenantWorkspacePanel({
           title="Tenant roster"
           description={`${filteredUsers.length} of ${tenantUsers.length} shown · import Tenant Admin operators from an app for tenant-wide console access; end users stay in application user management`}
           action={
-            <div className="flex flex-wrap items-center gap-2">
-              {manageTenantId && data.applications.length > 0 && (
-                <>
-                  <Select
-                    value={importAppId}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      setImportAppId(id);
-                      void loadDirectory(id);
-                    }}
-                    className="h-9 min-w-[10rem] text-sm"
-                  >
-                    {data.applications.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        From {a.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => void openImportDialog()}
-                    className="inline-flex h-9 items-center rounded-lg border border-ui px-3 text-sm font-medium text-ui hover:bg-ui-elevated"
-                  >
-                    Import from application
-                  </button>
-                  {importAppId && (
-                    <UserFormModal
-                      tenants={[tenant]}
-                      roles={inviteRoles}
-                      tenantId={tenant.id}
-                      applicationId={importAppId}
-                      lockToApp
-                      triggerLabel="+ Invite Tenant Admin"
-                      triggerVariant="secondary"
-                      triggerSize="sm"
-                      onCreated={() => void openImportDialog()}
-                    />
-                  )}
-                  {importAppId && directory && (
-                    <UserImportExportMenu applicationId={importAppId} directory={directory} />
-                  )}
-                </>
-              )}
-              <UserFormModal
-                tenants={[tenant]}
-                roles={roles}
-                tenantId={tenant.id}
-                defaultStatus="active"
-                triggerLabel="+ Add to roster"
-                triggerVariant="secondary"
-                triggerSize="sm"
-                onCreated={() => void refresh()}
-              />
-            </div>
+            <UserFormModal
+              tenants={[tenant]}
+              roles={roles}
+              tenantId={tenant.id}
+              defaultStatus="active"
+              triggerLabel="+ Add to roster"
+              triggerVariant="secondary"
+              triggerSize="sm"
+              onCreated={() => void refresh()}
+            />
           }
         />
 
-        <div className="space-y-3 border-b border-ui px-5 py-3">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users, roles, permissions, source…"
-            className="max-w-md"
-          />
-          <div className="flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatusFilter(s)}
-                className={`rounded-full border px-2.5 py-1 text-xs capitalize transition-colors ${
-                  statusFilter === s
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-ui text-muted hover:bg-ui-elevated"
-                }`}
-              >
-                {s === "ALL" ? "All statuses" : s}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-faint">Source:</span>
-            {SOURCE_FILTERS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSourceFilter(s)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                  sourceFilter === s
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-ui text-muted hover:bg-ui-elevated"
-                }`}
-              >
-                {s === "ALL"
-                  ? "All sources"
-                  : s === "console_only"
-                    ? "Console only"
-                    : s.replace("_", " ")}
-              </button>
-            ))}
+        {manageTenantId && data.applications.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-ui bg-ui-elevated/40 px-5 py-3">
+            <label htmlFor="roster-app" className="text-xs font-medium text-muted">
+              Application
+            </label>
             <Select
-              value={appFilter}
-              onChange={(e) => setAppFilter(e.target.value)}
-              className="ml-2 h-8 min-w-[9rem] text-xs"
+              id="roster-app"
+              value={importAppId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setImportAppId(id);
+                void loadDirectory(id);
+              }}
+              className="h-9 min-w-[10rem] text-sm"
             >
-              <option value="ALL">All apps</option>
               {data.applications.map((a) => (
                 <option key={a.id} value={a.id}>
-                  In {a.name}
+                  {a.name}
                 </option>
               ))}
             </Select>
+            <button
+              type="button"
+              onClick={() => void openImportDialog()}
+              className="inline-flex h-9 items-center rounded-lg border border-ui px-3 text-sm font-medium text-ui hover:bg-ui-elevated"
+            >
+              Import from application
+            </button>
+            {importAppId && (
+              <UserFormModal
+                tenants={[tenant]}
+                roles={inviteRoles}
+                tenantId={tenant.id}
+                applicationId={importAppId}
+                lockToApp
+                triggerLabel="+ Invite Tenant Admin"
+                triggerVariant="secondary"
+                triggerSize="sm"
+                onCreated={() => void openImportDialog()}
+              />
+            )}
+            {importAppId && directory && (
+              <UserImportExportMenu applicationId={importAppId} directory={directory} />
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-faint">Console access:</span>
-            {CONSOLE_FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setConsoleFilter(f)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                  consoleFilter === f
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-ui text-muted hover:bg-ui-elevated"
-                }`}
-              >
-                {f === "ALL"
-                  ? "All"
-                  : f === "with_console"
-                    ? "Has console access"
-                    : "No console access"}
-              </button>
-            ))}
-            <span className="ml-2 text-xs text-faint">Email:</span>
-            {VERIFIED_FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setVerifiedFilter(f)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                  verifiedFilter === f
-                    ? "border-brand bg-brand-muted text-brand"
-                    : "border-ui text-muted hover:bg-ui-elevated"
-                }`}
-              >
-                {f === "ALL" ? "All" : f === "verified" ? "Verified" : "Unverified"}
-              </button>
-            ))}
+        )}
+
+        <div className="border-b border-ui px-5 py-3">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 max-w-xl flex-1">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search users, roles, permissions, source…"
+                aria-label="Search the tenant roster"
+              />
+            </div>
+            <UserFilters sections={filterSections} title="Filter the tenant roster" resultCount={filteredUsers.length} />
           </div>
+          <ActiveFilterChips sections={filterSections} />
         </div>
 
         <Table>
