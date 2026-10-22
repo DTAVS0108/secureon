@@ -126,6 +126,11 @@ public class AdminAuthController {
         Authentication auth;
         try {
             auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, body.password()));
+        } catch (org.springframework.security.authentication.ProviderNotFoundException ex) {
+            // A username without a tenant is the emergency (break-glass) account, and no provider accepts it:
+            // emergency access is off on this server (SECUREONE_BREAK_GLASS_ENABLED).
+            return problem(HttpStatus.FORBIDDEN,
+                    "Emergency access is turned off on this server. Sign in on the Platform operator or Organization tab.");
         } catch (AuthenticationException ex) {
             // Unknown account and wrong password look the same, so sign-in cannot be used to probe
             // which accounts exist. Locked and suspended keep their message so people know to wait

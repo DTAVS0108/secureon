@@ -56,6 +56,8 @@ Operators must use an authenticator app (Google Authenticator, Microsoft Authent
 
 **Use emergency access** switches to the break-glass sign-in for the emergency account configured on the server: the field becomes **Username** (placeholder `admin`). The warning reads: *Use only when no named operator can sign in. This sign-in is audited, platform admins are emailed, and the session lasts at most 1 hour. It may be disabled in production.* **Back to normal sign-in** returns to the regular form.
 
+The **Emergency access** link appears only when the server has the emergency account turned on (always in local development; in production only with `SECUREONE_BREAK_GLASS_ENABLED=true`). If it is off, a sign-in attempt answers *Emergency access is turned off on this server. Sign in on the Platform operator or Organization tab.*
+
 ### Messages on the sign-in page
 
 | Message | Meaning |

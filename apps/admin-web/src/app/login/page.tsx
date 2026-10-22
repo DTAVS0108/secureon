@@ -51,20 +51,27 @@ const REASONS: Record<string, string> = {
   "setup-done": "Your operator account is ready. Sign in under Platform operator; you will add an authenticator app next.",
 };
 
-/** Whether first-run setup is still open (no platform operator yet). */
-function useSetupRequired(): boolean {
-  const [required, setRequired] = useState(false);
+/**
+ * Whether first-run setup is still open (no platform operator yet), and whether this server has the
+ * emergency (break-glass) account turned on.
+ */
+function useSetupStatus(): { setupRequired: boolean; emergencyAccess: boolean } {
+  const [status, setStatus] = useState({ setupRequired: false, emergencyAccess: false });
   useEffect(() => {
     let cancelled = false;
     fetch(withBasePath("/api/setup/status"), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((s) => !cancelled && setRequired(!!s?.setupRequired))
+      .then(
+        (s) =>
+          !cancelled &&
+          setStatus({ setupRequired: !!s?.setupRequired, emergencyAccess: !!s?.emergencyAccess }),
+      )
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, []);
-  return required;
+  return status;
 }
 
 function LoginForm() {
@@ -163,7 +170,7 @@ function PasswordForm({
         ? "organization"
         : (readRemembered().mode ?? "organization"),
   );
-  const setupRequired = useSetupRequired();
+  const { setupRequired, emergencyAccess } = useSetupStatus();
   const [tenantSlug, setTenantSlug] = useState(() =>
     typeof window === "undefined" ? "" : (readRemembered().tenantSlug ?? ""),
   );
@@ -342,13 +349,16 @@ function PasswordForm({
 
       <div className="mt-6 space-y-2 text-center text-xs text-faint">
         {!emergency && <p>After your password you will enter a code from your authenticator app.</p>}
-        <button
-          type="button"
-          className="underline-offset-2 hover:text-soft hover:underline"
-          onClick={() => switchMode(emergency ? (readRemembered().mode ?? "organization") : "emergency")}
-        >
-          {emergency ? "Back to normal sign-in" : "Emergency access"}
-        </button>
+        {/* Offered only when this server has the break-glass account on (SECUREONE_BREAK_GLASS_ENABLED). */}
+        {(emergency || emergencyAccess) && (
+          <button
+            type="button"
+            className="underline-offset-2 hover:text-soft hover:underline"
+            onClick={() => switchMode(emergency ? (readRemembered().mode ?? "organization") : "emergency")}
+          >
+            {emergency ? "Back to normal sign-in" : "Emergency access"}
+          </button>
+        )}
       </div>
     </Card>
   );

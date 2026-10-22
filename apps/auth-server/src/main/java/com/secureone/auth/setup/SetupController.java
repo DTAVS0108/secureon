@@ -1,10 +1,12 @@
 package com.secureone.auth.setup;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.secureone.auth.authn.DevAdminAuthenticationProvider;
 import com.secureone.auth.logging.ClientIpResolver;
 import com.secureone.auth.tenant.RlsScope;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,15 +23,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class SetupController {
 
     private final SetupService setup;
+    private final ObjectProvider<DevAdminAuthenticationProvider> emergencyAccount;
 
-    public SetupController(SetupService setup) {
+    public SetupController(SetupService setup, ObjectProvider<DevAdminAuthenticationProvider> emergencyAccount) {
         this.setup = setup;
+        this.emergencyAccount = emergencyAccount;
     }
 
+    /** {@code emergencyAccess}: whether the console sign-in page offers the break-glass account. */
     @GetMapping("/status")
     public Map<String, Object> status() {
         boolean required = setup.setupRequired();
-        return Map.of("setupRequired", required, "codeFromEnvironment", required && setup.codeFromEnvironment());
+        return Map.of(
+                "setupRequired", required,
+                "codeFromEnvironment", required && setup.codeFromEnvironment(),
+                "emergencyAccess", emergencyAccount.getIfAvailable() != null);
     }
 
     public record VerifyRequest(String code) {}
