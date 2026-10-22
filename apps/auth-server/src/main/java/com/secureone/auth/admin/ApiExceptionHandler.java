@@ -18,7 +18,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
             "com.secureone.auth.account",
             "com.secureone.auth.application",
             "com.secureone.auth.configascode",
-            "com.secureone.auth.mfa"
+            "com.secureone.auth.mfa",
+            "com.secureone.auth.twostep"
         })
 public class ApiExceptionHandler {
 
@@ -31,6 +32,15 @@ public class ApiExceptionHandler {
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     ProblemDetail responseStatus(org.springframework.web.server.ResponseStatusException ex) {
         return ProblemDetail.forStatusAndDetail(ex.getStatusCode(), ex.getReason());
+    }
+
+    /**
+     * Problems thrown with their own body (for example "verify it's you first", whose {@code freshStepRequired}
+     * flag tells the console and the account page to ask for the second step) keep it.
+     */
+    @ExceptionHandler(org.springframework.web.ErrorResponseException.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> errorResponse(org.springframework.web.ErrorResponseException ex) {
+        return org.springframework.http.ResponseEntity.status(ex.getStatusCode()).body(ex.getBody());
     }
 
     @ExceptionHandler(IllegalStateException.class)

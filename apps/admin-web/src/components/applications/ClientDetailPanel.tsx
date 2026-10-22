@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OAuthClientFormModal } from "@/components/forms/OAuthClientFormModal";
 import { ClientSetupCode } from "@/components/applications/ClientSetupCode";
+import { ClientDeleteRequest } from "@/components/approvals/ClientDeleteRequest";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CopyValue } from "@/components/ui/CopyValue";
 import { useToast } from "@/components/ui/Toast";
-import { oauthClientDeleteAction } from "@/lib/actions";
 import { rotateOAuthClientSecretApi } from "@/lib/api/oauth-clients";
 import { publicAuthServerUrl } from "@/lib/config";
 import { statusTone } from "@/lib/status";
@@ -159,19 +158,7 @@ export function ClientDetailPanel({
 
       <Card className="border-red-500/20" padded={false}>
         <CardHeader title="Danger zone" />
-        <div className="flex items-center justify-between p-5">
-          <p className="text-sm text-muted">
-            Permanently remove this OAuth client. The application product and its users remain.
-          </p>
-          <ConfirmDialog
-            action={oauthClientDeleteAction}
-            id={client.id}
-            triggerLabel="Delete client"
-            title={`Delete ${client.clientId}?`}
-            message="Client credentials will stop working immediately. The application console is unaffected."
-            confirmLabel="Delete"
-          />
-        </div>
+        <ClientDeleteRequest clientDbId={client.id} clientId={client.clientId} tenantId={client.tenantId} />
       </Card>
     </div>
   );

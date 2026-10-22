@@ -63,23 +63,8 @@
     <div id="passkey-wrap" style="margin-top: 0.75rem; display: none">
       <button type="button" id="passkey-signin" class="fed-btn">Sign in with passkey</button>
     </div>
-    <div id="mfa-panel" class="panel" hidden>
-      <strong>Two-factor authentication</strong>
-      <p style="margin: 0.35rem 0 0.75rem">Enter the 6-digit code from your authenticator app.</p>
-      <label for="mfa-code">Authenticator code</label>
-      <input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" />
-      <button type="button" id="mfa-submit" style="margin-top: 0.75rem">Verify and continue</button>
-      <p style="margin: 0.75rem 0 0">
-        <button type="button" id="mfa-recovery-toggle" style="width: auto; padding: 0; background: none; color: #4f46e5; font-weight: 500">
-          Use a recovery code
-        </button>
-      </p>
-      <div id="mfa-recovery-wrap" hidden>
-        <label for="mfa-recovery">Recovery code</label>
-        <input id="mfa-recovery" autocomplete="off" />
-        <button type="button" id="mfa-recovery-submit" style="margin-top: 0.75rem">Verify recovery code</button>
-      </div>
-    </div>
+    <!-- The second step or the setup, rendered by /account/two-step.js -->
+    <div id="mfa-panel" class="panel" hidden></div>
     <p id="methods"></p>
     <div id="session-panel" class="panel" hidden>
       <strong>Session signed in</strong>
@@ -90,6 +75,7 @@
         <code>/userinfo</code>, use your app&apos;s Sign in button (OAuth).
       </p>
     </div>
+    <script src="/account/two-step.js"></script>
     <div class="links">
       <p><a id="signup-link" href="/account/signup.html">Create an account</a></p>
       <p><a id="forgot-link" href="/account/forgot-password.html">Forgot password</a></p>
@@ -147,44 +133,16 @@
         if (params.get("mfa") === "1" && mfaChallengeId) {
           document.getElementById("login-form").hidden = true;
           document.getElementById("mfa-panel").hidden = false;
-          document.getElementById("title").textContent = "Verify your identity";
-          if (banner) {
-            banner.textContent = "Password accepted. Complete sign-in with your authenticator.";
-            banner.className = "banner success";
-            banner.hidden = false;
-          }
-          async function submitMfa(path, code) {
-            const res = await fetch(path, {
-              method: "POST",
-              credentials: "same-origin",
-              headers: { "Content-Type": "application/json", Accept: "application/json" },
-              body: JSON.stringify({ mfaChallengeId: mfaChallengeId, code: code }),
-            });
-            if (res.status === 204) {
+          document.getElementById("title").textContent = "Verify it's you";
+          window.SecureOneTwoStep.renderSignInStep(document.getElementById("mfa-panel"), {
+            challengeId: mfaChallengeId,
+            onSignedIn: function () {
               const next = new URL(location.href);
               next.searchParams.delete("mfa");
               next.searchParams.delete("mfaChallengeId");
               next.searchParams.set("signedIn", "1");
               location.replace(next.toString());
-              return;
-            }
-            const body = await res.json().catch(() => ({}));
-            if (banner) {
-              banner.textContent = body.detail || "Verification failed. Try again.";
-              banner.className = "banner error";
-              banner.hidden = false;
-            }
-          }
-          document.getElementById("mfa-submit").addEventListener("click", () => {
-            const code = document.getElementById("mfa-code").value.trim();
-            if (code) submitMfa("/api/v1/auth/mfa/totp/verify", code);
-          });
-          document.getElementById("mfa-recovery-toggle").addEventListener("click", () => {
-            document.getElementById("mfa-recovery-wrap").hidden = false;
-          });
-          document.getElementById("mfa-recovery-submit").addEventListener("click", () => {
-            const code = document.getElementById("mfa-recovery").value.trim();
-            if (code) submitMfa("/api/v1/auth/mfa/recovery/verify", code);
+            },
           });
         }
         if (banner) {

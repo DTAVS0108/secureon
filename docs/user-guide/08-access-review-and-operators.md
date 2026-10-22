@@ -4,7 +4,35 @@
 
 **Where:** sidebar **Access review** (`/admin/access-review`, platform operators). Tenant Super Admins have a tenant-scoped version under **Tenant › Access review** (`/admin/tenants/{id}/access-review`).
 
-*Who holds platform and console roles, when they last signed in, and whether they use MFA.*
+*Approve high-impact changes, and review who holds platform and console roles, when they last signed in, and whether they use MFA.*
+
+## Pending approvals
+
+Some changes are too risky for one person to make alone. They wait here until another admin approves them. For
+now this covers **deleting an OAuth client** (see [OAuth clients › Danger zone](04-oauth-clients.md#danger-zone)).
+
+- **Who decides:** platform operators (every tenant, on `/admin/access-review`) and the tenant's super admins
+  (their tenant, on **Tenant › Access review**).
+- **Not your own request:** the person who asked cannot approve or reject it; they can only **Withdraw** it.
+
+| Column | Meaning |
+|--------|---------|
+| **Change** | What will happen, e.g. **Delete OAuth client**, and the client (link to its page) |
+| **Tenant** | The tenant it belongs to (platform page only) |
+| **Asked by** | Who asked and when (**You** for your own requests) |
+| **Reason** | The reason given when asking |
+| **Decision** | **Approve**, **Reject**, or for your own request *Waiting for another admin* and **Withdraw** |
+
+**Approve** opens a dialog with an optional note; **Approve and delete** deletes the client at once (*Approved:
+client deleted*). If the client was already removed, the request is marked **Failed**. **Reject** needs a reason,
+which the person who asked can see. Nothing changes.
+
+**Recent decisions** lists the last 50 requests with **Approved**, **Rejected**, **Withdrawn** or **Failed**, who
+decided, and the note. Every step is also in the audit log (`change_request.requested`, `.approved`, `.rejected`,
+`.withdrawn`, `.failed`).
+
+With only one platform operator and no tenant super admin, nobody else can approve that operator's requests. Add a
+second platform operator (below) or a tenant super admin.
 
 ## Platform operators
 

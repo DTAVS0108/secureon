@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AdminContextProvider } from "./AdminContextProvider";
 import { ConsoleShell } from "./ConsoleShell";
+import { StepUpProvider } from "./StepUpProvider";
 import type { AdminContext } from "@/lib/api/context";
 
 export function ConsoleProviders({
@@ -40,6 +41,7 @@ export function ConsoleProviders({
       >
         {children}
       </ConsoleShell>
+      <StepUpProvider />
     </AdminContextProvider>
   );
 }

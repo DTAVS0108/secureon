@@ -40,6 +40,7 @@ public class ApplicationSettingsService {
     private final EmailTemplateService emailTemplates;
     private final PlatformMailSenderProvider mailSenderProvider;
     private final SettingsExposureService exposure;
+    private final com.secureone.auth.twostep.TwoStepPolicyResolver twoStepPolicy;
 
     public ApplicationSettingsService(
             ApplicationRepository applications,
@@ -53,7 +54,8 @@ public class ApplicationSettingsService {
             SmsNotificationService smsNotification,
             EmailTemplateService emailTemplates,
             PlatformMailSenderProvider mailSenderProvider,
-            SettingsExposureService exposure) {
+            SettingsExposureService exposure,
+            com.secureone.auth.twostep.TwoStepPolicyResolver twoStepPolicy) {
         this.applications = applications;
         this.appSettings = appSettings;
         this.platformSettings = platformSettings;
@@ -66,6 +68,7 @@ public class ApplicationSettingsService {
         this.emailTemplates = emailTemplates;
         this.mailSenderProvider = mailSenderProvider;
         this.exposure = exposure;
+        this.twoStepPolicy = twoStepPolicy;
     }
 
     public void requireApplication(UUID applicationId) {
@@ -184,14 +187,6 @@ public class ApplicationSettingsService {
             return TokenPolicyDefaults.platformDefaults();
         }
         return platform;
-    }
-
-    private Map<String, Object> platformMfaPolicy() {
-        Map<String, Object> platform = platformSettings.get("mfa_policy");
-        if (platform == null || platform.isEmpty()) {
-            return MfaPolicyDefaults.platformDefaults();
-        }
-        return MfaPolicyDefaults.sanitizeForSave(platform);
     }
 
     private void syncTokenPolicyToApplicationConfig(UUID applicationId) {
@@ -464,26 +459,45 @@ public class ApplicationSettingsService {
     @Transactional(readOnly = true)
     public Map<String, Object> getMfaPolicy(UUID applicationId) {
         requireApplication(applicationId);
-        Map<String, Object> merged = resolveMfaPolicy(applicationId);
+        Map<String, Object> merged = new java.util.LinkedHashMap<>(resolveMfaPolicy(applicationId));
         merged.put("scope", "application");
         merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "mfa_policy"));
+        // Which values this app sets itself, and what it inherits (platform, then tenant), for the settings page.
+        merged.put("overrides", getAppMap(applicationId, "mfa_policy").map(m -> List.copyOf(m.keySet())).orElse(List.of()));
+        merged.put("inherited", inheritedMfaPolicy(applicationId));
         return merged;
     }
 
+    /**
+     * Saves the application's two-step overrides: only values that differ from what it inherits (platform, then
+     * tenant), so later platform or tenant changes still apply. Values the levels above lock are refused.
+     */
     public Map<String, Object> saveMfaPolicy(UUID applicationId, Map<String, Object> body) {
         requireApplication(applicationId);
-        saveAppMap(applicationId, "mfa_policy", MfaPolicyDefaults.sanitizeForSave(body));
+        Map<String, Object> overrides = com.secureone.auth.mfa.MfaPolicyDefaults.sanitizeOverride(body);
+        overrides.remove(com.secureone.auth.mfa.MfaPolicyDefaults.LOCKS);
+        twoStepPolicy.requireAllowedForApplication(applicationId, overrides);
+        Map<String, Object> inherited = inheritedMfaPolicy(applicationId);
+        overrides.entrySet().removeIf(e -> e.getValue().equals(inherited.get(e.getKey())));
+        if (overrides.isEmpty()) {
+            appSettings.findByApplicationIdAndKey(applicationId, "mfa_policy").ifPresent(appSettings::delete);
+        } else {
+            saveAppMap(applicationId, "mfa_policy", overrides);
+        }
         return getMfaPolicy(applicationId);
     }
 
+    /** The policy the application gets without its own overrides (platform, then its tenant's defaults). */
+    private Map<String, Object> inheritedMfaPolicy(UUID applicationId) {
+        UUID tenantId = twoStepPolicy.tenantOf(applicationId);
+        return tenantId != null ? twoStepPolicy.resolveTenant(tenantId).policy() : twoStepPolicy.platform();
+    }
+
+    /** Effective two-step policy: platform, then tenant defaults, then the application, under lock modes. */
     @Transactional(readOnly = true)
     public Map<String, Object> resolveMfaPolicy(UUID applicationId) {
         requireApplication(applicationId);
-        Map<String, Object> platform = platformSettings.get("mfa_policy");
-        if (platform == null || platform.isEmpty()) {
-            platform = MfaPolicyDefaults.platformDefaults();
-        }
-        return MfaPolicyDefaults.merge(platform, getAppMap(applicationId, "mfa_policy").orElse(Map.of()));
+        return twoStepPolicy.resolve(applicationId).policy();
     }
 
     @Transactional(readOnly = true)
@@ -752,7 +766,8 @@ public class ApplicationSettingsService {
             }
             case "sms" -> saveAppRaw(
                     applicationId, settingKey, new HashMap<>(platformSmsSettings.snapshotForApplicationOverride()));
-            case "mfa_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>(platformMfaPolicy()));
+            // Overrides are stored as differences, so "own policy" starts empty and inherits until changed.
+            case "mfa_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>());
             default -> throw new IllegalArgumentException("Unsupported setting key: " + settingKey);
         }
     }

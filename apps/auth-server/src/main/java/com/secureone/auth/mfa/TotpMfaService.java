@@ -126,7 +126,11 @@ public class TotpMfaService {
         }
         factor.setVerified(true);
         factors.save(factor);
-        List<String> codes = recoveryCodes.issueForUser(user.getId(), policy.recoveryCodesPerEnrollment(policyApp));
+        // Backup codes only when the user has none: adding an app as another option must not replace codes
+        // the user already saved.
+        List<String> codes = recoveryCodes.remaining(user.getId()) == 0
+                ? recoveryCodes.issueForUser(user.getId(), policy.recoveryCodesPerEnrollment(policyApp))
+                : List.of();
         return new ConfirmResponse(factor.getId(), codes);
     }
 
@@ -138,7 +142,7 @@ public class TotpMfaService {
             throw new IllegalArgumentException("Only TOTP factors can be removed here.");
         }
         factors.delete(factor);
-        recoveryCodes.revokeForUser(user.getId());
+        // Backup codes go with the last option (TwoStepService.methodRemoved), not with each one.
     }
 
     public boolean verifyForUser(UUID userId, String code) {

@@ -17,12 +17,12 @@ Your app sends users here through the standard OAuth `/oauth2/authorize` redirec
 | **Password** + **Sign in** | Password sign-in. |
 | **Sign in with a one-time code** → **Send code** → **Code** → **Verify and sign in** | Passwordless OTP by email or SMS. |
 | **Sign in with magic link** | Opens the magic-link page. |
-| **Sign in with passkey** | Device passkey (Windows Hello, Touch ID, security key). |
+| **Sign in with passkey** | Device passkey (Windows Hello, Touch ID, security key). The device must check a PIN, fingerprint or face; a passkey counts as both steps, so no code is asked. A passkey only opens applications the user has access to. |
 | Provider buttons | For example *Continue with Google*, from Identity federation. |
 | **Sign in with password** | Switches back from another method. |
 | **Forgot password** | Opens the forgot-password page (when **Self-service Recovery** is on). |
 | **Create an account** | Opens sign-up (when **Self Registration** is on). |
-| **Authenticator code** + **Verify and continue** | The MFA step when MFA is required or the user has enrolled. |
+| **Verify it's you** | The second step, after any first step (password, one-time code, magic link, Google/OIDC/SAML): passkey, security key, authenticator code, text or email code, or a backup code (**Try another way**). Users without an option are offered setup (**Remind me later** while allowed). Wrong codes count toward the account lockout like wrong passwords. See [Two-step verification](12-two-step-verification.md#for-end-users). |
 | **Recovery code** + **Verify recovery code** | Instead of the authenticator code. |
 
 ## Create account (`/account/signup.html`)
@@ -58,7 +58,7 @@ Opened from an invitation or set-password email. Enter **New password** and **Co
 
 ## Magic link sign-in (`/account/magic-link.html`)
 
-Enter **Email** and press **Send sign-in link**. The email link signs the user in once; it expires after a short time.
+Enter **Email** and press **Send sign-in link**. The email link works once and expires after a short time. It is the first step only: a user with two-step verification, or in an application that requires it, continues to the second step before they are signed in.
 
 ## Connect a device (`/account/device.html`)
 
@@ -70,7 +70,7 @@ Self-service security for signed-in users.
 
 | Section | What the user can do |
 |---------|----------------------|
-| **MFA factors** | **Add authenticator app** (scan the QR code, enter the 6-digit code, **Confirm**), **Add passkey**, and remove factors |
+| **Two-step verification** | Status, **Ways to verify it's you** (add a passkey, security key, authenticator app, phone or email code; remove one; choose which is asked first), backup codes, **Remembered devices**, and **Turn off** when not required. Changes need a recent second step. |
 | **Sessions** | See where they are signed in; **Sign out other devices** |
 | **Privacy** | Link to the privacy page |
 

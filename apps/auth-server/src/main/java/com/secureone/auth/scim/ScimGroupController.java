@@ -1,5 +1,6 @@
 package com.secureone.auth.scim;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+@Tag(name = "SCIM 2.0 provisioning", description = "Users and groups provisioned by an identity provider (SCIM bearer token)")
 @RestController
 @RequestMapping("/scim/v2/Groups")
 public class ScimGroupController {

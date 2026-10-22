@@ -1,11 +1,13 @@
 package com.secureone.auth.account;
 
+import com.secureone.auth.authn.AccountLockoutService;
 import com.secureone.auth.user.UserCredential;
 import com.secureone.auth.user.UserCredentialRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,14 +20,18 @@ public class UserPasswordService {
     private final UserCredentialRepository credentials;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService policy;
+    /** Lazy: the lockout service needs beans that are built after this one. */
+    private final ObjectProvider<AccountLockoutService> lockout;
 
     public UserPasswordService(
             UserCredentialRepository credentials,
             PasswordEncoder passwordEncoder,
-            PasswordPolicyService policy) {
+            PasswordPolicyService policy,
+            ObjectProvider<AccountLockoutService> lockout) {
         this.credentials = credentials;
         this.passwordEncoder = passwordEncoder;
         this.policy = policy;
+        this.lockout = lockout;
     }
 
     public boolean hasPassword(UUID userId) {
@@ -64,6 +70,9 @@ public class UserPasswordService {
         credentials.saveAndFlush(cred);
 
         pruneHistory(userId, policy.historyRetentionCount(applicationId));
+        // A new password (reset link or code, invitation, admin) proves control of the account: end any lockout,
+        // as the account-locked email promises.
+        lockout.ifAvailable(service -> service.clear(userId));
     }
 
     public void removePassword(UUID userId) {

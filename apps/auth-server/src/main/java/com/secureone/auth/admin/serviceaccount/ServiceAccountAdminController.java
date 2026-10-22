@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/v1/tenants/{tenantId}/service-accounts")
 public class ServiceAccountAdminController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
+
     private final ServiceAccountService service;
 
     public ServiceAccountAdminController(ServiceAccountService service) {
@@ -65,7 +68,9 @@ public class ServiceAccountAdminController {
     @PostMapping("/{id}/keys")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> createKey(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
             @PathVariable UUID tenantId, @PathVariable UUID id, @RequestBody(required = false) Map<String, Object> body) {
+        stepUp.require(stepUpRequest); // a recent second step from the admin
         return service.createApiKey(tenantId, id, body != null ? body : Map.of());
     }
 

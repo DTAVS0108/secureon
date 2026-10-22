@@ -110,6 +110,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         lockout.recordSuccess(account.getId());
         account.setFailedLoginCount(0);
         account.setLockedUntil(null);
+        account.setLockoutLevel(0);
         account.setLastLoginAt(Instant.now());
         users.save(account);
         UUID applicationId = resolveApplicationId(request, account);
@@ -127,7 +128,7 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
                 "—",
                 AuthRequestContext.resolveSessionId(request),
                 null);
-        AuthContextAttributes.recordPasswordAuth(request);
+        AuthContextAttributes.recordSignIn(request, authentication);
         log.info(
                 "Form login succeeded [sess={}] for {}",
                 AuthRequestContext.formatSessionRef(request),
@@ -188,29 +189,12 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             throws IOException, ServletException {
         // The app the sign-in is for decides MFA; a missing or crafted form field must not skip it.
         UUID applicationId = signInApplication.current();
-        if (mfaLogin.enrollmentRequiredButMissing(authentication, applicationId)) {
-            mfaLogin.clearSession(request, response);
-            String url = "/login.html?error=mfa_enrollment_required"
-                    + (applicationId != null ? "&applicationId=" + applicationId : "");
-            getRedirectStrategy().sendRedirect(request, response, url);
+        // The same gate as every other sign-in path: MFA requirement, second step, then the session.
+        String next = mfaLogin.completeBrowserSignIn(authentication, applicationId, null, request, response);
+        if (next != null) {
+            getRedirectStrategy().sendRedirect(request, response, next);
             return;
         }
-        if (mfaLogin.shouldChallengeFormLogin(authentication, applicationId, request)) {
-            int sep = authentication.getName().indexOf(':');
-            UserAccount account = userDetailsService.resolveAccount(
-                    authentication.getName().substring(0, sep), authentication.getName().substring(sep + 1));
-            MfaChallengeResponse challenge = mfaLogin.issueChallenge(
-                    account, authentication.getName().substring(0, sep).trim().toLowerCase(), applicationId);
-            mfaLogin.clearSession(request, response);
-            String mfaUrl = "/login.html?mfa=1&mfaChallengeId="
-                    + URLEncoder.encode(challenge.mfaChallengeId().toString(), StandardCharsets.UTF_8)
-                    + (applicationId != null
-                            ? "&applicationId=" + URLEncoder.encode(applicationId.toString(), StandardCharsets.UTF_8)
-                            : "");
-            getRedirectStrategy().sendRedirect(request, response, mfaUrl);
-            return;
-        }
-        recordSuccessfulLogin(request, authentication);
         finishLogin(request, response, authentication);
     }
 

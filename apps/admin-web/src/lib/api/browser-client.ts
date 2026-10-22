@@ -18,6 +18,19 @@ export async function browserApiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
+  return fetchOnce<T>(path, init, false);
+}
+
+/**
+ * Sensitive admin actions answer 403 with `freshStepRequired` until the operator verifies again. In the browser
+ * the console's step-up dialog (StepUpProvider) asks for a code or passkey, then the call is retried once.
+ */
+function requestStepUp(): Promise<boolean> {
+  const ask = (window as unknown as { __secureoneStepUp?: () => Promise<boolean> }).__secureoneStepUp;
+  return ask ? ask() : Promise.resolve(false);
+}
+
+async function fetchOnce<T>(path: string, init: RequestInit | undefined, retried: boolean): Promise<T> {
   const normalized = path.startsWith("/") ? path.slice(1) : path;
 
   const baseHeaders: Record<string, string> = {
@@ -67,6 +80,19 @@ export async function browserApiFetch<T>(
       body = JSON.parse(text);
     } catch {
       body = text;
+    }
+  }
+
+  if (
+    res.status === 403 &&
+    isBrowser() &&
+    !retried &&
+    typeof body === "object" &&
+    body !== null &&
+    (body as { freshStepRequired?: boolean }).freshStepRequired
+  ) {
+    if (await requestStepUp()) {
+      return fetchOnce<T>(path, init, true);
     }
   }
 

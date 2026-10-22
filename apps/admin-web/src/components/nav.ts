@@ -59,6 +59,11 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
         href: `/tenants/${tenantId}/access-review`,
         isActive: isAccessReviewNavActive,
       },
+      {
+        label: "Two-step verification",
+        href: `/tenants/${tenantId}/two-step`,
+        isActive: (pathname: string) => /^\/tenants\/[^/]+\/two-step\/?$/.test(pathname),
+      },
     ],
   };
 }

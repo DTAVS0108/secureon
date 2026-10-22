@@ -195,7 +195,7 @@ The lists currently registered. Change them with **Edit client**.
 
 ### Danger zone
 
-**Delete client**: *Permanently remove this OAuth client. The application product and its users remain.* The confirmation says *Client credentials will stop working immediately. The application console is unaffected.* To remove the application as well, delete its clients, then use **Delete application** under [Applications without an OAuth client](#applications-without-an-oauth-client).
+**Request deletion**: deleting a client needs a second admin. The dialog asks for an optional **Reason** (*e.g. App retired, replaced by web-v2*); **Send for approval** creates the request (*Sent for approval*) and nothing is deleted yet. The Danger zone then shows *Deletion waiting for approval* with who asked and when; the person who asked can **Withdraw request**. A platform operator or the tenant's super admin approves it under [Access review › Pending approvals](08-access-review-and-operators.md#pending-approvals); then the client is deleted and its credentials stop working immediately. To remove the application as well, delete its clients, then use **Delete application** under [Applications without an OAuth client](#applications-without-an-oauth-client).
 
 ## Good practice
 

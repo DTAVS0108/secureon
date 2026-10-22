@@ -221,17 +221,9 @@ export function VerificationPolicyCards({
               ))}
             </div>
           </FieldRow>
-          <FieldRow label="MFA required" info={LOGIN_HELP.mfaRequired}>
-            <select
-              className="w-full rounded-md border border-ui bg-surface px-3 py-2 text-sm"
-              value={login.mfaRequired ?? "optional"}
-              onChange={(e) => updateLogin({ ...login, mfaRequired: e.target.value })}
-            >
-              <option value="off">Off</option>
-              <option value="optional">Optional</option>
-              <option value="required">Required</option>
-            </select>
-          </FieldRow>
+          <p className="text-xs text-muted">
+            Whether a second step is required is set under <strong>Two-step verification</strong>.
+          </p>
           <OtpFields section={login} sectionHelp={LOGIN_HELP} onChange={updateLogin} />
         </div>
       </Card>

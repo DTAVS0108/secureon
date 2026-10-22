@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Account profile", description = "Authenticated end-user profile and password change (Bearer access token)")
-@SecurityRequirement(name = "oauth2Bearer")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/account")
 public class AccountProfileController {

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Account privacy", description = "GDPR-oriented self-service export and deletion request (Bearer access token)")
-@SecurityRequirement(name = "oauth2Bearer")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/account/privacy")
 public class AccountPrivacyController {

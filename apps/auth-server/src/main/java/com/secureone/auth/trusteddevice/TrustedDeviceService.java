@@ -69,6 +69,29 @@ public class TrustedDeviceService {
                 .orElse(false);
     }
 
+    /** Devices that skip the second step, newest first (never the token). */
+    @Transactional(readOnly = true)
+    public java.util.List<TrustedDevice> list(UUID userId) {
+        return devices.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(device -> device.getExpiresAt().isAfter(Instant.now()))
+                .toList();
+    }
+
+    /** The user forgets one device; false when it is not theirs. */
+    @Transactional
+    public boolean revoke(UUID userId, UUID deviceId) {
+        return devices.findByIdAndUserId(deviceId, userId).map(device -> {
+            devices.delete(device);
+            return true;
+        }).orElse(false);
+    }
+
+    /** Forgets every device: after a reset, a recovery, a password reset or a removed method. */
+    @Transactional
+    public long revokeAll(UUID userId) {
+        return userId != null ? devices.deleteByUserId(userId) : 0;
+    }
+
     private static String generateToken() {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);

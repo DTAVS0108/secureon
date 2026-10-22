@@ -11,7 +11,10 @@ import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.StartRegistrationOptions;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredential;
+import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.ResidentKeyRequirement;
+import com.yubico.webauthn.data.UserVerificationRequirement;
 import com.yubico.webauthn.data.RelyingPartyIdentity;
 import com.yubico.webauthn.data.UserIdentity;
 import java.util.LinkedHashMap;
@@ -33,6 +36,7 @@ public class PasskeyRegistrationService {
 
     private final ApplicationRepository applications;
     private final ApplicationDisplayName displayNames;
+    private final com.secureone.auth.mfa.MfaPolicyService twoStepPolicy;
 
     public PasskeyRegistrationService(
             RelyingParty relyingParty,
@@ -41,7 +45,9 @@ public class PasskeyRegistrationService {
             AuthSettingsService authSettings,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings,
             ApplicationRepository applications,
-            ApplicationDisplayName displayNames) {
+            ApplicationDisplayName displayNames,
+            com.secureone.auth.mfa.MfaPolicyService twoStepPolicy) {
+        this.twoStepPolicy = twoStepPolicy;
         this.applications = applications;
         this.displayNames = displayNames;
         this.relyingParty = relyingParty;
@@ -61,7 +67,16 @@ public class PasskeyRegistrationService {
      * "tenant:email" username (which stays the key for credential lookups).
      */
     public Map<String, Object> beginRegistration(UserAccount user, String tenantSlug, String label, UUID applicationId) {
-        assertPasskeysAvailable();
+        return beginRegistration(user, tenantSlug, label, applicationId, null);
+    }
+
+    /**
+     * {@code kind} "security_key" asks for a removable key, "passkey" for this phone or computer, null for either.
+     * Allowed when the app offers passkeys for sign-in or as a two-step option.
+     */
+    public Map<String, Object> beginRegistration(
+            UserAccount user, String tenantSlug, String label, UUID applicationId, String kind) {
+        assertPasskeysAvailable(applicationId);
         String username = username(tenantSlug, user.getEmail());
         ByteArray userHandle = credentials.ensureUserHandle(user);
         PublicKeyCredentialCreationOptions started = WebAuthnErrors.uncheck(() -> relyingParty.startRegistration(
@@ -71,6 +86,8 @@ public class PasskeyRegistrationService {
                                 .displayName(displayName(user))
                                 .id(userHandle)
                                 .build())
+                        // The device must check a PIN or biometric, so the passkey is two steps on its own.
+                        .authenticatorSelection(selection(kind))
                         .build()));
         PublicKeyCredentialCreationOptions options = started.toBuilder()
                 .rp(RelyingPartyIdentity.builder()
@@ -79,7 +96,8 @@ public class PasskeyRegistrationService {
                         .build())
                 .build();
         String requestId = challenges.saveRegistration(new WebAuthnChallengeStore.RegistrationPending(
-                user.getId(), username, WebAuthnErrors.uncheck(options::toJson)));
+                user.getId(), username, WebAuthnErrors.uncheck(options::toJson),
+                "security_key".equals(kind) ? "security_key" : "passkey"));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("requestId", requestId);
         out.put("publicKey", WebAuthnErrors.uncheck(options::toCredentialsCreateJson));
@@ -99,7 +117,6 @@ public class PasskeyRegistrationService {
 
     public Map<String, Object> finishRegistration(
             UserAccount user, UUID requestId, String credentialJson, String label) {
-        assertPasskeysAvailable();
         WebAuthnChallengeStore.RegistrationPending pending = challenges
                 .consumeRegistration(requestId.toString())
                 .orElseThrow(() -> new IllegalArgumentException("Passkey registration expired or invalid."));
@@ -119,17 +136,36 @@ public class PasskeyRegistrationService {
                 .publicKeyCose(result.getPublicKeyCose())
                 .signatureCount(result.getSignatureCount())
                 .build();
+        String kind = pending.kind() != null ? pending.kind() : "passkey";
+        String defaultLabel = "security_key".equals(kind) ? "Security key" : "Passkey";
         var factor = credentials.saveCredential(
-                user.getId(), label, registered, Map.of("aaguid", result.getAaguid().getHex()));
+                user.getId(), label != null && !label.isBlank() ? label : defaultLabel, registered,
+                Map.of("aaguid", result.getAaguid().getHex(), "kind", kind));
         return Map.of(
                 "factorId", factor.getId().toString(),
-                "label", factor.getLabel());
+                "label", factor.getLabel(),
+                "kind", kind);
     }
 
-    private void assertPasskeysAvailable() {
-        if (!effectiveSettings.getObject().isMethodAvailableForCurrentApplication("m_passkey")) {
+    /** Passkeys are allowed for sign-in (m_passkey) or as a two-step option of the app's policy. */
+    private void assertPasskeysAvailable(UUID applicationId) {
+        if (!effectiveSettings.getObject().isMethodAvailableForCurrentApplication("m_passkey")
+                && !twoStepPolicy.passkeysAvailable(applicationId)) {
             throw new IllegalStateException("Passkeys are not enabled for this application.");
         }
+    }
+
+    /** The device must check a PIN or biometric, so the credential is two steps on its own. */
+    private static AuthenticatorSelectionCriteria selection(String kind) {
+        AuthenticatorSelectionCriteria.AuthenticatorSelectionCriteriaBuilder builder = AuthenticatorSelectionCriteria.builder()
+                .userVerification(UserVerificationRequirement.REQUIRED)
+                .residentKey(ResidentKeyRequirement.PREFERRED);
+        if ("security_key".equals(kind)) {
+            builder.authenticatorAttachment(com.yubico.webauthn.data.AuthenticatorAttachment.CROSS_PLATFORM);
+        } else if ("passkey".equals(kind)) {
+            builder.authenticatorAttachment(com.yubico.webauthn.data.AuthenticatorAttachment.PLATFORM);
+        }
+        return builder.build();
     }
 
     static String username(String tenantSlug, String email) {

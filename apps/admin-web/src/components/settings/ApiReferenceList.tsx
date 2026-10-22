@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LiveApiResponse } from "@/components/settings/LiveApiResponse";
 import { CopyValue } from "@/components/ui/CopyValue";
+import { curlFor } from "@/lib/api-curl";
 import { cn } from "@/lib/cn";
 import type { ApiField, IntegrationApiEndpoint } from "@/lib/integration-api-catalog";
 
@@ -57,7 +58,7 @@ function CodeBlock({ label, code }: { label: string; code: string }) {
         <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
         <CopyValue value={code} />
       </div>
-      <pre className="max-h-64 overflow-auto rounded-lg border border-ui bg-black/5 p-3 font-mono text-[11px] leading-relaxed text-ui dark:bg-white/5">
+      <pre className="max-h-80 overflow-auto whitespace-pre rounded-lg border border-ui bg-black/5 p-3 font-mono text-[11px] leading-relaxed text-ui dark:bg-white/5">
         {code}
       </pre>
     </div>
@@ -67,9 +68,11 @@ function CodeBlock({ label, code }: { label: string; code: string }) {
 function EndpointDetails({
   ep,
   applicationId,
+  clientId,
 }: {
   ep: IntegrationApiEndpoint;
   applicationId?: string;
+  clientId?: string;
 }) {
   const liveFetchIds = new Set([
     "public-manifest",
@@ -81,6 +84,7 @@ function EndpointDetails({
 
   return (
     <div className="space-y-4 border-t border-ui bg-black/[0.02] px-4 py-4 dark:bg-white/[0.02]">
+      <CodeBlock label="curl (bash, zsh, Git Bash)" code={curlFor(ep, clientId)} />
       {ep.auth && (
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Authentication</p>
@@ -134,12 +138,28 @@ function EndpointDetails({
   );
 }
 
+/** Section order; groups not listed here follow in catalog order. */
+const SECTION_ORDER = [
+  "Discovery",
+  "Sign-in",
+  "Signup",
+  "Tokens",
+  "Session",
+  "Profile",
+  "Password",
+  "Devices",
+  "Machine",
+  "Provisioning",
+];
+
 export function ApiReferenceList({
   endpoints,
   applicationId,
+  clientId,
 }: {
   endpoints: IntegrationApiEndpoint[];
   applicationId?: string;
+  clientId?: string;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -156,48 +176,95 @@ export function ApiReferenceList({
     return <p className="px-4 py-6 text-sm text-muted">No endpoints match the selected auth UI mode.</p>;
   }
 
+  const groups = [...new Set(endpoints.map((ep) => ep.group))].sort((a, b) => {
+    const ia = SECTION_ORDER.indexOf(a);
+    const ib = SECTION_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+
   return (
-    <div className="divide-y divide-ui">
-      {endpoints.map((ep) => {
-        const isOpen = expanded.has(ep.id);
-        return (
-          <div key={ep.id}>
-            <div className="flex w-full items-start gap-3 px-4 py-3 transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-              <button
-                type="button"
-                onClick={() => toggle(ep.id)}
-                className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                aria-expanded={isOpen}
-              >
-                <span
-                  className={cn(
-                    "mt-0.5 shrink-0 text-xs text-muted transition-transform",
-                    isOpen && "rotate-90",
-                  )}
-                  aria-hidden
-                >
-                  ▶
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <MethodBadge method={ep.method} />
-                    <span className="text-xs text-muted">{ep.group}</span>
-                  </div>
-                  <code className="mt-1 block break-all font-mono text-xs">{ep.path}</code>
-                  <p className="mt-1 text-xs text-muted">{ep.description}</p>
-                  {!isOpen && (
-                    <p className="mt-1 text-[11px] text-faint">
-                      Expand for request types, examples, and responses
-                    </p>
-                  )}
-                </div>
-              </button>
-              <CopyValue value={ep.path} className="mt-1 shrink-0" />
-            </div>
-            {isOpen && <EndpointDetails ep={ep} applicationId={applicationId} />}
+    <div>
+      <nav aria-label="API sections" className="flex flex-wrap gap-1.5 border-b border-ui px-4 py-3">
+        {groups.map((g) => (
+          <a
+            key={g}
+            href={`#api-${g.toLowerCase()}`}
+            className="rounded-full border border-ui px-2.5 py-1 text-xs text-soft hover:bg-ui-elevated"
+          >
+            {g} <span className="text-faint">{endpoints.filter((ep) => ep.group === g).length}</span>
+          </a>
+        ))}
+      </nav>
+      {groups.map((g, index) => (
+        <section key={g} id={`api-${g.toLowerCase()}`} className="scroll-mt-24">
+          <h3 className="flex items-baseline gap-2 border-b border-ui bg-ui-elevated px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <span className="text-faint">{index + 1}.</span> {g}
+          </h3>
+          <div className="divide-y divide-ui">
+            {endpoints
+              .filter((ep) => ep.group === g)
+              .map((ep) => (
+                <EndpointRow
+                  key={ep.id}
+                  ep={ep}
+                  open={expanded.has(ep.id)}
+                  onToggle={() => toggle(ep.id)}
+                  applicationId={applicationId}
+                  clientId={clientId}
+                />
+              ))}
           </div>
-        );
-      })}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function EndpointRow({
+  ep,
+  open,
+  onToggle,
+  applicationId,
+  clientId,
+}: {
+  ep: IntegrationApiEndpoint;
+  open: boolean;
+  onToggle: () => void;
+  applicationId?: string;
+  clientId?: string;
+}) {
+  return (
+    <div>
+      <div className="flex w-full items-start gap-3 px-4 py-3 transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left"
+          aria-expanded={open}
+        >
+          <span
+            className={cn("mt-0.5 shrink-0 text-xs text-muted transition-transform", open && "rotate-90")}
+            aria-hidden
+          >
+            ▶
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <MethodBadge method={ep.method} />
+              <code className="break-all font-mono text-xs">{ep.path}</code>
+            </div>
+            <p className="mt-1 text-xs text-muted">{ep.description}</p>
+            {!open && (
+              <p className="mt-1 text-[11px] text-faint">Expand for curl, request fields, examples and responses</p>
+            )}
+          </div>
+        </button>
+        <div className="mt-1 flex shrink-0 gap-1">
+          <CopyValue value={curlFor(ep, clientId)} label="Copy curl" />
+          <CopyValue value={ep.path} label="Copy URL" />
+        </div>
+      </div>
+      {open && <EndpointDetails ep={ep} applicationId={applicationId} clientId={clientId} />}
     </div>
   );
 }

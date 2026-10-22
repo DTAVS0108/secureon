@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
-import { Modal } from "@/components/ui/Modal";
 import { FieldRow, Input, Select } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { tenantCreateAction, tenantUpdateAction, type FormState } from "@/lib/actions";
-import { FormActions, FormError, useCloseOnSuccess } from "./form-utils";
 import type { Tenant } from "@/lib/types";
+import { useActionState } from "react";
+import { FormActions, FormError, useCloseOnSuccess } from "./form-utils";
 
 const initial: FormState = { ok: false };
 
@@ -54,7 +54,9 @@ function TenantForm({ tenant, close }: { tenant?: Tenant; close: () => void }) {
       </FieldRow>
       <div className="grid grid-cols-2 gap-4">
         <FieldRow label="Plan">
-          <Select name="plan" defaultValue={tenant?.plan ?? "free"}>
+          {/* A disabled select is not submitted, so the plan goes in a hidden field. */}
+          <input type="hidden" name="plan" value={tenant?.plan ?? "enterprise"} />
+          <Select disabled defaultValue={tenant?.plan ?? "enterprise"}>
             <option value="free">Free</option>
             <option value="team">Team</option>
             <option value="enterprise">Enterprise</option>

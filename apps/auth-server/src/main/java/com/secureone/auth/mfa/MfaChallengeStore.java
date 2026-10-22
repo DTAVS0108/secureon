@@ -29,6 +29,12 @@ public class MfaChallengeStore {
         }
     }
 
+    /** Replaces a challenge's state and keeps its remaining lifetime. */
+    public void update(MfaPendingChallenge challenge) {
+        Long seconds = redis.getExpire(PREFIX + challenge.challengeId());
+        save(challenge, Duration.ofSeconds(seconds != null && seconds > 0 ? seconds : 60));
+    }
+
     public Optional<MfaPendingChallenge> get(UUID challengeId) {
         String raw = redis.opsForValue().get(PREFIX + challengeId);
         if (raw == null || raw.isBlank()) {

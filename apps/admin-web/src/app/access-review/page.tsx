@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AccessReviewPanel } from "@/components/access/AccessReviewPanel";
+import { ChangeRequestsPanel } from "@/components/approvals/ChangeRequestsPanel";
 import { PlatformOperatorsPanel } from "@/components/access/PlatformOperatorsPanel";
 import { requirePlatformAccess } from "@/lib/platform-access";
 
@@ -12,8 +13,9 @@ export default async function AccessReviewPage() {
     <div className="w-full min-w-0">
       <PageHeader
         title="Access review"
-        description="Who holds platform and console roles, when they last signed in, and whether they use MFA."
+        description="Approve high-impact changes, and review who holds platform and console roles, when they last signed in, and whether they use MFA."
       />
+      <ChangeRequestsPanel />
       <PlatformOperatorsPanel />
       <AccessReviewPanel />
     </div>

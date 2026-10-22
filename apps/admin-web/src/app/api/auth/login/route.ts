@@ -11,6 +11,7 @@ type LoginResult = {
   mfaEnrollmentRequired?: boolean;
   mfaToken?: string;
   methods?: string[];
+  tryAnotherWay?: boolean;
   factorId?: string;
   secret?: string;
   otpauthUri?: string;
@@ -52,7 +53,12 @@ export async function POST(request: Request) {
 
   // Password accepted; the second step happens at /api/auth/login/mfa. No cookie yet.
   if (parsed.mfaRequired) {
-    return NextResponse.json({ step: "mfa", mfaToken: parsed.mfaToken, methods: parsed.methods ?? ["totp"] });
+    return NextResponse.json({
+      step: "mfa",
+      mfaToken: parsed.mfaToken,
+      methods: parsed.methods ?? ["totp"],
+      tryAnotherWay: parsed.tryAnotherWay !== false,
+    });
   }
   if (parsed.mfaEnrollmentRequired) {
     return NextResponse.json({

@@ -71,7 +71,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **Run stack, migrations & schedulers** | **[16 — Environment & operations](16-environment-setup-and-operations.md)** · **[17 — Schemas & tables](17-database-schemas-and-tables.md)** · **[18 — Flyway SQL](18-flyway-migration-files.md)** |
 | Enterprise features (phased) | [10 — Enterprise](10-enterprise.md) |
 | Admin scopes & settings layers | [11 — Admin Control](11-admin-control.md) |
-| OpenAPI / Swagger | [12 — API Documentation](12-api-documentation.md) |
+| API reference (every endpoint, with curl) | [API reference](api-reference/README.md) · [12 — API documentation](12-api-documentation.md) (Swagger, OpenAPI) |
 | Platform settings & governance | [10 — Settings governance](10-settings-governance.md) |
 | Application RBAC (groups/roles) | [14 — Application RBAC](14-application-rbac-management.md) |
 | **Applications vs OAuth clients** | **[15 — Applications & OAuth clients](15-applications-and-oauth-clients.md)** |
@@ -119,7 +119,7 @@ Everything needed to **integrate a product** (your app) with SecureOne: OAuth, l
 | Auth UI modes, OAuth, session login | [13 — Auth UI integration](13-auth-ui-integration.md) |
 | **OTP signup/login, phone, verification policy** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Register product + OAuth client | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
-| OpenAPI (all endpoints) | [12 — API Documentation](12-api-documentation.md) + Swagger |
+| OpenAPI (all endpoints) | [API reference](api-reference/README.md) · [12 — API documentation](12-api-documentation.md) + Swagger |
 | Sample apps (React SPA, Next.js, Express API, CLI) | [../samples/README.md](../samples/README.md) |
 | Demo storefront (Nook) | External repo `secureone-ecommerce` |
 

@@ -191,16 +191,8 @@ export function AuthenticationSettingsPanel({
 
       {tab === "mfa" && (
         <div className="space-y-6">
-          <MethodSection
-            title="Multi-factor methods"
-            description="TOTP, recovery codes, and SMS/email OTP at login when policy requires MFA."
-            methods={mfa}
-            onToggle={(next) => {
-              const merged = [...primary, ...next, ...federation];
-              setAuthMethods(merged);
-              scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
-            }}
-          />
+          {/* One place for second-step options, requirement, setup reminders and grace period
+              (docs/plans/two-factor-authentication.md). */}
           <MfaPolicySettingsPanel applicationId={applicationId} />
         </div>
       )}

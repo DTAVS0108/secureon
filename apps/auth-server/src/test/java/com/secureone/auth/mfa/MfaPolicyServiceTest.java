@@ -1,92 +1,50 @@
 package com.secureone.auth.mfa;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.secureone.auth.application.ApplicationSettingsService;
-import com.secureone.auth.platform.AuthSettingsService;
-import com.secureone.auth.platform.PlatformSettingsService;
-import com.secureone.auth.platform.VerificationPolicyService;
-import com.secureone.auth.user.UserAccount;
+import com.secureone.auth.twostep.TwoStepMethod;
+import com.secureone.auth.twostep.TwoStepPolicyResolver;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
+/** Typed reads of the effective policy. The sign-in decision is tested in TwoStepServiceTest. */
 class MfaPolicyServiceTest {
 
-    @Mock
-    private AuthSettingsService authSettings;
+    private final TwoStepPolicyResolver resolver = mock(TwoStepPolicyResolver.class);
+    private final MfaPolicyService policy = new MfaPolicyService(resolver, mock(MfaFactorRepository.class));
 
-    @Mock
-    private VerificationPolicyService verificationPolicy;
-
-    @Mock
-    private PlatformSettingsService platformSettings;
-
-    @Mock
-    private ApplicationSettingsService applicationSettings;
-
-    @Mock
-    private MfaFactorRepository mfaFactors;
-
-    @Mock
-    private com.secureone.auth.trusteddevice.TrustedDeviceService trustedDevices;
-
-    @Mock
-    private com.secureone.auth.application.ApplicationEffectiveSettingsService effective;
-
-    @Mock
-    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
-
-    @InjectMocks
-    private MfaPolicyService policy;
-
-    @Test
-    void requiresStepUpWhenTotpEnrolledAndPolicyOptional() {
-        UUID userId = UUID.randomUUID();
-        UserAccount user = new UserAccount();
-        user.setId(userId);
-
-        when(effectiveSettings.getObject()).thenReturn(effective);
-        when(effective.isMethodAvailable(null, "m_totp")).thenReturn(true);
-        when(platformSettings.get("mfa_policy")).thenReturn(Map.of("stepUpAfterPassword", true));
-        when(verificationPolicy.loginPolicy(null)).thenReturn(Map.of("mfaRequired", "optional"));
-        when(mfaFactors.findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "totp"))
-                .thenReturn(Optional.of(new MfaFactor()));
-
-        assertTrue(policy.requiresMfaStepUp(user, null));
+    private void effective(Map<String, Object> overrides) {
+        Map<String, Object> p = MfaPolicyDefaults.sanitizeForSave(overrides);
+        when(resolver.resolve(any())).thenReturn(new TwoStepPolicyResolver.Resolved(p, null, Map.of()));
     }
 
     @Test
-    void requiresStepUpWhenPasskeyRequiredAndEnrolled() {
-        UUID userId = UUID.randomUUID();
-        UUID applicationId = UUID.randomUUID();
-        UserAccount user = new UserAccount();
-        user.setId(userId);
-
-        when(effectiveSettings.getObject()).thenReturn(effective);
-        when(effective.isMethodAvailable(applicationId, "m_passkey")).thenReturn(true);
-        when(applicationSettings.resolveMfaPolicy(applicationId))
-                .thenReturn(Map.of("stepUpAfterPassword", true, "requirePasskeyWhenEnrolled", true));
-        when(verificationPolicy.loginPolicy(applicationId)).thenReturn(Map.of("mfaRequired", "optional"));
-        when(mfaFactors.findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "passkey"))
-                .thenReturn(Optional.of(new MfaFactor()));
-
-        assertTrue(policy.requiresMfaStepUp(user, applicationId));
+    void readsModeMethodsAndStrength() {
+        effective(Map.of("mode", "required", "methods", List.of("totp", "sms"), "minimumStrength", "phishing_resistant"));
+        assertEquals("required", policy.loginMfaRequired(UUID.randomUUID()));
+        assertEquals(List.of(TwoStepMethod.TOTP, TwoStepMethod.SMS), policy.allowedMethods(null));
+        assertEquals(TwoStepMethod.Strength.PHISHING_RESISTANT, policy.minimumStrength(null));
     }
 
     @Test
-    void skipsStepUpWhenMfaDisabled() {
-        UserAccount user = new UserAccount();
-        user.setId(UUID.randomUUID());
-        when(effectiveSettings.getObject()).thenReturn(effective);
-        assertFalse(policy.requiresMfaStepUp(user, null));
+    void totpAndPasskeyAvailabilityFollowTheAllowedMethods() {
+        effective(Map.of("methods", List.of("security_key")));
+        assertFalse(policy.totpAvailable(null));
+        assertTrue(policy.passkeysAvailable(null));
+    }
+
+    @Test
+    void numbersComeFromThePolicy() {
+        effective(Map.of("rememberDeviceDays", 30, "challengeTtlSeconds", 120, "freshStepMinutes", 10));
+        assertEquals(30, policy.rememberDeviceDays(null));
+        assertEquals(120, policy.challengeTtlSeconds(null));
+        assertEquals(10, policy.freshStepMinutes(null));
     }
 }

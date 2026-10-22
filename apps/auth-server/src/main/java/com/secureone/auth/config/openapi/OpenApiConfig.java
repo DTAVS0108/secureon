@@ -72,6 +72,7 @@ public class OpenApiConfig {
                 .pathsToMatch("/**")
                 .packagesToScan("com.secureone.auth")
                 .addOpenApiCustomizer(oauthAndErrorsCustomizer())
+                .addOpenApiCustomizer(adminSecurityCustomizer())
                 .build();
     }
 
@@ -107,18 +108,10 @@ public class OpenApiConfig {
         return GroupedOpenApi.builder()
                 .group("admin-platform")
                 .displayName("Admin — platform")
-                .pathsToMatch(
-                        "/api/admin/v1/tenants/**",
-                        "/api/admin/v1/users/**",
-                        "/api/admin/v1/settings/**",
-                        "/api/admin/v1/audit/**",
-                        "/api/admin/v1/logs/**",
-                        "/api/admin/v1/sessions/**",
-                        "/api/admin/v1/context/**",
-                        "/api/admin/v1/permissions/**",
-                        "/api/admin/v1/roles/**",
-                        "/api/admin/v1/applications")
-                .pathsToExclude("/api/admin/v1/applications/{applicationId}/**")
+                // Every admin API except the per-application console (next group): tenants, users, OAuth
+                // clients, change approvals, access review, platform operators, settings, audit, sessions…
+                .pathsToMatch("/api/admin/v1/**")
+                .pathsToExclude("/api/admin/v1/applications/*/**")
                 .addOpenApiCustomizer(adminSecurityCustomizer())
                 .build();
     }
@@ -151,12 +144,23 @@ public class OpenApiConfig {
     }
 
     private static OpenApiCustomizer adminSecurityCustomizer() {
-        return openApi ->
-                openApi.getPaths().values().forEach(pathItem -> pathItem.readOperations().forEach(operation -> {
+        // Admin APIs need a console session token, except signing in itself (/api/admin/v1/auth/login, /mfa/…).
+        return openApi -> {
+            if (openApi.getPaths() == null) {
+                return;
+            }
+            openApi.getPaths().forEach((path, pathItem) -> {
+                boolean signIn = path.startsWith("/api/admin/v1/auth/") && !path.endsWith("/logout");
+                if (!path.startsWith("/api/admin/") || signIn) {
+                    return;
+                }
+                pathItem.readOperations().forEach(operation -> {
                     if (operation.getSecurity() == null || operation.getSecurity().isEmpty()) {
                         operation.addSecurityItem(new SecurityRequirement().addList("adminHttpBasic"));
                     }
-                }));
+                });
+            });
+        };
     }
 
     private static void applyGlobalErrorResponses(io.swagger.v3.oas.models.OpenAPI openApi) {

@@ -1,140 +1,87 @@
-# API documentation (OpenAPI & Swagger UI)
+# API documentation (reference, curl, OpenAPI and Swagger UI)
 
-The **auth-server** publishes interactive API documentation via [springdoc-openapi](https://springdoc.org/) and **Swagger UI**.
+SecureOne documents its HTTP API three ways. They describe the same endpoints:
 
-## URLs (default `http://localhost:9000`)
+| Where | Best for |
+|-------|----------|
+| **[API reference](api-reference/README.md)** (these docs) | Reading section by section. Every endpoint with authentication, fields, responses and a **curl** command. |
+| **Swagger UI** (`/swagger-ui/index.html`, or `/docs`) | Trying calls from the browser. |
+| **OpenAPI JSON** (`/v3/api-docs/all`) | Generating SDKs, importing into Postman, contract tests. |
+| **Application console › Settings › Integration › API reference** | The endpoints one app needs (sign-in, tokens, profile), filled in with its application ID and client ID, each with curl. Shown when *API reference* is on in Platform settings › Feature flags. |
+
+## API reference sections
+
+| # | Section |
+|---|---------|
+| 0 | [Getting started](api-reference/00-getting-started.md): shell setup, credentials, **admin session token**, errors |
+| 1 | [OAuth 2.1 and OpenID Connect](api-reference/01-oauth-oidc.md) |
+| 2 | [Public endpoints and first-run setup](api-reference/02-public-and-setup.md) |
+| 3 | [Application sign-in and sign-up (native UI)](api-reference/03-application-sign-in.md) |
+| 4 | [Account self-service](api-reference/04-account.md) |
+| 5 | [Machine-to-machine and SCIM provisioning](api-reference/05-machine-and-scim.md) |
+| 6 | [Admin API: sign-in, context and operator profile](api-reference/06-admin-sign-in.md) |
+| 7 | [Admin API: tenants](api-reference/07-admin-tenants.md) |
+| 8 | [Admin API: users](api-reference/08-admin-users.md) |
+| 9 | [Admin API: applications, OAuth clients and change approvals](api-reference/09-admin-applications-and-clients.md) |
+| 10 | [Admin API: application console](api-reference/10-admin-application-console.md) |
+| 11 | [Admin API: security and governance](api-reference/11-admin-security-and-governance.md) |
+| 12 | [Admin API: platform settings and configuration as code](api-reference/12-admin-platform-settings.md) |
+| 13 | [Data models](api-reference/13-data-models.md) |
+
+Sections 1 to 13 are generated from the OpenAPI document (`scripts/api-docs/generate_api_reference.py`), so they
+match the running code. See [Keeping this reference current](api-reference/README.md#keeping-this-reference-current).
+
+## Turn on Swagger UI and the OpenAPI document
+
+They are **on** when the server runs from source (`application.yml`) and **off** in the production profile, which
+the Docker image uses. Turn them on with one setting:
+
+```dotenv
+SECUREONE_SWAGGER_ENABLED=true
+```
+
+Add it to the container's env file (see [deploy/README.md](../deploy/README.md#31-save-the-containers-settings-once))
+and replace the container. Check:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:9000/v3/api-docs/all   # 200 = on, 404 = off
+curl -s http://localhost:9000/api/info                                            # "features":{"swagger":true,…}
+```
+
+The documents describe the API only (no data, no secrets), and every call still needs its credential. On an
+Internet-facing production server you may prefer to leave them off and use this reference.
 
 | Resource | Path |
 |----------|------|
-| Swagger UI | `/swagger-ui/index.html` or `/docs` (redirect) |
-| OpenAPI JSON (all) | `/v3/api-docs/all` |
-| OpenAPI JSON (default) | `/v3/api-docs` |
-| Service discovery | `GET /api/info` → `swaggerUi`, `openapi`, `docs` |
+| Swagger UI | `/swagger-ui/index.html`, or `/docs` (redirect) |
+| OpenAPI JSON, everything | `/v3/api-docs/all` |
+| OpenAPI JSON by area | `/v3/api-docs/public`, `/account`, `/applications`, `/admin-platform`, `/admin-applications`, `/oauth-oidc` |
+| Service discovery | `GET /api/info` → `openapi`, `swaggerUi`, `docs` |
 
-## API groups
-
-Swagger UI opens **All APIs** by default (every endpoint). Use the **Select a definition** dropdown to filter:
-
-> If you only see two endpoints, the UI is on **Public — auth & info**. Switch to **All APIs**.
-
-| Group | Contents |
-|-------|----------|
-| **all** | Every REST endpoint plus OAuth/OIDC protocol paths |
-| **public** | `GET /api/info`, `GET /api/v1/auth/methods` |
-| **account** | Password reset, email verification (link + OTP), magic link (session on verify) |
-| **applications** | Public manifest, sign-up, OTP login, session login |
-| **admin-platform** | Tenants, platform settings, audit, sessions, platform RBAC |
-| **admin-applications** | Application products, OAuth clients, per-application users/settings/RBAC, **isolate** |
-
-### Application & OAuth admin endpoints (super-admin)
-
-Documented in [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md):
-
-- `GET/POST /api/admin/v1/applications` — application products (`schemaName`, `oauthClientCount`)
-- `POST /api/admin/v1/applications/{id}/isolate` — migrate legacy IAM to dedicated schema
-- `GET/POST /api/admin/v1/oauth-clients` — OAuth client registry (separate from application product)
-
-Per-application console APIs: `/api/admin/v1/applications/{applicationId}/…` (users, roles, permissions, groups, settings).
-| **oauth-oidc** | Authorization server: authorize, token, revoke, introspect, JWKS, OIDC discovery, UserInfo |
+Swagger UI opens **All APIs**; the **Select a definition** list switches to one area. **Admin — platform** holds every
+admin API except the per-application console, which is in **Admin — per application**.
 
 ## Authentication in Swagger UI
 
-### Admin APIs
+| Calls | How |
+|-------|-----|
+| Public (discovery, sign-in, sign-up, reset) | Nothing. Leave **Authorize** empty. |
+| Admin APIs (`/api/admin/v1/…`) | Run `POST /api/admin/v1/auth/login`, then `POST /api/admin/v1/auth/mfa/verify` with an authenticator code. Copy `sessionToken`, click **Authorize**, and under **adminHttpBasic** enter `SecureOne-Admin-Session <sessionToken>`. Passwords alone (HTTP Basic) and console cookies are not accepted. |
+| UserInfo, account profile and privacy | Get an access token from `POST /oauth2/token`, then **Authorize › bearerAuth**. |
+| Token, revoke, introspect (confidential client) | **Authorize › oauthClientBasic** with the client ID and secret. |
 
-1. Click **Authorize**.
-2. Choose **adminHttpBasic** and enter platform credentials (dev default: `admin` / `admin`), **or**
-3. Open `/login.html` in the same browser, sign in, then use **Try it out** (session cookie).
+The same steps with curl: [Getting started › Admin API](api-reference/00-getting-started.md#admin-api-get-a-console-session-token).
 
-Tenant-scoped admins use `tenantSlug:email` as the Basic username (see login form).
+## Troubleshooting
 
-### OAuth token endpoint
-
-Use **oauthClientBasic** with `demo-client` / `demo-secret` (dev), or send `client_id` / `client_secret` in the form body.
-
-### Bearer-protected OIDC UserInfo
-
-Obtain an access token from `POST /oauth2/token`, then **Authorize** → **bearerAuth**.
-
-## Integrated applications (e.g. e-commerce)
-
-Public flows do not require Swagger authorization:
-
-- `GET /api/v1/applications/{applicationId}` — client manifest (auth methods, feature flags, password policy, **verification** policy, signup/account endpoints)
-- `GET/POST /api/v1/applications/{applicationId}/signup` — self-registration when **Self Registration** is enabled
-- `POST /api/v1/applications/{applicationId}/auth/otp/request` + `…/auth/otp/verify` — email/SMS OTP login
-- `POST /api/v1/applications/{applicationId}/account/verify/otp/confirm` — signup verification (OTP mode)
-- `POST /api/v1/applications/{applicationId}/account/password/forgot` — password reset link or OTP
-- `POST /api/v1/applications/{applicationId}/account/password/reset/otp` — complete recovery with OTP
-
-See [19 — Verification & OTP](19-verification-and-otp.md) and [Authentication UI integration](13-auth-ui-integration.md).
-
-## Privacy & GDPR (account)
-
-Session or bearer token required for export/deletion:
-
-| Endpoint | Auth | Purpose |
-|----------|------|---------|
-| `GET /api/v1/account/privacy/export` | Bearer | JSON export of user data |
-| `POST /api/v1/account/privacy/delete-request` | Bearer | Request account deletion |
-| `GET /api/v1/account/privacy/session/export` | Session cookie | Same export for logged-in browser users |
-| `POST /api/v1/account/privacy/session/delete-request` | Session cookie | Deletion request via session |
-
-Hosted UI: `/account/privacy.html` (linked from `/account/security.html`). See [13 — Auth UI integration](13-auth-ui-integration.md#hosted-account-pages).
-
-## Machine-to-machine (API keys)
-
-Service account API keys authenticate to `/api/v1/m2m/**` via `Authorization: Bearer {api_key}` or `X-Api-Key` header:
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/v1/m2m/health` | Liveness check for the M2M route |
-| `GET /api/v1/m2m/whoami` | Service account id, tenant, apiKeyId, scopes |
-| `GET /api/v1/m2m/tenant` | Tenant metadata for the key's service account |
-
-Per-key rate limit: 120 requests/minute (Redis). Keys and scopes are created in **Application → Service accounts** (admin-web).
-
-## OAuth extensions
-
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /oauth2/par` | Store authorization params; returns `request_uri` (single-use, Redis TTL) |
-| `GET /oauth2/authorize?request_uri=…` | Standard authorize with merged pushed params |
-| `POST /oauth2/token` (`grant_type=urn:ietf:params:oauth:grant-type:token-exchange`) | RFC 8693 token exchange — `subject_token`, `requested_token_type`, optional `scope` |
-| `POST /oauth2/backchannel-logout` | Back-channel logout notification (ack stub) |
-| `POST /oauth2/device_authorization` | RFC 8628 device authorization: `device_code`, `user_code`, `verification_uri(_complete)`, `expires_in`, `interval` |
-| `POST /oauth2/token` (`grant_type=urn:ietf:params:oauth:grant-type:device_code`) | Device polling: `authorization_pending`, `slow_down`, `access_denied`, `expired_token`, or tokens |
-| `GET/POST /oauth2/device_verification` | User approval of a device code (hosted page `/account/device.html` drives it; explicit Allow/Deny) |
-| `POST /api/v1/auth/device/lookup` | Device page: `{ userCode }` → app name and scopes of a pending code (rate-limited) |
-| `GET /.well-known/oauth-protected-resource` | RFC 9728 metadata for SecureOne's bearer APIs |
-
-## Federation (OIDC / SAML 2.0)
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/v1/auth/federation/providers?applicationId=…` | Public list of enabled providers (`alias`, `type`, `displayName`, `startUrl`) |
-| `GET /api/v1/auth/federation/{alias}/start?applicationId=…&continue=…` | Start sign-in (OAuth redirect, or SAML AuthnRequest via Redirect / auto-POST) |
-| `GET /api/v1/auth/federation/{alias}/callback` | OAuth/OIDC callback |
-| `GET /api/v1/auth/federation/saml/{alias}/metadata?applicationId=…` | SAML SP metadata (XML) |
-| `POST /api/v1/auth/federation/saml/acs/{providerId}` | SAML assertion consumer (IdP posts `SAMLResponse`, `RelayState`) |
-| `GET/POST /api/v1/auth/federation/saml/slo/{providerId}` | SAML single logout (LogoutRequest / LogoutResponse) |
-| `GET /api/v1/auth/federation/saml/logout` | End the session and, for a SAML session, sign out at the IdP |
-| `POST /api/admin/v1/applications/{id}/federation/providers` · `POST /api/admin/v1/tenants/{id}/federation/providers` | Operator: create providers (type `GOOGLE`, `GITHUB`, `OIDC`, `SAML`); SAML responses include `serviceProvider` (entity ID, ACS, SLO, metadata URLs) |
-
-Use **oauthClientBasic** in Swagger for PAR and token exchange when testing with `demo-client` / `demo-secret`.
-
-## Swagger UI: "No API definition provided"
-
-Usually **`disable-swagger-default-url: true`** without a default spec URL. Fix: use **`http://localhost:9000/docs`** or **`/swagger-ui/index.html?url=/v3/api-docs/all`**, and ensure `springdoc.swagger-ui.url` is set to `/v3/api-docs/all` in `application.yml`. Restart auth-server after config changes.
-
-## Swagger UI: "Failed to fetch"
-
-This is almost always a **browser / URL** issue, not a broken signup API.
-
-1. Confirm auth-server is running: `GET http://localhost:9000/api/info` → `"status":"UP"`.
-2. Open Swagger from **http://localhost:9000/docs** (same host you use for the API).
-3. In **Servers**, select **Current host (use this in Swagger UI)** (`/`) — not a mismatched `localhost` vs `127.0.0.1` URL.
-4. For sign-up, leave **Authorize** empty (public endpoint).
-5. If it still fails, use curl or PowerShell (see below) — the API does not require CORS from the command line.
+| Symptom | Cause and fix |
+|---------|---------------|
+| `/docs` or `/v3/api-docs/all` returns **404** | Swagger is off: set `SECUREONE_SWAGGER_ENABLED=true` (above) and restart. |
+| Swagger UI: *No API definition provided* | Open `/docs` or `/swagger-ui/index.html?url=/v3/api-docs/all`. |
+| Swagger UI: *Failed to fetch* | Open Swagger on the same host as the API (`localhost` vs `127.0.0.1` matters) and choose the server **Current host** (`/`). Check `GET /api/info` says `UP`. |
+| Admin call returns **401** | No token, or it expired (30 minutes idle, 8 hours at most) or was signed out. Sign in again. |
+| Admin call returns **403** | The account's role does not allow it (for example a tenant admin calling platform settings). |
+| `DELETE /api/admin/v1/oauth-clients/{id}` returns **202** and the client is still there | Expected: deleting a client needs another admin's approval (Access review › Pending approvals). |
 
 ## Exporting the spec
 
@@ -142,23 +89,23 @@ This is almost always a **browser / URL** issue, not a broken signup API.
 curl -s http://localhost:9000/v3/api-docs/all -o secureone-openapi.json
 ```
 
-Use the JSON for SDK generation, Postman import, or CI contract tests.
-
 ## Configuration
 
-`apps/auth-server/src/main/resources/application.yml` → `springdoc.*`
+- `apps/auth-server/src/main/resources/application.yml` and `application-prod.yml` → `springdoc.*`,
+  `secureone.swagger-enabled`
+- Java: `com.secureone.auth.config.openapi.OpenApiConfig` (groups, security schemes),
+  `OAuth2OpenApiDocumentation` (protocol endpoints), `SwaggerAccessFilter`
+- Endpoint texts: `@Tag`, `@Operation` and `@Parameter` on the controllers
 
-Java configuration: `com.secureone.auth.config.openapi.OpenApiConfig`, `OAuth2OpenApiDocumentation`.
+## SecureOne Confluence APIs (admin console)
 
-## SecureOne Confluence APIs (admin-web)
+The documentation you are reading is served by the admin console and is public (no sign-in).
 
-Platform documentation is served by **admin-web**, not auth-server. Auth-server exposes public **discovery** only.
+| API | Purpose |
+|-----|---------|
+| `GET /api/v1/confluence` (auth-server) | Catalog by category, with links to the Confluence UI and content API |
+| `GET /admin/api/confluence` | Full catalog JSON |
+| `GET /admin/api/confluence/{slug}` | One page: markdown and metadata |
+| `GET /admin/api/confluence/assets/{path}` | Files next to the docs (`.drawio`, images) |
 
-| API | Host | Auth | Purpose |
-|-----|------|------|---------|
-| `GET /api/v1/confluence` | auth-server `:9000` | Public | Catalog by category + links to Confluence UI and content API |
-| `GET /admin/api/confluence` | admin console (`/admin`) | Session cookie | Full catalog JSON (`categories` + flat `section` for compatibility) |
-| `GET /api/confluence/{slug}` | admin-web | Session cookie | Page markdown + metadata |
-| `GET /api/confluence/assets/{path}` | admin-web | Session cookie | Download docs assets (`.drawio`, images) |
-
-UI: http://localhost:9000/admin/confluence — standalone docs browser; draw.io diagrams embed inline on doc pages. See [Documentation hub](../docs/README.md#secureone-confluence-in-app-ui).
+UI: `http://localhost:9000/admin/confluence`.

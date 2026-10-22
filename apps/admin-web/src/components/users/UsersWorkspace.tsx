@@ -16,6 +16,11 @@ import {
 } from "@/lib/operator-list-visibility";
 import { useAdminContext } from "@/components/AdminContextProvider";
 import { Badge } from "@/components/ui/Badge";
+import {
+  fetchUserTwoStepStatuses,
+  TWO_STEP_STATUS_LABELS,
+  type TwoStepUserStatus,
+} from "@/lib/api/mfa-policy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
@@ -30,6 +35,15 @@ const UsersWorkspaceRefreshContext = createContext<UsersRefreshHandler | null>(n
 const UsersWorkspaceRegisterContext = createContext<((fn: UsersRefreshHandler) => void) | null>(
   null,
 );
+
+const TWO_STEP_TONE: Record<TwoStepUserStatus, "success" | "neutral" | "warning" | "danger" | "info"> = {
+  enabled: "success",
+  off: "neutral",
+  in_grace: "warning",
+  overdue: "danger",
+  not_set_up: "warning",
+  exempt: "info",
+};
 
 export function UsersWorkspaceProvider({ children }: { children: ReactNode }) {
   const handlerRef = useRef<UsersRefreshHandler>(() => {});
@@ -119,6 +133,8 @@ export function UsersWorkspace({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [twoStepFilter, setTwoStepFilter] = useState<string[]>([]);
+  const [twoStep, setTwoStep] = useState<Record<string, TwoStepUserStatus>>({});
   const [createdSort, setCreatedSort] = useState<CreatedSort>("desc");
   const [directory, setDirectory] = useState<UserDirectorySettings | null>(null);
 
@@ -167,6 +183,20 @@ export function UsersWorkspace({
       cancelled = true;
     };
   }, [tenantId, applicationId, listViewer]);
+
+  useDeferredEffect(() => {
+    let cancelled = false;
+    const ids = users.map((u) => u.id).slice(0, 500);
+    if (ids.length === 0) return;
+    fetchUserTwoStepStatuses(applicationId, ids)
+      .then((m) => !cancelled && setTwoStep(m))
+      .catch(() => {
+        /* badges are optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [users, applicationId]);
 
   useDeferredEffect(() => {
     registerRefreshHandler?.(handleUserCreated);
@@ -221,6 +251,7 @@ export function UsersWorkspace({
     return users.filter((u) => {
       if (statusFilter.length > 0 && !statusFilter.includes(u.status)) return false;
       if (roleFilter.length > 0 && !roleFilter.some((roleId) => hasRole(u, roleId))) return false;
+      if (twoStepFilter.length > 0 && !twoStepFilter.includes(twoStep[u.id] ?? "")) return false;
       if (!q) return true;
       const name = `${u.firstName} ${u.lastName}`.toLowerCase();
       const roleText = (u.roleNames ?? []).join(" ").toLowerCase();
@@ -231,7 +262,7 @@ export function UsersWorkspace({
         roleText.includes(q)
       );
     });
-  }, [users, query, statusFilter, roleFilter, hasRole]);
+  }, [users, query, statusFilter, roleFilter, twoStepFilter, twoStep, hasRole]);
 
   const filterSections: FilterSection[] = useMemo(
     () => [
@@ -245,6 +276,17 @@ export function UsersWorkspace({
         })),
         selected: statusFilter,
         onChange: setStatusFilter,
+      },
+      {
+        id: "twoStep",
+        label: "Two-step verification",
+        options: (Object.keys(TWO_STEP_STATUS_LABELS) as TwoStepUserStatus[]).map((s) => ({
+          value: s,
+          label: TWO_STEP_STATUS_LABELS[s],
+          count: users.filter((u) => twoStep[u.id] === s).length,
+        })),
+        selected: twoStepFilter,
+        onChange: setTwoStepFilter,
       },
       ...(roles.length > 0
         ? [
@@ -262,7 +304,7 @@ export function UsersWorkspace({
           ]
         : []),
     ],
-    [users, roles, statusFilter, roleFilter, hasRole],
+    [users, roles, statusFilter, roleFilter, twoStepFilter, twoStep, hasRole],
   );
 
   const displayed = useMemo(() => {
@@ -436,6 +478,11 @@ export function UsersWorkspace({
                           {!u.emailVerified && (
                             <Badge tone="warning" className="text-[10px]">
                               unverified
+                            </Badge>
+                          )}
+                          {twoStep[u.id] && twoStep[u.id] !== "off" && (
+                            <Badge tone={TWO_STEP_TONE[twoStep[u.id]]} className="text-[10px]" data-testid="two-step-badge">
+                              {TWO_STEP_STATUS_LABELS[twoStep[u.id]]}
                             </Badge>
                           )}
                           {u.locked && (

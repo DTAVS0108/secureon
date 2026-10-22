@@ -1,5 +1,6 @@
 package com.secureone.auth.setup;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.secureone.auth.logging.ClientIpResolver;
 import com.secureone.auth.tenant.RlsScope;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** First-run setup API (public; only does anything while no platform operator exists). */
+@Tag(name = "First-run setup", description = "Creates the first platform operator on a new installation (setup code)")
 @RestController
 @RequestMapping("/api/v1/setup")
 public class SetupController {

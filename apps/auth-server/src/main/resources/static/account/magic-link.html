@@ -25,7 +25,9 @@
       const params = new URLSearchParams(location.search);
       const applicationId = params.get("applicationId");
       if (params.get("token")) {
-        location.href = "/api/v1/account/magic-link/verify?token=" + encodeURIComponent(params.get("token"));
+        // The app the link was sent for decides whether a second step is needed.
+        location.href = "/api/v1/account/magic-link/verify?token=" + encodeURIComponent(params.get("token"))
+          + (params.get("applicationId") ? "&applicationId=" + encodeURIComponent(params.get("applicationId")) : "");
       }
       if (!applicationId) {
         document.getElementById("form").style.display = "none";

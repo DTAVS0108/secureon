@@ -18,7 +18,7 @@ Many settings pages **auto-save** a moment after you change a field (*Changes au
 | **Integration** | | ✓ | IDs, database schema, auth UI URLs, checklist, API reference, health check |
 | **Notifications** | ✓ | ✓ (if opened) | Alert channels, recipients, sender, SMTP, email templates, test email |
 | **Appearance** | ✓ | ✓ (if opened) | Platform: admin console theme. Application: branding and theme for client UIs |
-| **Authentication** | ✓ | ✓ (if opened) | Sub-tabs **Sign-in methods**, **Verification & OTP**, **MFA**, **Password policy** |
+| **Authentication** | ✓ | ✓ (if opened) | Sub-tabs **Sign-in methods**, **Verification & OTP**, **Two-step verification**, **Password policy** |
 | **Feature flags** | ✓ | ✓ (if opened) | Capability toggles and which settings tabs appear |
 | **User directory** | | ✓ (if opened) | Import/export of users |
 | **Public API** | | ✓ (if opened) | The unauthenticated application manifest |
@@ -38,7 +38,7 @@ Everything a developer needs to wire the application.
 | **Authentication UI** | Pages in *your* app that SecureOne links to in emails (below) |
 | **Native app URLs** | Mobile deep links used in emails |
 | **Integration checklist** | Steps to complete; **Notes** (*Environment URLs, test accounts, rollout notes…*) for your team |
-| **API reference** | *Click an endpoint to expand request fields, types, examples, and response shapes.* **OpenAPI docs →** opens Swagger |
+| **API reference** | The endpoints this application needs, in sections (Discovery, Sign-in, Signup, Tokens, Session, Profile, Password, Devices, Machine, Provisioning) with chips to jump to each. Every endpoint has **Copy curl** and **Copy URL**; expanding it shows a ready-to-run curl (with this application's ID and client ID filled in), authentication, request fields, examples and responses. **OpenAPI docs →** opens Swagger UI (needs `SECUREONE_SWAGGER_ENABLED=true`). The full reference for every endpoint is the [API reference](../api-reference/README.md). |
 | **API health check** | *Probes public application-scoped endpoints.* Run it to confirm the application's public endpoints answer |
 
 ### Authentication UI fields
@@ -194,7 +194,7 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 | Card | Fields |
 |------|--------|
 | **Signup verification**: *How new accounts confirm email or phone after registration.* | **Default mode** (**Email link** / **OTP code**), **Allowed modes**, **Required channels** (email, phone), **Allow user channel choice** |
-| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes**, **MFA required** (**Off**, **Optional**, **Required**) |
+| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes**, (whether a second step is required is set on the **Two-step verification** tab) |
 | **Password recovery**: *Forgot-password via email link or OTP (email/SMS).* | **Allowed channels**, **Require verified email/phone**, **Fallback to link if OTP unavailable** |
 
 #### SMS provider
@@ -210,18 +210,9 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 
 Secrets are stored encrypted and can be left blank to keep the saved value.
 
-### MFA
+### Two-step verification
 
-**MFA policy**: *Step-up behavior, challenge TTL, and remembered-device settings. Login MFA requirement is set under Verification → Login.*
-
-| Field | Meaning |
-|-------|---------|
-| **Step-up after password** | *Require TOTP/recovery after password login when user has MFA enrolled.* |
-| **Prefer passkey when enrolled** | *When enabled, users with passkeys must use passkey step-up instead of TOTP.* |
-| **Challenge TTL (seconds)** | How long a user has to enter the code |
-| **Max challenge attempts** | Wrong codes allowed before the challenge fails |
-| **Recovery codes per enrollment** | *Issued when a user sets up an authenticator app* |
-| **Remember device (days)** | *0 = disabled. Trusted-device cookies are a future enhancement.* |
+Which second-step options users can use, whether it is **Off**, **Optional** or **Required**, the grace period, reminders, remembered devices and the sign-in limits. Platform settings also have a lock menu on each setting that decides what tenants and applications may change; tenants have the same page under **Tenants › {tenant} › Two-step verification**. Every field is described in [Two-step verification](12-two-step-verification.md#settings).
 
 ### Password policy
 
@@ -234,7 +225,7 @@ Secrets are stored encrypted and can be left blank to keep the saved value.
 | **Password expiry (days)** | *0 = never expires* |
 | **Password history** | *Block reuse of the last N passwords (0 = off)* |
 | **Lock account after failed sign-ins** | *Wrong passwords or codes in a row* before the account locks |
-| **Lockout duration (minutes)** | How long a locked account stays locked (admins can **Unlock account** sooner) |
+| **Lockout duration (minutes)** | How long the first lock lasts. Each further lockout in a row doubles it (15 → 30 → 60 min…, at most 24 hours). After a lock ends the user gets the full number of attempts again. A successful sign-in, a password reset or **Unlock account** ends the lock and the doubling. The owner is emailed on every lock. |
 | **Hash algorithm** | *bcrypt only (stored on each credential)* |
 | **Block leaked passwords (Have I Been Pwned)** | Rejects passwords found in public breaches (only a hash prefix is sent) |
 
@@ -264,6 +255,7 @@ There are two kinds of flag.
 | **Recovery OTP** | Password reset via email/SMS OTP codes |
 | **Self Registration** | Public user signup on the hosted **Create account** page. Off by default. |
 | **LDAP / AD** | LDAP user import (*Coming soon*) |
+| **2FA: Try another way** | On the two-step verification screen, a **Try another way** button lists every option the user has enabled (authenticator app, passkey, security key, text or email code, backup code) when they can't use the one asked first. When off, users get only the option asked first. On by default. The admin console sign-in follows the **Platform settings** value. Audit log: switching it records **settings.feature_flag_changed** (as for every flag, e.g. *on → off*); signing in with another option records **user.two_step_another_way** (admin console: **admin.console_login.another_way**), e.g. *recovery instead of totp*. |
 
 **Console controls** — parts of the admin console. They are decided in **Platform settings › Feature flags** for every application; applications never see or change them.
 

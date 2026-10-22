@@ -24,7 +24,8 @@ public final class ApplicationSchemaMigrations {
 
     public static final List<Migration> ALL = List.of(
             new Migration(1, "V1__app_core"),
-            new Migration(2, "V2__user_application_created_at"));
+            new Migration(2, "V2__user_application_created_at"),
+            new Migration(3, "V3__two_step_mode"));
 
     private static final Pattern VERSION = Pattern.compile("^V(\\d+)__");
 

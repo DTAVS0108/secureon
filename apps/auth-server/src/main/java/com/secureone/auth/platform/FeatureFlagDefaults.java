@@ -10,6 +10,9 @@ import java.util.stream.Collectors;
 /** Platform-wide feature flag catalog (merged with stored overrides by key). */
 public final class FeatureFlagDefaults {
 
+    /** "Try another way" on the two-step verification screen (sign-in pages and admin console). */
+    public static final String MFA_TRY_ANOTHER_WAY = "mfa_try_another_way";
+
     private FeatureFlagDefaults() {}
 
     public static Set<String> catalogKeys() {
@@ -47,6 +50,13 @@ public final class FeatureFlagDefaults {
                 "LDAP user import and directory source configuration",
                 false,
                 0,
+                "identity"));
+        flags.add(flag(
+                MFA_TRY_ANOTHER_WAY,
+                "2FA: Try another way",
+                "On the two-step verification screen, let users pick any of their enabled options when they can't use the one asked first",
+                true,
+                100,
                 "identity"));
         flags.add(flag(
                 "notification_email_test_ui",
@@ -112,7 +122,7 @@ public final class FeatureFlagDefaults {
      * flag is a console control decided in Platform settings only; applications never see or change it.
      */
     private static final Set<String> APPLICATION_SCOPED =
-            Set.of("self_service_recovery", "recovery_otp", "self_registration", "ldap");
+            Set.of("self_service_recovery", "recovery_otp", "self_registration", "ldap", MFA_TRY_ANOTHER_WAY);
 
     public static final String SCOPE_APPLICATION = "application";
     public static final String SCOPE_PLATFORM = "platform";

@@ -1,7 +1,6 @@
 package com.secureone.auth.federation;
 
 import com.secureone.auth.application.ApplicationAccessService;
-import com.secureone.auth.authn.LoginSuccessHandler;
 import com.secureone.auth.authn.OAuthLoginRedirectSupport;
 import com.secureone.auth.authn.SignedInAuthentication;
 import com.secureone.auth.authn.TenantUserDetailsService;
@@ -20,10 +19,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +34,6 @@ public class FederationLoginService {
     private final TenantRepository tenants;
     private final TenantUserDetailsService userDetailsService;
     private final ApplicationAccessService access;
-    private final SecurityContextRepository securityContextRepository;
-    private final LoginSuccessHandler loginSuccessHandler;
     private final MfaLoginService mfaLogin;
     private final SamlLoginService saml;
     private final SamlLogoutService samlLogout;
@@ -52,8 +46,6 @@ public class FederationLoginService {
             TenantRepository tenants,
             TenantUserDetailsService userDetailsService,
             ApplicationAccessService access,
-            SecurityContextRepository securityContextRepository,
-            LoginSuccessHandler loginSuccessHandler,
             MfaLoginService mfaLogin,
             SamlLoginService saml,
             SamlLogoutService samlLogout) {
@@ -64,8 +56,6 @@ public class FederationLoginService {
         this.tenants = tenants;
         this.userDetailsService = userDetailsService;
         this.access = access;
-        this.securityContextRepository = securityContextRepository;
-        this.loginSuccessHandler = loginSuccessHandler;
         this.mfaLogin = mfaLogin;
         this.saml = saml;
         this.samlLogout = samlLogout;
@@ -171,11 +161,13 @@ public class FederationLoginService {
         UserDetails details = userDetailsService.buildSessionPrincipal(tenant.getSlug(), user);
         Authentication authentication =
                 SignedInAuthentication.of(details, FactorGrantedAuthority.AUTHORIZATION_CODE_AUTHORITY);
-        if (pending.applicationId() != null && mfaLogin.shouldChallengeFormLogin(authentication, pending.applicationId())) {
-            return mfaLogin.completePasswordLogin(authentication, pending.applicationId(), request, response);
+        // The external sign-in is the first step: the app's MFA requirement and the user's second factor apply
+        // as for a password (platform policy when no app). The browser goes to the second step when needed.
+        String next = mfaLogin.completeBrowserSignIn(
+                authentication, pending.applicationId(), pending.continueUrl(), request, response);
+        if (next != null) {
+            return ResponseEntity.status(302).header("Location", next).build();
         }
-        establishSession(authentication, request, response);
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
         if (pending.continueUrl() != null && !pending.continueUrl().isBlank()) {
             return ResponseEntity.status(302).header("Location", pending.continueUrl()).build();
         }
@@ -232,13 +224,6 @@ public class FederationLoginService {
         identities.save(link);
     }
 
-    private void establishSession(
-            Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
-    }
 
     private static boolean bool(Object raw) {
         return raw instanceof Boolean b ? b : Boolean.parseBoolean(String.valueOf(raw));

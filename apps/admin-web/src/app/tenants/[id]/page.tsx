@@ -64,6 +64,9 @@ export default async function TenantDetailPage({
                 <ButtonLink href="/applications" variant="ghost" size="sm">
                   OAuth clients
                 </ButtonLink>
+                <ButtonLink href={`/tenants/${tenant.id}/two-step`} variant="ghost" size="sm">
+                  Two-step verification
+                </ButtonLink>
                 <TenantFormModal tenant={tenant} triggerLabel="Edit" triggerVariant="secondary" />
                 {!tenant.system && (
                   <ConfirmDialog

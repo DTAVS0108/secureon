@@ -15,11 +15,13 @@ secureone:
     otp-request-per-minute: 5
     admin-login-per-minute: 5
 
+# API docs (Swagger UI, /v3/api-docs) are off in production unless SECUREONE_SWAGGER_ENABLED=true.
+# They describe the API only (no data, no secrets); every call still needs its normal authentication.
 springdoc:
   api-docs:
-    enabled: false
+    enabled: ${SECUREONE_SWAGGER_ENABLED:false}
   swagger-ui:
-    enabled: false
+    enabled: ${SECUREONE_SWAGGER_ENABLED:false}
 
 logging:
   level:

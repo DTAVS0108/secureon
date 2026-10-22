@@ -1,5 +1,6 @@
 package com.secureone.auth.account;
 
+import com.secureone.auth.authn.AccountLockoutService;
 import com.secureone.auth.application.ApplicationEffectiveSettingsService;
 import com.secureone.auth.application.ApplicationSettingsService;
 import com.secureone.auth.application.ApplicationTenantResolver;
@@ -147,6 +148,7 @@ public class AccountNotificationService {
         UUID applicationId = resolveInviteApplicationId(user, applicationIdParam);
         passwords.setPassword(user.getId(), newPassword, applicationId);
         emailTokens.consume(token);
+        AccountLockoutService.clearOn(user); // a new password ends any lockout; this save must not restore it
         user.setEmailVerified(true);
         user.setStatus("ACTIVE");
         if (applicationId != null) {
@@ -167,6 +169,7 @@ public class AccountNotificationService {
         UUID applicationId = emailContext.resolveApplicationId(null, user);
         passwords.setPassword(user.getId(), newPassword, applicationId);
         emailTokens.consume(token);
+        AccountLockoutService.clearOn(user); // a new password ends any lockout; this save must not restore it
         user.setStatus("ACTIVE");
         users.save(user);
         mail.sendPasswordChanged(null, user);

@@ -64,9 +64,9 @@ The header shows the name, status badges (**Verified** / **Unverified**, **Locke
 | **Phone** | For SMS codes |
 | **Password set** | Yes, or **No (invite pending)** |
 | **Failed logins** | Wrong passwords in a row (resets on success) |
-| **MFA factors**, **Roles** | Counts |
+| **Roles** | Count |
 
-**Delete**: *Permanently removes this account and all MFA factors.*
+**Delete**: *Permanently removes this account and all its two-step verification options.*
 
 **Impersonate** asks for a *Reason for impersonation (audited)* and opens a new tab signed in as that user, to reproduce a problem they report. Every impersonation is recorded in the audit log.
 
@@ -83,9 +83,11 @@ The page has these tabs (**Overview** shows the fields above, the buttons and re
 | **Password & credentials**: *Email links for self-service password setup, or set/remove the password directly as admin.* | Under **Password emails**: **Set-password** (sends the invite link) and **Reset** (sends a reset link). Under **Admin password actions**: **Set password now** (opens **Set password**, *sets a new password immediately; policy rules apply*) and **Remove password** (*Clears the stored password hash.*) |
 | **Multi-factor authentication** | **Manage MFA**, **View sign-in history** |
 
-#### MFA
+#### Two-step
 
-*MFA types enabled for this application. Remove factors or reset by method.* Factors are grouped **By MFA method** (Authenticator (TOTP), Passkey, SMS, Email OTP). **Remove** deletes one factor; **Reset all MFA** removes all, so the user enrols again at the next sign-in.
+The user's two-step verification status (**2FA on**, **2FA off**, **2FA due**, **2FA overdue**, **2FA required**, **2FA exempt**), their options, backup codes left and remembered devices. **Remove** deletes one option, **Reset all** removes every option; **Extend** gives more time to set it up and **Exempt** lets them sign in without it until a date. Reset and exempt ask you to **Verify it's you** first. See [Two-step verification](12-two-step-verification.md#admin-actions-for-a-user).
+
+The users list shows the same status as a badge and has a **Two-step verification** filter.
 
 #### Roles
 

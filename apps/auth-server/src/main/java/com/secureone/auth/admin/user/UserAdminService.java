@@ -45,6 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UserAdminService {
 
+    /** Lazy: two-step reset ends sessions and emails the user; it depends on beans built after this one. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.twostep.TwoStepService> twoStep;
+
+
     private final UserAccountRepository userRepository;
     private final TenantRepository tenantRepository;
     private final UserRoleRepository userRoleRepository;
@@ -192,9 +197,23 @@ public class UserAdminService {
         if (factorType == null) {
             throw new IllegalArgumentException("Not an MFA method: " + methodId);
         }
-        mfaFactors.findByUserIdOrderByCreatedAtAsc(userId).stream()
-                .filter(f -> factorType.equalsIgnoreCase(f.getType()))
-                .forEach(mfaFactors::delete);
+        com.secureone.auth.twostep.TwoStepMethod method = switch (factorType) {
+            case "totp" -> com.secureone.auth.twostep.TwoStepMethod.TOTP;
+            case "passkey" -> com.secureone.auth.twostep.TwoStepMethod.PASSKEY;
+            case "sms" -> com.secureone.auth.twostep.TwoStepMethod.SMS;
+            case "email" -> com.secureone.auth.twostep.TwoStepMethod.EMAIL;
+            default -> null;
+        };
+        if (method == com.secureone.auth.twostep.TwoStepMethod.PASSKEY) {
+            // Passkeys and security keys share the factor type: remove both kinds.
+            mfaFactors.findByUserIdOrderByCreatedAtAsc(userId).stream()
+                    .filter(f -> factorType.equalsIgnoreCase(f.getType()))
+                    .forEach(mfaFactors::delete);
+            method = null;
+            twoStep.getObject().endSessions(user);
+        } else if (method != null) {
+            twoStep.getObject().reset(user, applicationId, method, "admin");
+        }
         auditService.record(
                 user.getTenantId(), "admin", "user.mfa_reset_method", "user_account", user.getId(), methodId, true);
         return toResponse(user, effectiveAuthMethods(user, applicationId), applicationId);
@@ -278,6 +297,7 @@ public class UserAdminService {
         UserAccount user = require(id);
         user.setFailedLoginCount(0);
         user.setLockedUntil(null);
+        user.setLockoutLevel(0);
         if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
             user.setStatus("ACTIVE");
         }
@@ -408,9 +428,10 @@ public class UserAdminService {
         return toResponse(updated, effectiveAuthMethods(updated, applicationId), applicationId);
     }
 
+    /** Every option, backup codes and remembered devices; ends the user's sessions and emails them. */
     public void resetMfa(UUID id) {
         UserAccount user = require(id);
-        mfaFactors.deleteByUserId(user.getId());
+        twoStep.getObject().reset(user, null, null, "admin");
         auditService.record(user.getTenantId(), "admin", "user.mfa_reset", "user_account", user.getId(), user.getEmail(), true);
         emailService.sendAdminSecurityAlert(null, user, "MFA reset", "Admin cleared MFA factors for " + user.getEmail() + ".");
     }

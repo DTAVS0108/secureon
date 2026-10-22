@@ -24,6 +24,9 @@ public class AccountLockoutService {
 
     public static final String LOCKED_MESSAGE = "Account is temporarily locked. Try again later.";
 
+    /** Longest lock the back-off reaches (24 hours), unless the policy's own lock time is longer. */
+    static final long MAX_LOCK_MINUTES = 24 * 60;
+
     private final UserAccountRepository users;
     private final AuthSettingsService authSettings;
     /** Lazy: the effective settings service depends on beans that need this one. */
@@ -60,43 +63,80 @@ public class AccountLockoutService {
         recordFailedAttempt(userId, null);
     }
 
-    /** Counts a failed attempt against the application's lockout policy (platform policy when null). */
+    /**
+     * Counts a wrong password or a wrong second-step code against the application's lockout policy (platform
+     * policy when null). Reaching the limit locks the account; every lockout in a row doubles the lock time, up
+     * to 24 hours, and emails the owner. A new lock starts a fresh set of attempts once it expires.
+     */
     @Transactional
     public void recordFailedAttempt(UUID userId, UUID applicationId) {
         UserAccount account = users.findByIdForUpdate(userId).orElse(null);
         if (account == null) {
             return;
         }
+        Instant now = Instant.now();
+        if (account.getLockedUntil() != null && account.getLockedUntil().isAfter(now)) {
+            return; // already locked; nothing is checked while locked
+        }
         Map<String, Object> policy = applicationId != null
                 ? effectiveSettings.getObject().passwordPolicy(applicationId)
                 : authSettings.getPasswordPolicy();
         int maxAttempts = PasswordPolicySanitizer.maxFailedAttempts(policy);
-        int lockoutMinutes = PasswordPolicySanitizer.lockoutDurationMinutes(policy);
+        int baseMinutes = PasswordPolicySanitizer.lockoutDurationMinutes(policy);
 
         int nextCount = account.getFailedLoginCount() + 1;
-        account.setFailedLoginCount(nextCount);
-        boolean newlyLocked = nextCount == maxAttempts;
-        if (nextCount >= maxAttempts) {
-            account.setLockedUntil(Instant.now().plusSeconds(lockoutMinutes * 60L));
+        if (nextCount < maxAttempts) {
+            account.setFailedLoginCount(nextCount);
+            users.save(account);
+            return;
         }
+        int level = account.getLockoutLevel() + 1;
+        long lockMinutes = lockMinutes(baseMinutes, level);
+        account.setLockoutLevel(level);
+        account.setFailedLoginCount(0); // the attempts after this lock expires start from zero
+        account.setLockedUntil(now.plusSeconds(lockMinutes * 60L));
         users.save(account);
-        if (newlyLocked) {
-            // Often the first sign of someone guessing the password; tell the owner once per lockout.
-            try {
-                String reset = publicBaseUrl + "/account/forgot-password.html"
-                        + (applicationId != null ? "?applicationId=" + applicationId : "");
-                mail.getObject().sendAccountLocked(applicationId, account, lockoutMinutes, reset);
-            } catch (RuntimeException ex) {
-                log.warn("Could not send account-locked email to {}: {}", account.getEmail(), ex.getMessage());
-            }
+        // Often the first sign of someone guessing the password or codes; tell the owner every time.
+        try {
+            String reset = publicBaseUrl + "/account/forgot-password.html"
+                    + (applicationId != null ? "?applicationId=" + applicationId : "");
+            mail.getObject().sendAccountLocked(applicationId, account, (int) lockMinutes, reset);
+        } catch (RuntimeException ex) {
+            log.warn("Could not send account-locked email to {}: {}", account.getEmail(), ex.getMessage());
         }
+    }
+
+    /** Lock time for the {@code level}-th lockout in a row: base, then doubled each time, at most 24 hours. */
+    static long lockMinutes(int baseMinutes, int level) {
+        long minutes = baseMinutes;
+        for (int i = 1; i < level && minutes < MAX_LOCK_MINUTES; i++) {
+            minutes *= 2;
+        }
+        return Math.min(minutes, Math.max(baseMinutes, MAX_LOCK_MINUTES));
     }
 
     @Transactional
     public void recordSuccess(UUID userId) {
+        clear(userId);
+    }
+
+    /**
+     * The same as {@link #clear} on an account the caller is about to save itself (so its own save does not put
+     * the old lock back). Used by password reset and invitation flows.
+     */
+    public static void clearOn(UserAccount account) {
+        account.setFailedLoginCount(0);
+        account.setLockedUntil(null);
+        account.setLockoutLevel(0);
+    }
+
+    /** Ends any lock and forgets past failures: successful sign-in, password reset, admin unlock. */
+    @Transactional
+    public void clear(UUID userId) {
         users.findByIdForUpdate(userId).ifPresent(account -> {
             account.setFailedLoginCount(0);
             account.setLockedUntil(null);
+            account.setLockoutLevel(0);
             users.save(account);
         });
     }

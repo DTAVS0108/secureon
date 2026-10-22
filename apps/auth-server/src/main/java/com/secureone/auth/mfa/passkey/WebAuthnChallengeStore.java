@@ -23,7 +23,12 @@ public class WebAuthnChallengeStore {
         this.mapper = mapper;
     }
 
-    public record RegistrationPending(UUID userId, String username, String optionsJson) {}
+    /** {@code kind}: "passkey" (this device) or "security_key" (removable key); null in older entries. */
+    public record RegistrationPending(UUID userId, String username, String optionsJson, String kind) {
+        public RegistrationPending(UUID userId, String username, String optionsJson) {
+            this(userId, username, optionsJson, null);
+        }
+    }
 
     public record AuthenticationPending(String username, String requestJson) {}
 

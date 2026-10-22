@@ -27,6 +27,8 @@ export type IntegrationApiEndpoint = {
   requestExample?: string;
   responses?: ApiResponseDoc[];
   notes?: string[];
+  /** Hand-written curl when one generated from the fields above would not fit (several variants). */
+  curl?: string;
 };
 
 export type ApiCatalogContext = {
@@ -309,6 +311,34 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
         `&client_id=${clientId}`,
         "&code_verifier={pkce_verifier}",
       ].join(""),
+      curl: [
+        "# 1. Authorization code + PKCE (public client: SPA, mobile, desktop)",
+        `curl -i -X POST "${base}/oauth2/token" \\`,
+        '  --data-urlencode "grant_type=authorization_code" \\',
+        '  --data-urlencode "code={authorization_code}" \\',
+        '  --data-urlencode "redirect_uri=http://localhost:5173/callback" \\',
+        `  --data-urlencode "client_id=${clientId}" \\`,
+        '  --data-urlencode "code_verifier={pkce_verifier}"',
+        "",
+        "# 2. Authorization code (confidential client: server-side web app)",
+        `curl -i -X POST "${base}/oauth2/token" \\`,
+        `  -u "${clientId}:{client_secret}" \\`,
+        '  --data-urlencode "grant_type=authorization_code" \\',
+        '  --data-urlencode "code={authorization_code}" \\',
+        '  --data-urlencode "redirect_uri=http://localhost:3000/auth/callback"',
+        "",
+        "# 3. Refresh the tokens",
+        `curl -i -X POST "${base}/oauth2/token" \\`,
+        '  --data-urlencode "grant_type=refresh_token" \\',
+        '  --data-urlencode "refresh_token={refresh_token}" \\',
+        `  --data-urlencode "client_id=${clientId}"`,
+        "",
+        "# 4. Machine-to-machine (client credentials)",
+        `curl -i -X POST "${base}/oauth2/token" \\`,
+        `  -u "${clientId}:{client_secret}" \\`,
+        '  --data-urlencode "grant_type=client_credentials" \\',
+        '  --data-urlencode "scope={scope}"',
+      ].join("\n"),
       responses: [
         {
           status: 200,

@@ -57,6 +57,10 @@ public class UserAccount {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    /** Lockouts in a row since the last successful sign-in; each one doubles the lock time (back-off). */
+    @Column(name = "lockout_level", nullable = false)
+    private int lockoutLevel;
+
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 

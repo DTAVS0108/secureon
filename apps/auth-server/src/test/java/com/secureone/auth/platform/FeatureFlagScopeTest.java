@@ -35,6 +35,7 @@ class FeatureFlagScopeTest {
     void catalogScopes() {
         assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf("self_registration"));
         assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf("ldap"));
+        assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf(FeatureFlagDefaults.MFA_TRY_ANOTHER_WAY));
         assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("audit_log"));
         assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("integration_checklist"));
         assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("notification_email_test_ui"));
@@ -86,6 +87,16 @@ class FeatureFlagScopeTest {
         assertEquals(false, byKey(admin, "self_registration").get("platformEnabled"));
         assertEquals("platform", byKey(admin, "audit_log").get("scope"));
         assertEquals(true, byKey(admin, "audit_log").get("enabled"));
+    }
+
+    @Test
+    void tryAnotherWayIsOnByDefaultAndAnApplicationCanTurnItOff() {
+        String key = FeatureFlagDefaults.MFA_TRY_ANOTHER_WAY;
+        List<Map<String, Object>> platform = FeatureFlagMerge.merge(FeatureFlagDefaults.platformCatalog(), null);
+
+        assertTrue(enabled(FeatureFlagMerge.resolveEffective(platform, null)).get(key), "on by default");
+        assertFalse(enabled(FeatureFlagMerge.resolveEffective(platform, List.of(row(key, false)))).get(key),
+                "an application can turn it off");
     }
 
     @Test

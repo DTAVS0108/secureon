@@ -33,11 +33,17 @@ public class PasskeyAccountController {
     private final SessionUserResolver users;
     private final PasskeyRegistrationService registration;
     private final MfaFactorRepository factors;
+    private final com.secureone.auth.twostep.FreshStep freshStep;
+    private final com.secureone.auth.twostep.TwoStepService twoStep;
 
     public PasskeyAccountController(
             SessionUserResolver users,
             PasskeyRegistrationService registration,
-            MfaFactorRepository factors) {
+            MfaFactorRepository factors,
+            com.secureone.auth.twostep.FreshStep freshStep,
+            com.secureone.auth.twostep.TwoStepService twoStep) {
+        this.freshStep = freshStep;
+        this.twoStep = twoStep;
         this.users = users;
         this.registration = registration;
         this.factors = factors;
@@ -63,14 +69,24 @@ public class PasskeyAccountController {
 
     @Operation(summary = "Remove a passkey")
     @DeleteMapping("/{factorId}")
-    public ResponseEntity<Void> delete(Authentication authentication, @PathVariable UUID factorId) {
+    public ResponseEntity<Void> delete(
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request,
+            @PathVariable UUID factorId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID applicationId) {
         UserAccount user = users.requireTenantUser(authentication);
         var factor = factors.findByIdAndUserId(factorId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Passkey not found."));
         if (!WebAuthnCredentialRepository.FACTOR_TYPE.equals(factor.getType())) {
             throw new ResourceNotFoundException("Passkey not found.");
         }
+        // Removing a sign-in method needs a recent second step and tells the user (a taken-over session must
+        // not be able to strip it silently).
+        freshStep.require(request, user.getId(), applicationId);
+        var method = com.secureone.auth.twostep.TwoStepService.methodOf(factor)
+                .orElse(com.secureone.auth.twostep.TwoStepMethod.PASSKEY);
         factors.delete(factor);
+        twoStep.methodRemoved(user, applicationId, method);
         return ResponseEntity.noContent().build();
     }
 

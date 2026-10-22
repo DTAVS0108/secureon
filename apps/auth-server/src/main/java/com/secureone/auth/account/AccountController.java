@@ -110,29 +110,28 @@ public class AccountController {
         return accounts.requestMagicLink(request.tenantSlug(), request.email());
     }
 
+    /** The emailed link: first step only; the browser continues to the second step when one is needed. */
     @GetMapping(value = "/magic-link/verify", produces = MediaType.TEXT_HTML_VALUE)
-    public String magicLinkVerifyHtml(
+    public ResponseEntity<?> magicLinkVerifyHtml(
             @RequestParam String token,
+            @RequestParam(required = false) UUID applicationId,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response) {
         try {
-            var result = magicLinkAuth.completeAndCreateSession(token, request, response);
-            return """
-                    <!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">
-                    <h1>Signed in</h1>
-                    <p>%s</p>
-                    <p>Username for password login: <code>%s</code></p>
-                    <p><a href="/login.html">Go to login</a></p>
-                    </body></html>
-                    """
-                    .formatted(
-                            escapeHtml(String.valueOf(result.get("message"))),
-                            escapeHtml(String.valueOf(result.get("loginUsername"))));
+            return magicLinkAuth.completeInBrowser(token, applicationId, request, response);
         } catch (Exception ex) {
-            return "<html><body><h1>Invalid or expired magic link</h1></body></html>";
+            return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body("""
+                            <!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">
+                            <h1>Invalid or expired sign-in link</h1>
+                            <p>Request a new link, or <a href="/login.html">sign in another way</a>.</p>
+                            </body></html>
+                            """);
         }
     }
 
+    /** For apps handling the link on their own page: 200 when signed in, 428 with an MFA challenge, or 403. */
     @PostMapping("/magic-link/verify")
     public ResponseEntity<?> magicLinkVerifyApi(
             @RequestBody Map<String, String> body,
@@ -142,7 +141,12 @@ public class AccountController {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("token is required");
         }
-        return magicLinkAuth.completeAndCreateSessionApi(token, request, response);
+        UUID applicationId = null;
+        String rawApp = body.get("applicationId");
+        if (rawApp != null && !rawApp.isBlank()) {
+            applicationId = UUID.fromString(rawApp.trim());
+        }
+        return magicLinkAuth.completeAndCreateSessionApi(token, applicationId, request, response);
     }
 
     @PostMapping("/verify/otp/confirm")

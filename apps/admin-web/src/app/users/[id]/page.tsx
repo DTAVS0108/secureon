@@ -5,9 +5,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { UserSecurityTab } from "@/components/users/UserSecurityTab";
+import { UserTwoStepPanel } from "@/components/users/UserTwoStepPanel";
 import {
   userDeleteAction,
-  userResetMfaAction,
   userSetStatusAction,
 } from "@/lib/actions";
 import { listRoles } from "@/lib/api/roles";
@@ -17,18 +17,9 @@ import { ApiError } from "@/lib/api/http";
 import { getUser } from "@/lib/api/users";
 import { initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
-import type { MfaFactorType } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LocalTime } from "@/components/ui/LocalTime";
-
-const MFA_LABEL: Record<MfaFactorType, string> = {
-  passkey: "Passkey",
-  totp: "Authenticator (TOTP)",
-  sms: "SMS",
-  email: "Email OTP",
-  push: "Push",
-};
 
 export default async function UserDetailPage({
   params,
@@ -139,36 +130,9 @@ export default async function UserDetailPage({
             </ul>
           </Card>
 
-          <Card padded={false}>
-            <CardHeader
-              title="Multi-factor authentication"
-              description={user.mfaFactors.length > 0 ? `${user.mfaFactors.length} factor(s) enrolled` : "No factors enrolled"}
-              action={
-                user.mfaFactors.length > 0 ? (
-                  <form action={userResetMfaAction}>
-                    <input type="hidden" name="id" value={user.id} />
-                    <Button type="submit" variant="ghost" size="sm">Reset MFA</Button>
-                  </form>
-                ) : undefined
-              }
-            />
-            {user.mfaFactors.length > 0 ? (
-              <ul className="divide-y divide-black/5 p-2 dark:divide-white/5">
-                {user.mfaFactors.map((f) => (
-                  <li key={f.id} className="flex items-center justify-between px-3 py-2.5">
-                    <div>
-                      <p className="text-sm font-medium">{MFA_LABEL[f.type]}</p>
-                      <p className="text-xs text-black/45 dark:text-white/45">{f.label} · added <LocalTime value={f.addedAt} /></p>
-                    </div>
-                    {f.type === "passkey" ? <Badge tone="success">phishing-resistant</Badge> : <Badge tone={f.verified ? "success" : "warning"}>{f.verified ? "verified" : "pending"}</Badge>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="p-5 text-sm text-amber-600 dark:text-amber-400">
-                This user has no MFA enrolled. Consider enforcing step-up authentication.
-              </div>
-            )}
+          <Card>
+            <CardHeader title="Two-step verification" />
+            <UserTwoStepPanel userId={user.id} />
           </Card>
 
           <Card padded={false}>

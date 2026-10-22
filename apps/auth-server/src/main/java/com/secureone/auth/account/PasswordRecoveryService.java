@@ -1,5 +1,6 @@
 package com.secureone.auth.account;
 
+import com.secureone.auth.authn.AccountLockoutService;
 import com.secureone.auth.account.otp.OtpChallenge;
 import com.secureone.auth.account.otp.OtpChallengeService;
 import com.secureone.auth.account.otp.OtpChannel;
@@ -141,6 +142,7 @@ public class PasswordRecoveryService {
         UserAccount user = users.findById(challenge.getUserId()).orElseThrow();
         UUID appId = applicationId != null ? applicationId : challenge.getApplicationId();
         passwords.setPassword(user.getId(), newPassword, appId);
+        AccountLockoutService.clearOn(user); // a new password ends any lockout; this save must not restore it
         user.setStatus("ACTIVE");
         users.save(user);
         email.sendPasswordChanged(appId, user);

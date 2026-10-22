@@ -1,5 +1,6 @@
 package com.secureone.auth.m2m;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import com.secureone.auth.serviceaccount.ServiceAccountContext;
 import com.secureone.auth.tenant.Tenant;
 import com.secureone.auth.tenant.TenantRepository;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+@Tag(name = "Machine-to-machine (API keys)", description = "Service account API keys: who am I, my tenant, health")
 @RestController
 @RequestMapping("/api/v1/m2m")
 public class M2mController {

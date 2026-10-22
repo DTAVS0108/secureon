@@ -54,22 +54,27 @@ Details: [OAuth clients](04-oauth-clients.md#register-application--oauth-client)
 
 ## A user is locked out
 
+A lock ends by itself after the lockout duration (longer for repeated lockouts), or when the user resets their password.
+
 1. Application console › **Users** → the user.
 2. **Security**: press **Unlock account**. If they forgot their password, **Reset** sends a reset email, or **Set password now** sets one directly.
-3. Lost authenticator: **MFA** → **Reset all MFA**; they enrol again at their next sign-in.
+3. Lost phone or key: **Two-step** → **Reset all** (or **Remove** one option); they set it up again at their next sign-in. Need time first? **Extend** or **Exempt** them.
 
 ## An operator lost their authenticator
 
 Another platform operator can't see operator factors in the application console, so use one of:
 
-- The operator signs in with a **Recovery code** (**Lost your device? Use a recovery code**), then in **My profile** removes the old authenticator and adds a new one.
+- The operator signs in with a **Recovery code** (**Try another way** → **Recovery code**), then in **My profile** removes the old authenticator and adds a new one.
 - If every operator is locked out, use **Use emergency access** on the sign-in page with the emergency account, then fix the operator account.
 
-## Turn on MFA for an application
+## Turn on two-step verification for an application
 
-1. Application **Settings › Authentication**: under **Multi-factor authentication**, switch on **Enable MFA**.
-2. **MFA** sub-tab: switch on the methods (for example **TOTP Authenticator**).
-3. **Verification & OTP › Login & passwordless**: set **MFA required** to **Required** (or **Optional**).
+1. Application **Settings › Authentication › Two-step verification**.
+2. Choose **Optional** (users are invited and reminded) or **Required**.
+3. For **Required**, set the **Grace period** and how many times users may choose **“Later”**, and optionally **Enforce from** so existing users get time.
+4. Check **Options users can use**. Text message and email codes are off by default.
+
+Settings locked by the platform or tenant show **Set by platform**. See [Two-step verification](12-two-step-verification.md).
 
 ## Allow public sign-up
 
@@ -111,6 +116,5 @@ These appear in the console but do not work yet:
 | **Push Notification** (MFA) | Settings › Authentication |
 | **LDAP / AD** import and directory sync | Settings › User directory; Users › Import |
 | **Push notifications** channel | Settings › Notifications |
-| **Remember device (days)** (trusted-device cookies) | Settings › Authentication › MFA |
 | Top-bar **Search…** | Console top bar |
 | Tenant SCIM token screen (use the API or a configuration file) | Tenant page |

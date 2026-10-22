@@ -41,18 +41,24 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/admin/v1/applications/{applicationId}")
 public class ApplicationScopedAdminController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
+
     private final ApplicationUserAdminService users;
     private final ApplicationSettingsService settings;
     private final UserAdminService userAdmin;
     private final UserImportExportService userImportExport;
     private final ApplicationPublicManifestService publicManifest;
+    private final com.secureone.auth.platform.FeatureFlagAudit flagAudit;
 
     public ApplicationScopedAdminController(
             ApplicationUserAdminService users,
             ApplicationSettingsService settings,
             UserAdminService userAdmin,
             UserImportExportService userImportExport,
-            ApplicationPublicManifestService publicManifest) {
+            ApplicationPublicManifestService publicManifest,
+            com.secureone.auth.platform.FeatureFlagAudit flagAudit) {
+        this.flagAudit = flagAudit;
         this.users = users;
         this.settings = settings;
         this.userAdmin = userAdmin;
@@ -93,15 +99,19 @@ public class ApplicationScopedAdminController {
     @DeleteMapping("/users/{userId}/mfa/factors/{factorId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMfaFactor(
+            jakarta.servlet.http.HttpServletRequest request,
             @PathVariable UUID applicationId, @PathVariable UUID userId, @PathVariable UUID factorId) {
+        stepUp.require(request);
         userAdmin.deleteMfaFactor(userId, factorId);
     }
 
     @PostMapping("/users/{userId}/mfa/methods/{methodId}/reset")
     public UserResponse resetMfaForMethod(
+            jakarta.servlet.http.HttpServletRequest request,
             @PathVariable UUID applicationId,
             @PathVariable UUID userId,
             @PathVariable String methodId) {
+        stepUp.require(request);
         return userAdmin.resetMfaForMethod(userId, applicationId, methodId);
     }
 
@@ -419,13 +429,18 @@ public class ApplicationScopedAdminController {
     @PutMapping("/settings/feature-flags")
     public List<Map<String, Object>> updateFeatureFlags(
             @PathVariable UUID applicationId, @RequestBody List<Map<String, Object>> body) {
-        return settings.saveFeatureFlags(applicationId, body);
+        List<Map<String, Object>> before = settings.getFeatureFlags(applicationId);
+        List<Map<String, Object>> saved = settings.saveFeatureFlags(applicationId, body);
+        flagAudit.recordChanges(applicationId, before, saved);
+        return saved;
     }
 
     @DeleteMapping("/settings/feature-flags")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetFeatureFlags(@PathVariable UUID applicationId) {
+        List<Map<String, Object>> before = settings.getFeatureFlags(applicationId);
         settings.clearOverride(applicationId, "feature_flags");
+        flagAudit.recordChanges(applicationId, before, settings.getFeatureFlags(applicationId));
     }
 
     @GetMapping("/settings/user-directory")

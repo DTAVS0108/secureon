@@ -210,6 +210,38 @@ public final class EmailTemplateDefaults {
                         "Your {{appName}} account <strong style=\"color:#0f172a;\">{{userEmail}}</strong> was locked for {{lockoutMinutes}} minutes after several failed sign-in attempts. If this was not you, someone may be guessing your password: reset it now.",
                         "Reset password"),
                 List.of("userName", "userEmail", "actionLink", "appName", "lockoutMinutes")));
+        templates.put("account_security_notice", template(
+                "Security change",
+                "Sent when two-step verification changes: a method added or removed, backup codes used or renewed, two-step verification turned off, or an administrator reset or exemption",
+                "Security change on your {{appName}} account",
+                """
+                Hello {{userName}},
+
+                {{securityEvent}}
+
+                If this was not you, change your password and review your sign-in methods now.
+                {{actionLink}}""",
+                htmlAccountNotice(
+                        "Security change on your account",
+                        "{{securityEvent}} If this was not you, change your password and review your sign-in methods now.",
+                        "Review account security"),
+                List.of("userName", "userEmail", "actionLink", "appName", "securityEvent")));
+        templates.put("two_step_setup_reminder", template(
+                "Two-step verification reminder",
+                "Sent before the date by which a user must set up two-step verification",
+                "Set up two-step verification for {{appName}} by {{deadline}}",
+                """
+                Hello {{userName}},
+
+                {{appName}} requires two-step verification. Please set it up before {{deadline}}: after that date you will be asked to set it up when you sign in.
+
+                It takes a minute: sign in, then follow the steps (a passkey or an authenticator app).
+                {{actionLink}}""",
+                htmlAccountNotice(
+                        "Set up two-step verification",
+                        "{{appName}} requires two-step verification. Please set it up before <strong>{{deadline}}</strong>; after that date you will be asked to set it up when you sign in.",
+                        "Set it up now"),
+                List.of("userName", "userEmail", "actionLink", "appName", "deadline")));
         templates.put("password_changed", template(
                 "Password changed",
                 "Confirmation after a successful password change",

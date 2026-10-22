@@ -21,6 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/v1/platform-operators")
 public class PlatformOperatorController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
+
     private final PlatformOperatorService service;
     private final AdminAccessService access;
 
@@ -40,9 +43,11 @@ public class PlatformOperatorController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PlatformOperators.Row add(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestBody PlatformOperatorService.AddOperatorRequest body) {
+        stepUp.require(stepUpRequest); // a recent second step from the admin
         access.requirePlatformSettingsAccess(authentication, actAsEmail);
         return service.add(body, authentication.getName());
     }
@@ -50,9 +55,11 @@ public class PlatformOperatorController {
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @PathVariable UUID userId) {
+        stepUp.require(stepUpRequest); // a recent second step from the admin
         access.requirePlatformSettingsAccess(authentication, actAsEmail);
         service.remove(userId, authentication.getName(), access.resolveOperatorEmail(authentication, null));
     }

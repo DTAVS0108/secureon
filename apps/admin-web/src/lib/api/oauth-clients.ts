@@ -144,6 +144,3 @@ export async function rotateOAuthClientSecretApi(id: string): Promise<string> {
   return res.clientSecret;
 }
 
-export async function deleteOAuthClientApi(id: string): Promise<void> {
-  await apiFetch<void>(`/api/admin/v1/oauth-clients/${id}`, { method: "DELETE" });
-}

@@ -87,8 +87,8 @@ const AUTH_SUB_TABS: {
   },
   {
     id: "mfa",
-    label: "MFA",
-    description: "Second factors and when they are asked for.",
+    label: "Two-step verification",
+    description: "Second-step options, whether they are required, setup reminders and the grace period.",
     exposureKeys: ["auth-methods"],
     requiresMfaTab: true,
   },

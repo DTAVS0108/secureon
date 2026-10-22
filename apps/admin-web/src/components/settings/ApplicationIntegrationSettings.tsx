@@ -465,9 +465,15 @@ export function ApplicationIntegrationSettings({
           }
         />
         <p className="border-b border-ui px-4 py-2 text-xs text-muted">
-          Click an endpoint to expand request fields, types, examples, and response shapes.
+          Sections follow an integration from discovery to sign-in, tokens and profile. Every endpoint has a
+          ready-to-run curl (bash, zsh or Git Bash); replace the <code className="font-mono">{"{placeholders}"}</code>.
+          Expand an endpoint for request fields, examples and responses.
         </p>
-        <ApiReferenceList endpoints={filteredCatalog} applicationId={applicationId} />
+        <ApiReferenceList
+          endpoints={filteredCatalog}
+          applicationId={applicationId}
+          clientId={oauthClients[0]?.clientId}
+        />
       </Card>
       )}
 

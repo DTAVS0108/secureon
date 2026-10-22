@@ -31,7 +31,13 @@ public class MfaAccountController {
     private final SessionUserResolver users;
     private final TotpMfaService totp;
 
-    public MfaAccountController(SessionUserResolver users, TotpMfaService totp) {
+    private final com.secureone.auth.twostep.FreshStep freshStep;
+    private final com.secureone.auth.twostep.TwoStepService twoStep;
+
+    public MfaAccountController(SessionUserResolver users, TotpMfaService totp,
+            com.secureone.auth.twostep.FreshStep freshStep, com.secureone.auth.twostep.TwoStepService twoStep) {
+        this.freshStep = freshStep;
+        this.twoStep = twoStep;
         this.users = users;
         this.totp = totp;
     }
@@ -62,9 +68,16 @@ public class MfaAccountController {
 
     @Operation(summary = "Remove TOTP factor")
     @DeleteMapping("/{factorId}")
-    public ResponseEntity<Void> delete(Authentication authentication, @PathVariable UUID factorId) {
+    public ResponseEntity<Void> delete(
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request,
+            @PathVariable UUID factorId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID applicationId) {
         UserAccount user = users.requireTenantUser(authentication);
+        // A recent second step is needed, and the user is told (gap M3).
+        freshStep.require(request, user.getId(), applicationId);
         totp.delete(user, factorId);
+        twoStep.methodRemoved(user, applicationId, com.secureone.auth.twostep.TwoStepMethod.TOTP);
         return ResponseEntity.noContent().build();
     }
 }

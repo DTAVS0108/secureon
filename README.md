@@ -62,12 +62,14 @@ docker run -d --name secureone --network secureone-net --restart unless-stopped 
   -e SECUREONE_REDIS_URL=redis://secureone-cache:6379 `
   -e SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com `
   -e "SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Owner-Pass-2026!x" `
-  dmtavs0108/secureone:0.3.1
+  dmtavs0108/secureone:latest
 ```
 
 After about 30 seconds (`docker logs secureone` shows *First platform operator created*), open **http://localhost:9000/admin**, choose **Platform operator** and sign in as `owner@example.com`. The first sign-in sets up an authenticator app.
 
 This is development mode (plain http, example passwords). For production see the settings below.
+
+**Build your own image, update a running container or roll back:** see [deploy/README.md](deploy/README.md).
 
 ### B. Docker Compose (recommended for a single server)
 
@@ -168,6 +170,8 @@ Guide: [docs/23 Application integration](docs/23-application-integration-guide.m
 | **24** | **[Deployment](docs/24-deployment-image-env-and-enterprise.md)** | **Image, all settings, backups, Redis, Helm** |
 | 25 | [Roles and access](docs/25-roles-and-access.md) | Who sees and can do what |
 | **26** | **[Configuration as code and upgrades](docs/26-configuration-as-code-and-upgrades.md)** | **Tenant files, upgrades, rollback** |
+| — | [Build, update and run the container](deploy/README.md) | Build the image, update or roll back a container, start a new installation |
+| — | [User guide](docs/user-guide/README.md) | Every console page, button and field |
 | — | [Runbooks](docs/runbooks/) | Deploy, rollback, incidents, key rotation |
 | — | [Decision records](docs/decisions/README.md) | ADRs |
 

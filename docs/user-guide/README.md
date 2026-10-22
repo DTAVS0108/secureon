@@ -37,10 +37,11 @@ Section access can be narrowed further per person; see [Tenants](05-tenants.md#t
 | 5 | [Tenants](05-tenants.md) | Tenant list and form, the tenant page (applications, roster, console access, federation, organizations, access requests, service accounts, webhooks), tenant roles and permissions |
 | 6 | [Application console](06-application-console.md) | Users, Groups, Roles, Permissions, Audit log, Application logs, Sessions |
 | 7 | [Settings](07-settings.md) | Platform settings and application settings, tab by tab, field by field |
-| 8 | [Access review and platform operators](08-access-review-and-operators.md) | Who holds privileged roles, CSV export, adding platform operators |
+| 8 | [Access review and platform operators](08-access-review-and-operators.md) | Approving OAuth client deletes, who holds privileged roles, CSV export, adding platform operators |
 | 9 | [Configuration as code](09-configuration-as-code.md) | Export, preview and apply configuration files from the console |
 | 10 | [End-user pages](10-end-user-pages.md) | Hosted sign-in, sign-up, password recovery, magic link, device sign-in, account security, privacy |
 | 11 | [Common tasks](11-common-tasks.md) | Step-by-step recipes and the "Coming soon" list |
+| 12 | [Two-step verification](12-two-step-verification.md) | The options, sign-in and setup for users, platform/tenant/application settings and locks, reset, extend and exempt |
 
 ## Conventions in this guide
 

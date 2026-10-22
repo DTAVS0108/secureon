@@ -1,0 +1,70 @@
+package com.secureone.auth.admin.approval;
+
+import com.secureone.auth.admin.AdminAccessService;
+import com.secureone.auth.admin.approval.ChangeRequests.Row;
+import java.time.Instant;
+import java.util.UUID;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+
+/** Who may decide a change request, and the request as the signed-in admin sees it. */
+@Component
+public class ChangeRequestViews {
+
+    private final AdminAccessService access;
+
+    public ChangeRequestViews(AdminAccessService access) {
+        this.access = access;
+    }
+
+    public record ChangeRequestView(
+            UUID id,
+            String action,
+            UUID tenantId,
+            String tenantName,
+            UUID applicationId,
+            UUID targetId,
+            String targetLabel,
+            String reason,
+            String status,
+            String requestedBy,
+            Instant requestedAt,
+            String decidedBy,
+            Instant decidedAt,
+            String decisionNote,
+            /** The signed-in admin asked for this change (they may withdraw it, not decide it). */
+            boolean mine,
+            /** The signed-in admin may approve or reject it now. */
+            boolean canDecide) {}
+
+    /** Platform operators, and tenant super admins of the request's tenant. */
+    public boolean isApprover(Row row, Authentication authentication, String actAs) {
+        if (access.canAccessPlatformSettings(authentication, actAs)) {
+            return true;
+        }
+        return row.tenantId() != null && access.canManageTenantGovernance(authentication, actAs, row.tenantId());
+    }
+
+    public void requireApprover(Row row, Authentication authentication, String actAs) {
+        if (!isApprover(row, authentication, actAs)) {
+            throw new AccessDeniedException("Only a platform operator or this tenant's super admin can decide this request.");
+        }
+    }
+
+    public String email(Authentication authentication, String actAs) {
+        String email = access.resolveOperatorEmail(authentication, actAs);
+        return email != null ? email : authentication.getName();
+    }
+
+    public ChangeRequestView view(Row row, Authentication authentication, String actAs) {
+        boolean mine = row.requestedBy().equalsIgnoreCase(email(authentication, actAs));
+        boolean canDecide = row.status() == ChangeRequests.Status.PENDING
+                && !mine
+                && isApprover(row, authentication, actAs);
+        return new ChangeRequestView(
+                row.id(), row.action(), row.tenantId(), row.tenantName(), row.applicationId(), row.targetId(),
+                row.targetLabel(), row.reason(), row.status().name(), row.requestedBy(), row.requestedAt(),
+                row.decidedBy(), row.decidedAt(), row.decisionNote(), mine, canDecide);
+    }
+}

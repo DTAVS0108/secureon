@@ -14,7 +14,6 @@ import {
 } from "./api/applications";
 import {
   createOAuthClientApi,
-  deleteOAuthClientApi,
   updateOAuthClientApi,
 } from "./api/oauth-clients";
 import {
@@ -325,19 +324,6 @@ export async function oauthClientUpdateAction(_prev: FormState, fd: FormData): P
   } catch (e) {
     return actionError(e);
   }
-}
-
-export async function oauthClientDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
-  const id = str(fd, "id");
-  try {
-    if (id) await deleteOAuthClientApi(id);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Could not delete the OAuth client." };
-  }
-  revalidatePath("/applications");
-  revalidatePath("/app");
-  revalidatePath("/audit");
-  redirect("/applications");
 }
 
 // ---- Users ----

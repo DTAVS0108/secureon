@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, type ReactNode, Suspense, useEffect, useState } from "react";
+import { signWithPasskey } from "@/lib/webauthn";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { APP_NAME, withBasePath } from "@/lib/config";
@@ -41,7 +42,7 @@ function remember(value: Remembered) {
 }
 
 type MfaStep =
-  | { kind: "mfa"; mfaToken: string; identity: string }
+  | { kind: "mfa"; mfaToken: string; identity: string; methods: string[]; tryAnotherWay: boolean }
   | { kind: "enroll"; mfaToken: string; identity: string; factorId: string; secret: string; qrCodeDataUrl: string };
 
 const REASONS: Record<string, string> = {
@@ -202,6 +203,8 @@ function PasswordForm({
         detail?: string;
         step?: "mfa" | "enroll";
         mfaToken?: string;
+        methods?: string[];
+        tryAnotherWay?: boolean;
         factorId?: string;
         secret?: string;
         qrCodeDataUrl?: string;
@@ -214,7 +217,13 @@ function PasswordForm({
         remember({ mode, tenantSlug: mode === "organization" ? slug : undefined });
       }
       if (body.step === "mfa" && body.mfaToken) {
-        onStep({ kind: "mfa", mfaToken: body.mfaToken, identity });
+        onStep({
+          kind: "mfa",
+          mfaToken: body.mfaToken,
+          identity,
+          methods: body.methods ?? ["totp"],
+          tryAnotherWay: body.tryAnotherWay !== false,
+        });
         return;
       }
       if (body.step === "enroll" && body.mfaToken && body.factorId) {
@@ -345,6 +354,33 @@ function PasswordForm({
   );
 }
 
+type MfaMethod = "totp" | "passkey" | "recovery";
+
+/** Second-step options, in the order offered; {@code server} is the id the login API lists. */
+const MFA_METHODS: { id: MfaMethod; server: string; label: string; hint: string; subtitle: string }[] = [
+  {
+    id: "totp",
+    server: "totp",
+    label: "Authenticator app",
+    hint: "A 6-digit code from Google Authenticator, 1Password, Authy…",
+    subtitle: "Enter the code from your authenticator app.",
+  },
+  {
+    id: "passkey",
+    server: "passkey",
+    label: "Passkey or security key",
+    hint: "Your fingerprint, face or device PIN, or a USB/NFC key.",
+    subtitle: "Use your passkey or security key.",
+  },
+  {
+    id: "recovery",
+    server: "recovery_code",
+    label: "Recovery code",
+    hint: "One of the codes you saved when you set up your authenticator.",
+    subtitle: "Enter one of your recovery codes.",
+  },
+];
+
 function SecondFactorForm({
   step,
   onRestart,
@@ -355,10 +391,61 @@ function SecondFactorForm({
   onSignedIn: (recoveryCodes?: string[]) => void;
 }) {
   const [code, setCode] = useState("");
-  const [useRecovery, setUseRecovery] = useState(false);
+  const [method, setMethod] = useState<MfaMethod>("totp");
+  const [choosing, setChoosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const enrolling = step.kind === "enroll";
+  const useRecovery = method === "recovery";
+  // Every option enabled for this operator; the authenticator app is always one of them. Choosing another
+  // option needs the "2FA: Try another way" feature flag (Platform settings → Feature flags).
+  const available =
+    step.kind === "mfa" && step.tryAnotherWay
+      ? MFA_METHODS.filter((m) => m.id === "totp" || step.methods.includes(m.server))
+      : MFA_METHODS.filter((m) => m.id === "totp");
+  const current = MFA_METHODS.find((m) => m.id === method) ?? MFA_METHODS[0];
+
+  function pick(next: MfaMethod) {
+    setMethod(next);
+    setChoosing(false);
+    setCode("");
+    setError(null);
+  }
+
+  async function onPasskey() {
+    setError(null);
+    setLoading(true);
+    try {
+      const call = (payload: Record<string, unknown>) =>
+        fetch(withBasePath("/api/auth/login/mfa"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mfaToken: step.mfaToken, ...payload }),
+        });
+      const optionsRes = await call({ action: "passkey-options" });
+      const options = (await optionsRes.json().catch(() => ({}))) as {
+        detail?: string;
+        requestId?: string;
+        publicKey?: string;
+      };
+      if (!optionsRes.ok || !options.requestId || !options.publicKey) {
+        setError(options.detail ?? "Passkeys are not available right now.");
+        return;
+      }
+      const credential = await signWithPasskey(options.publicKey);
+      const res = await call({ action: "passkey-verify", requestId: options.requestId, credential });
+      const body = (await res.json().catch(() => ({}))) as { detail?: string };
+      if (!res.ok) {
+        setError(body.detail ?? "The passkey was not accepted.");
+        return;
+      }
+      onSignedIn();
+    } catch {
+      setError("The passkey prompt was cancelled or failed. Try again or use a code.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -394,17 +481,87 @@ function SecondFactorForm({
     }
   }
 
+  const footer = (
+    <div className="flex justify-between gap-3 text-xs text-faint">
+      {!enrolling && available.length > 1 ? (
+        <button
+          type="button"
+          className="text-left hover:text-soft"
+          data-testid="try-another-way"
+          onClick={() => {
+            setChoosing(true);
+            setError(null);
+          }}
+        >
+          {method === "recovery" ? "Try another way" : `Can't use your ${current.label.toLowerCase()}? Try another way`}
+        </button>
+      ) : (
+        <span />
+      )}
+      <button type="button" className="shrink-0 hover:text-soft" onClick={onRestart}>
+        Start over
+      </button>
+    </div>
+  );
+
   return (
     <Card
       subtitle={
         enrolling
           ? "Set up an authenticator app. The admin console requires one."
-          : "Enter the code from your authenticator app."
+          : choosing
+            ? "Choose another way to verify it's you."
+            : current.subtitle
       }
     >
       <p className="mb-4 text-center text-xs text-muted">
         Signing in as <span className="font-medium text-soft">{step.identity}</span>
       </p>
+      {choosing ? (
+        <div className="space-y-2" data-testid="mfa-method-list">
+          {available.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              data-testid={`mfa-option-${m.id}`}
+              onClick={() => pick(m.id)}
+              className="w-full rounded-[var(--ui-radius)] border border-ui bg-ui-elevated px-3 py-2 text-left transition-colors hover:border-[var(--ui-primary)]"
+            >
+              <span className="block text-sm font-medium text-ui">
+                {m.label}
+                {m.id === method && <span className="font-normal text-faint"> · current</span>}
+              </span>
+              <span className="block text-xs text-faint">{m.hint}</span>
+            </button>
+          ))}
+          <p className="pt-2 text-xs text-faint">
+            None of these work? Ask an administrator to reset your MFA, then sign in again to set up a new
+            authenticator.
+          </p>
+          <div className="flex justify-between text-xs text-faint">
+            <button type="button" className="hover:text-soft" onClick={() => setChoosing(false)}>
+              Back
+            </button>
+            <button type="button" className="hover:text-soft" onClick={onRestart}>
+              Start over
+            </button>
+          </div>
+        </div>
+      ) : method === "passkey" ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => void onPasskey()}
+            disabled={loading}
+            data-testid="console-use-passkey"
+            className={BUTTON_CLASS}
+          >
+            {loading ? "Waiting for your passkey…" : "Use your passkey or security key"}
+          </button>
+          <ErrorText error={error} />
+          {footer}
+        </div>
+      ) : (
       <form onSubmit={onSubmit} className="space-y-4">
         {step.kind === "enroll" && (
           <div className="space-y-3 text-sm text-soft">
@@ -445,33 +602,9 @@ function SecondFactorForm({
         <button type="submit" disabled={loading} className={BUTTON_CLASS}>
           {loading ? "Checking…" : enrolling ? "Confirm and sign in" : "Verify"}
         </button>
-        <div className="flex justify-between text-xs text-faint">
-          {!enrolling ? (
-            <button
-              type="button"
-              className="hover:text-soft"
-              onClick={() => {
-                setUseRecovery((v) => !v);
-                setCode("");
-                setError(null);
-              }}
-            >
-              {useRecovery ? "Use authenticator code" : "Lost your device? Use a recovery code"}
-            </button>
-          ) : (
-            <span />
-          )}
-          <button type="button" className="hover:text-soft" onClick={onRestart}>
-            Start over
-          </button>
-        </div>
-        {!enrolling && useRecovery && (
-          <p className="text-xs text-faint">
-            No recovery codes either? Ask an administrator to reset your MFA, then sign in again to set
-            up a new authenticator.
-          </p>
-        )}
+        {footer}
       </form>
+      )}
     </Card>
   );
 }

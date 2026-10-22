@@ -36,6 +36,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/v1/users")
 public class UserAdminController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
+
     private final UserAdminService service;
     private final ApplicationUserAdminService applicationUsers;
     private final AdminAccessService access;
@@ -215,10 +218,12 @@ public class UserAdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetMfa(
             Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @PathVariable UUID id) {
         UserResponse existing = service.get(id);
         requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
+        stepUp.require(request);
         service.resetMfa(id);
     }
 
@@ -269,10 +274,12 @@ public class UserAdminController {
 
     @PostMapping("/{id}/impersonate")
     public AdminImpersonationService.ImpersonationTokenResponse impersonate(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @PathVariable UUID id,
             @RequestBody Map<String, Object> body) {
+        stepUp.require(stepUpRequest); // a recent second step from the admin
         UserResponse existing = service.get(id);
         requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
         String reason = body != null ? String.valueOf(body.get("reason")) : null;

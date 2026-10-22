@@ -48,6 +48,7 @@ public class AdminCredentialAuthenticationFilter extends OncePerRequestFilter {
             sessions.resolveSession(token).ifPresent(session -> {
                 SecurityContextHolder.getContext().setAuthentication(session.authentication());
                 request.setAttribute(CONSOLE_SESSION_ATTR, Boolean.TRUE);
+                request.setAttribute(AdminStepUpService.TOKEN_ATTR, token);
                 request.setAttribute(SESSION_EXPIRES_AT_ATTR, session.expiresAt());
             });
         }

@@ -7,6 +7,7 @@ import com.secureone.auth.notify.PlatformMailSenderProvider;
 import com.secureone.auth.notify.PlatformSmsSettingsService;
 import com.secureone.auth.notify.PlatformSmtpSettingsService;
 import com.secureone.auth.platform.AuthSettingsService;
+import com.secureone.auth.platform.FeatureFlagAudit;
 import com.secureone.auth.platform.PlatformFeatures;
 import com.secureone.auth.platform.PlatformSettingsService;
 import com.secureone.auth.platform.SettingsExposureService;
@@ -38,6 +39,7 @@ public class SettingsAdminController {
     private final VerificationPolicyService verificationPolicy;
     private final PlatformSmsSettingsService smsSettings;
     private final PlatformFeatures platformFeatures;
+    private final FeatureFlagAudit flagAudit;
 
     public SettingsAdminController(
             EmailNotificationService emailService,
@@ -48,7 +50,9 @@ public class SettingsAdminController {
             SettingsExposureService exposure,
             VerificationPolicyService verificationPolicy,
             PlatformSmsSettingsService smsSettings,
-            PlatformFeatures platformFeatures) {
+            PlatformFeatures platformFeatures,
+            FeatureFlagAudit flagAudit) {
+        this.flagAudit = flagAudit;
         this.emailService = emailService;
         this.platformSettings = platformSettings;
         this.platformSmtp = platformSmtp;
@@ -160,7 +164,10 @@ public class SettingsAdminController {
 
     @PutMapping("/feature-flags")
     public List<Map<String, Object>> updateFeatureFlags(@RequestBody List<Map<String, Object>> body) {
-        return authSettings.saveFeatureFlags(body);
+        List<Map<String, Object>> before = authSettings.getFeatureFlags();
+        List<Map<String, Object>> saved = authSettings.saveFeatureFlags(body);
+        flagAudit.recordChanges(null, before, saved);
+        return saved;
     }
 
     @GetMapping("/token-policy")

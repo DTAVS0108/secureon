@@ -38,12 +38,15 @@ export function PlatformAdminNav({
     );
   }
 
-  // Configuration as code shows only when turned on in Platform settings → Feature flags.
-  const [first, ...rest] = SUPER_ADMIN_NAV.filter(
+  // Connect an app and Configuration as code show only when turned on in Platform settings → Feature flags.
+  const items = SUPER_ADMIN_NAV.filter(
     (item) =>
       (item.href !== "/config" || ctx.configAsCodeEnabled) &&
       (item.href !== "/connect" || ctx.connectAppEnabled !== false),
   );
+  // Fixed order: Connect an app (when on), the Tenant group, then OAuth clients and the rest.
+  const first = items.find((item) => item.href === "/connect");
+  const rest = items.filter((item) => item.href !== "/connect");
 
   return (
     <nav className="flex flex-col gap-0.5">

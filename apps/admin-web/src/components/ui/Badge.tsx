@@ -22,14 +22,17 @@ export function Badge({
   tone = "neutral",
   dot = false,
   className,
+  "data-testid": testId,
 }: {
   children: React.ReactNode;
   tone?: BadgeTone;
   dot?: boolean;
   className?: string;
+  "data-testid"?: string;
 }) {
   return (
     <span
+      data-testid={testId}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         TONES[tone],

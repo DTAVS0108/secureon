@@ -56,6 +56,10 @@ public class AdminAuthController {
     private final EmailNotificationService mail;
     private final AccountLockoutService lockout;
     private final boolean mfaRequired;
+    private final AdminStepUpService stepUp;
+    private final com.secureone.auth.mfa.passkey.PasskeyAuthenticationService passkeys;
+    private final com.secureone.auth.mfa.MfaPolicyService mfaPolicy;
+    private final com.secureone.auth.platform.AuthSettingsService platformSettings;
 
     public AdminAuthController(
             AuthenticationManager authenticationManager,
@@ -70,7 +74,15 @@ public class AdminAuthController {
             AuditService audit,
             EmailNotificationService mail,
             AccountLockoutService lockout,
-            @Value("${secureone.admin.mfa-required:true}") boolean mfaRequired) {
+            @Value("${secureone.admin.mfa-required:true}") boolean mfaRequired,
+            AdminStepUpService stepUp,
+            com.secureone.auth.mfa.passkey.PasskeyAuthenticationService passkeys,
+            com.secureone.auth.mfa.MfaPolicyService mfaPolicy,
+            com.secureone.auth.platform.AuthSettingsService platformSettings) {
+        this.platformSettings = platformSettings;
+        this.stepUp = stepUp;
+        this.passkeys = passkeys;
+        this.mfaPolicy = mfaPolicy;
         this.authenticationManager = authenticationManager;
         this.access = access;
         this.operators = operators;
@@ -142,10 +154,17 @@ public class AdminAuthController {
         }
         if (totp.hasVerifiedTotp(user.getId())) {
             String mfaToken = challenges.issue(auth.getName(), user.getId(), "verify");
+            // Operators with a passkey or security key can use it instead of the code (phishing-resistant).
+            List<String> methods = mfaPolicy.hasVerifiedPasskey(user.getId())
+                    ? List.of("totp", "passkey", "recovery_code")
+                    : List.of("totp", "recovery_code");
             return ResponseEntity.ok(Map.of(
                     "mfaRequired", true,
                     "mfaToken", mfaToken,
-                    "methods", List.of("totp", "recovery_code"),
+                    "methods", methods,
+                    // The console belongs to no application: the platform value of the feature flag decides.
+                    "tryAnotherWay", platformSettings.isFeatureEnabled(
+                            com.secureone.auth.platform.FeatureFlagDefaults.MFA_TRY_ANOTHER_WAY),
                     "expiresIn", AdminMfaChallengeService.TTL.toSeconds()));
         }
         // No authenticator yet: enrollment is part of signing in, not optional.
@@ -181,6 +200,37 @@ public class AdminAuthController {
             return problem(HttpStatus.BAD_REQUEST, "Enter the code from your authenticator app or a recovery code.");
         }
         return completeSecondFactor(body.mfaToken(), c, ok, method, null);
+    }
+
+    public record PasskeyStepRequest(String mfaToken) {}
+
+    public record PasskeyStepVerifyRequest(String mfaToken, java.util.UUID requestId, String credential) {}
+
+    /** Step 2 with a passkey or security key instead of a code: assertion options for this operator. */
+    @PostMapping("/mfa/passkey/options")
+    public ResponseEntity<?> passkeyOptions(@RequestBody PasskeyStepRequest body) {
+        var challenge = challenges.peek(body.mfaToken()).filter(c -> "verify".equals(c.stage()));
+        if (challenge.isEmpty()) {
+            return problem(HttpStatus.UNAUTHORIZED, "Sign-in expired. Enter your password again.");
+        }
+        String principal = challenge.get().principal();
+        int sep = principal.indexOf(':');
+        if (sep <= 0) {
+            return problem(HttpStatus.BAD_REQUEST, "Passkeys are not available for this account.");
+        }
+        return ResponseEntity.ok(passkeys.beginSecondStep(principal.substring(0, sep), principal.substring(sep + 1)));
+    }
+
+    @PostMapping("/mfa/passkey/verify")
+    public ResponseEntity<?> passkeyVerify(@RequestBody PasskeyStepVerifyRequest body) {
+        var challenge = challenges.peek(body.mfaToken()).filter(c -> "verify".equals(c.stage()));
+        if (challenge.isEmpty()) {
+            return problem(HttpStatus.UNAUTHORIZED, "Sign-in expired. Enter your password again.");
+        }
+        var c = challenge.get();
+        boolean ok = body.requestId() != null && body.credential() != null
+                && passkeys.finishSecondStep(body.requestId(), body.credential(), c.userId());
+        return completeSecondFactor(body.mfaToken(), c, ok, "passkey", null);
     }
 
     /** Step 2 for an operator without an authenticator: confirm the one shown at sign-in. */
@@ -233,6 +283,11 @@ public class AdminAuthController {
         if (auth.isEmpty() || user == null) {
             return problem(HttpStatus.UNAUTHORIZED, "This account can no longer sign in.");
         }
+        if ("passkey".equals(method) || "recovery_code".equals(method)) {
+            // "Try another way": the console asks for the authenticator code first.
+            audit.record(user.getTenantId(), c.principal(), "admin.console_login.another_way", "user_account",
+                    user.getId(), method + " instead of totp", true);
+        }
         Map<String, Object> response = issueSession(auth.get(), user, method);
         if (codes != null) {
             response.put("recoveryCodes", codes);
@@ -247,6 +302,7 @@ public class AdminAuthController {
         });
         audit.record(user.getTenantId(), auth.getName(), "admin.console_login", "user_account", user.getId(), method, true);
         AdminSessionService.IssuedSession session = sessions.create(auth, false);
+        stepUp.mark(session.token()); // the sign-in's second step counts as a fresh one
         return sessionResponse(auth, session, false);
     }
 

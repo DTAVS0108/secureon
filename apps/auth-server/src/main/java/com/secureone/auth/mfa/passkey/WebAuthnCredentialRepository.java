@@ -94,6 +94,7 @@ public class WebAuthnCredentialRepository implements CredentialRepository {
         Map<String, Object> metadata = factor.getMetadata();
         metadata.put(META_SIGNATURE_COUNT, signatureCount);
         factor.setMetadata(metadata);
+        factor.setLastUsedAt(java.time.Instant.now());
         factors.save(factor);
     }
 

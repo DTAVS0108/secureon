@@ -1,42 +1,45 @@
 package com.secureone.auth.mfa;
 
-import com.secureone.auth.application.ApplicationSettingsService;
-import com.secureone.auth.platform.AuthSettingsService;
-import com.secureone.auth.platform.PlatformSettingsService;
-import com.secureone.auth.platform.VerificationPolicyService;
-import com.secureone.auth.trusteddevice.TrustedDeviceService;
-import com.secureone.auth.user.UserAccount;
-import jakarta.servlet.http.HttpServletRequest;
+import com.secureone.auth.twostep.TwoStepMethod;
+import com.secureone.auth.twostep.TwoStepPolicyResolver;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
+/**
+ * Typed reads of the effective two-step policy (platform, tenant, application; see
+ * {@link TwoStepPolicyResolver}). The sign-in decision itself is in {@code TwoStepService}.
+ */
 @Service
 public class MfaPolicyService {
 
-    private final AuthSettingsService authSettings;
-    private final VerificationPolicyService verificationPolicy;
-    private final PlatformSettingsService platformSettings;
-    private final ApplicationSettingsService applicationSettings;
+    private final TwoStepPolicyResolver resolver;
     private final MfaFactorRepository mfaFactors;
-    private final TrustedDeviceService trustedDevices;
-    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings;
 
-    public MfaPolicyService(
-            AuthSettingsService authSettings,
-            VerificationPolicyService verificationPolicy,
-            PlatformSettingsService platformSettings,
-            ApplicationSettingsService applicationSettings,
-            MfaFactorRepository mfaFactors,
-            TrustedDeviceService trustedDevices,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationEffectiveSettingsService> effectiveSettings) {
-        this.effectiveSettings = effectiveSettings;
-        this.authSettings = authSettings;
-        this.verificationPolicy = verificationPolicy;
-        this.platformSettings = platformSettings;
-        this.applicationSettings = applicationSettings;
+    public MfaPolicyService(TwoStepPolicyResolver resolver, MfaFactorRepository mfaFactors) {
+        this.resolver = resolver;
         this.mfaFactors = mfaFactors;
-        this.trustedDevices = trustedDevices;
+    }
+
+    public Map<String, Object> resolvePolicy(UUID applicationId) {
+        return resolver.resolve(applicationId).policy();
+    }
+
+    /** off / optional / required. */
+    public String loginMfaRequired(UUID applicationId) {
+        return String.valueOf(resolvePolicy(applicationId).get("mode"));
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<TwoStepMethod> allowedMethods(UUID applicationId) {
+        Object raw = resolvePolicy(applicationId).get("methods");
+        List<String> ids = raw instanceof List<?> list ? (List<String>) list : List.of();
+        return ids.stream().map(TwoStepMethod::fromId).flatMap(java.util.Optional::stream).toList();
+    }
+
+    public TwoStepMethod.Strength minimumStrength(UUID applicationId) {
+        return TwoStepMethod.Strength.fromId(String.valueOf(resolvePolicy(applicationId).get("minimumStrength")));
     }
 
     /** Authenticator apps are allowed for the application this request is for (platform default otherwise). */
@@ -45,38 +48,20 @@ public class MfaPolicyService {
     }
 
     public boolean totpAvailable(UUID applicationId) {
-        return effectiveSettings.getObject().isMethodAvailable(applicationId, "m_totp");
+        return allowedMethods(applicationId).contains(TwoStepMethod.TOTP);
     }
 
     public boolean passkeysAvailable(UUID applicationId) {
-        return effectiveSettings.getObject().isMethodAvailable(applicationId, "m_passkey");
-    }
-
-    public String loginMfaRequired(UUID applicationId) {
-        Map<String, Object> login = verificationPolicy.loginPolicy(applicationId);
-        Object raw = login.get("mfaRequired");
-        return raw != null ? raw.toString().trim().toLowerCase() : "optional";
-    }
-
-    public Map<String, Object> resolvePolicy(UUID applicationId) {
-        if (applicationId == null) {
-            Map<String, Object> platform = platformSettings.get("mfa_policy");
-            if (platform == null || platform.isEmpty()) {
-                return MfaPolicyDefaults.platformDefaults();
-            }
-            return MfaPolicyDefaults.merge(platform, Map.of());
-        }
-        return applicationSettings.resolveMfaPolicy(applicationId);
+        List<TwoStepMethod> methods = allowedMethods(applicationId);
+        return methods.contains(TwoStepMethod.PASSKEY) || methods.contains(TwoStepMethod.SECURITY_KEY);
     }
 
     public boolean stepUpAfterPassword(UUID applicationId) {
-        Object raw = resolvePolicy(applicationId).get("stepUpAfterPassword");
-        return raw instanceof Boolean b ? b : true;
+        return bool(resolvePolicy(applicationId), "stepUpAfterPassword", true);
     }
 
     public boolean requirePasskeyWhenEnrolled(UUID applicationId) {
-        Object raw = resolvePolicy(applicationId).get("requirePasskeyWhenEnrolled");
-        return raw instanceof Boolean b && b;
+        return bool(resolvePolicy(applicationId), "requirePasskeyWhenEnrolled", false);
     }
 
     public int rememberDeviceDays(UUID applicationId) {
@@ -107,6 +92,10 @@ public class MfaPolicyService {
         return recoveryCodesPerEnrollment(null);
     }
 
+    public int freshStepMinutes(UUID applicationId) {
+        return intValue(resolvePolicy(applicationId), "freshStepMinutes", 5);
+    }
+
     public boolean hasVerifiedTotp(UUID userId) {
         return mfaFactors
                 .findFirstByUserIdAndTypeAndVerifiedTrueOrderByCreatedAtAsc(userId, "totp")
@@ -119,54 +108,13 @@ public class MfaPolicyService {
                 .isPresent();
     }
 
-    /**
-     * @return {@code true} when password auth succeeded but MFA verification is still required before a session
-     */
-    public boolean requiresMfaStepUp(UserAccount user, UUID applicationId) {
-        return requiresMfaStepUp(user, applicationId, null);
+    static boolean bool(Map<String, Object> map, String key, boolean fallback) {
+        Object val = map != null ? map.get(key) : null;
+        return val instanceof Boolean b ? b : fallback;
     }
 
-    public boolean requiresMfaStepUp(UserAccount user, UUID applicationId, HttpServletRequest request) {
-        if (request != null && trustedDevices.isTrusted(user.getId(), request)) {
-            return false;
-        }
-        if (!stepUpAfterPassword(applicationId)) {
-            return false;
-        }
-        String mode = loginMfaRequired(applicationId);
-        if ("off".equals(mode)) {
-            return false;
-        }
-        if (requirePasskeyWhenEnrolled(applicationId) && passkeysAvailable(applicationId) && hasVerifiedPasskey(user.getId())) {
-            return true;
-        }
-        if (totpAvailable(applicationId) && hasVerifiedTotp(user.getId())) {
-            return true;
-        }
-        return false;
-    }
-
-    public void assertMfaEnrolledIfRequired(UserAccount user, UUID applicationId) {
-        if (!totpAvailable(applicationId)) {
-            return;
-        }
-        if (!"required".equals(loginMfaRequired(applicationId))) {
-            return;
-        }
-        if (!hasVerifiedTotp(user.getId())) {
-            throw new IllegalStateException(
-                    "Multi-factor authentication is required. Enroll an authenticator app before signing in.");
-        }
-    }
-
-    private static int intValue(Map<String, Object> map, String key, int defaultValue) {
-        if (map == null) {
-            return defaultValue;
-        }
-        Object val = map.get(key);
-        if (val instanceof Number n) {
-            return n.intValue();
-        }
-        return defaultValue;
+    static int intValue(Map<String, Object> map, String key, int defaultValue) {
+        Object val = map != null ? map.get(key) : null;
+        return val instanceof Number n ? n.intValue() : defaultValue;
     }
 }

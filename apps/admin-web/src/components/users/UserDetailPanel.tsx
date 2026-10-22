@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserTwoStepPanel } from "@/components/users/UserTwoStepPanel";
 import { useState, type ReactNode } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { UserFormModal } from "@/components/forms/UserFormModal";
@@ -9,12 +10,7 @@ import { Badge, ComingSoonBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import {
-  userDeleteAction,
-  userDeleteMfaFactorAction,
-  userResetMfaAction,
-  userResetMfaMethodAction,
-} from "@/lib/actions";
+import { userDeleteAction } from "@/lib/actions";
 import { fetchApplicationAuthMethods } from "@/lib/api/application-settings";
 import {
   getApplicationUser,
@@ -30,14 +26,6 @@ import { statusTone } from "@/lib/status";
 import { isAuthMethodComingSoon } from "@/lib/coming-soon";
 import type { AuthMethod, LoginEvent, MfaFactorType, Role, Tenant, User } from "@/lib/types";
 import { LocalTime } from "@/components/ui/LocalTime";
-
-const MFA_LABEL: Record<string, string> = {
-  passkey: "Passkey",
-  totp: "Authenticator (TOTP)",
-  sms: "SMS",
-  email: "Email OTP",
-  push: "Push",
-};
 
 const MFA_METHOD_TO_FACTOR: Record<string, MfaFactorType> = {
   m_totp: "totp",
@@ -140,9 +128,8 @@ export function UserDetailPanel({
   }
 
   useDeferredEffect(() => {
-    if (tab === "mfa" && !showMfaTab) setTab("overview");
     if (tab === "auth" && !showAuthTab) setTab("overview");
-  }, [tab, showMfaTab, showAuthTab]);
+  }, [tab, showAuthTab]);
 
   async function reloadUser() {
     const u = await getApplicationUser(applicationId, user.id);
@@ -162,25 +149,15 @@ export function UserDetailPanel({
     }
   }
 
-  function afterMfaFormSubmit() {
-    window.setTimeout(() => {
-      void reloadUser().then(() => onUserChanged?.());
-    }, 400);
-  }
-
   async function handleUserUpdated() {
     await reloadUser();
     onUserChanged?.();
   }
 
-  const hiddenApp = <input type="hidden" name="applicationId" value={applicationId} />;
-
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     { id: "security", label: "Security" },
-    ...(showMfaTab
-      ? [{ id: "mfa" as const, label: "MFA", count: visibleMfaFactors.length }]
-      : []),
+    { id: "mfa" as const, label: "Two-step", count: user.mfaFactors.length },
     { id: "roles", label: "Roles", count: user.roleIds.length },
     ...(showAuthTab ? [{ id: "auth" as const, label: "Sign-in methods" }] : []),
     { id: "signins", label: "Sign-ins", count: logins.length },
@@ -419,94 +396,8 @@ export function UserDetailPanel({
           />
         )}
 
-        {tab === "mfa" && showMfaTab && (
-          <div className="flex min-h-0 flex-1 flex-col gap-6">
-            <section>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm text-muted">
-                  MFA types enabled for this application. Remove factors or reset by method.
-                </p>
-                {visibleMfaFactors.length > 0 && (
-                  <form action={userResetMfaAction} onSubmit={afterMfaFormSubmit}>
-                    <input type="hidden" name="id" value={user.id} />
-                    {hiddenApp}
-                    <Button type="submit" variant="danger" size="sm">
-                      Reset all MFA
-                    </Button>
-                  </form>
-                )}
-              </div>
-              {visibleMfaFactors.length > 0 ? (
-                <ul className="divide-y divide-ui rounded-xl border border-ui">
-                  {visibleMfaFactors.map((f) => (
-                    <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-ui">
-                          {MFA_LABEL[f.type] ?? f.type}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {f.label} · added <LocalTime value={f.addedAt} />
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge tone={f.verified ? "success" : "warning"}>
-                          {f.verified ? "Verified" : "Pending"}
-                        </Badge>
-                        <form action={userDeleteMfaFactorAction} onSubmit={afterMfaFormSubmit}>
-                          <input type="hidden" name="id" value={user.id} />
-                          <input type="hidden" name="factorId" value={f.id} />
-                          {hiddenApp}
-                          <Button type="submit" variant="ghost" size="sm">
-                            Remove
-                          </Button>
-                        </form>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="rounded-xl border border-dashed border-ui px-6 py-8 text-center text-sm text-muted">
-                  No enrolled factors for enabled MFA methods.
-                </p>
-              )}
-            </section>
-            <section>
-              <h3 className="text-sm font-semibold text-ui">By MFA method</h3>
-              <ul className="mt-2 space-y-2">
-                {enabledMfaMethods.map((m) => {
-                  const factorType = factorTypeForMethodId(m.id);
-                  const enrolled = factorType
-                    ? user.mfaFactors.filter((f) => f.type === factorType)
-                    : [];
-                  return (
-                    <li
-                      key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ui px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-ui">{m.name}</p>
-                        <p className="text-xs text-muted">
-                          {enrolled.length > 0
-                            ? `${enrolled.length} enrolled factor(s)`
-                            : "Not enrolled"}
-                        </p>
-                      </div>
-                      {enrolled.length > 0 && (
-                        <form action={userResetMfaMethodAction} onSubmit={afterMfaFormSubmit}>
-                          <input type="hidden" name="id" value={user.id} />
-                          <input type="hidden" name="methodId" value={m.id} />
-                          {hiddenApp}
-                          <Button type="submit" variant="secondary" size="sm">
-                            Reset {m.name}
-                          </Button>
-                        </form>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          </div>
+        {tab === "mfa" && (
+          <UserTwoStepPanel userId={user.id} applicationId={applicationId} />
         )}
 
         {tab === "roles" && (

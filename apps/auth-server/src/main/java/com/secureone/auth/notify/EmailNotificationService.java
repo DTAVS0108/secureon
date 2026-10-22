@@ -196,6 +196,36 @@ public class EmailNotificationService {
         sendTemplated(ctx, user.getEmail(), "account_locked", vars, List.of(), List.of());
     }
 
+    /** Tells the user about a change to their sign-in methods; {@code event} is one plain sentence. */
+    public void sendSecurityNotice(UUID applicationId, UserAccount user, String event, String accountLink) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            return;
+        }
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        Map<String, String> vars = userVariables(ctx, user, accountLink);
+        vars.put("securityEvent", event);
+        sendTemplated(ctx, user.getEmail(), "account_security_notice", vars, List.of(), List.of());
+    }
+
+    /** Reminds a user to set up two-step verification before {@code deadline} (already formatted). */
+    public void sendTwoStepReminder(UUID applicationId, UserAccount user, String deadline, String signInLink) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            return;
+        }
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        Map<String, String> vars = userVariables(ctx, user, signInLink);
+        vars.put("deadline", deadline);
+        sendTemplated(ctx, user.getEmail(), "two_step_setup_reminder", vars, List.of(), List.of());
+    }
+
     public void sendAccountSuspended(UUID applicationId, UserAccount user) {
         sendAccountStatusEmail(applicationId, user, "account_suspended");
     }

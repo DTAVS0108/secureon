@@ -25,6 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/v1/tenants/{tenantId}/scim")
 public class TenantScimTokenController {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
+
     private final ScimTenantTokens tokens;
     private final String publicBaseUrl;
 
@@ -42,7 +45,10 @@ public class TenantScimTokenController {
     /** Creates or replaces the token. The raw token is returned only in this response. */
     @PostMapping("/token")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> issue(@PathVariable UUID tenantId) {
+    public Map<String, Object> issue(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
+            @PathVariable UUID tenantId) {
+        stepUp.require(stepUpRequest); // a recent second step from the admin
         return Map.of("token", tokens.issue(tenantId), "baseUrl", publicBaseUrl + "/scim/v2");
     }
 

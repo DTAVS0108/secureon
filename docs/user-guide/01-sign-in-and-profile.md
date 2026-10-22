@@ -49,7 +49,7 @@ Operators must use an authenticator app (Google Authenticator, Microsoft Authent
 
 - **First sign-in:** *Set up an authenticator app. The admin console requires one.* Scan the QR code (**QR code for your authenticator app**), type the 6-digit code into **Authenticator code** and press **Confirm and sign in**.
 - **Save your recovery codes:** after enrolment you see one-time recovery codes. Each signs you in once if you lose your phone. Use **Copy codes**, store them in a password manager, then press **I have saved these codes**. They are not shown again.
-- **Later sign-ins:** *Enter the code from your authenticator app.* Lost your phone? **Lost your device? Use a recovery code** switches the field to **Recovery code**; **Use authenticator code** switches back.
+- **Later sign-ins:** *Enter the code from your authenticator app.* Lost your phone? **Can't use your authenticator app? Try another way** lists every option enabled for you (authenticator app, passkey or security key if you registered one, recovery code); pick one, and **Try another way** again to switch back.
 - **Start over** cancels this step and returns to the email/password form. **Signing in as** shows which account is being signed in.
 
 ### Emergency access
@@ -69,7 +69,7 @@ Operators must use an authenticator app (Google Authenticator, Microsoft Authent
 
 ## My profile
 
-Open it by clicking your initials and name at the right of the top bar (tooltip **My profile**). The panel says *Account details, password, and MFA*. Close it with **×**.
+Open it by clicking your initials and name at the right of the top bar (tooltip **My profile**). The panel says *Account details, password, and MFA*. Operators with a passkey or security key can use it at sign-in (**Use your passkey or security key**); sensitive console actions ask **Verify it's you** again, see [Two-step verification](12-two-step-verification.md#admin-actions-for-a-user). Close it with **×**.
 
 ### Account
 
