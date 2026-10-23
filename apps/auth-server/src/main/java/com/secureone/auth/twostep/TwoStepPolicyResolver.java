@@ -19,9 +19,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The effective two-step policy for an application: the platform policy, then the tenant's defaults, then the
  * application's own settings. Each level may only change what the levels above allow (lock modes:
- * locked / stricter only / open). The application's own settings count only while it has its own two-factor
- * settings: the platform opens Two Factor Authentication to applications and the application's "Two Factor Authentication"
- * feature switch is on; otherwise it uses the platform and tenant policy, and its saved values wait unused.
+ * locked / stricter only / open). While the platform opens Two Factor Authentication to applications, each
+ * application's "Two Factor Authentication" switch (Feature flags) decides: on, its own settings apply; off, two-factor
+ * is off for it (its saved values wait unused), unless the platform or tenant locks the requirement. While the
+ * platform does not open it, the platform and tenant policy applies.
  * Reads run in their own platform-scoped transaction because sign-in has no tenant scope yet.
  */
 @Service
@@ -72,11 +73,36 @@ public class TwoStepPolicyResolver {
         Map<String, Object> afterTenant = MfaPolicyDefaults.applyLayer(platform, platformLocks, tenantRaw);
         Map<String, String> locks = MfaPolicyDefaults.combineLocks(
                 platformLocks, MfaPolicyDefaults.locks(tenantRaw.get(MfaPolicyDefaults.LOCKS)));
-        Map<String, Object> own = new LinkedHashMap<>(hasOwnSettings(applicationId) ? appSetting(applicationId, KEY) : Map.of());
-        own.keySet().removeAll(MfaPolicyDefaults.NOT_PER_APPLICATION);
-        Map<String, Object> effective = MfaPolicyDefaults.applyLayer(afterTenant, locks, own);
+        Map<String, Object> effective;
+        if (!exposure.isExposed(OWN_SETTINGS_EXPOSURE)) {
+            // Applications cannot manage two-factor: the platform and tenant settings apply.
+            effective = new LinkedHashMap<>(afterTenant);
+        } else if (!switchOn(applicationId)) {
+            // The application turned Two Factor Authentication off: no second step, unless the platform or tenant
+            // locks whether it is required (locked or stricter only), which then still applies.
+            effective = new LinkedHashMap<>(afterTenant);
+            if (!locks.containsKey("mode")) {
+                effective.put("mode", "off");
+            }
+        } else {
+            Map<String, Object> own = new LinkedHashMap<>(appSetting(applicationId, KEY));
+            own.keySet().removeAll(MfaPolicyDefaults.NOT_PER_APPLICATION);
+            effective = MfaPolicyDefaults.applyLayer(afterTenant, locks, own);
+        }
         effective.put(MfaPolicyDefaults.LOCKS, locks);
         return new Resolved(effective, tenantId, locks);
+    }
+
+    private boolean switchOn(UUID applicationId) {
+        return Boolean.TRUE.equals(appSetting(applicationId, OWN_SETTINGS_KEY).get("tabEnabled"));
+    }
+
+    /**
+     * Whether the application turned Two Factor Authentication off (its Feature flags switch, while applications may
+     * manage it): then sign-in has no second step unless the platform or tenant locks the requirement.
+     */
+    public boolean switchedOff(UUID applicationId) {
+        return applicationId != null && exposure.isExposed(OWN_SETTINGS_EXPOSURE) && !switchOn(applicationId);
     }
 
     /**
@@ -84,9 +110,7 @@ public class TwoStepPolicyResolver {
      * applications (Platform settings → For applications) and its "Two Factor Authentication" switch is on.
      */
     public boolean hasOwnSettings(UUID applicationId) {
-        return applicationId != null
-                && exposure.isExposed(OWN_SETTINGS_EXPOSURE)
-                && Boolean.TRUE.equals(appSetting(applicationId, OWN_SETTINGS_KEY).get("tabEnabled"));
+        return applicationId != null && exposure.isExposed(OWN_SETTINGS_EXPOSURE) && switchOn(applicationId);
     }
 
     /** Exposure section that opens two-factor settings to applications (Platform settings → For applications). */

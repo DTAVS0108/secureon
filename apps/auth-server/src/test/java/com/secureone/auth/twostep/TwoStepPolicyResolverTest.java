@@ -74,12 +74,40 @@ class TwoStepPolicyResolverTest {
     }
 
     @Test
-    void switchOffMeansPlatformAndTenantSettings() {
+    void switchOffMeansTwoFactorOffForTheApplication() {
         when(exposure.isExposed("two-factor")).thenReturn(true);
         switchOn(false);
 
         assertFalse(resolver.hasOwnSettings(app));
-        assertEquals("optional", resolver.resolve(app).policy().get("mode"), "saved values wait unused");
+        assertTrue(resolver.switchedOff(app));
+        assertEquals("off", resolver.resolve(app).policy().get("mode"), "saved 'required' waits unused");
+    }
+
+    @Test
+    void neverSwitchedOnIsOffToo() {
+        when(exposure.isExposed("two-factor")).thenReturn(true);
+
+        assertEquals("off", resolver.resolve(app).policy().get("mode"));
+    }
+
+    @Test
+    void aLockedRequirementStillAppliesWhenSwitchedOff() {
+        when(platformSettings.get(TwoStepPolicyResolver.KEY))
+                .thenReturn(Map.of("mode", "required", "locks", Map.of("mode", "locked")));
+        when(exposure.isExposed("two-factor")).thenReturn(true);
+        switchOn(false);
+
+        assertEquals("required", resolver.resolve(app).policy().get("mode"), "a compliance minimum can't be switched off");
+    }
+
+    @Test
+    void aStricterOnlyRequirementStillAppliesWhenSwitchedOff() {
+        when(tenantSettings.get(tenant, TwoStepPolicyResolver.KEY))
+                .thenReturn(Map.of("mode", "required", "locks", Map.of("mode", "stricter")));
+        when(exposure.isExposed("two-factor")).thenReturn(true);
+        switchOn(false);
+
+        assertEquals("required", resolver.resolve(app).policy().get("mode"));
     }
 
     @Test

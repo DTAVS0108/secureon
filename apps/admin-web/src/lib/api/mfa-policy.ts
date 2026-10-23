@@ -38,6 +38,8 @@ export type MfaPolicy = {
   inheritsPlatformDefaults?: boolean;
   /** Application: false while its "Two Factor Authentication" switch is off (its own values are not applied). */
   ownSettings?: boolean;
+  /** Application: its switch is off, so two-factor is off for it (unless the platform or tenant locks it). */
+  switchedOff?: boolean;
 };
 
 export const TWO_STEP_METHODS: { id: TwoStepMethodId; label: string; strength: TwoStepStrength; hint: string }[] = [

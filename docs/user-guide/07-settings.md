@@ -212,7 +212,7 @@ Secrets are stored encrypted and can be left blank to keep the saved value.
 
 Which second-step options users can use, whether it is **Off**, **Optional** or **Required**, the grace period, reminders, remembered devices and the sign-in limits. Platform settings also have a lock menu on each setting that decides what tenants and applications may change; tenants have the same page under **Tenants › {tenant} › Two Factor Authentication**. Every field is described in [Two-step verification](12-two-step-verification.md#settings).
 
-Second-step options are chosen here only (not under Sign-in methods). In application settings this tab appears only when the platform opens **Two Factor Authentication** to applications (**For applications**) and the application's **Feature flags › Settings tabs › Two Factor Authentication** switch is on. While the switch is off the application uses the platform and tenant settings; values saved earlier are kept but not applied (the tab shows *Not applied* if it is opened in that state).
+Second-step options are chosen here only (not under Sign-in methods). In application settings this tab appears only when the platform opens **Two Factor Authentication** to applications (**For applications**) and the application's **Feature flags › Settings tabs › Two Factor Authentication** switch is on. While the switch is off, two-factor is off for the application: sign-in never asks a second step, and the application's user pages hide the **Two-step** tab and 2FA badges. If the platform or tenant locks **Two Factor Authentication** (the mode) as **Locked** or **Only stricter**, that requirement still applies. Values saved earlier are kept for when the switch is turned on again.
 
 ### Password policy
 

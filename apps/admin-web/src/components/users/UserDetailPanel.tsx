@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { UserTwoStepPanel } from "@/components/users/UserTwoStepPanel";
+import { fetchUserTwoStep } from "@/lib/api/mfa-policy";
 import { useState, type ReactNode } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { UserFormModal } from "@/components/forms/UserFormModal";
@@ -59,13 +60,15 @@ export function UserDetailPanel({
   const [authMethods, setAuthMethods] = useState<AuthMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [authSaving, setAuthSaving] = useState<string | null>(null);
+  // Off when the application turned Two Factor Authentication off (no second step, nothing to manage here).
+  const [twoFactorOn, setTwoFactorOn] = useState(true);
 
   const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email;
   const roleById = new Map(roles.map((r) => [r.id, r]));
 
   const enabledAppMethods = authMethods.filter((m) => m.enabled);
   // Two-factor options are decided by the application's Two Factor Authentication settings, not by the sign-in
-  // method catalog, so the Two-step tab is always there.
+  // method catalog: the Two-step tab shows unless two-factor is off for this application.
   const enabledSignInMethods = enabledAppMethods.filter(
     (m) => m.category === "primary" || m.category === "federation",
   );
@@ -95,8 +98,15 @@ export function UserDetailPanel({
       getApplicationUser(applicationId, userSummary.id).then((u) => u && setUser(u)),
       listLoginEvents({ userId: userSummary.id, applicationId }).then(setLogins).catch(() => setLogins([])),
       fetchApplicationAuthMethods(applicationId).then(setAuthMethods).catch(() => setAuthMethods([])),
+      fetchUserTwoStep(userSummary.id, applicationId)
+        .then((v) => setTwoFactorOn(v.mode !== "off"))
+        .catch(() => setTwoFactorOn(true)),
     ]).finally(() => setLoading(false));
   }, [userSummary.id, applicationId]);
+
+  useDeferredEffect(() => {
+    if (tab === "mfa" && !twoFactorOn) setTab("overview");
+  }, [tab, twoFactorOn]);
 
   async function applyUserChange(action: () => Promise<void>) {
     setActionBusy(true);
@@ -139,7 +149,7 @@ export function UserDetailPanel({
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     { id: "security", label: "Security" },
-    { id: "mfa" as const, label: "Two-step", count: user.mfaFactors.length },
+    ...(twoFactorOn ? [{ id: "mfa" as const, label: "Two-step", count: user.mfaFactors.length }] : []),
     { id: "roles", label: "Roles", count: user.roleIds.length },
     ...(showAuthTab ? [{ id: "auth" as const, label: "Sign-in methods" }] : []),
     { id: "signins", label: "Sign-ins", count: logins.length },
@@ -255,10 +265,12 @@ export function UserDetailPanel({
               />
               <InfoRow label="Password set" value={user.hasPassword ? "Yes" : "No (invite pending)"} />
               <InfoRow label="Failed logins" value={String(user.failedLoginCount ?? 0)} />
-              <InfoRow
-                label="MFA factors"
-                value={user.mfaFactors.length > 0 ? String(user.mfaFactors.length) : "None"}
-              />
+              {twoFactorOn && (
+                <InfoRow
+                  label="Two-factor options"
+                  value={user.mfaFactors.length > 0 ? String(user.mfaFactors.length) : "None"}
+                />
+              )}
               <InfoRow
                 label="Roles"
                 value={
@@ -368,7 +380,7 @@ export function UserDetailPanel({
             user={user}
             applicationId={applicationId}
             mfaFactorCount={user.mfaFactors.length}
-            showMfaLink
+            showMfaLink={twoFactorOn}
             onChanged={async () => {
               await reloadUser();
               onUserChanged?.();
@@ -378,7 +390,7 @@ export function UserDetailPanel({
           />
         )}
 
-        {tab === "mfa" && (
+        {tab === "mfa" && twoFactorOn && (
           <UserTwoStepPanel userId={user.id} applicationId={applicationId} />
         )}
 

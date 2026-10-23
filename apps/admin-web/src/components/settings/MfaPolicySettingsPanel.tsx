@@ -47,7 +47,7 @@ const DEFAULTS: MfaPolicy = {
   locks: {},
 };
 
-const META_KEYS = ["scope", "inheritsPlatformDefaults", "overrides", "inherited", "platformLocks", "ownSettings"] as const;
+const META_KEYS = ["scope", "inheritsPlatformDefaults", "overrides", "inherited", "platformLocks", "ownSettings", "switchedOff"] as const;
 
 type Level = "platform" | "tenant" | "application";
 
@@ -170,8 +170,24 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
             data-testid="two-factor-not-applied"
             className="border-t border-ui bg-amber-500/10 px-5 py-3 text-sm text-ui"
           >
-            Not applied: <strong>Two Factor Authentication</strong> is off under this application&apos;s Feature
-            flags, so sign-in uses the platform and tenant settings shown here.
+            {policy.switchedOff ? (
+              policy.mode === "off" ? (
+                <>
+                  <strong>Two Factor Authentication</strong> is off under this application&apos;s Feature flags: sign-in
+                  never asks a second step. Values saved here are kept for when it is turned on again.
+                </>
+              ) : (
+                <>
+                  <strong>Two Factor Authentication</strong> is off under this application&apos;s Feature flags, but the
+                  platform or tenant locks it as <strong>{policy.mode}</strong>, so that still applies.
+                </>
+              )
+            ) : (
+              <>
+                Not applied: applications can&apos;t manage Two Factor Authentication (Platform settings → For
+                applications), so sign-in uses the platform and tenant settings shown here.
+              </>
+            )}
           </p>
         )}
         <ul className="divide-y divide-ui">

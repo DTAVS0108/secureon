@@ -66,7 +66,14 @@ Settings are layered: **platform → tenant → application**. Each level starts
 | **Tenants › {tenant} › Two Factor Authentication** | Platform operators and the tenant's Super Admin |
 | **Settings › Authentication › Two Factor Authentication** (application settings) | Application admins, once **Feature flags › Two Factor Authentication** is on |
 
-An application's own settings apply only while the platform opens **Authentication** to applications and the application's **Two Factor Authentication** switch (Feature flags) is on. Otherwise it signs in with the platform and tenant settings, and values it saved earlier wait unused.
+While the platform opens **Two Factor Authentication** to applications, each application's **Two Factor Authentication** switch (Feature flags) decides:
+
+| Switch | Sign-in to the application | Application console |
+|---|---|---|
+| **On** | Its own settings (starting from the platform and tenant defaults) | **Two-step** tab, 2FA badges and filter on users |
+| **Off** | No second step, no setup prompt, unless the platform or tenant **locks** the mode (Locked / Only stricter), which then applies | No Two-step tab, badges or filter; the user's account page says the application doesn't use it |
+
+Values saved while it was on are kept for when it is turned on again. While the platform does not open it to applications, every application uses the platform and tenant settings.
 
 | | Platform | Application |
 |---|---|---|

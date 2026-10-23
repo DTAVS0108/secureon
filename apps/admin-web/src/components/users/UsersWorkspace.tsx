@@ -277,17 +277,22 @@ export function UsersWorkspace({
         selected: statusFilter,
         onChange: setStatusFilter,
       },
-      {
-        id: "twoStep",
-        label: "Two-step verification",
-        options: (Object.keys(TWO_STEP_STATUS_LABELS) as TwoStepUserStatus[]).map((s) => ({
-          value: s,
-          label: TWO_STEP_STATUS_LABELS[s],
-          count: users.filter((u) => twoStep[u.id] === s).length,
-        })),
-        selected: twoStepFilter,
-        onChange: setTwoStepFilter,
-      },
+      // No statuses: two-factor is off for this application, so there is nothing to filter by.
+      ...(Object.keys(twoStep).length > 0
+        ? [
+            {
+              id: "twoStep",
+              label: "Two Factor Authentication",
+              options: (Object.keys(TWO_STEP_STATUS_LABELS) as TwoStepUserStatus[]).map((s) => ({
+                value: s,
+                label: TWO_STEP_STATUS_LABELS[s],
+                count: users.filter((u) => twoStep[u.id] === s).length,
+              })),
+              selected: twoStepFilter,
+              onChange: setTwoStepFilter,
+            },
+          ]
+        : []),
       ...(roles.length > 0
         ? [
             {

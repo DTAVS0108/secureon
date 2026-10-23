@@ -472,6 +472,12 @@
     }
 
     function render(st) {
+      // This application turned two-step verification off: nothing to set up or manage here.
+      if (st.mode === "off" && opts.applicationId) {
+        container.appendChild(el("p", { "data-testid": "two-step-off-for-app", class: "ts-muted",
+          text: "This application doesn't use two-step verification." }));
+        return;
+      }
       var statusText = {
         enabled: "On",
         off: "Off",

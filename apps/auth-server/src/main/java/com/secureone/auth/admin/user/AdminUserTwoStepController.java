@@ -106,7 +106,8 @@ public class AdminUserTwoStepController {
     @PostMapping("/api/admin/v1/applications/{applicationId}/users/two-step-statuses")
     public Map<String, String> appStatuses(@PathVariable UUID applicationId, @RequestBody StatusesRequest body) {
         Map<String, String> out = new LinkedHashMap<>();
-        if (body == null || body.userIds() == null) {
+        // Two-factor off for this application: no statuses, so its console shows no 2FA badges or filter.
+        if (body == null || body.userIds() == null || twoStep.offFor(applicationId)) {
             return out;
         }
         body.userIds().stream().distinct().limit(500).forEach(id -> users.findById(id).ifPresent(user ->

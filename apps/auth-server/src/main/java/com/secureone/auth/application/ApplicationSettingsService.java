@@ -461,9 +461,11 @@ public class ApplicationSettingsService {
         requireApplication(applicationId);
         Map<String, Object> merged = new java.util.LinkedHashMap<>(resolveMfaPolicy(applicationId));
         merged.put("scope", "application");
-        // False: the "Two Factor Authentication" switch is off (or Authentication is not open to applications),
-        // so sign-in uses the platform and tenant policy and any values saved here wait unused.
+        // False: the "Two Factor Authentication" switch is off (or Two Factor Authentication is not open to
+        // applications); any values saved here wait unused.
         merged.put("ownSettings", twoStepPolicy.hasOwnSettings(applicationId));
+        // True: the switch is off, so two-factor is off for this application unless the platform or tenant locks it.
+        merged.put("switchedOff", twoStepPolicy.switchedOff(applicationId));
         merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "mfa_policy"));
         // Which values this app sets itself, and what it inherits (platform, then tenant), for the settings page.
         merged.put("overrides", getAppMap(applicationId, "mfa_policy").map(m -> List.copyOf(m.keySet())).orElse(List.of()));

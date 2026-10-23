@@ -373,9 +373,9 @@ function FeatureFlagsPanel({
                     <code className="font-mono text-[10px] text-faint">two_factor_authentication</code>
                   </div>
                   <p className="text-xs text-muted">
-                    Give this application its own two-factor settings (Authentication → Two Factor
-                    Authentication). Off: it uses the platform and tenant settings; values saved here are kept
-                    but not applied.
+                    On: this application has two-factor, with its own settings (Authentication → Two Factor
+                    Authentication). Off: no second step at sign-in and no two-factor in this application&apos;s
+                    console, unless the platform or tenant locks it as required.
                   </p>
                 </div>
                 <Toggle

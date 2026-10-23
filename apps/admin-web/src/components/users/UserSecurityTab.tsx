@@ -59,18 +59,21 @@ export function UserSecurityTab({
         />
       </SecuritySection>
 
+      {/* showMfaLink false: two-factor is off for this application, so only the sign-in history remains. */}
       <SecuritySection
-        title="Multi-factor authentication"
+        title={showMfaLink ? "Two Factor Authentication" : "Sign-in history"}
         description={
-          mfaFactorCount > 0
-            ? `${mfaFactorCount} factor(s) enrolled. Manage factors on the MFA tab.`
-            : "No MFA factors enrolled for this user yet."
+          !showMfaLink
+            ? "Recent sign-ins of this user to this application."
+            : mfaFactorCount > 0
+              ? `${mfaFactorCount} option(s) set up. Manage them on the Two-step tab.`
+              : "No two-factor options set up for this user yet."
         }
       >
         <div className="flex flex-wrap gap-2">
           {showMfaLink && onOpenMfaTab && (
             <Button type="button" variant="secondary" size="sm" onClick={onOpenMfaTab}>
-              Manage MFA
+              Manage two-factor
             </Button>
           )}
           {onOpenSignInsTab && (

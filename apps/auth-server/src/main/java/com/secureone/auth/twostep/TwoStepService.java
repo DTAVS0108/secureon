@@ -415,6 +415,11 @@ public class TwoStepService {
         return states.get(userId, applicationId).extendedBy();
     }
 
+    /** Two-factor is off for this application (e.g. its Two Factor Authentication switch is off): nothing to manage. */
+    public boolean offFor(UUID applicationId) {
+        return "off".equals(policy.loginMfaRequired(applicationId));
+    }
+
     /** Status shown to the user and to admins. */
     public Map<String, Object> status(UserAccount user, UUID applicationId) {
         List<UserMethod> all = methods(user.getId());
