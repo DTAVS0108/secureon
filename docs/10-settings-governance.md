@@ -16,8 +16,9 @@ flowchart TD
 
 1. **Platform** (`/settings` or `/api/admin/v1/settings/*`) — super admin sets defaults and SMTP, auth catalog, flags, etc.
 2. **For applications** — toggles which sections appear under each app’s **Settings** (`app_settings_exposure` / V10 migration).
-3. **Application** (`/app/{id}/settings`) — only exposed sections. Each section has an explicit **Platform** vs **This application** control (`PUT .../settings/policy-source/{section}`). Platform mode shows tenant values read-only; application mode stores overrides in `application_setting`.
-4. **Public API** (`GET /api/v1/applications/{id}`) — optional unauthenticated manifest; requires exposure **and** per-app `enabled`.
+3. **Application** (`/app/{id}/settings`) — only exposed sections. A section **follows the platform** until its first saved change, which gives the application its own copy in `application_setting` (opening a page never does). A bar above each section says which it is and offers **Reset to platform** (`PUT .../settings/policy-source/{section}` with `platform`). V76 removed copies that only repeated the platform value, made by older consoles on page load.
+4. **Platform minimums** — for **Password policy**, **Verification & OTP**, **OAuth tokens** and **Sign-in methods**, an application can be stricter than the platform, never weaker (`PlatformMinimums`). A weaker save is refused with what the platform requires; values saved before the platform tightened are raised when read, so a stricter platform reaches every application. Sign-in methods the platform has off are off for every application.
+5. **Public API** (`GET /api/v1/applications/{id}`) — optional unauthenticated manifest; requires exposure **and** per-app `enabled`.
 
 ## Exposure section keys
 
@@ -31,7 +32,7 @@ flowchart TD
 | `appearance` | `appearance` | Appearance (client app theme for public API; separate from platform admin console theme) |
 | `user-directory` | `user_directory` | User directory |
 | `public-manifest` | `public_manifest` | Public API |
-| `token-policy` | `token_policy` | OAuth tokens (TTL, refresh rotation) — requires per-app `tabEnabled` |
+| `token-policy` | `token_policy` | OAuth tokens (TTL, refresh rotation) — the app's own policy exists only while its switch is on |
 | `verification-policy` | `verification_policy` | Verification (signup link vs OTP, OTP TTL, SMS) |
 
 ### Verification & OTP
@@ -48,8 +49,8 @@ Enable **email OTP login** (`m_email_otp`) and **SMS OTP login** (`m_sms`) under
 
 ### OAuth tokens (two-step enable)
 
-1. **Platform → For applications → OAuth tokens tab** — allows apps to offer token management.
-2. **Application → Settings → Feature flags** — toggle **OAuth tokens tab** (stored as `tabEnabled` on `token_policy`).
+1. **Platform → For applications → OAuth tokens tab** — allows apps to have their own token policy.
+2. **Application → Settings → Feature flags → Own OAuth token policy** — on: the application gets its own `token_policy`, starting from the platform's (never longer-lived than it); off: the row is removed and the platform's policy applies. The switch *is* the override: there is no separate `tabEnabled` (V76 removed it, and removed policies saved while it was off, which the token endpoint had still been applying).
 3. When both are on, the **OAuth tokens** tab appears and policy can be edited.
 
 ### Two Factor Authentication (application's own settings)
@@ -104,12 +105,28 @@ Migration `V41__trim_feature_flag_catalog.sql` strips removed keys from stored p
 
 `application.config` (OAuth client metadata) is separate from policy settings.
 
+## Standards the settings keep to
+
+Application (and platform) settings are limited so they cannot drift below the usual standards. Values stored before these limits are read within them; V77 tidied what was stored.
+
+| Area | Rule | Standard |
+|------|------|----------|
+| Integration › client URLs | Forgot-password, password-reset and magic-link pages must be `https://` (plain `http://` only for localhost) on a site the application's OAuth clients redirect to (`ClientUrlPolicy`). Others are refused on save and skipped when sending (links then use the hosted pages). | OWASP ASVS; RFC 9700 |
+| Email templates | Emails carrying a reset/sign-in link or a code never have CC/BCC. Security notices (password changed, sign-in changes, account locked) are always sent, whatever the template switch or "User email" says. Values are HTML-escaped in HTML bodies. | ASVS V2.5, V5.3; NIST SP 800-63B §6.1.2.3 |
+| Verification codes | 6–8 digits, valid 1–10 minutes (two-step codes too). | NIST SP 800-63B §5.1.3 |
+| Password policy | Defaults: 12+ characters, leaked-password check on, no character-type rules, no expiry. Up to 128 characters. New passwords are hashed with Argon2id; bcrypt hashes from before still work and are replaced at the next sign-in. The editor warns when an application has 2FA off and a minimum under 15. | NIST SP 800-63B §3.1.1; OWASP Password Storage |
+| SMTP | Certificates are checked against the host name. "None" (no TLS) only for a mail server on this machine or an internal service name. | ASVS V9 |
+| OAuth tokens | Access, ID and client-credentials tokens at most 1 hour; authorization codes at most 10 minutes; refresh tokens have an idle lifetime (renewed by each rotation) and a maximum lifetime (`refreshTokenAbsoluteSeconds`, default 30 days). | RFC 9700; RFC 6749 §4.1.2 |
+| Sign-in session | Platform: `secureone.session.max-lifetime` (24 h). Each application can ask people to sign in again sooner (`signInMaxAgeSeconds`, OAuth tokens tab), applied on `/oauth2/authorize` like OIDC `max_age`. | NIST SP 800-63B §7 |
+| Appearance | Colours must be hex, the logo an `https://` address, names plain text; bad values are refused, and stored ones fall back to the default. | ASVS V5 |
+| Public API | The manifest no longer names the password hash algorithm. | — |
+
 ## Password policy resolution
 
 Applications **inherit the platform password policy** until an application admin saves an override under **Application → Settings → Password policy**. After that:
 
-- The application uses **only** its stored `application_setting.password_policy` snapshot.
-- Platform changes no longer affect that application until the override is cleared (`DELETE .../settings/password-policy` or policy source reset to platform).
+- The application uses its stored `application_setting.password_policy`, raised to the platform minimums (see Flow, step 4).
+- Other platform changes no longer affect that application until the override is cleared (**Reset to platform**, `DELETE .../settings/password-policy`).
 
 Runtime enforcement (set/reset/change password, signup, admin set password) uses the resolved policy for the active `applicationId`. Token flows resolve `applicationId` from the invite/reset context or user membership when possible; otherwise platform policy applies.
 

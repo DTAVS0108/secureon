@@ -38,6 +38,14 @@ public class UserPasswordService {
         return credentials.findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(userId).isPresent();
     }
 
+    /** True when {@code plainPassword} is the account's current password. */
+    public boolean isCurrentPassword(UUID userId, String plainPassword) {
+        return plainPassword != null
+                && credentials.findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(userId)
+                        .map(cred -> passwordEncoder.matches(plainPassword, cred.getPasswordHash()))
+                        .orElse(false);
+    }
+
     public void setPassword(UUID userId, String plainPassword) {
         setPassword(userId, plainPassword, null);
     }

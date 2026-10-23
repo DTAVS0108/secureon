@@ -35,7 +35,8 @@ class LeakedPasswordServiceTest {
 
     @Test
     void breachCheckSanitizedInPolicy() {
-        assertFalse(com.secureone.auth.application.PasswordPolicySanitizer.breachCheckEnabled(
+        // NIST SP 800-63B: passwords are checked against leaked lists by default.
+        org.junit.jupiter.api.Assertions.assertTrue(com.secureone.auth.application.PasswordPolicySanitizer.breachCheckEnabled(
                 com.secureone.auth.application.PasswordPolicySanitizer.platformDefaults()));
     }
 }

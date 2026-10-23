@@ -141,9 +141,6 @@ export function NotificationsSettings({
     }
 
     async function fetchBundle(): Promise<NotificationsBundle> {
-      const { ensureApplicationPolicyScopes } = await import("@/lib/api/ensure-application-policy");
-      await ensureApplicationPolicyScopes(applicationId, ["notifications", "email"]);
-
       const [
         { notifications: n, email: e, error },
         { smtp: smtpLoaded, templates: templatesLoaded, emailTestUiEnabled: testUi, error: smtpError },
@@ -273,16 +270,9 @@ export function NotificationsSettings({
           />
           <SettingRow
             label="User email (transactional)"
-            hint="Verify email, password reset, and password-changed messages to end users"
+            hint="Verify email, password reset and sign-in links to end users. Security notices (password changed, sign-in changes, account locked) are always sent."
             checked={notifications.userEmailEnabled !== false}
             onChange={(v) => setNotifications({ ...notifications, userEmailEnabled: v })}
-          />
-          <SettingRow
-            label="Push notifications"
-            hint="Mobile / web push — not available yet"
-            comingSoon
-            checked={!!notifications.pushEnabled}
-            onChange={(v) => setNotifications({ ...notifications, pushEnabled: v })}
           />
           <SettingRow
             label="Audit alerts"

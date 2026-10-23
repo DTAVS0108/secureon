@@ -200,7 +200,8 @@ public class SettingsAdminController {
         if (stored == null || stored.isEmpty()) {
             return TokenPolicyDefaults.platformDefaults();
         }
-        return new HashMap<>(stored);
+        // What applies: values stored before the current limits are shown (and used) within them.
+        return TokenPolicyDefaults.sanitizeForSave(stored);
     }
 
     @PutMapping("/token-policy")

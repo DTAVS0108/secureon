@@ -86,6 +86,17 @@ public class TenantPasswordAuthenticationProvider implements AuthenticationProvi
             lockout.recordFailedAttempt(account.getId(), applicationId);
             throw new BadCredentialsException("Password does not match");
         }
+        if (passwordEncoder.upgradeEncoding(cred.getPasswordHash())) {
+            // Stored before Argon2id (bcrypt): re-hash now that the password is known. Never blocks sign-in.
+            try {
+                cred.setPasswordHash(passwordEncoder.encode(password));
+                cred.setAlgorithm(com.secureone.auth.application.PasswordPolicySanitizer.HASH_ALGORITHM);
+                credentials.save(cred);
+            } catch (RuntimeException e) {
+                org.slf4j.LoggerFactory.getLogger(TenantPasswordAuthenticationProvider.class)
+                        .warn("Could not upgrade the password hash for {}: {}", account.getId(), e.getMessage());
+            }
+        }
         passwordExpiry.enforceLoginAllowed(account, cred, null);
         return new UsernamePasswordAuthenticationToken(
                 user, password, AuthenticationAuthorities.withPasswordFactor(user.getAuthorities()));

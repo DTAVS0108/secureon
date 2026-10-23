@@ -10,6 +10,7 @@ import { AuthenticationSettingsPanel } from "@/components/settings/Authenticatio
 import { NotificationsSettings } from "@/components/settings/NotificationsSettings";
 import { PlatformNotificationsSettings } from "@/components/settings/PlatformNotificationsSettings";
 import { ApplicationIntegrationSettings } from "@/components/settings/ApplicationIntegrationSettings";
+import { PolicySourceBar } from "@/components/settings/PolicySourceBar";
 import { PublicManifestSettings } from "@/components/settings/PublicManifestSettings";
 import { ScimSettingsPanel } from "@/components/settings/ScimSettingsPanel";
 import { SettingsScopeBanner } from "@/components/settings/SettingsScopeBanner";
@@ -198,6 +199,9 @@ export function SettingsTabs({
   const [mfaGateReady, setMfaGateReady] = useState(scopeMode === "platform");
 
   const platformExposesTokens = Boolean(exposure["token-policy"]);
+  // Bumped by "Reset to platform" so the open section reloads the platform values.
+  const [resetNonce, setResetNonce] = useState(0);
+  const bumpReset = useCallback(() => setResetNonce((n) => n + 1), []);
   const loadedExposureAppRef = useRef<string | null>(null);
 
   useDeferredEffect(() => {
@@ -422,14 +426,23 @@ export function SettingsTabs({
         />
       )}
       {exposureReady && tab === "appearance" && applicationId && (
-        <ApplicationAppearanceSettings applicationId={applicationId} />
+        <>
+          <PolicySourceBar applicationId={applicationId} exposureKeys={["appearance"]} label="Appearance" onReset={bumpReset} />
+          <ApplicationAppearanceSettings key={resetNonce} applicationId={applicationId} />
+        </>
       )}
       {exposureReady && tab === "appearance" && !applicationId && <AppearanceSettings />}
       {exposureReady && tab === "users" && applicationId && (
-        <UserDirectorySettings applicationId={applicationId} />
+        <>
+          <PolicySourceBar applicationId={applicationId} exposureKeys={["user-directory"]} label="User directory" onReset={bumpReset} />
+          <UserDirectorySettings key={resetNonce} applicationId={applicationId} />
+        </>
       )}
       {exposureReady && tab === "public-api" && applicationId && (
-        <PublicManifestSettings applicationId={applicationId} />
+        <>
+          <PolicySourceBar applicationId={applicationId} exposureKeys={["public-manifest"]} label="Public API" onReset={bumpReset} />
+          <PublicManifestSettings key={resetNonce} applicationId={applicationId} />
+        </>
       )}
       {exposureReady && tab === "tokens" && tokenTabEnabled && (
         <TokenPolicySettings applicationId={applicationId} />
@@ -464,11 +477,21 @@ export function SettingsTabs({
               {visibleAuthSubTabs.find((sub) => sub.id === authSubTab)?.description}
             </p>
           </div>
+          {applicationId && authSubTab === "login" && (
+            <PolicySourceBar applicationId={applicationId} exposureKeys={["auth-methods"]} label="Sign-in methods" hasMinimums onReset={bumpReset} />
+          )}
+          {applicationId && authSubTab === "verification" && (
+            <PolicySourceBar applicationId={applicationId} exposureKeys={["verification-policy", "sms"]} label="Verification & OTP" hasMinimums onReset={bumpReset} />
+          )}
+          {applicationId && authSubTab === "password" && (
+            <PolicySourceBar applicationId={applicationId} exposureKeys={["password-policy"]} label="Password policy" hasMinimums onReset={bumpReset} />
+          )}
           {authSubTab === "verification" && (
-            <VerificationSettingsPanel applicationId={applicationId} />
+            <VerificationSettingsPanel key={resetNonce} applicationId={applicationId} />
           )}
           {authSubTab !== "verification" && (
             <AuthenticationSettingsPanel
+              key={`${authPanelTab}-${resetNonce}`}
               applicationId={applicationId}
               tab={authPanelTab}
               mfaTabEnabled={scopeMode === "platform" ? true : mfaTabEnabled}
@@ -489,8 +512,12 @@ export function SettingsTabs({
         </>
       )}
       {exposureReady && tab === "flags" && scopeMode === "platform" && <PlatformFeaturesCard />}
+      {exposureReady && tab === "flags" && applicationId && Boolean(exposure["feature-flags"]) && (
+        <PolicySourceBar applicationId={applicationId} exposureKeys={["feature-flags"]} label="Feature flags" onReset={bumpReset} />
+      )}
       {exposureReady && tab === "flags" && (
         <AuthenticationSettingsPanel
+          key={`flags-${resetNonce}`}
           applicationId={applicationId}
           tab="flags"
           platformExposesTwoFactor={scopeMode === "application" && Boolean(exposure["two-factor"])}

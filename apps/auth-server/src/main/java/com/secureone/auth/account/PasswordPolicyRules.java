@@ -24,7 +24,6 @@ public final class PasswordPolicyRules {
         out.put("requireSymbol", bool(policy, "requireSymbol"));
         out.put("expiryDays", expiryDays(policy));
         out.put("historyCount", historyCount(policy));
-        out.put("hashAlgorithm", hashAlgorithm(policy));
         out.put("breachCheck", breachCheck(policy));
         out.put("requirements", requirements(policy));
         return out;
@@ -69,6 +68,9 @@ public final class PasswordPolicyRules {
         return rules;
     }
 
+    /** Longest password accepted (NIST SP 800-63B: allow at least 64; a cap keeps hashing cheap to refuse). */
+    public static final int MAX_LENGTH = 128;
+
     public static void validate(String password, Map<String, Object> policy) {
         if (password == null) {
             throw new IllegalArgumentException("Password is required.");
@@ -76,6 +78,9 @@ public final class PasswordPolicyRules {
         int minLength = minLength(policy);
         if (password.length() < minLength) {
             throw new IllegalArgumentException("Password must be at least " + minLength + " characters.");
+        }
+        if (password.length() > MAX_LENGTH) {
+            throw new IllegalArgumentException("Password can be at most " + MAX_LENGTH + " characters.");
         }
         if (bool(policy, "requireUppercase") && !Pattern.compile("[A-Z]").matcher(password).find()) {
             throw new IllegalArgumentException("Password must include an uppercase letter.");
@@ -86,7 +91,6 @@ public final class PasswordPolicyRules {
         if (bool(policy, "requireSymbol") && !Pattern.compile("[^a-zA-Z0-9]").matcher(password).find()) {
             throw new IllegalArgumentException("Password must include a symbol.");
         }
-        hashAlgorithm(policy);
     }
 
     public static void validateNotInHistory(

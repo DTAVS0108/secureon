@@ -81,6 +81,10 @@ public class PlatformOperatorService {
                 && user.getTenantId().equals(platformTenant().getId())) {
             throw new ConflictException("You cannot remove your own platform operator role.");
         }
+        // With none left, nobody can run the platform (and approvals have no one to decide them).
+        if (operators.isOperator(userId) && operators.list().size() <= 1) {
+            throw new ConflictException("Keep at least one platform operator: add another before removing this one.");
+        }
         if (!operators.revoke(userId)) {
             throw new ResourceNotFoundException("Platform operator not found");
         }

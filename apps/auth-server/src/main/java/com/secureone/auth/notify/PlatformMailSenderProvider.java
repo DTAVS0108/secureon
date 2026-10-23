@@ -121,9 +121,12 @@ public class PlatformMailSenderProvider {
             props.put("mail.smtp.socketFactory.port", String.valueOf(config.port()));
             props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
             props.put("mail.smtp.socketFactory.fallback", "false");
+            // Check the certificate is for this host (Jakarta Mail does not by default): stops interception.
+            props.put("mail.smtp.ssl.checkserveridentity", "true");
         } else if ("starttls".equals(security)) {
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.starttls.required", "true");
+            props.put("mail.smtp.ssl.checkserveridentity", "true");
         }
 
         return sender;

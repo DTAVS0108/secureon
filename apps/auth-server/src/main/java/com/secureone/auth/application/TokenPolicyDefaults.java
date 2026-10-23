@@ -20,6 +20,10 @@ public final class TokenPolicyDefaults {
         defaults.put("reuseRefreshTokens", false);
         defaults.put("rotateRefreshTokens", true);
         defaults.put("refreshTokenReuseDetection", true);
+        // Longest a sign-in can be kept alive by refreshing (each refresh renews the idle lifetime above).
+        defaults.put("refreshTokenAbsoluteSeconds", 2_592_000);
+        // Ask people to sign in again after this long for this application; 0 = the platform session limit.
+        defaults.put("signInMaxAgeSeconds", 0);
         return defaults;
     }
 
@@ -48,25 +52,25 @@ public final class TokenPolicyDefaults {
     public static Map<String, Object> sanitizeForSave(Map<String, Object> body) {
         Map<String, Object> defaults = platformDefaults();
         Map<String, Object> out = new LinkedHashMap<>();
-        copyInt(body, out, "accessTokenTtlSeconds", defaults, 60, 86_400);
-        copyInt(body, out, "refreshTokenTtlSeconds", defaults, 0, 31_536_000);
-        copyInt(body, out, "authorizationCodeTtlSeconds", defaults, 60, 3600);
-        copyInt(body, out, "idTokenTtlSeconds", defaults, 60, 86_400);
-        copyInt(body, out, "clientCredentialsTtlSeconds", defaults, 60, 86_400);
+        // OAuth 2.0 Security BCP (RFC 9700): short-lived access tokens; authorization codes at most 10 minutes
+        // (RFC 6749 4.1.2).
+        copyInt(body, out, "accessTokenTtlSeconds", defaults, 60, 3600);
+        copyInt(body, out, "refreshTokenTtlSeconds", defaults, 300, 31_536_000);
+        copyInt(body, out, "authorizationCodeTtlSeconds", defaults, 60, 600);
+        copyInt(body, out, "idTokenTtlSeconds", defaults, 60, 3600);
+        copyInt(body, out, "clientCredentialsTtlSeconds", defaults, 60, 3600);
         copyInt(body, out, "deviceCodeTtlSeconds", defaults, 60, 3600);
+        copyInt(body, out, "refreshTokenAbsoluteSeconds", defaults, 3600, 31_536_000);
+        copyInt(body, out, "signInMaxAgeSeconds", defaults, 0, 86_400);
+        if ((int) out.get("signInMaxAgeSeconds") > 0 && (int) out.get("signInMaxAgeSeconds") < 300) {
+            out.put("signInMaxAgeSeconds", 300);
+        }
         out.put("refreshTokensEnabled", bool(body, "refreshTokensEnabled", defaults));
         boolean reuse = bool(body, "reuseRefreshTokens", defaults);
         out.put("reuseRefreshTokens", reuse);
         out.put("rotateRefreshTokens", body.containsKey("rotateRefreshTokens") ? bool(body, "rotateRefreshTokens", defaults) : !reuse);
         out.put("refreshTokenReuseDetection", bool(body, "refreshTokenReuseDetection", defaults));
-        if (body.containsKey("tabEnabled")) {
-            out.put("tabEnabled", Boolean.TRUE.equals(body.get("tabEnabled")));
-        }
         return out;
-    }
-
-    public static boolean tabEnabled(Map<String, Object> policy) {
-        return Boolean.TRUE.equals(policy.get("tabEnabled"));
     }
 
     private static void copyInt(

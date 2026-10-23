@@ -2,13 +2,13 @@ import type { FeatureFlag, PasswordPolicy } from "@/lib/types";
 
 const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
   minLength: 12,
-  requireUppercase: true,
-  requireNumber: true,
-  requireSymbol: true,
+  requireUppercase: false,
+  requireNumber: false,
+  requireSymbol: false,
   expiryDays: 0,
   historyCount: 5,
-  hashAlgorithm: "bcrypt",
-  breachCheck: false,
+  hashAlgorithm: "argon2id",
+  breachCheck: true,
   maxFailedAttempts: 5,
   lockoutDurationMinutes: 15,
 };
@@ -45,11 +45,12 @@ export function normalizePasswordPolicy(raw: unknown): PasswordPolicy {
     ),
     inheritsPlatformDefaults:
       typeof r.inheritsPlatformDefaults === "boolean" ? r.inheritsPlatformDefaults : undefined,
+    twoFactorMode: typeof r.twoFactorMode === "string" ? r.twoFactorMode : undefined,
   };
 }
 
 export function passwordPolicyPayload(policy: PasswordPolicy): PasswordPolicy {
-  const { inheritsPlatformDefaults: _i, requirements: _r, ...payload } = policy;
+  const { inheritsPlatformDefaults: _i, requirements: _r, twoFactorMode: _m, ...payload } = policy;
   return normalizePasswordPolicy(payload);
 }
 

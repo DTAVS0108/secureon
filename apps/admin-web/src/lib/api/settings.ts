@@ -65,6 +65,10 @@ export type EmailTemplate = {
   bcc?: string[];
   enabled?: boolean;
   variables?: string[];
+  /** Server: carries a reset/sign-in link or a code, so it goes to the user only (no cc or bcc). */
+  carriesSecret?: boolean;
+  /** Server: a security notice that is always sent (it cannot be switched off). */
+  alwaysSent?: boolean;
 };
 
 export type EmailTemplatesMap = Record<string, EmailTemplate>;

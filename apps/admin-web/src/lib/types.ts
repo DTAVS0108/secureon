@@ -225,6 +225,8 @@ export type AuthMethod = {
   enabled: boolean;
   category: "primary" | "mfa" | "federation";
   implemented?: boolean;
+  /** Application settings: false when the platform has this method off (then it is off here too). */
+  platformEnabled?: boolean;
 };
 
 export type FeatureFlag = {
@@ -262,4 +264,6 @@ export type PasswordPolicy = {
   lockoutDurationMinutes?: number;
   requirements?: PasswordRequirement[];
   inheritsPlatformDefaults?: boolean;
+  /** Application policy: this application's Two Factor Authentication mode ("off": the password is the only factor). */
+  twoFactorMode?: string;
 };

@@ -32,7 +32,6 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      await ensureApplicationPolicyScope(applicationId, "appearance");
       const data = await fetchApplicationAppearance(applicationId).catch(() => ({}));
       const current = mergeClientAppearance(stripAppearanceMeta(data as Record<string, unknown>));
       lastSaved.current = JSON.stringify(toClientAppearancePayload(normalizeClientAppearance(current)));
@@ -56,6 +55,7 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
       if (JSON.stringify(payload) === lastSaved.current) return;
       saveTimer.current = setTimeout(async () => {
         try {
+          await ensureApplicationPolicyScope(applicationId, "appearance");
           const saved = await saveApplicationAppearance(applicationId, payload);
           const stored = mergeClientAppearance(stripAppearanceMeta(saved as Record<string, unknown>));
           lastSaved.current = JSON.stringify(toClientAppearancePayload(normalizeClientAppearance(stored)));

@@ -30,8 +30,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <ul>
  *   <li>Absolute lifetime: a session ends {@code secureone.session.max-lifetime} after its sign-in (default 24 h,
  *       NIST SP 800-63B AAL2), whatever the activity.</li>
- *   <li>OIDC {@code max_age} on {@code /oauth2/authorize}: a sign-in older than that is ended and the user signs in
- *       again.</li>
+ *   <li>OIDC {@code max_age} on {@code /oauth2/authorize}, and the application's own "sign in again after"
+ *       ({@code signInMaxAgeSeconds} in its OAuth token policy): a sign-in older than that is ended and the user
+ *       signs in again.</li>
  *   <li>OIDC {@code acr_values} asking for two steps ({@code 2}, or the MFA URNs): a one-step session goes through
  *       the second step first (when the user has an option; otherwise the token says {@code acr=1}).</li>
  * </ul>
@@ -46,14 +47,17 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
     private final Duration maxLifetime;
     private final ObjectProvider<MfaLoginService> mfaLogin;
     private final ObjectProvider<OAuthClientRepository> clients;
+    private final ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> applicationSettings;
 
     public SignInFreshnessFilter(
             @Value("${secureone.session.max-lifetime:24h}") Duration maxLifetime,
             ObjectProvider<MfaLoginService> mfaLogin,
-            ObjectProvider<OAuthClientRepository> clients) {
+            ObjectProvider<OAuthClientRepository> clients,
+            ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> applicationSettings) {
         this.maxLifetime = maxLifetime;
         this.mfaLogin = mfaLogin;
         this.clients = clients;
+        this.applicationSettings = applicationSettings;
     }
 
     @Override
@@ -74,7 +78,8 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
         if ("GET".equals(request.getMethod()) && "/oauth2/authorize".equals(request.getRequestURI())) {
             String here = request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : "");
             String maxAge = request.getParameter("max_age");
-            if (maxAge != null && signedInAt != null && tooOld(signedInAt, maxAge)) {
+            if (signedInAt != null && (maxAge != null && tooOld(signedInAt, maxAge)
+                    || tooOld(signedInAt, String.valueOf(applicationMaxAge(request.getParameter("client_id")))))) {
                 session.invalidate();
                 response.sendRedirect("/login.html?continue=" + encode(here));
                 return;
@@ -96,6 +101,22 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
 
     static boolean wantsTwoSteps(String acrValues) {
         return Arrays.stream(acrValues.trim().split("\\s+")).anyMatch(TWO_STEP_ACR::contains);
+    }
+
+    /** The application's "sign in again after" in seconds; -1 when it has none (or it cannot be read). */
+    private long applicationMaxAge(String clientId) {
+        UUID applicationId = applicationOf(clientId);
+        if (applicationId == null) {
+            return -1;
+        }
+        try {
+            Object raw = RlsScope.asPlatform(
+                    () -> applicationSettings.getObject().resolveTokenPolicy(applicationId).get("signInMaxAgeSeconds"));
+            long seconds = raw instanceof Number n ? n.longValue() : 0;
+            return seconds > 0 ? seconds : -1;
+        } catch (RuntimeException e) {
+            return -1;
+        }
     }
 
     static boolean tooOld(Instant signedInAt, String maxAge) {

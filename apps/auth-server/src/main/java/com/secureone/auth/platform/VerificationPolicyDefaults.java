@@ -48,8 +48,8 @@ public final class VerificationPolicyDefaults {
             return;
         }
         Map<String, Object> clamped = new LinkedHashMap<>((Map<String, Object>) section);
-        clamped.put("otpLength", clampInt(clamped.get("otpLength"), 6, 4, 8));
-        clamped.put("otpTtlSeconds", clampInt(clamped.get("otpTtlSeconds"), 600, 60, 3600));
+        clamped.put("otpLength", clampInt(clamped.get("otpLength"), 6, 6, 8)); // NIST SP 800-63B: at least 6 digits
+        clamped.put("otpTtlSeconds", clampInt(clamped.get("otpTtlSeconds"), 600, 60, 600)); // valid at most 10 minutes
         clamped.put("maxAttempts", clampInt(clamped.get("maxAttempts"), 5, 3, 10));
         clamped.put("resendCooldownSeconds", clampInt(clamped.get("resendCooldownSeconds"), 60, 30, 600));
         policy.put(sectionKey, clamped);

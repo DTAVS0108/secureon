@@ -44,15 +44,15 @@ class VerificationPolicyDefaultsTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> login = (Map<String, Object>) saved.get("login");
-        assertEquals(4, login.get("otpLength"));
-        assertEquals(3600, login.get("otpTtlSeconds"));
+        assertEquals(6, login.get("otpLength"));
+        assertEquals(600, login.get("otpTtlSeconds"));
         assertEquals(10, login.get("maxAttempts"));
         assertEquals(600, login.get("resendCooldownSeconds"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> recovery = (Map<String, Object>) saved.get("recovery");
-        assertEquals(4, recovery.get("otpLength"));
-        assertEquals(3600, recovery.get("otpTtlSeconds"));
+        assertEquals(6, recovery.get("otpLength"));
+        assertEquals(600, recovery.get("otpTtlSeconds"));
         assertEquals(10, recovery.get("maxAttempts"));
         assertEquals(30, recovery.get("resendCooldownSeconds"));
     }

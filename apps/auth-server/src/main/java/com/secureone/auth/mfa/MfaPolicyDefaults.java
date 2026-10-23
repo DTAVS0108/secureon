@@ -100,7 +100,7 @@ public final class MfaPolicyDefaults {
         out.put("enforceFrom", date(in.get("enforceFrom")));
         out.put("reminderDays", reminderDays(in.containsKey("reminderDays") ? in.get("reminderDays") : d.get("reminderDays")));
         copyInt(in, out, "rememberDeviceDays", d, 0, 90);
-        copyInt(in, out, "challengeTtlSeconds", d, 60, 900);
+        copyInt(in, out, "challengeTtlSeconds", d, 60, 600); // codes sent by email or text: at most 10 minutes
         copyInt(in, out, "maxChallengeAttempts", d, 1, 10);
         copyInt(in, out, "recoveryCodesPerEnrollment", d, 1, 20);
         copyInt(in, out, "freshStepMinutes", d, 1, 60);

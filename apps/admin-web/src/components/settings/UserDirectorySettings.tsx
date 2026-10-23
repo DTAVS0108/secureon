@@ -50,7 +50,6 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      await ensureApplicationPolicyScope(applicationId, "user-directory");
       const [data, flagsRaw] = await Promise.all([
         fetchUserDirectorySettings(applicationId).catch(() => DEFAULTS),
         fetchApplicationFeatureFlags(applicationId).catch(() => []),
@@ -79,6 +78,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         try {
+          await ensureApplicationPolicyScope(applicationId, "user-directory");
           const saved = await saveUserDirectorySettings(applicationId, next);
           setConfig({
             ...DEFAULTS,

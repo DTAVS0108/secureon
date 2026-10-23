@@ -39,6 +39,24 @@ public class SmtpSettingsService {
         return smtp;
     }
 
+    /**
+     * Reset links, codes and the SMTP password itself cross the network to the mail server: without TLS anyone on
+     * the way can read them. "None" is only for a mail server on this machine or an internal service name (such as
+     * a "mailpit" container), never one reached by a domain name.
+     */
+    public static void requireEncryptionUnlessLocal(String host, String security) {
+        if (!"none".equals(security) || host == null || host.isBlank()) {
+            return;
+        }
+        String h = host.trim().toLowerCase(java.util.Locale.ROOT);
+        boolean local = "localhost".equals(h) || h.startsWith("127.") || "::1".equals(h) || !h.contains(".");
+        if (!local) {
+            throw new IllegalArgumentException(
+                    "Use SSL/TLS or STARTTLS for " + host + ": without encryption, reset links and codes can be read"
+                            + " on the way to the mail server. \"None\" is only for a mail server on this machine.");
+        }
+    }
+
     public Map<String, Object> save(UUID applicationId, Map<String, Object> body) {
         Map<String, Object> current = new HashMap<>(loadMap(applicationId));
         if (body.containsKey("host")) {
@@ -72,6 +90,7 @@ public class SmtpSettingsService {
         if (!current.containsKey("authEnabled")) {
             current.put("authEnabled", true);
         }
+        requireEncryptionUnlessLocal(string(current, "host", ""), string(current, "security", "ssl"));
         persist(applicationId, current);
         return getPublicSettings(applicationId);
     }

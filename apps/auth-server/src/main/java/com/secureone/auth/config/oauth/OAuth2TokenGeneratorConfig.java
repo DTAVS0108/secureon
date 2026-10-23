@@ -28,7 +28,7 @@ public class OAuth2TokenGeneratorConfig {
         OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
         OAuth2RefreshTokenGenerator defaultRefreshGenerator = new OAuth2RefreshTokenGenerator();
         OAuth2TokenGenerator<OAuth2RefreshToken> refreshTokenGenerator =
-                new PublicClientRefreshTokenGenerator(defaultRefreshGenerator);
+                new AbsoluteLifetimeRefreshTokenGenerator(new PublicClientRefreshTokenGenerator(defaultRefreshGenerator));
         return new DelegatingOAuth2TokenGenerator(jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
     }
 }

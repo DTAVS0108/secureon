@@ -253,12 +253,26 @@ public class SetupService {
             Tenant platform = tenants.findBySlug(PlatformOperators.PLATFORM_TENANT_SLUG)
                     .orElseThrow(() -> new IllegalStateException("Reserved platform tenant is missing (migration V62)"));
             String email = rawEmail.trim().toLowerCase(Locale.ROOT);
-            userAdmin.create(new UserCreateRequest(
-                    platform.getId(), email, null, trim(firstName), trim(lastName), "ACTIVE", null, null));
-            UserAccount user = users.findByTenantIdAndEmail(platform.getId(), email)
-                    .orElseThrow(() -> new IllegalStateException("Operator account was not created"));
+            // The account may already exist (an operator whose role was removed): use it rather than fail on a
+            // duplicate, which would stop a server that has no operator from ever starting.
+            UserAccount user = users.findByTenantIdAndEmail(platform.getId(), email).orElse(null);
+            boolean passwordAlreadySet = false;
+            if (user == null) {
+                userAdmin.create(new UserCreateRequest(
+                        platform.getId(), email, null, trim(firstName), trim(lastName), "ACTIVE", null, null));
+                user = users.findByTenantIdAndEmail(platform.getId(), email)
+                        .orElseThrow(() -> new IllegalStateException("Operator account was not created"));
+            } else {
+                log.warn("First platform operator ({}): the account {} already exists; it becomes the operator again.",
+                        via, email);
+                // Same password as now (typically the bootstrap settings that created it): setting it again would
+                // only be refused by password history.
+                passwordAlreadySet = passwords.isCurrentPassword(user.getId(), password);
+            }
             // Platform password policy applies; a rejected password rolls the whole setup back.
-            passwords.setPassword(user.getId(), password);
+            if (!passwordAlreadySet) {
+                passwords.setPassword(user.getId(), password);
+            }
             operators.grant(user.getId(), via);
             audit.record(platform.getId(), email, "platform.setup_completed", "user_account", user.getId(), via, true);
             redis.delete(CODE_KEY);

@@ -302,10 +302,16 @@ public class EmailNotificationService {
         sendUserTemplate(appId, user, "set_password_invite", setPasswordLink);
     }
 
+    /** A security notice: sent even when this application has switched other user emails off. */
     public void sendPasswordChanged(UUID applicationId, UserAccount user) {
         UUID appId = emailContext.resolveApplicationId(applicationId, user);
-        ensureUserTransactionalEmailEnabled(appId);
+        if (appId == null) {
+            return;
+        }
         ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
         Map<String, String> vars = userVariables(ctx, user, null);
         sendTemplated(ctx, user.getEmail(), "password_changed", vars, List.of(), List.of());
     }

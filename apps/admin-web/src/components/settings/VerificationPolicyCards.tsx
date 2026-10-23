@@ -27,7 +27,7 @@ function OtpFields({ section, sectionHelp, onChange }: OtpFieldsProps) {
       <FieldRow label="OTP length" info={sectionHelp.otpLength}>
         <Input
           type="number"
-          min={4}
+          min={6}
           max={8}
           value={section.otpLength ?? 6}
           onChange={(e) => onChange({ ...section, otpLength: Number(e.target.value) })}
@@ -37,7 +37,7 @@ function OtpFields({ section, sectionHelp, onChange }: OtpFieldsProps) {
         <Input
           type="number"
           min={60}
-          max={3600}
+          max={600}
           value={section.otpTtlSeconds ?? 600}
           onChange={(e) => onChange({ ...section, otpTtlSeconds: Number(e.target.value) })}
         />

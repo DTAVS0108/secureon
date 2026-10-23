@@ -19,6 +19,24 @@ public class EmailTemplateService {
 
     public static final String SETTINGS_KEY = "email_templates";
 
+    /**
+     * Emails that carry a sign-in secret (a reset, sign-in or verification link, or a code). They go to the user
+     * only: cc and bcc are never added, whatever a template says.
+     */
+    public static final Set<String> CARRIES_SECRET = Set.of(
+            "password_reset", "password_reset_otp", "magic_link", "login_otp_email", "verify_email",
+            "verify_email_otp", "set_password_invite", "signup_account_exists", "signup_phone_in_use",
+            "account_locked");
+
+    /**
+     * Security notices the user must get when their sign-in changes (NIST SP 800-63B 6.1.2.3): they cannot be
+     * switched off. Their wording can still be changed.
+     */
+    public static final Set<String> ALWAYS_SENT = Set.of("password_changed", "account_security_notice", "account_locked");
+
+    /** Display-only markers added to templates for the console; never stored. */
+    private static final Set<String> MARKERS = Set.of("carriesSecret", "alwaysSent");
+
     private final ApplicationSettingRepository appSettings;
     private final ApplicationEmailContextFactory emailContext;
 
@@ -34,10 +52,31 @@ public class EmailTemplateService {
 
     public Map<String, Object> getTemplates(UUID applicationId) {
         Map<String, Object> stored = loadMap(applicationId);
-        if (stored.isEmpty()) {
-            return getPlatformDefaults();
-        }
-        return mergeWithDefaults(stored);
+        return withMarkers(stored.isEmpty() ? getPlatformDefaults() : mergeWithDefaults(stored));
+    }
+
+    /** Tells the console which templates cannot have cc/bcc or be switched off. */
+    private static Map<String, Object> withMarkers(Map<String, Object> templates) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        templates.forEach((key, value) -> {
+            if (value instanceof Map<?, ?> map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> copy = new LinkedHashMap<>((Map<String, Object>) map);
+                copy.put("carriesSecret", CARRIES_SECRET.contains(key));
+                copy.put("alwaysSent", ALWAYS_SENT.contains(key));
+                if (CARRIES_SECRET.contains(key)) {
+                    copy.put("cc", List.of());
+                    copy.put("bcc", List.of());
+                }
+                if (ALWAYS_SENT.contains(key)) {
+                    copy.put("enabled", true);
+                }
+                out.put(key, copy);
+            } else {
+                out.put(key, value);
+            }
+        });
+        return out;
     }
 
     public Map<String, Object> saveTemplates(UUID applicationId, Map<String, Object> body) {
@@ -53,7 +92,15 @@ public class EmailTemplateService {
                 continue;
             }
             @SuppressWarnings("unchecked")
-            Map<String, Object> typedIncoming = (Map<String, Object>) incomingMap;
+            Map<String, Object> typedIncoming = new LinkedHashMap<>((Map<String, Object>) incomingMap);
+            typedIncoming.keySet().removeAll(MARKERS);
+            if (CARRIES_SECRET.contains(key)) {
+                typedIncoming.put("cc", List.of());
+                typedIncoming.put("bcc", List.of());
+            }
+            if (ALWAYS_SENT.contains(key)) {
+                typedIncoming.put("enabled", true);
+            }
             Map<String, Object> override = diffFromDefault(key, typedIncoming, defaults);
             if (override.isEmpty()) {
                 stored.remove(key);
@@ -94,12 +141,15 @@ public class EmailTemplateService {
 
     public RenderedEmail render(UUID applicationId, String templateKey, Map<String, String> variables) {
         Map<String, Object> template = getTemplate(applicationId, templateKey);
-        if (Boolean.FALSE.equals(template.get("enabled"))) {
+        if (Boolean.FALSE.equals(template.get("enabled")) && !ALWAYS_SENT.contains(templateKey)) {
             throw new IllegalStateException("Email template is disabled: " + templateKey);
         }
         String subject = EmailTemplateRenderer.render(string(template, "subject", ""), variables);
         String bodyText = EmailTemplateRenderer.render(string(template, "bodyText", ""), variables);
-        String bodyHtml = EmailTemplateRenderer.render(string(template, "bodyHtml", ""), variables);
+        String bodyHtml = EmailTemplateRenderer.renderHtml(string(template, "bodyHtml", ""), variables);
+        if (CARRIES_SECRET.contains(templateKey) || variables.containsKey("otpCode")) {
+            return new RenderedEmail(subject, bodyText, bodyHtml, List.of(), List.of());
+        }
         var notifications = emailContext.context(applicationId).notifications();
         List<String> cc = EmailRecipientResolver.resolve(
                 notifications, SmtpSettingsService.parseEmailList(template.get("cc")));
@@ -115,7 +165,7 @@ public class EmailTemplateService {
         }
         String subject = EmailTemplateRenderer.render(string(template, "subject", ""), variables);
         String bodyText = EmailTemplateRenderer.render(string(template, "bodyText", ""), variables);
-        String bodyHtml = EmailTemplateRenderer.render(string(template, "bodyHtml", ""), variables);
+        String bodyHtml = EmailTemplateRenderer.renderHtml(string(template, "bodyHtml", ""), variables);
         return new RenderedEmail(subject, bodyText, bodyHtml, List.of(), List.of());
     }
 

@@ -107,11 +107,64 @@ public final class ClientAppearanceDefaults {
         }
         appOverride.forEach((k, v) -> {
             if (v == null || isMetaKey(k)) return;
-            if (PUBLIC_MANIFEST_KEYS.contains(k)) {
+            // Values saved before validation existed and are not valid now keep the default.
+            if (PUBLIC_MANIFEST_KEYS.contains(k) && problem(k, v) == null) {
                 merged.put(k, v);
             }
         });
         return merged;
+    }
+
+    private static final java.util.regex.Pattern HEX_COLOR =
+            java.util.regex.Pattern.compile("^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
+    private static final java.util.Set<String> MODES = java.util.Set.of("light", "dark", "system");
+    private static final java.util.Set<String> GRADIENT_PRESETS =
+            java.util.Set.of("none", "brand", "sunset", "ocean", "violet", "custom");
+    private static final java.util.Set<String> GRADIENT_SCOPES = java.util.Set.of("page", "brand", "both");
+
+    /**
+     * Why a value cannot be used, or null. Client apps put these values into their pages and styles, so only
+     * plain colours, known choices, numbers in range and an https logo are accepted (no CSS or script can ride in).
+     */
+    public static String problem(String key, Object value) {
+        return switch (key) {
+            case "mode" -> MODES.contains(String.valueOf(value)) ? null : "must be light, dark or system";
+            case "gradientPreset" -> GRADIENT_PRESETS.contains(String.valueOf(value)) ? null : "is not a known gradient";
+            case "gradientScope" -> GRADIENT_SCOPES.contains(String.valueOf(value)) ? null : "must be page, brand or both";
+            case "gradientAngle" -> inRange(value, 0, 360) ? null : "must be 0 to 360";
+            case "borderRadius" -> inRange(value, 0, 48) ? null : "must be 0 to 48";
+            case "fontScale" -> inRange(value, 0.75, 1.5) ? null : "must be 0.75 to 1.5";
+            case "appName" -> value instanceof String s && s.length() <= 80 && s.chars().noneMatch(c -> c < 32 || c == '<' || c == '>')
+                    ? null : "must be up to 80 characters, without < or >";
+            case "logoUrl" -> value instanceof String s && (s.isBlank() || isHttpsUrl(s)) ? null : "must be an https:// address";
+            default -> value instanceof String s && HEX_COLOR.matcher(s.trim()).matches()
+                    ? null : "must be a colour such as #4f46e5";
+        };
+    }
+
+    /** Refuses the first unusable value with a clear message. */
+    public static void requireValid(Map<String, Object> body) {
+        for (var e : body.entrySet()) {
+            if (e.getValue() != null && PUBLIC_MANIFEST_KEYS.contains(e.getKey())) {
+                String problem = problem(e.getKey(), e.getValue());
+                if (problem != null) {
+                    throw new IllegalArgumentException("Appearance: " + e.getKey() + " " + problem + ".");
+                }
+            }
+        }
+    }
+
+    private static boolean inRange(Object value, double min, double max) {
+        return value instanceof Number n && n.doubleValue() >= min && n.doubleValue() <= max;
+    }
+
+    private static boolean isHttpsUrl(String raw) {
+        try {
+            java.net.URI uri = new java.net.URI(raw.trim());
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static Map<String, Object> sanitizeForPublicManifest(Map<String, Object> appearance) {

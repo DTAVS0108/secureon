@@ -162,7 +162,7 @@ export function AuthenticationSettingsPanel({
             onToggle={(next) => {
               const merged = [...next, ...mfa, ...federation];
               setAuthMethods(merged);
-              scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
+              scheduleSave(() => saveAuthMethodsAction(merged, applicationId), "auth-methods");
             }}
           />
           <MethodSection
@@ -172,7 +172,7 @@ export function AuthenticationSettingsPanel({
             onToggle={(next) => {
               const merged = [...primary, ...mfa, ...next];
               setAuthMethods(merged);
-              scheduleSave(() => saveAuthMethodsAction(merged, applicationId));
+              scheduleSave(() => saveAuthMethodsAction(merged, applicationId), "auth-methods");
             }}
           />
           {federationImplemented && (
@@ -190,23 +190,6 @@ export function AuthenticationSettingsPanel({
               (docs/plans/two-factor-authentication.md). */}
           <MfaPolicySettingsPanel applicationId={applicationId} />
         </div>
-      )}
-
-      {tab === "password" && applicationId && passwordPolicy && (
-        <p className="mb-4 rounded-lg border border-ui bg-surface px-4 py-3 text-sm text-muted">
-          {passwordPolicy.inheritsPlatformDefaults !== false ? (
-            <>
-              This application inherits the <strong>platform password policy</strong>. Saving any field
-              below creates an application-only override; platform changes will no longer apply until you
-              reset this section.
-            </>
-          ) : (
-            <>
-              This application uses its <strong>own password policy override</strong>. These rules apply
-              when users set or reset passwords for this application and can be exposed on the public API.
-            </>
-          )}
-        </p>
       )}
 
       {tab === "password" && !applicationId && (
@@ -342,6 +325,12 @@ function FeatureFlagsPanel({
 
   async function toggleOAuthTokensTab(enabled: boolean) {
     if (!applicationId) return;
+    if (
+      !enabled &&
+      !window.confirm("Use the platform's token policy? This application's own token lifetimes are removed.")
+    ) {
+      return;
+    }
     setTabTogglePending(true);
     try {
       const state = await setApplicationTokenTabEnabled(applicationId, enabled);
@@ -420,19 +409,20 @@ function FeatureFlagsPanel({
             <li className="flex items-center justify-between gap-4 px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-ui">OAuth tokens tab</p>
+                  <p className="text-sm font-medium text-ui">Own OAuth token policy</p>
                   <code className="font-mono text-[10px] text-faint">token-policy</code>
                 </div>
                 <p className="text-xs text-muted">
-                  Show the OAuth tokens settings tab for this application (requires platform to allow OAuth
-                  tokens under For applications).
+                  On: this application has its own token lifetimes (OAuth tokens tab), starting from the
+                  platform&apos;s and never longer than them. Off: it uses the platform&apos;s token policy, and its
+                  own values are removed.
                 </p>
               </div>
               <Toggle
                 checked={oauthTokensTabEnabled}
                 disabled={tabTogglePending}
                 onChange={toggleOAuthTokensTab}
-                aria-label="Show OAuth tokens tab"
+                aria-label="Own OAuth token policy"
               />
             </li>
             )}
@@ -563,6 +553,8 @@ function MethodSection({
       <ul className="grid gap-3 p-4 sm:grid-cols-2">
         {ordered.map((m) => {
           const comingSoon = isAuthMethodComingSoon(m);
+          // Off on the platform: off for every application.
+          const platformOff = m.platformEnabled === false;
           return (
             <li
               key={m.id}
@@ -578,10 +570,13 @@ function MethodSection({
                   {comingSoon && <ComingSoonBadge />}
                 </div>
                 <p className="mt-0.5 text-xs leading-snug text-muted">{m.description}</p>
+                {platformOff && !comingSoon && (
+                  <p className="mt-1 text-xs text-faint">Off on the platform, so off for every application.</p>
+                )}
               </div>
               <Toggle
                 checked={m.enabled}
-                disabled={readOnly || (comingSoon && !m.enabled)}
+                disabled={readOnly || platformOff || (comingSoon && !m.enabled)}
                 onChange={(enabled) => {
                   const next = methods.map((x) => (x.id === m.id ? { ...x, enabled } : x));
                   onToggle(next);
@@ -647,9 +642,17 @@ function PasswordPolicyEditor({
         description="Enforced on sign-up, set-password, reset and admin set-password."
       />
       <div className="border-b border-ui bg-ui-elevated/40 px-5 py-3 text-sm text-ui">{describePolicy(policy)}</div>
-      {policy.minLength < 8 && (
+      {policy.twoFactorMode === "off" && policy.minLength < 15 && (
         <p className="mx-5 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-          A minimum below 8 characters is weak. 12 or more is recommended.
+          Two Factor Authentication is off for this application, so the password is the only thing protecting each
+          account. NIST SP 800-63B then asks for at least 15 characters.
+        </p>
+      )}
+      {(policy.requireUppercase || policy.requireNumber || policy.requireSymbol) && (
+        <p className="mx-5 mt-4 rounded-lg border border-ui bg-surface px-3 py-2 text-xs text-muted">
+          Character-type rules (upper-case, number, symbol) are not recommended by NIST SP 800-63B: they lead to
+          predictable passwords. Length and blocking leaked passwords protect better. Keep them only if your own policy
+          requires them.
         </p>
       )}
       <div className="grid gap-6 p-5 lg:grid-cols-3">
@@ -672,9 +675,6 @@ function PasswordPolicyEditor({
           </FieldRow>
           <FieldRow label="Password history" hint="block reuse of the last N (0 = off)">
             <Input type="number" min={0} value={policy.historyCount} onChange={(e) => set({ historyCount: Number(e.target.value) })} />
-          </FieldRow>
-          <FieldRow label="Hash algorithm" hint="bcrypt, stored on each credential">
-            <Input value={policy.hashAlgorithm} disabled />
           </FieldRow>
         </PolicyGroup>
         <PolicyGroup title="Lockout">

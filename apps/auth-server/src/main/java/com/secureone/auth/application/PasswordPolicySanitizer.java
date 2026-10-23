@@ -23,16 +23,17 @@ public final class PasswordPolicySanitizer {
 
     public static Map<String, Object> platformDefaults() {
         Map<String, Object> out = new LinkedHashMap<>();
+        // NIST SP 800-63B: length and a leaked-password check, no character-type rules, no forced expiry.
         out.put("minLength", 12);
-        out.put("requireUppercase", true);
-        out.put("requireNumber", true);
-        out.put("requireSymbol", true);
+        out.put("requireUppercase", false);
+        out.put("requireNumber", false);
+        out.put("requireSymbol", false);
         out.put("expiryDays", 0);
         out.put("historyCount", 5);
-        out.put("hashAlgorithm", "bcrypt");
+        out.put("hashAlgorithm", HASH_ALGORITHM);
         out.put("maxFailedAttempts", 5);
         out.put("lockoutDurationMinutes", 15);
-        out.put("breachCheck", false);
+        out.put("breachCheck", true);
         return out;
     }
 
@@ -40,9 +41,9 @@ public final class PasswordPolicySanitizer {
         Map<String, Object> defaults = platformDefaults();
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("minLength", clampInt(body, "minLength", intValue(defaults, "minLength", 12), 8, 128));
-        out.put("requireUppercase", bool(body, "requireUppercase", boolValue(defaults, "requireUppercase", true)));
-        out.put("requireNumber", bool(body, "requireNumber", boolValue(defaults, "requireNumber", true)));
-        out.put("requireSymbol", bool(body, "requireSymbol", boolValue(defaults, "requireSymbol", true)));
+        out.put("requireUppercase", bool(body, "requireUppercase", boolValue(defaults, "requireUppercase", false)));
+        out.put("requireNumber", bool(body, "requireNumber", boolValue(defaults, "requireNumber", false)));
+        out.put("requireSymbol", bool(body, "requireSymbol", boolValue(defaults, "requireSymbol", false)));
         out.put("expiryDays", clampInt(body, "expiryDays", intValue(defaults, "expiryDays", 0), 0, 3650));
         out.put("historyCount", clampInt(body, "historyCount", intValue(defaults, "historyCount", 5), 0, 24));
         out.put("hashAlgorithm", normalizeHashAlgorithm(body != null ? body.get("hashAlgorithm") : null));
@@ -50,7 +51,7 @@ public final class PasswordPolicySanitizer {
         out.put(
                 "lockoutDurationMinutes",
                 clampInt(body, "lockoutDurationMinutes", intValue(defaults, "lockoutDurationMinutes", 15), 1, 1440));
-        out.put("breachCheck", bool(body, "breachCheck", boolValue(defaults, "breachCheck", false)));
+        out.put("breachCheck", bool(body, "breachCheck", boolValue(defaults, "breachCheck", true)));
         return out;
     }
 
@@ -66,12 +67,11 @@ public final class PasswordPolicySanitizer {
         return clampInt(policy, "lockoutDurationMinutes", 15, 1, 1440);
     }
 
+    /** How new passwords are hashed. Not a setting: older values ("bcrypt") are read as this. */
+    public static final String HASH_ALGORITHM = "argon2id";
+
     public static String normalizeHashAlgorithm(Object raw) {
-        String algorithm = raw != null ? raw.toString().trim().toLowerCase(Locale.ROOT) : "bcrypt";
-        if (!"bcrypt".equals(algorithm)) {
-            throw new IllegalArgumentException("Only bcrypt is supported for hashAlgorithm.");
-        }
-        return algorithm;
+        return HASH_ALGORITHM;
     }
 
     private static int clampInt(Map<String, Object> body, String key, int fallback, int min, int max) {

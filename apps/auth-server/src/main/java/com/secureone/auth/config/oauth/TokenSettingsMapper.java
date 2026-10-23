@@ -15,6 +15,8 @@ public final class TokenSettingsMapper {
     public static final String ID_TOKEN_TTL = "secureone.token.id-token-ttl";
     /** False when the policy turns refresh tokens off; the client then loses the refresh_token grant. */
     public static final String REFRESH_TOKENS_ENABLED = "secureone.token.refresh-enabled";
+    /** Longest a sign-in can be kept alive by refreshing ({@link AbsoluteLifetimeRefreshTokenGenerator}). */
+    public static final String REFRESH_ABSOLUTE_TTL = "secureone.token.refresh-absolute-ttl";
 
     private TokenSettingsMapper() {}
 
@@ -42,7 +44,8 @@ public final class TokenSettingsMapper {
                 .reuseRefreshTokens(reuseRefresh)
                 .setting(CLIENT_CREDENTIALS_TTL, seconds(resolved, "clientCredentialsTtlSeconds", 3600))
                 .setting(ID_TOKEN_TTL, seconds(resolved, "idTokenTtlSeconds", 3600))
-                .setting(REFRESH_TOKENS_ENABLED, refreshEnabled);
+                .setting(REFRESH_TOKENS_ENABLED, refreshEnabled)
+                .setting(REFRESH_ABSOLUTE_TTL, seconds(resolved, "refreshTokenAbsoluteSeconds", 2_592_000));
 
         if (refreshEnabled) {
             builder.refreshTokenTimeToLive(seconds(resolved, "refreshTokenTtlSeconds", 604_800));

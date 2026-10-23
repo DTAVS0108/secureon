@@ -12,6 +12,10 @@ export type TokenPolicy = {
   reuseRefreshTokens: boolean;
   rotateRefreshTokens: boolean;
   refreshTokenReuseDetection: boolean;
+  /** Longest a sign-in can be kept alive by refreshing. */
+  refreshTokenAbsoluteSeconds?: number;
+  /** Sign in again after this long for this application; 0 = the platform session limit. */
+  signInMaxAgeSeconds?: number;
   scope?: string;
   inheritsPlatformDefaults?: boolean;
 };

@@ -102,6 +102,7 @@ public class PlatformSmtpSettingsService {
         if (!current.containsKey("authEnabled")) {
             current.put("authEnabled", true);
         }
+        SmtpSettingsService.requireEncryptionUnlessLocal(string(current, "host", ""), string(current, "security", "ssl"));
         platformSettings.save(SETTINGS_KEY, current);
         return getPublicSettings();
     }

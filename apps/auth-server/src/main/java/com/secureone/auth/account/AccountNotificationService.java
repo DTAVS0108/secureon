@@ -288,7 +288,7 @@ public class AccountNotificationService {
     private String magicLinkUrl(UUID applicationId, String rawToken) {
         String base = publicBaseUrl + "/account/magic-link.html";
         if (applicationId != null) {
-            Object urls = applicationSettings.getClientIntegration(applicationId).get("clientUrls");
+            Object urls = applicationSettings.publicClientUrls(applicationId);
             if (urls instanceof Map<?, ?> map) {
                 Object configured = map.get("magicLink");
                 if (configured != null && !configured.toString().isBlank()) {
@@ -380,7 +380,7 @@ public class AccountNotificationService {
     private String passwordResetLink(UUID applicationId, String rawToken) {
         String base = publicBaseUrl + "/account/reset-password.html";
         if (applicationId != null) {
-            Object urls = applicationSettings.getClientIntegration(applicationId).get("clientUrls");
+            Object urls = applicationSettings.publicClientUrls(applicationId);
             if (urls instanceof Map<?, ?> map) {
                 Object configured = map.get("passwordReset");
                 if (configured != null && !configured.toString().isBlank()) {

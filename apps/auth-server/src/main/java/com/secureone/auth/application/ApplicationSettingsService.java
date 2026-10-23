@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,9 @@ public class ApplicationSettingsService {
     private final PlatformMailSenderProvider mailSenderProvider;
     private final SettingsExposureService exposure;
     private final com.secureone.auth.twostep.TwoStepPolicyResolver twoStepPolicy;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> oauthClients;
 
     public ApplicationSettingsService(
             ApplicationRepository applications,
@@ -123,39 +127,34 @@ public class ApplicationSettingsService {
     public Map<String, Object> getTokenPolicy(UUID applicationId) {
         requireExposed("token-policy");
         requireApplication(applicationId);
-        Map<String, Object> merged =
-                TokenPolicyDefaults.merge(platformTokenPolicy(), getAppMap(applicationId, "token_policy").orElse(Map.of()));
-        merged.put("tabEnabled", TokenPolicyDefaults.tabEnabled(merged));
+        Map<String, Object> merged = resolveTokenPolicy(applicationId);
+        boolean own = hasOverride(applicationId, "token_policy");
+        merged.put("tabEnabled", own);
         merged.put("scope", "application");
-        merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "token_policy"));
+        merged.put("inheritsPlatformDefaults", !own);
         return merged;
     }
 
+    /** The OAuth tokens switch is on exactly when this application has its own token policy. */
     @Transactional(readOnly = true)
     public Map<String, Object> getTokenTabState(UUID applicationId) {
         requireExposed("token-policy");
         requireApplication(applicationId);
-        Map<String, Object> appRow = getAppMap(applicationId, "token_policy").orElse(Map.of());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("platformExposed", true);
-        out.put("tabEnabled", TokenPolicyDefaults.tabEnabled(appRow));
+        out.put("tabEnabled", hasOverride(applicationId, "token_policy"));
         return out;
     }
 
+    /** On: start this application's own token policy from the platform's. Off: back to the platform's. */
     public Map<String, Object> saveTokenTabEnabled(UUID applicationId, boolean enabled) {
         requireExposed("token-policy");
         requireApplication(applicationId);
-        Map<String, Object> next = new HashMap<>(resolveTokenPolicy(applicationId));
-        next.put("tabEnabled", enabled);
-        saveAppMap(applicationId, "token_policy", TokenPolicyDefaults.sanitizeForSave(next));
         if (enabled) {
+            snapshotEffectiveAsOverride(applicationId, "token_policy");
             syncTokenPolicyToApplicationConfig(applicationId);
         } else {
-            applications.findById(applicationId).ifPresent(app -> {
-                Map<String, Object> config = new HashMap<>(app.getConfig() != null ? app.getConfig() : Map.of());
-                config.remove("tokenPolicy");
-                app.setConfig(config);
-            });
+            clearOverride(applicationId, "token_policy");
         }
         return getTokenTabState(applicationId);
     }
@@ -163,22 +162,25 @@ public class ApplicationSettingsService {
     public Map<String, Object> saveTokenPolicy(UUID applicationId, Map<String, Object> body) {
         requireExposed("token-policy");
         requireApplication(applicationId);
-        if (!TokenPolicyDefaults.tabEnabled(body)) {
-            throw new IllegalArgumentException(
-                    "Enable the OAuth tokens tab for this application before saving token policy.");
-        }
         Map<String, Object> sanitized = TokenPolicyDefaults.sanitizeForSave(body);
-        sanitized.put("tabEnabled", true);
+        PlatformMinimums.token(platformTokenPolicy(), sanitized).requireNothingRaised();
         saveAppMap(applicationId, "token_policy", sanitized);
         syncTokenPolicyToApplicationConfig(applicationId);
         return getTokenPolicy(applicationId);
     }
 
+    /** The platform's token policy, or this application's own (never weaker than the platform's). */
     @Transactional(readOnly = true)
     public Map<String, Object> resolveTokenPolicy(UUID applicationId) {
         requireApplication(applicationId);
-        return TokenPolicyDefaults.merge(
-                platformTokenPolicy(), getAppMap(applicationId, "token_policy").orElse(Map.of()));
+        Map<String, Object> platform = platformTokenPolicy();
+        Map<String, Object> own = getAppMap(applicationId, "token_policy").orElse(null);
+        if (own == null) {
+            return new LinkedHashMap<>(platform);
+        }
+        Map<String, Object> merged = TokenPolicyDefaults.merge(platform, own);
+        merged.remove("tabEnabled");
+        return new LinkedHashMap<>(PlatformMinimums.token(platform, merged).value());
     }
 
     private Map<String, Object> platformTokenPolicy() {
@@ -186,18 +188,14 @@ public class ApplicationSettingsService {
         if (platform == null || platform.isEmpty()) {
             return TokenPolicyDefaults.platformDefaults();
         }
-        return platform;
+        return TokenPolicyDefaults.sanitizeForSave(platform);
     }
 
     private void syncTokenPolicyToApplicationConfig(UUID applicationId) {
         applications.findById(applicationId).ifPresent(app -> {
             Map<String, Object> config = new HashMap<>(app.getConfig() != null ? app.getConfig() : Map.of());
-            Map<String, Object> policy = resolveTokenPolicy(applicationId);
-            policy.remove("scope");
-            policy.remove("inheritsPlatformDefaults");
-            policy.remove("tabEnabled");
-            if (TokenPolicyDefaults.tabEnabled(resolveTokenPolicy(applicationId))) {
-                config.put("tokenPolicy", policy);
+            if (hasOverride(applicationId, "token_policy")) {
+                config.put("tokenPolicy", resolveTokenPolicy(applicationId));
             } else {
                 config.remove("tokenPolicy");
             }
@@ -271,7 +269,20 @@ public class ApplicationSettingsService {
 
     public Map<String, Object> saveClientIntegration(UUID applicationId, Map<String, Object> body) {
         requireApplication(applicationId);
-        saveAppMap(applicationId, "client_integration", sanitizeClientIntegration(body));
+        Map<String, Object> sanitized = sanitizeClientIntegration(body);
+        // Pages that receive reset and sign-in tokens must be this application's own HTTPS pages.
+        Set<String> trusted = trustedClientOrigins(applicationId);
+        @SuppressWarnings("unchecked")
+        Map<String, String> urls = (Map<String, String>) sanitized.get("clientUrls");
+        for (var e : urls.entrySet()) {
+            if (!e.getValue().isBlank()) {
+                String problem = ClientUrlPolicy.problem(e.getValue(), trusted);
+                if (problem != null) {
+                    throw new IllegalArgumentException(clientUrlLabel(e.getKey()) + " page " + problem + ".");
+                }
+            }
+        }
+        saveAppMap(applicationId, "client_integration", sanitized);
         return getClientIntegration(applicationId);
     }
 
@@ -392,7 +403,7 @@ public class ApplicationSettingsService {
     public List<Map<String, Object>> getAuthMethods(UUID applicationId) {
         requireExposed("auth-methods");
         requireApplication(applicationId);
-        List<Map<String, Object>> merged = mergeList(authSettings.getAuthMethods(), getAppRaw(applicationId, "auth_methods"));
+        List<Map<String, Object>> merged = resolveAuthMethods(applicationId);
         merged.forEach(m -> m.put("inheritsPlatformDefaults", !hasOverride(applicationId, "auth_methods")));
         return merged;
     }
@@ -400,7 +411,7 @@ public class ApplicationSettingsService {
     public List<Map<String, Object>> saveAuthMethods(UUID applicationId, List<Map<String, Object>> body) {
         requireExposed("auth-methods");
         requireApplication(applicationId);
-        saveAppRaw(applicationId, "auth_methods", stripMeta(new ArrayList<>(body)));
+        saveAppRaw(applicationId, "auth_methods", withinPlatformMethods(stripMeta(copyList(body))));
         return getAuthMethods(applicationId);
     }
 
@@ -430,19 +441,20 @@ public class ApplicationSettingsService {
         requireExposed("password-policy");
         requireApplication(applicationId);
         boolean inherits = !hasOverride(applicationId, "password_policy");
-        Map<String, Object> merged = inherits
-                ? new HashMap<>(authSettings.getPasswordPolicy())
-                : new HashMap<>(PasswordPolicySanitizer.sanitize(
-                        getAppMap(applicationId, "password_policy").orElse(Map.of())));
+        Map<String, Object> merged = new HashMap<>(resolvePasswordPolicy(applicationId));
         merged.put("scope", "application");
         merged.put("inheritsPlatformDefaults", inherits);
+        // With two-factor off the password is the only factor: NIST SP 800-63B then asks for at least 15 characters.
+        merged.put("twoFactorMode", String.valueOf(twoStepPolicy.resolve(applicationId).policy().get("mode")));
         return merged;
     }
 
     public Map<String, Object> savePasswordPolicy(UUID applicationId, Map<String, Object> body) {
         requireExposed("password-policy");
         requireApplication(applicationId);
-        saveAppMap(applicationId, "password_policy", PasswordPolicySanitizer.sanitize(body));
+        Map<String, Object> sanitized = PasswordPolicySanitizer.sanitize(body);
+        PlatformMinimums.password(authSettings.getPasswordPolicy(), sanitized).requireNothingRaised();
+        saveAppMap(applicationId, "password_policy", sanitized);
         return getPasswordPolicy(applicationId);
     }
 
@@ -515,7 +527,9 @@ public class ApplicationSettingsService {
     public Map<String, Object> saveVerificationPolicy(UUID applicationId, Map<String, Object> body) {
         requireExposed("verification-policy");
         requireApplication(applicationId);
-        saveAppMap(applicationId, "verification_policy", VerificationPolicyDefaults.sanitizeForSave(body));
+        Map<String, Object> sanitized = VerificationPolicyDefaults.sanitizeForSave(body);
+        PlatformMinimums.verification(platformVerificationPolicy(), sanitized).requireNothingRaised();
+        saveAppMap(applicationId, "verification_policy", sanitized);
         return getVerificationPolicy(applicationId);
     }
 
@@ -555,7 +569,10 @@ public class ApplicationSettingsService {
     public Map<String, Object> saveAppearance(UUID applicationId, Map<String, Object> body) {
         requireExposed("appearance");
         requireApplication(applicationId);
-        saveAppMap(applicationId, "appearance", ClientAppearanceDefaults.stripMeta(body));
+        Map<String, Object> appearance = ClientAppearanceDefaults.stripMeta(body);
+        appearance.keySet().retainAll(ClientAppearanceDefaults.PUBLIC_MANIFEST_KEYS);
+        ClientAppearanceDefaults.requireValid(appearance);
+        saveAppMap(applicationId, "appearance", appearance);
         return getAppearance(applicationId);
     }
 
@@ -734,7 +751,11 @@ public class ApplicationSettingsService {
                     applicationId, settingKey, PasswordPolicySanitizer.sanitize(authSettings.getPasswordPolicy()));
             case "feature_flags" -> saveAppRaw(
                     applicationId, settingKey, stripMeta(copyList(authSettings.getFeatureFlags())));
-            case "appearance" -> saveAppMap(applicationId, settingKey, new HashMap<>(platformSettings.get("appearance")));
+            // The platform's stored "appearance" is the console's own look; an application's appearance is its
+            // sign-in pages, which start from the built-in defaults.
+            case "appearance" -> saveAppMap(
+                    applicationId, settingKey, new HashMap<>(ClientAppearanceDefaults.platformDefaults()));
+            case "verification_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>(platformVerificationPolicy()));
             case "user_directory" -> saveAppMap(
                     applicationId,
                     settingKey,
@@ -750,7 +771,10 @@ public class ApplicationSettingsService {
                 }
                 saveAppRaw(applicationId, settingKey, new LinkedHashMap<>(platform));
             }
-            case "token_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>(platformTokenPolicy()));
+            case "token_policy" -> {
+                saveAppMap(applicationId, settingKey, new HashMap<>(platformTokenPolicy()));
+                syncTokenPolicyToApplicationConfig(applicationId);
+            }
             case "notifications" -> {
                 Map<String, Object> effective = new HashMap<>(getNotifications(applicationId));
                 effective.remove("scope");
@@ -880,7 +904,39 @@ public class ApplicationSettingsService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> resolveAuthMethods(UUID applicationId) {
         requireApplication(applicationId);
-        return mergeList(authSettings.getAuthMethods(), getAppRaw(applicationId, "auth_methods"));
+        List<Map<String, Object>> platform = authSettings.getAuthMethods();
+        List<Map<String, Object>> merged = mergeList(platform, getAppRaw(applicationId, "auth_methods"));
+        // A method the platform turns off is off for every application (an application only narrows the list).
+        java.util.Set<String> platformOn = new java.util.HashSet<>();
+        for (Map<String, Object> m : platform) {
+            if (Boolean.TRUE.equals(m.get("enabled"))) {
+                platformOn.add(String.valueOf(m.get("id")));
+            }
+        }
+        for (Map<String, Object> m : merged) {
+            boolean allowed = platformOn.contains(String.valueOf(m.get("id")));
+            m.put("platformEnabled", allowed);
+            if (!allowed) {
+                m.put("enabled", false);
+            }
+        }
+        return merged;
+    }
+
+    /** Drops "on" for methods the platform has off, so a saved list never claims what it cannot do. */
+    private List<Map<String, Object>> withinPlatformMethods(List<Map<String, Object>> body) {
+        java.util.Set<String> platformOn = new java.util.HashSet<>();
+        for (Map<String, Object> m : authSettings.getAuthMethods()) {
+            if (Boolean.TRUE.equals(m.get("enabled"))) {
+                platformOn.add(String.valueOf(m.get("id")));
+            }
+        }
+        for (Map<String, Object> m : body) {
+            if (!platformOn.contains(String.valueOf(m.get("id")))) {
+                m.put("enabled", false);
+            }
+        }
+        return body;
     }
 
     @Transactional(readOnly = true)
@@ -893,20 +949,26 @@ public class ApplicationSettingsService {
     @Transactional(readOnly = true)
     public Map<String, Object> resolvePasswordPolicy(UUID applicationId) {
         requireApplication(applicationId);
+        Map<String, Object> platform = authSettings.getPasswordPolicy();
         if (hasOverride(applicationId, "password_policy")) {
-            return PasswordPolicySanitizer.sanitize(
-                    getAppMap(applicationId, "password_policy").orElse(Map.of()));
+            // Never weaker than the platform, including after the platform tightens.
+            return PlatformMinimums.password(platform, PasswordPolicySanitizer.sanitize(
+                    getAppMap(applicationId, "password_policy").orElse(Map.of()))).value();
         }
-        return authSettings.getPasswordPolicy();
+        return platform;
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> resolveVerificationPolicy(UUID applicationId) {
         requireApplication(applicationId);
         if (hasOverride(applicationId, "verification_policy")) {
-            return VerificationPolicyDefaults.sanitizeForSave(
-                    getAppMap(applicationId, "verification_policy").orElse(Map.of()));
+            return PlatformMinimums.verification(platformVerificationPolicy(), VerificationPolicyDefaults.sanitizeForSave(
+                    getAppMap(applicationId, "verification_policy").orElse(Map.of()))).value();
         }
+        return platformVerificationPolicy();
+    }
+
+    private Map<String, Object> platformVerificationPolicy() {
         Map<String, Object> platform = platformSettings.get("verification_policy");
         if (platform == null || platform.isEmpty()) {
             return VerificationPolicyDefaults.platformDefaults();
@@ -1021,7 +1083,30 @@ public class ApplicationSettingsService {
     /** Non-empty client URL overrides exposed on the public manifest. */
     public Map<String, String> publicClientUrls(UUID applicationId) {
         Map<String, String> urls = mergeClientUrls(getClientIntegration(applicationId).get("clientUrls"));
-        urls.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isBlank());
+        // A page saved before these rules, or whose OAuth client was removed since, is skipped: links then use the
+        // hosted pages rather than send a token somewhere this application does not control.
+        Set<String> trusted = trustedClientOrigins(applicationId);
+        urls.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isBlank()
+                || ClientUrlPolicy.problem(e.getValue(), trusted) != null);
         return urls;
+    }
+
+    /** Origins of this application's OAuth client redirect and post-logout addresses. */
+    private Set<String> trustedClientOrigins(UUID applicationId) {
+        List<String> uris = new ArrayList<>();
+        for (var client : oauthClients.getObject().findByApplicationIdOrderByCreatedAtDesc(applicationId)) {
+            uris.addAll(client.getRedirectUris());
+            uris.addAll(client.getPostLogoutRedirectUris());
+        }
+        return ClientUrlPolicy.origins(uris);
+    }
+
+    private static String clientUrlLabel(String key) {
+        return switch (key) {
+            case "forgotPassword" -> "Forgot password";
+            case "passwordReset" -> "Password reset";
+            case "magicLink" -> "Magic link";
+            default -> key;
+        };
     }
 }

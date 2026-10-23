@@ -105,14 +105,7 @@ public class AuthSettingsService {
     }
 
     private static Map<String, Object> defaultPasswordPolicy() {
-        return new LinkedHashMap<>(Map.of(
-                "minLength", 12,
-                "requireUppercase", true,
-                "requireNumber", true,
-                "requireSymbol", true,
-                "expiryDays", 0,
-                "historyCount", 5,
-                "hashAlgorithm", "bcrypt"));
+        return new LinkedHashMap<>(PasswordPolicySanitizer.platformDefaults());
     }
 
     private static List<Map<String, Object>> deepCopyList(List<Map<String, Object>> body) {

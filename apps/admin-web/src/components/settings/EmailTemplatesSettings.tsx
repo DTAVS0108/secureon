@@ -237,7 +237,8 @@ export function EmailTemplatesSettings({
           <div className="flex items-center gap-2">
             {dirty && <span className="text-xs text-amber-600">Unsaved changes</span>}
             <Toggle
-              checked={draft.enabled !== false}
+              checked={draft.alwaysSent ? true : draft.enabled !== false}
+              disabled={Boolean(draft.alwaysSent)}
               onChange={(v) => updateDraft({ enabled: v })}
               aria-label="Template enabled"
             />
@@ -257,6 +258,18 @@ export function EmailTemplatesSettings({
         <FieldRow label="Subject">
           <Input value={draft.subject ?? ""} onChange={(e) => updateDraft({ subject: e.target.value })} />
         </FieldRow>
+        {draft.alwaysSent && (
+          <p className="text-xs text-muted">
+            A security notice: users always get it when their sign-in changes, so it cannot be switched off. You can
+            change its wording.
+          </p>
+        )}
+        {draft.carriesSecret ? (
+          <p className="rounded-lg border border-ui bg-surface px-3 py-2 text-xs text-muted">
+            This email carries a sign-in link or code, so it goes to the user only: no CC or BCC.
+          </p>
+        ) : (
+          <>
         <FieldRow
           label="CC"
           hint="Admin recipients, recipient groups, or individual emails. Groups resolve when the email is sent."
@@ -283,6 +296,8 @@ export function EmailTemplatesSettings({
             onChange={(bcc) => updateDraft({ bcc })}
           />
         </FieldRow>
+          </>
+        )}
         <FieldRow
           label="Variables"
           hint="Comma-separated placeholder names used in subject/body (without braces)"

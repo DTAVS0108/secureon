@@ -6,7 +6,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
-import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
 import {
   fetchApplicationTokenPolicy,
   saveApplicationTokenPolicy,
@@ -27,6 +26,8 @@ const DEFAULTS: TokenPolicy = {
   reuseRefreshTokens: false,
   rotateRefreshTokens: true,
   refreshTokenReuseDetection: true,
+  refreshTokenAbsoluteSeconds: 2_592_000,
+  signInMaxAgeSeconds: 0,
 };
 
 function formatTtl(seconds: number): string {
@@ -61,7 +62,6 @@ export function TokenPolicySettings({
     setLoaded(false);
     try {
       if (applicationId) {
-        await ensureApplicationPolicyScope(applicationId, "token-policy");
         const data = await fetchApplicationTokenPolicy(applicationId);
         setPolicy({ ...DEFAULTS, ...data });
       } else {
@@ -131,19 +131,22 @@ export function TokenPolicySettings({
           <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
             <TtlField
               label="Access token lifetime"
-              hint={`Currently ${formatTtl(policy.accessTokenTtlSeconds)}`}
+              hint={`${formatTtl(policy.accessTokenTtlSeconds)} · at most 1 hour`}
+              max={3600}
               value={policy.accessTokenTtlSeconds}
               onChange={(v) => patchSeconds("accessTokenTtlSeconds", v)}
             />
             <TtlField
               label="ID token lifetime"
-              hint={`OIDC id_token · ${formatTtl(policy.idTokenTtlSeconds)}`}
+              hint={`OIDC id_token · ${formatTtl(policy.idTokenTtlSeconds)} · at most 1 hour`}
+              max={3600}
               value={policy.idTokenTtlSeconds}
               onChange={(v) => patchSeconds("idTokenTtlSeconds", v)}
             />
             <TtlField
               label="Client credentials token"
-              hint={`M2M grant · ${formatTtl(policy.clientCredentialsTtlSeconds)}`}
+              hint={`M2M grant · ${formatTtl(policy.clientCredentialsTtlSeconds)} · at most 1 hour`}
+              max={3600}
               value={policy.clientCredentialsTtlSeconds}
               onChange={(v) => patchSeconds("clientCredentialsTtlSeconds", v)}
             />
@@ -194,15 +197,18 @@ export function TokenPolicySettings({
           </ul>
           <div className="grid grid-cols-1 gap-5 border-t border-ui p-5 md:grid-cols-2">
             <TtlField
-              label="Refresh token lifetime"
-              hint={
-                policy.refreshTokensEnabled
-                  ? formatTtl(policy.refreshTokenTtlSeconds)
-                  : "Set to 0 to disable when refresh tokens are off"
-              }
+              label="Refresh token idle lifetime"
+              hint={`${formatTtl(policy.refreshTokenTtlSeconds)} without use ends the sign-in (each refresh starts it again)`}
               value={policy.refreshTokenTtlSeconds}
               disabled={!policy.refreshTokensEnabled}
               onChange={(v) => patchSeconds("refreshTokenTtlSeconds", v)}
+            />
+            <TtlField
+              label="Refresh token maximum lifetime"
+              hint={`After ${formatTtl(policy.refreshTokenAbsoluteSeconds ?? 2_592_000)} people sign in again, however often the app refreshes`}
+              value={policy.refreshTokenAbsoluteSeconds ?? 2_592_000}
+              disabled={!policy.refreshTokensEnabled}
+              onChange={(v) => patchSeconds("refreshTokenAbsoluteSeconds", v)}
             />
           </div>
         </Card>
@@ -212,7 +218,8 @@ export function TokenPolicySettings({
           <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
             <TtlField
               label="Authorization code lifetime"
-              hint={formatTtl(policy.authorizationCodeTtlSeconds)}
+              hint={`${formatTtl(policy.authorizationCodeTtlSeconds)} · at most 10 minutes`}
+              max={600}
               value={policy.authorizationCodeTtlSeconds}
               onChange={(v) => patchSeconds("authorizationCodeTtlSeconds", v)}
             />
@@ -221,6 +228,26 @@ export function TokenPolicySettings({
               hint={formatTtl(policy.deviceCodeTtlSeconds)}
               value={policy.deviceCodeTtlSeconds}
               onChange={(v) => patchSeconds("deviceCodeTtlSeconds", v)}
+            />
+          </div>
+        </Card>
+
+        <Card padded={false}>
+          <CardHeader
+            title="Sign-in session"
+            description="How long a sign-in at the sign-in page lasts before people must sign in again."
+          />
+          <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
+            <TtlField
+              label="Sign in again after"
+              hint={
+                (policy.signInMaxAgeSeconds ?? 0) > 0
+                  ? `${formatTtl(policy.signInMaxAgeSeconds ?? 0)} after signing in`
+                  : "0 = the platform session limit (24 hours by default)"
+              }
+              max={86_400}
+              value={policy.signInMaxAgeSeconds ?? 0}
+              onChange={(v) => patchSeconds("signInMaxAgeSeconds", v)}
             />
           </div>
         </Card>
@@ -233,12 +260,14 @@ function TtlField({
   label,
   hint,
   value,
+  max,
   disabled,
   onChange,
 }: {
   label: string;
   hint: string;
   value: number;
+  max?: number;
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
@@ -250,6 +279,7 @@ function TtlField({
           id={id}
           type="number"
           min={0}
+          max={max}
           value={String(value)}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}

@@ -49,17 +49,17 @@
 
   function loadPolicy(applicationId) {
     if (!applicationId) {
-      return Promise.resolve({ minLength: 12, requireUppercase: true, requireNumber: true, requireSymbol: true });
+      return Promise.resolve({ minLength: 12, requireUppercase: false, requireNumber: false, requireSymbol: false });
     }
     return fetch("/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup")
       .then(function (r) {
         return r.ok ? r.json() : {};
       })
       .then(function (opts) {
-        return opts.passwordPolicy || { minLength: 12, requireUppercase: true, requireNumber: true, requireSymbol: true };
+        return opts.passwordPolicy || { minLength: 12, requireUppercase: false, requireNumber: false, requireSymbol: false };
       })
       .catch(function () {
-        return { minLength: 12, requireUppercase: true, requireNumber: true, requireSymbol: true };
+        return { minLength: 12, requireUppercase: false, requireNumber: false, requireSymbol: false };
       });
   }
 

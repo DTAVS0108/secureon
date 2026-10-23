@@ -17,9 +17,10 @@ public class TwoStepConfig {
     FilterRegistrationBean<SignInFreshnessFilter> signInFreshnessFilter(
             @Value("${secureone.session.max-lifetime:24h}") Duration maxLifetime,
             ObjectProvider<MfaLoginService> mfaLogin,
-            ObjectProvider<OAuthClientRepository> clients) {
-        FilterRegistrationBean<SignInFreshnessFilter> registration =
-                new FilterRegistrationBean<>(new SignInFreshnessFilter(maxLifetime, mfaLogin, clients));
+            ObjectProvider<OAuthClientRepository> clients,
+            ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> applicationSettings) {
+        FilterRegistrationBean<SignInFreshnessFilter> registration = new FilterRegistrationBean<>(
+                new SignInFreshnessFilter(maxLifetime, mfaLogin, clients, applicationSettings));
         registration.setOrder(-110);
         registration.addUrlPatterns("/*");
         return registration;

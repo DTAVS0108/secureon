@@ -23,8 +23,8 @@ export const SIGNUP_HELP = {
     "Channels that must be verified. Email is typical; add phone when collecting mobile numbers at signup.",
   allowUserChannelChoice:
     "When on, signup API accepts verificationChannel (email or phone) so users pick how they receive the code.",
-  otpLength: "Number of digits in codes (4–8). Shown in emails/SMS and validated on verify.",
-  otpTtlSeconds: "Seconds before a code expires. Default 600 = 10 minutes.",
+  otpLength: "Number of digits in codes (6–8; NIST SP 800-63B asks for at least 6). Shown in emails/SMS and validated on verify.",
+  otpTtlSeconds: "Seconds before a code expires (60–600). Default and maximum 600 = 10 minutes.",
   maxAttempts: "Failed verify attempts before the challenge is invalidated.",
   resendCooldownSeconds: "Minimum wait between sending another code to the same user.",
 };

@@ -76,7 +76,6 @@ export function PublicManifestSettings({ applicationId }: { applicationId: strin
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      await ensureApplicationPolicyScope(applicationId, "public-manifest");
       const data = await fetchPublicManifestConfig(applicationId).catch(() => DEFAULTS);
       setConfig({
         ...DEFAULTS,
@@ -100,6 +99,7 @@ export function PublicManifestSettings({ applicationId }: { applicationId: strin
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         try {
+          await ensureApplicationPolicyScope(applicationId, "public-manifest");
           const payload: PublicManifestConfig = {
             enabled: next.enabled,
             authMethodsOnlyEnabled: next.authMethodsOnlyEnabled,

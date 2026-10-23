@@ -331,7 +331,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
             <Toggle checked={Boolean(policy.stepUpAfterPassword)} onChange={(v) => patch({ stepUpAfterPassword: v })} aria-label="Ask users who have an option" />
           </SettingRow>
           <SettingRow ctx={ctx} k="challengeTtlSeconds" label="Time to finish the second step (seconds)">
-            <Input type="number" min={60} max={900} value={policy.challengeTtlSeconds ?? 300}
+            <Input type="number" min={60} max={600} value={policy.challengeTtlSeconds ?? 300}
               onChange={(e) => patch({ challengeTtlSeconds: Number(e.target.value) })} />
           </SettingRow>
           <SettingRow ctx={ctx} k="maxChallengeAttempts" label="Wrong codes per sign-in" hint="Wrong codes also count toward the account lockout.">
