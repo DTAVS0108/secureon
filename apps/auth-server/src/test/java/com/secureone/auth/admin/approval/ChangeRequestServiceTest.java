@@ -32,19 +32,59 @@ class ChangeRequestServiceTest {
     private final ChangeRequests requests = mock(ChangeRequests.class);
     private final OAuthClientAdminService clients = mock(OAuthClientAdminService.class);
     private final AuditService audit = mock(AuditService.class);
+    private final TwoFactorChangeRequests twoFactor = mock(TwoFactorChangeRequests.class);
     private ChangeRequestService service;
 
     private final UUID requestId = UUID.randomUUID();
     private final UUID clientId = UUID.randomUUID();
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        service = new ChangeRequestService(requests, clients, audit);
+        org.springframework.beans.factory.ObjectProvider<TwoFactorChangeRequests> provider =
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(provider.getObject()).thenReturn(twoFactor);
+        service = new ChangeRequestService(requests, clients, audit, provider);
     }
 
     private Row row(Status status) {
         return new Row(requestId, ChangeRequestService.OAUTH_CLIENT_DELETE, UUID.randomUUID(), UUID.randomUUID(),
-                clientId, "web-client (Shop)", null, status, REQUESTER, Instant.now(), null, null, null, "Acme");
+                clientId, "web-client (Shop)", null, status, REQUESTER, Instant.now(), null, null, null, "Acme",
+                null, null);
+    }
+
+    private Row twoFactorRow() {
+        UUID app = UUID.randomUUID();
+        return new Row(requestId, TwoFactorChangeRequests.APP_OFF, UUID.randomUUID(), app, app, "Shop", null,
+                Status.PENDING, REQUESTER, Instant.now(), null, null, null, "Acme",
+                "{\"before\":{\"tabEnabled\":true}}", "Turn Two Factor Authentication off for Shop");
+    }
+
+    @Test
+    void approvingATwoFactorChangeRunsIt() {
+        Row pending = twoFactorRow();
+        when(requests.find(requestId)).thenReturn(Optional.of(pending));
+        when(twoFactor.apply(pending)).thenReturn(null);
+        when(requests.decide(requestId, Status.APPROVED, APPROVER, "ok")).thenReturn(true);
+
+        service.approve(requestId, APPROVER, "ok");
+
+        verify(twoFactor).apply(pending);
+        verify(requests).decide(requestId, Status.APPROVED, APPROVER, "ok");
+        verify(clients, never()).delete(any());
+    }
+
+    @Test
+    void aStaleTwoFactorChangeFailsWithTheReason() {
+        Row pending = twoFactorRow();
+        when(requests.find(requestId)).thenReturn(Optional.of(pending));
+        when(twoFactor.apply(pending)).thenReturn("The setting changed after this request was made");
+        when(requests.decide(requestId, Status.FAILED, APPROVER, "The setting changed after this request was made"))
+                .thenReturn(true);
+
+        service.approve(requestId, APPROVER, "ok");
+
+        verify(requests).decide(requestId, Status.FAILED, APPROVER, "The setting changed after this request was made");
     }
 
     private OAuthClientResponse client() {

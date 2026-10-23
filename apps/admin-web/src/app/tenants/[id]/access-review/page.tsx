@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AccessReviewPanel } from "@/components/access/AccessReviewPanel";
 import { ChangeRequestsPanel } from "@/components/approvals/ChangeRequestsPanel";
+import { TwoFactorReviewPanel } from "@/components/approvals/TwoFactorReviewPanel";
 import { assertTenantScope, requireTenantGovernanceAccess } from "@/lib/platform-access";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function TenantAccessReviewPage({ params }: { params: Promi
         description="Approve high-impact changes in this tenant, and review its console roles, when each person last signed in, and whether they use MFA."
       />
       <ChangeRequestsPanel tenantId={id} />
+      <TwoFactorReviewPanel tenantId={id} />
       <AccessReviewPanel tenantId={id} />
     </div>
   );

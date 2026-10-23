@@ -38,7 +38,7 @@ const SECTIONS: { key: string; label: string; description: string; info?: string
     key: "two-factor",
     label: "Two Factor Authentication",
     description:
-      "Lets each application have its own two-factor settings (its Feature flags → Two Factor Authentication switch). Platform and tenant locks still apply.",
+      "Lets each application manage Two Factor Authentication (its Feature flags switch and settings). Platform and tenant locks still apply. Closing it needs another platform operator's approval.",
   },
   {
     key: "password-policy",
@@ -126,12 +126,25 @@ export function AppExposureSettings() {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       const seq = ++saveSeq.current;
       saveTimer.current = setTimeout(async () => {
-        const { exposure: saved, error } = await saveAppExposureAction(normalized);
+        let { exposure: saved, error } = await saveAppExposureAction(normalized);
+        // Closing Two Factor Authentication with nobody else to approve needs a fresh second step: this save runs
+        // on the server, so ask for it here (the browser API client does it for other calls) and retry once.
+        if (error && /verify it's you/i.test(error)) {
+          const w = window as unknown as { __secureoneStepUp?: () => Promise<boolean> };
+          if (w.__secureoneStepUp && (await w.__secureoneStepUp())) {
+            ({ exposure: saved, error } = await saveAppExposureAction(normalized));
+          }
+        }
         if (seq !== saveSeq.current) return;
         const applied = normalizeAppSettingsExposure(saved);
         setExposure(applied);
         exposureRef.current = applied;
         if (error) toastRef.current(error, "error");
+        else if (normalized["two-factor"] === false && applied["two-factor"] === true)
+          toastRef.current(
+            "Closing Two Factor Authentication to applications needs another platform operator's approval: sent to Access review",
+            "success",
+          );
         else toastRef.current("Settings saved", "success");
       }, 600);
     },

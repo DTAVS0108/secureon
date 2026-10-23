@@ -47,7 +47,16 @@ const DEFAULTS: MfaPolicy = {
   locks: {},
 };
 
-const META_KEYS = ["scope", "inheritsPlatformDefaults", "overrides", "inherited", "platformLocks", "ownSettings", "switchedOff"] as const;
+const META_KEYS = [
+  "scope",
+  "inheritsPlatformDefaults",
+  "overrides",
+  "inherited",
+  "platformLocks",
+  "ownSettings",
+  "switchedOff",
+  "pendingChange",
+] as const;
 
 type Level = "platform" | "tenant" | "application";
 
@@ -109,7 +118,12 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
             ? await saveTenantMfaPolicy(tenantId, body)
             : await savePlatformMfaPolicy(body);
         setPolicy({ ...DEFAULTS, ...saved });
-        toast("Two Factor Authentication saved", "success");
+        // Weaker values wait for another admin: the settings shown stay as they are until it is approved.
+        if (saved.pendingChange && saved.pendingChange.id !== policy.pendingChange?.id) {
+          toast("Weaker settings need another admin's approval: sent to Access review", "success");
+        } else {
+          toast("Two Factor Authentication saved", "success");
+        }
       } catch (e) {
         toast(e instanceof Error ? e.message : "Save failed", "error");
         await reload();
@@ -155,7 +169,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
 
   const levelText =
     level === "platform"
-      ? "The default for every tenant and application. Use the menus on the right to decide what tenants and applications may change."
+      ? "The default for every tenant and application. Use the menus on the right to decide what tenants and applications may change. Weakening a setting or removing a lock needs another admin's approval."
       : level === "tenant"
         ? "Defaults for every application of this tenant, within what the platform allows. Lock settings for the tenant's applications on the right."
         : "This application's settings, within what the platform and the tenant allow.";
@@ -164,6 +178,17 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
     <div className={cn("space-y-6", !loaded && "pointer-events-none opacity-60")} data-testid="two-step-settings">
       <Card padded={false}>
         <CardHeader title="Two Factor Authentication" description={levelText} />
+        {policy.pendingChange && (
+          <p
+            role="status"
+            data-testid="two-factor-change-pending"
+            className="border-t border-ui bg-sky-500/10 px-5 py-3 text-sm text-ui"
+          >
+            <strong>Waiting for approval</strong> ({policy.pendingChange.mine ? "your request" : `asked by ${policy.pendingChange.requestedBy}`}
+            ): {policy.pendingChange.details}. It applies when another admin approves it on Access review; until then the
+            settings below stay as they are.
+          </p>
+        )}
         {level === "application" && policy.ownSettings === false && (
           <p
             role="status"

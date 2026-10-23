@@ -109,4 +109,49 @@ class MfaPolicyDefaultsTest {
         Map<String, Object> o = MfaPolicyDefaults.sanitizeOverride(Map.of("mode", "required", "graceDays", 7));
         assertEquals(Map.of("mode", "required", "graceDays", 7), o);
     }
+
+    // ---- What waits for a second admin ---------------------------------------------------------------------
+
+    @Test
+    void tighteningIsNotAWeakening() {
+        Map<String, Object> stricter = new java.util.HashMap<>(platform);
+        stricter.put("mode", "required");
+        stricter.put("graceDays", 3);
+        stricter.put("methods", List.of("passkey", "totp"));
+
+        assertTrue(MfaPolicyDefaults.weakenings(platform, stricter).isEmpty());
+        assertTrue(MfaPolicyDefaults.weakenings(platform, platform).isEmpty(), "nothing changed");
+    }
+
+    @Test
+    void weakerValuesAreListed() {
+        Map<String, Object> weaker = new java.util.HashMap<>(platform);
+        weaker.put("mode", "off");
+        weaker.put("minimumStrength", "any");
+        weaker.put("methods", List.of("passkey", "security_key", "totp", "sms"));
+        weaker.put("rememberDeviceDays", 30);
+        weaker.put("trustIdpMfa", true);
+
+        List<String> found = MfaPolicyDefaults.weakenings(platform, weaker);
+        assertEquals(5, found.size(), String.valueOf(found));
+        assertTrue(found.contains("mode: optional → off"));
+    }
+
+    @Test
+    void removingOrLooseningALockIsAWeakening() {
+        Map<String, Object> locked = new java.util.HashMap<>(platform);
+        locked.put(MfaPolicyDefaults.LOCKS, Map.of("mode", "locked", "methods", "stricter"));
+        Map<String, Object> loosened = new java.util.HashMap<>(platform);
+        loosened.put(MfaPolicyDefaults.LOCKS, Map.of("mode", "stricter"));
+
+        List<String> found = MfaPolicyDefaults.weakenings(locked, loosened);
+        assertEquals(List.of("lock on mode: locked → stricter", "lock on methods: stricter → open"),
+                found.stream().sorted(java.util.Comparator.comparing((String s) -> !s.contains("mode"))).toList());
+    }
+
+    @Test
+    void onlyTheKeysBeingChangedAreCompared() {
+        assertTrue(MfaPolicyDefaults.weakenings(platform, Map.of("graceDays", 7)).isEmpty());
+        assertEquals(1, MfaPolicyDefaults.weakenings(platform, Map.of("graceDays", 30)).size());
+    }
 }

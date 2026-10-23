@@ -44,6 +44,13 @@ public class ApplicationScopedAdminController {
     @org.springframework.beans.factory.annotation.Autowired
     private com.secureone.auth.admin.AdminStepUpService stepUp;
 
+    /** Two Factor Authentication changes that weaken protection wait for a second admin. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.TwoFactorChangeRequests twoFactorChanges;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.ChangeRequestViews changeViews;
+
     private final ApplicationUserAdminService users;
     private final ApplicationSettingsService settings;
     private final UserAdminService userAdmin;
@@ -333,20 +340,56 @@ public class ApplicationScopedAdminController {
     }
 
     @GetMapping("/settings/mfa-tab/tab-state")
-    public Map<String, Object> getMfaTabState(@PathVariable UUID applicationId) {
-        return settings.getMfaTabState(applicationId);
+    public Map<String, Object> getMfaTabState(
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID applicationId) {
+        return withPendingOff(new java.util.LinkedHashMap<>(settings.getMfaTabState(applicationId)),
+                applicationId, authentication, actAs);
     }
 
+    /**
+     * The Two Factor Authentication switch (Feature flags). Turning it on is immediate; turning it off waits for a
+     * second admin ({@code pendingChange}), or applies now when nobody else could approve
+     * ({@code appliedWithoutApproval}, after a fresh second step).
+     */
     @PutMapping("/settings/mfa-tab/tab-enabled")
     public Map<String, Object> setMfaTabEnabled(
-            @PathVariable UUID applicationId, @RequestBody Map<String, Boolean> body) {
+            jakarta.servlet.http.HttpServletRequest request,
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
         boolean enabled = Boolean.TRUE.equals(body != null ? body.get("enabled") : null);
+        String reason = body != null && body.get("reason") != null ? String.valueOf(body.get("reason")) : null;
         boolean was = Boolean.TRUE.equals(settings.getMfaTabState(applicationId).get("tabEnabled"));
-        Map<String, Object> state = settings.saveMfaTabEnabled(applicationId, enabled);
-        // Audited like a feature flag: it is the "Two Factor Authentication" switch under Feature flags.
-        flagAudit.recordChanges(applicationId,
-                List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", was)),
-                List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", enabled)));
+        boolean appliedWithoutApproval = false;
+        if (was && !enabled) {
+            var outcome = twoFactorChanges.appOff(applicationId, changeViews.email(authentication, actAs), reason, request);
+            if (outcome.pending()) {
+                return withPendingOff(new java.util.LinkedHashMap<>(settings.getMfaTabState(applicationId)),
+                        applicationId, authentication, actAs);
+            }
+            appliedWithoutApproval = true;
+        } else if (was != enabled) {
+            settings.saveMfaTabEnabled(applicationId, enabled);
+        }
+        if (was != enabled) {
+            // Audited like a feature flag: it is the "Two Factor Authentication" switch under Feature flags.
+            flagAudit.recordChanges(applicationId,
+                    List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", was)),
+                    List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", enabled)));
+        }
+        Map<String, Object> state = withPendingOff(new java.util.LinkedHashMap<>(settings.getMfaTabState(applicationId)),
+                applicationId, authentication, actAs);
+        state.put("appliedWithoutApproval", appliedWithoutApproval);
+        return state;
+    }
+
+    private Map<String, Object> withPendingOff(Map<String, Object> state, UUID applicationId,
+            org.springframework.security.core.Authentication authentication, String actAs) {
+        state.put("pendingChange", twoFactorChanges.pending(
+                        com.secureone.auth.admin.approval.TwoFactorChangeRequests.APP_OFF, applicationId)
+                .map(row -> changeViews.view(row, authentication, actAs)).orElse(null));
         return state;
     }
 
@@ -385,14 +428,44 @@ public class ApplicationScopedAdminController {
     }
 
     @GetMapping("/settings/mfa-policy")
-    public Map<String, Object> getMfaPolicy(@PathVariable UUID applicationId) {
-        return settings.getMfaPolicy(applicationId);
+    public Map<String, Object> getMfaPolicy(
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @PathVariable UUID applicationId) {
+        return withPendingPolicy(settings.getMfaPolicy(applicationId), applicationId, authentication, actAs);
     }
 
+    /**
+     * Saves the application's two-factor settings. Tightening applies now; anything weaker (e.g. required → off,
+     * a lower strength, more methods, longer remembering) waits for a second admin ({@code pendingChange}).
+     */
     @PutMapping("/settings/mfa-policy")
     public Map<String, Object> updateMfaPolicy(
+            jakarta.servlet.http.HttpServletRequest request,
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
             @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
-        return settings.saveMfaPolicy(applicationId, body);
+        Map<String, Object> values = com.secureone.auth.mfa.MfaPolicyDefaults.sanitizeOverride(body);
+        values.remove(com.secureone.auth.mfa.MfaPolicyDefaults.LOCKS);
+        List<String> weakenings = com.secureone.auth.mfa.MfaPolicyDefaults.weakenings(
+                settings.resolveMfaPolicy(applicationId), values);
+        if (weakenings.isEmpty() || !Boolean.TRUE.equals(settings.getMfaPolicy(applicationId).get("ownSettings"))) {
+            // Also when the switch is off: the save then explains that it must be turned on first.
+            return withPendingPolicy(settings.saveMfaPolicy(applicationId, body), applicationId, authentication, actAs);
+        }
+        Object reason = body.get("reason");
+        twoFactorChanges.appPolicy(applicationId, values, weakenings, changeViews.email(authentication, actAs),
+                reason != null ? String.valueOf(reason) : null, request);
+        return withPendingPolicy(settings.getMfaPolicy(applicationId), applicationId, authentication, actAs);
+    }
+
+    private Map<String, Object> withPendingPolicy(Map<String, Object> policy, UUID applicationId,
+            org.springframework.security.core.Authentication authentication, String actAs) {
+        Map<String, Object> out = new java.util.LinkedHashMap<>(policy);
+        out.put("pendingChange", twoFactorChanges.pending(
+                        com.secureone.auth.admin.approval.TwoFactorChangeRequests.APP_POLICY, applicationId)
+                .map(row -> changeViews.view(row, authentication, actAs)).orElse(null));
+        return out;
     }
 
     @DeleteMapping("/settings/mfa-policy")

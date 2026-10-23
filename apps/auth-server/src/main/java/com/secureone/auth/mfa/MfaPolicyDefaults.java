@@ -203,9 +203,39 @@ public final class MfaPolicyDefaults {
         return out;
     }
 
+    /**
+     * What {@code after} makes weaker than {@code before}, in words (e.g. "mode: required → off", "unlocks mode"):
+     * these changes wait for a second admin's approval. Empty when the change only keeps or tightens protection.
+     * {@code after} may hold only some keys (the ones being changed).
+     */
+    public static List<String> weakenings(Map<String, Object> before, Map<String, Object> after) {
+        List<String> out = new ArrayList<>();
+        for (String key : LOCKABLE) {
+            if (!after.containsKey(key) || after.get(key) == null) {
+                continue;
+            }
+            Object was = before.get(key);
+            Object now = after.get(key);
+            if (!now.equals(was) && !atLeastAsStrict(key, now, was)) {
+                out.add(key + ": " + was + " → " + now);
+            }
+        }
+        if (after.containsKey(LOCKS)) {
+            Map<String, String> wasLocks = locks(before.get(LOCKS));
+            Map<String, String> nowLocks = locks(after.get(LOCKS));
+            wasLocks.forEach((key, mode) -> {
+                String next = nowLocks.getOrDefault(key, LOCK_OPEN);
+                if (rank(next) < rank(mode)) {
+                    out.add("lock on " + key + ": " + mode + " → " + next);
+                }
+            });
+        }
+        return out;
+    }
+
     /** Whether {@code candidate} protects at least as much as {@code current} for setting {@code key}. */
     @SuppressWarnings("unchecked")
-    static boolean atLeastAsStrict(String key, Object candidate, Object current) {
+    public static boolean atLeastAsStrict(String key, Object candidate, Object current) {
         return switch (key) {
             case "mode" -> MODES.indexOf(String.valueOf(candidate)) >= MODES.indexOf(String.valueOf(current));
             case "minimumStrength" ->

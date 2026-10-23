@@ -15,9 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * High-impact changes that wait for a second admin (docs/plans/change-approvals.md). For now one action:
- * deleting an OAuth client. Callers check who may request, list and decide; this class enforces the
- * request rules: one pending request per target, nobody decides their own request.
+ * High-impact changes that wait for a second admin (docs/plans/change-approvals.md): deleting an OAuth client, and
+ * changes that weaken Two Factor Authentication ({@link TwoFactorChangeRequests}). Callers check who may request,
+ * list and decide; this class enforces the request rules: one pending request per target, nobody decides their
+ * own request.
  */
 @Service
 public class ChangeRequestService {
@@ -30,11 +31,27 @@ public class ChangeRequestService {
     private final ChangeRequests requests;
     private final OAuthClientAdminService clients;
     private final AuditService audit;
+    private final org.springframework.beans.factory.ObjectProvider<TwoFactorChangeRequests> twoFactor;
 
-    public ChangeRequestService(ChangeRequests requests, OAuthClientAdminService clients, AuditService audit) {
+    public ChangeRequestService(ChangeRequests requests, OAuthClientAdminService clients, AuditService audit,
+            org.springframework.beans.factory.ObjectProvider<TwoFactorChangeRequests> twoFactor) {
         this.requests = requests;
         this.clients = clients;
         this.audit = audit;
+        this.twoFactor = twoFactor;
+    }
+
+    private static boolean isTwoFactor(Row row) {
+        return row.action().startsWith("two_factor.");
+    }
+
+    private static String targetType(Row row) {
+        return isTwoFactor(row) ? "two_factor" : "oauth_client";
+    }
+
+    /** The change in words for the audit log. */
+    private static String describe(Row row) {
+        return row.details() != null ? row.details() : "Delete " + row.targetLabel();
     }
 
     /** Asks for {@code client} to be deleted; returns the pending request (an existing one when already asked). */
@@ -74,15 +91,16 @@ public class ChangeRequestService {
     public Row approve(UUID id, String approver, String note) {
         Row row = requirePending(id);
         requireNotOwn(row, approver);
-        boolean applied = apply(row);
+        String failure = apply(row);
+        boolean applied = failure == null;
         Status status = applied ? Status.APPROVED : Status.FAILED;
-        String decisionNote = applied ? trim(note) : "The OAuth client no longer exists.";
+        String decisionNote = applied ? trim(note) : failure;
         if (!requests.decide(id, status, approver, decisionNote)) {
             throw new ConflictException("This request was already decided by someone else.");
         }
-        audit.record(row.tenantId(), null, approver,
+        audit.record(row.tenantId(), row.applicationId(), approver,
                 applied ? "change_request.approved" : "change_request.failed",
-                "oauth_client", row.targetId(), "Delete " + row.targetLabel() + " (requested by " + row.requestedBy() + ")",
+                targetType(row), row.targetId(), describe(row) + " (requested by " + row.requestedBy() + ")",
                 applied);
         return get(id);
     }
@@ -96,8 +114,8 @@ public class ChangeRequestService {
             throw new IllegalArgumentException("Say why the request is rejected.");
         }
         decideOrConflict(id, Status.REJECTED, approver, reason);
-        audit.record(row.tenantId(), null, approver, "change_request.rejected",
-                "oauth_client", row.targetId(), "Delete " + row.targetLabel() + ": " + reason, true);
+        audit.record(row.tenantId(), row.applicationId(), approver, "change_request.rejected",
+                targetType(row), row.targetId(), describe(row) + ": " + reason, true);
         return get(id);
     }
 
@@ -109,22 +127,26 @@ public class ChangeRequestService {
             throw new AccessDeniedException("Only the person who asked can withdraw this request.");
         }
         decideOrConflict(id, Status.WITHDRAWN, requester, null);
-        audit.record(row.tenantId(), null, requester, "change_request.withdrawn",
-                "oauth_client", row.targetId(), "Delete " + row.targetLabel(), true);
+        audit.record(row.tenantId(), row.applicationId(), requester, "change_request.withdrawn",
+                targetType(row), row.targetId(), describe(row), true);
         return get(id);
     }
 
-    private boolean apply(Row row) {
+    /** Runs the approved change; returns why it could not run (the request then fails), or null. */
+    private String apply(Row row) {
+        if (isTwoFactor(row)) {
+            return twoFactor.getObject().apply(row);
+        }
         if (!OAUTH_CLIENT_DELETE.equals(row.action())) {
             throw new IllegalStateException("Unknown change: " + row.action());
         }
         try {
             clients.get(row.targetId());
         } catch (ResourceNotFoundException gone) {
-            return false;
+            return "The OAuth client no longer exists.";
         }
         clients.delete(row.targetId());
-        return true;
+        return null;
     }
 
     private Row requirePending(UUID id) {

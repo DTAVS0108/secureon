@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import {
   approveChangeRequest,
   CHANGE_ACTION_LABELS,
+  changeTargetHref,
   listChangeRequests,
   rejectChangeRequest,
   withdrawChangeRequest,
@@ -30,7 +31,7 @@ const STATUS: Record<ChangeRequest["status"], { label: string; tone: BadgeTone }
 const HISTORY_PREVIEW = 8;
 
 /**
- * Changes waiting for approval (for now: OAuth client deletes). Platform operators see every tenant;
+ * Changes waiting for approval (OAuth client deletes, Two Factor Authentication weakened). Platform operators see every tenant;
  * with `tenantId`, the tenant super admin's view of their tenant. Nobody decides their own request.
  */
 export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
@@ -77,7 +78,7 @@ export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
           rows === null
             ? "Loading…"
             : pending.length === 0
-              ? "Nothing is waiting. High-impact changes (for now: deleting an OAuth client) wait here until another admin approves them."
+              ? "Nothing is waiting. High-impact changes (deleting an OAuth client, anything that weakens Two Factor Authentication) wait here until another admin approves them."
               : `${pending.length} waiting, ${waitingForMe} for you to decide. You cannot decide a change you asked for.`
         }
         action={
@@ -103,12 +104,17 @@ export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
                 <TR key={r.id}>
                   <TD>
                     <p className="font-medium">{CHANGE_ACTION_LABELS[r.action] ?? r.action}</p>
-                    <Link
-                      href={`/applications/${r.targetId}`}
-                      className="font-mono text-xs text-brand underline-offset-2 hover:underline"
-                    >
-                      {r.targetLabel}
-                    </Link>
+                    {changeTargetHref(r) ? (
+                      <Link
+                        href={changeTargetHref(r)!}
+                        className="font-mono text-xs text-brand underline-offset-2 hover:underline"
+                      >
+                        {r.targetLabel}
+                      </Link>
+                    ) : (
+                      <p className="font-mono text-xs text-soft">{r.targetLabel}</p>
+                    )}
+                    {r.details && <p className="mt-1 max-w-md text-xs text-muted">{r.details}</p>}
                   </TD>
                   {!tenantId && <TD className="text-sm text-soft">{r.tenantName ?? "—"}</TD>}
                   <TD className="text-sm">
@@ -125,15 +131,27 @@ export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
                             triggerVariant="primary"
                             title={`Approve: ${CHANGE_ACTION_LABELS[r.action] ?? r.action}?`}
                             message={
-                              <>
-                                <strong className="font-mono">{r.targetLabel}</strong> is deleted now and its
-                                credentials stop working immediately. Asked by {r.requestedBy}.
-                              </>
+                              r.action === "oauth_client.delete" ? (
+                                <>
+                                  <strong className="font-mono">{r.targetLabel}</strong> is deleted now and its
+                                  credentials stop working immediately. Asked by {r.requestedBy}.
+                                </>
+                              ) : (
+                                <>
+                                  {r.details ?? r.targetLabel}. This weakens Two Factor Authentication and applies
+                                  now. Asked by {r.requestedBy}.
+                                </>
+                              )
                             }
                             noteLabel="Note"
-                            confirmLabel="Approve and delete"
+                            confirmLabel={r.action === "oauth_client.delete" ? "Approve and delete" : "Approve and apply"}
                             confirmVariant="danger"
-                            onConfirm={(note) => run(() => approveChangeRequest(r.id, note), "Approved: client deleted")}
+                            onConfirm={(note) =>
+                              run(
+                                () => approveChangeRequest(r.id, note),
+                                r.action === "oauth_client.delete" ? "Approved: client deleted" : "Approved: change applied",
+                              )
+                            }
                           />
                           <NoteDialog
                             triggerLabel="Reject"
@@ -190,6 +208,7 @@ export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
                     <TD>
                       <p className="text-sm">{CHANGE_ACTION_LABELS[r.action] ?? r.action}</p>
                       <p className="font-mono text-xs text-faint">{r.targetLabel}</p>
+                      {r.details && <p className="max-w-md text-xs text-faint">{r.details}</p>}
                     </TD>
                     {!tenantId && <TD className="text-sm text-soft">{r.tenantName ?? "—"}</TD>}
                     <TD className="text-sm text-soft">

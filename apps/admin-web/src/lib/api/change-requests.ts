@@ -10,6 +10,8 @@ export type ChangeRequest = {
   targetId: string;
   targetLabel: string;
   reason: string | null;
+  /** The change in words, e.g. "Weaker Two Factor Authentication for Shop: mode: required → off". */
+  details?: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "FAILED";
   requestedBy: string;
   requestedAt: string;
@@ -24,7 +26,67 @@ export type ChangeRequest = {
 
 export const CHANGE_ACTION_LABELS: Record<string, string> = {
   "oauth_client.delete": "Delete OAuth client",
+  "two_factor.app_off": "Turn Two Factor Authentication off",
+  "two_factor.app_policy": "Weaker Two Factor Authentication (application)",
+  "two_factor.tenant_policy": "Weaker Two Factor Authentication (tenant)",
+  "two_factor.platform_policy": "Weaker Two Factor Authentication (platform)",
+  "two_factor.platform_exposure": "Close Two Factor Authentication to applications",
+  "two_factor.user_exempt": "Exempt a user from Two Factor Authentication",
 };
+
+/** Where the thing a request changes is managed in the console. */
+export function changeTargetHref(r: ChangeRequest): string | null {
+  switch (r.action) {
+    case "oauth_client.delete":
+      return `/applications/${r.targetId}`;
+    case "two_factor.app_off":
+    case "two_factor.app_policy":
+      return r.applicationId ? `/app/${r.applicationId}/settings` : null;
+    case "two_factor.tenant_policy":
+      return `/tenants/${r.targetId}/two-step`;
+    case "two_factor.platform_policy":
+    case "two_factor.platform_exposure":
+      return "/settings";
+    default:
+      return null;
+  }
+}
+
+// ---- Two Factor Authentication review (Access review) ------------------------------------------------------
+
+export type TwoFactorReview = {
+  /** At least two people can approve, so changes that weaken 2FA wait for a second admin. */
+  approvalsActive: boolean;
+  approvers: number;
+  applications: {
+    id: string;
+    name: string;
+    tenantName: string;
+    mode: "off" | "optional" | "required";
+    /** Its Two Factor Authentication switch is on (own settings). */
+    managed: boolean;
+    /** Its switch is off. */
+    switchedOff: boolean;
+    /** The platform or tenant locks whether it is required. */
+    lockedAbove: boolean;
+  }[];
+  exemptions: {
+    userId: string;
+    email: string;
+    applicationId: string | null;
+    applicationName: string | null;
+    until: string;
+    reason: string | null;
+    exemptedBy: string | null;
+  }[];
+  adminsWithoutTwoFactor: { userId: string; email: string; role: string }[];
+};
+
+export function loadTwoFactorReview(tenantId?: string): Promise<TwoFactorReview> {
+  return apiFetch<TwoFactorReview>(
+    tenantId ? `/api/admin/v1/tenants/${tenantId}/two-factor/review` : "/api/admin/v1/two-factor/review",
+  );
+}
 
 /** Pending requests first, then recent decisions. Without `tenantId`: every tenant (platform operators). */
 export function listChangeRequests(tenantId?: string): Promise<ChangeRequest[]> {

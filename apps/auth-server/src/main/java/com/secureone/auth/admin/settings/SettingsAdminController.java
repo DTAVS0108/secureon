@@ -41,6 +41,13 @@ public class SettingsAdminController {
     private final PlatformFeatures platformFeatures;
     private final FeatureFlagAudit flagAudit;
 
+    /** Two Factor Authentication changes that weaken protection wait for another platform operator. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.TwoFactorChangeRequests twoFactorChanges;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.ChangeRequestViews changeViews;
+
     public SettingsAdminController(
             EmailNotificationService emailService,
             PlatformSettingsService platformSettings,
@@ -70,9 +77,26 @@ public class SettingsAdminController {
         return exposure.getExposure();
     }
 
+    /**
+     * Closing Two Factor Authentication to applications waits for another platform operator (every application
+     * then follows the platform and tenant settings); the other sections save now.
+     */
     @PutMapping("/app-exposure")
-    public Map<String, Boolean> updateAppExposure(@RequestBody Map<String, Boolean> body) {
-        return exposure.saveExposure(body);
+    public Map<String, Boolean> updateAppExposure(
+            jakarta.servlet.http.HttpServletRequest request,
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @RequestBody Map<String, Boolean> body) {
+        String key = com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE;
+        boolean closing = body != null && Boolean.FALSE.equals(body.get(key)) && exposure.isExposed(key);
+        if (!closing) {
+            return exposure.saveExposure(body);
+        }
+        Map<String, Boolean> rest = new java.util.LinkedHashMap<>(body);
+        rest.put(key, true);
+        exposure.saveExposure(rest);
+        twoFactorChanges.closeToApplications(Map.of(key, false), changeViews.email(authentication, actAs), null, request);
+        return exposure.getExposure();
     }
 
     @GetMapping("/notifications")
@@ -205,18 +229,37 @@ public class SettingsAdminController {
     }
 
     @GetMapping("/mfa-policy")
-    public Map<String, Object> getMfaPolicy() {
+    public Map<String, Object> getMfaPolicy(
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs) {
         Map<String, Object> stored = platformSettings.get("mfa_policy");
-        if (stored == null || stored.isEmpty()) {
-            return MfaPolicyDefaults.platformDefaults();
-        }
         // Fill fields added after the policy was saved, so GET and the effective policy agree.
-        return MfaPolicyDefaults.sanitizeForSave(stored);
+        Map<String, Object> out = new java.util.LinkedHashMap<>(stored == null || stored.isEmpty()
+                ? MfaPolicyDefaults.platformDefaults()
+                : MfaPolicyDefaults.sanitizeForSave(stored));
+        out.put("pendingChange", twoFactorChanges.pending(
+                        com.secureone.auth.admin.approval.TwoFactorChangeRequests.PLATFORM_POLICY, null)
+                .map(row -> changeViews.view(row, authentication, actAs)).orElse(null));
+        return out;
     }
 
+    /** Tightening saves now; a weaker policy or a removed lock waits for another platform operator. */
     @PutMapping("/mfa-policy")
-    public Map<String, Object> updateMfaPolicy(@RequestBody Map<String, Object> body) {
-        return platformSettings.saveMap("mfa_policy", MfaPolicyDefaults.sanitizeForSave(body));
+    public Map<String, Object> updateMfaPolicy(
+            jakarta.servlet.http.HttpServletRequest request,
+            org.springframework.security.core.Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
+            @RequestBody Map<String, Object> body) {
+        Map<String, Object> proposed = MfaPolicyDefaults.sanitizeForSave(body);
+        Map<String, Object> current = MfaPolicyDefaults.sanitizeForSave(platformSettings.get("mfa_policy"));
+        java.util.List<String> weakenings = MfaPolicyDefaults.weakenings(current, proposed);
+        if (weakenings.isEmpty()) {
+            platformSettings.saveMap("mfa_policy", proposed);
+        } else {
+            twoFactorChanges.platformPolicy(proposed, weakenings, changeViews.email(authentication, actAs),
+                    body.get("reason") != null ? String.valueOf(body.get("reason")) : null, request);
+        }
+        return getMfaPolicy(authentication, actAs);
     }
 
     public record TestSmsRequest(String to) {}

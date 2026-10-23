@@ -223,6 +223,10 @@ export type ApplicationTokenTabState = {
 export type ApplicationMfaTabState = {
   platformExposed: boolean;
   tabEnabled: boolean;
+  /** Turning it off waits for a second admin (Access review). */
+  pendingChange?: import("./change-requests").ChangeRequest | null;
+  /** Turned off at once: nobody else could approve yet (audited). */
+  appliedWithoutApproval?: boolean;
 };
 
 export async function fetchApplicationTokenTabState(appId: string): Promise<ApplicationTokenTabState> {
@@ -246,10 +250,11 @@ export async function fetchApplicationMfaTabState(appId: string): Promise<Applic
 export async function setApplicationMfaTabEnabled(
   appId: string,
   enabled: boolean,
+  reason?: string,
 ): Promise<ApplicationMfaTabState> {
   return apiFetch<ApplicationMfaTabState>(
     `${base(appId)}/mfa-tab/tab-enabled`,
-    scoped(appId, { method: "PUT", body: JSON.stringify({ enabled }) }),
+    scoped(appId, { method: "PUT", body: JSON.stringify({ enabled, reason: reason ?? null }) }),
   );
 }
 

@@ -63,11 +63,12 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
     };
   }, [userId, applicationId, toast]);
 
-  async function run(work: () => Promise<TwoStepUserView>, done: string) {
+  async function run(work: () => Promise<TwoStepUserView>, done: string | ((v: TwoStepUserView) => string)) {
     setBusy(true);
     try {
-      setView(await work());
-      toast(done, "success");
+      const next = await work();
+      setView(next);
+      toast(typeof done === "function" ? done(next) : done, "success");
     } catch (e) {
       toast(e instanceof Error ? e.message : "That didn't work", "error");
     } finally {
@@ -218,8 +219,16 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
           ) : (
             <>
               <p className="text-xs text-muted">
-                Signs in without two-step verification until the date. Audited; the user is emailed.
+                Signs in without two-step verification until the date. Needs another admin&apos;s approval; audited;
+                the user is emailed.
               </p>
+              {view.pendingChange && (
+                <p className="mt-2 rounded-lg bg-sky-500/10 px-3 py-2 text-sm" data-testid="exemption-pending">
+                  <strong>Waiting for approval</strong> (
+                  {view.pendingChange.mine ? "your request" : `asked by ${view.pendingChange.requestedBy}`}):{" "}
+                  {view.pendingChange.details}
+                </p>
+              )}
               {applicationId && (
                 <label className="mt-2 flex items-center gap-2 text-sm text-soft">
                   <input
@@ -254,7 +263,10 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
                           exemptReason.trim(),
                           exemptEverywhere ? null : applicationId,
                         ),
-                      "User exempted",
+                      (v) =>
+                        v.pendingChange
+                          ? "Sent for approval: another admin decides on Access review"
+                          : "User exempted",
                     )
                   }
                 >

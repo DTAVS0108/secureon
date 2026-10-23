@@ -8,8 +8,18 @@
 
 ## Pending approvals
 
-Some changes are too risky for one person to make alone. They wait here until another admin approves them. For
-now this covers **deleting an OAuth client** (see [OAuth clients › Danger zone](04-oauth-clients.md#danger-zone)).
+Some changes are too risky for one person to make alone. They wait here until another admin approves them:
+
+- **Deleting an OAuth client** (see [OAuth clients › Danger zone](04-oauth-clients.md#danger-zone)).
+- **Anything that weakens Two Factor Authentication** (see [Two-step verification › Approvals](12-two-step-verification.md#approvals)):
+  an application turning it off, a weaker application, tenant or platform setting or a removed lock, closing it to
+  applications under **For applications**, and exempting a user. Turning it on or making it stricter applies at once.
+  Tenant and platform changes are decided by platform operators only, and nobody decides an exemption of
+  themselves.
+
+The **Change** column then also shows the change in words, for example *mode: required → off*. On approval the
+setting is checked again: if it was changed in the meantime, the request is marked **Failed** (*the setting changed
+after this request was made*) and must be asked for again.
 
 - **Who decides:** platform operators (every tenant, on `/admin/access-review`) and the tenant's super admins
   (their tenant, on **Tenant › Access review**).
@@ -32,7 +42,22 @@ decided, and the note. Every step is also in the audit log (`change_request.requ
 `.withdrawn`, `.failed`).
 
 With only one platform operator and no tenant super admin, nobody else can approve that operator's requests. Add a
-second platform operator (below) or a tenant super admin.
+second platform operator (below) or a tenant super admin. Until then, Two Factor Authentication changes apply at
+once after a fresh **Verify it's you**, and are listed as **Approved** with the note *Applied without approval:
+nobody else can approve yet* (audit `change_request.applied_without_approval`).
+
+## Two Factor Authentication
+
+*Where it is off or optional, who is exempt, and admins without a second step.*
+
+| Part | Shows |
+|------|-------|
+| Approvals state | **Approvals active** (at least two people can approve) or **Approvals not active yet** |
+| **Applications** | Each application's Two Factor Authentication (**Required**, **Optional**, **Off**) and who decides it: its own settings, *Switched off by the application*, the platform and tenant settings, or *Locked by the platform or tenant* |
+| **Exempt users** | Active exemptions: user, application (or *Every application*), until when, reason and who gave it |
+| **Admins without a second step** | Platform operators and console admins with no authenticator or passkey |
+
+Use it in the quarterly review: anything Off or Optional that should be Required, and exemptions that should end.
 
 ## Platform operators
 

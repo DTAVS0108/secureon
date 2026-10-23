@@ -40,6 +40,8 @@ export type MfaPolicy = {
   ownSettings?: boolean;
   /** Application: its switch is off, so two-factor is off for it (unless the platform or tenant locks it). */
   switchedOff?: boolean;
+  /** A weaker change of these settings waiting for another admin's approval (Access review). */
+  pendingChange?: import("./change-requests").ChangeRequest | null;
 };
 
 export const TWO_STEP_METHODS: { id: TwoStepMethodId; label: string; strength: TwoStepStrength; hint: string }[] = [
@@ -105,6 +107,8 @@ export type TwoStepUserView = {
   exemptedBy: string | null;
   /** "application": this application only; "all": every application of the tenant. */
   exemptScope?: "application" | "all" | null;
+  /** An exemption of this user waiting for another admin's approval (Access review). */
+  pendingChange?: import("./change-requests").ChangeRequest | null;
   extendedBy: string | null;
   rememberedDevices: number;
   canExempt: boolean;

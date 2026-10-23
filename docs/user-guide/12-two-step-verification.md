@@ -138,7 +138,27 @@ Open the user (**Users › {user}**) and the **Two-step** tab. The status badge 
 | **Remove** (one option) | Deletes that option. The user is signed out everywhere and emailed. | Tenant admins and above |
 | **Reset all** | Deletes every option and backup code, forgets remembered devices, signs the user out and emails them. Options are shared, so this applies to every application of the tenant (the confirmation says so). If the application requires two-step verification they set it up at the next sign-in, with no grace period. | Tenant admins and above |
 | **Extend** | Moves the setup deadline in this application. Tenant admins: up to 14 days, once per application. Super Admins and platform operators: up to 180 days, and from the tenant's user page for every application at once. | Tenant admins and above |
-| **Exempt** / **End exemption** | Lets the user sign in without a second step until a date, with a reason: in this application, or tick **Every application of this tenant**. Audited; the user is emailed. | Tenant Super Admins and platform operators |
+| **Exempt** / **End exemption** | Lets the user sign in without a second step until a date, with a reason: in this application, or tick **Every application of this tenant**. **Exempt** needs another admin's approval (see below); ending one is immediate. Audited; the user is emailed. | Tenant Super Admins and platform operators |
+
+## Approvals
+
+Two Factor Authentication protects every account, so changes that **weaken** it need a second admin. They wait on
+**Access review › Pending approvals** and apply when someone else approves them; changes that keep or **tighten**
+protection apply at once.
+
+| Change | Approved by |
+|--------|-------------|
+| An application turns its **Two Factor Authentication** switch off | Tenant super admin or platform operator |
+| A weaker application setting (for example Required → Optional or Off, a lower minimum strength, text or email codes, longer remembering or grace period, trusting the identity provider) | Tenant super admin or platform operator |
+| Exempting a user | Tenant super admin or platform operator (not the user) |
+| Weaker tenant defaults, or a tenant lock loosened or removed | Platform operator |
+| Weaker platform settings, or a platform lock loosened or removed | Another platform operator |
+| **For applications › Two Factor Authentication** closed | Another platform operator |
+
+While a change waits, the setting stays as it is and shows **Waiting for approval** with the change in words; the
+switch can't be changed again until the request is decided or withdrawn. When nobody else could approve (for
+example a single platform operator), the change applies at once after **Verify it's you** and is recorded as
+*applied without approval*; Access review shows *Approvals not active yet* until a second approver exists.
 
 Before a reset, an exemption, approving a change request, rotating a client secret, issuing a key or token, impersonating, or adding a platform operator, the console asks **Verify it's you**: enter an authenticator code, a recovery code, or use your passkey. It is asked again after a few minutes.
 

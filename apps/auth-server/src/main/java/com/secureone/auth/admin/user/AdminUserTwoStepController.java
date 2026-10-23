@@ -63,6 +63,12 @@ public class AdminUserTwoStepController {
     private final AuditService audit;
     private final TrustedDeviceService trustedDevices;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.TwoFactorChangeRequests twoFactorChanges;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.approval.ChangeRequestViews changeViews;
+
     public AdminUserTwoStepController(
             TwoStepService twoStep,
             UserAccountRepository users,
@@ -176,12 +182,13 @@ public class AdminUserTwoStepController {
         }
         String reason = body.reason().trim();
         UUID applicationId = body.applicationId();
-        twoStep.exempt(user, applicationId, until, reason.length() > 500 ? reason.substring(0, 500) : reason,
-                operator(authentication, actAs));
-        twoStep.notifyUser(applicationId, user, "An administrator exempted you from two-step verification"
-                + (applicationId == null ? "" : " in this application") + " until " + until.toString().substring(0, 10) + ".");
-        audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exempted", "user_account", user.getId(),
-                user.getEmail() + " until " + until + (applicationId == null ? " · every application" : "") + ": " + reason, true);
+        // An exemption weakens protection: it waits for another admin (or applies now when nobody else could approve).
+        var outcome = twoFactorChanges.exempt(user, applicationId, until,
+                reason.length() > 500 ? reason.substring(0, 500) : reason, operator(authentication, actAs), request);
+        if (outcome.applied()) {
+            audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exempted", "user_account", user.getId(),
+                    user.getEmail() + " until " + until + (applicationId == null ? " · every application" : "") + ": " + reason, true);
+        }
         return view(user, applicationId, authentication, actAs);
     }
 
@@ -200,6 +207,10 @@ public class AdminUserTwoStepController {
 
     private Map<String, Object> view(UserAccount user, UUID applicationId, Authentication authentication, String actAs) {
         Map<String, Object> out = new LinkedHashMap<>(twoStep.status(user, applicationId));
+        // An exemption of this user waiting for another admin's approval.
+        out.put("pendingChange", twoFactorChanges.pending(
+                        com.secureone.auth.admin.approval.TwoFactorChangeRequests.USER_EXEMPT, user.getId())
+                .map(row -> changeViews.view(row, authentication, actAs)).orElse(null));
         out.put("rememberedDevices", trustedDevices.list(user.getId()).size());
         boolean governance = access.canManageTenantGovernance(authentication, actAs, user.getTenantId());
         out.put("canExempt", governance);

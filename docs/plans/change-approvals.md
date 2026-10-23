@@ -1,7 +1,7 @@
 # Plan: change approvals (four-eyes for high-impact changes)
 
-Status: **planned, not started**, except the first slice: *OAuth client delete needs approval* (see the end of this
-document). Written 2026-10-20.
+Status: **planned, not started**, except two slices: *OAuth client delete needs approval* and *weakening Two Factor
+Authentication needs approval* (see the end of this document). Written 2026-10-20.
 
 ## Goal
 
@@ -156,3 +156,28 @@ Always on for now (no switch yet).
 - **Not your own request:** the requester cannot approve or reject it (they can withdraw it).
 - On approval the client is deleted; if it is already gone the request is marked *Failed*. Every step is audited
   (`change_request.requested`, `.approved`, `.rejected`, `.withdrawn`).
+
+## Second slice (built): weakening Two Factor Authentication needs approval
+
+Actions (`platform.change_request.action`, with `payload` and `details` added by V74):
+
+| Action | When | Approver |
+|---|---|---|
+| `two_factor.app_off` | An application's Two Factor Authentication switch on → off | Tenant super admin or platform operator |
+| `two_factor.app_policy` | A weaker application policy (`MfaPolicyDefaults.weakenings`) | Tenant super admin or platform operator |
+| `two_factor.user_exempt` | Exempting a user (one application or every one) | Tenant super admin or platform operator, not the user |
+| `two_factor.tenant_policy` | Weaker tenant defaults or a loosened/removed tenant lock (also "back to platform") | Platform operator |
+| `two_factor.platform_policy` | Weaker platform policy or a loosened/removed platform lock | Another platform operator |
+| `two_factor.platform_exposure` | For applications › Two Factor Authentication closed | Another platform operator |
+
+- Tightening is never gated. One pending request per action and target; the setting stays as it is meanwhile.
+- `payload.values` is applied on approval; `payload.before` is compared first, and a changed setting fails the
+  request (*the setting changed after this request was made*).
+- **No other approver** (e.g. a single platform operator, no tenant super admin): the change applies at once after a
+  fresh step-up and is stored as APPROVED by the requester with the note *Applied without approval* (audit
+  `change_request.applied_without_approval`). Access review › Two Factor Authentication shows *Approvals not active
+  yet*.
+- Access review › Two Factor Authentication (`GET /api/admin/v1/two-factor/review`, tenant:
+  `/api/admin/v1/tenants/{id}/two-factor/review`): applications and their mode, active exemptions, admins without an
+  authenticator or passkey.
+- Not yet: expiry after 72 hours, email to approvers, resetting an admin's 2FA, configuration-as-code imports.

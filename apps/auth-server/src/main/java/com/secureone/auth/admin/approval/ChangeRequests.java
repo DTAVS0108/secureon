@@ -30,12 +30,17 @@ public class ChangeRequests {
             String decidedBy,
             Instant decidedAt,
             String decisionNote,
-            String tenantName) {}
+            String tenantName,
+            /** What the change does, as JSON (values to apply, the "before" picture); null for client deletes. */
+            String payload,
+            /** The change in words for the approver, e.g. "Mode: required → off". */
+            String details) {}
 
     private static final String COLUMNS = """
             id, action, tenant_id, application_id, target_id, target_label, reason, status,
             requested_by, requested_at, decided_by, decided_at, decision_note,
-            (SELECT t.name FROM platform.tenant t WHERE t.id = tenant_id) AS tenant_name
+            (SELECT t.name FROM platform.tenant t WHERE t.id = tenant_id) AS tenant_name,
+            payload::text AS payload, details
             """;
 
     private final JdbcTemplate jdbc;
@@ -46,14 +51,20 @@ public class ChangeRequests {
 
     public Row create(String action, UUID tenantId, UUID applicationId, UUID targetId, String targetLabel,
                       String reason, String requestedBy) {
+        return create(action, tenantId, applicationId, targetId, targetLabel, reason, requestedBy, null, null);
+    }
+
+    public Row create(String action, UUID tenantId, UUID applicationId, UUID targetId, String targetLabel,
+                      String reason, String requestedBy, String payloadJson, String details) {
         UUID id = jdbc.queryForObject(
                 """
                 INSERT INTO platform.change_request
-                    (action, tenant_id, application_id, target_id, target_label, reason, requested_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+                    (action, tenant_id, application_id, target_id, target_label, reason, requested_by, payload, details)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?) RETURNING id
                 """,
                 UUID.class,
-                action, tenantId, applicationId, targetId, targetLabel, reason, requestedBy);
+                action, tenantId, applicationId, targetId, targetLabel, reason, requestedBy, payloadJson,
+                details != null && details.length() > 1000 ? details.substring(0, 1000) : details);
         return find(id).orElseThrow();
     }
 
@@ -109,7 +120,9 @@ public class ChangeRequests {
                 rs.getString("decided_by"),
                 instant(rs.getTimestamp("decided_at")),
                 rs.getString("decision_note"),
-                rs.getString("tenant_name"));
+                rs.getString("tenant_name"),
+                rs.getString("payload"),
+                rs.getString("details"));
     }
 
     private static Instant instant(Timestamp ts) {

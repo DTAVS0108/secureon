@@ -27,6 +27,8 @@ public class ChangeRequestViews {
             UUID targetId,
             String targetLabel,
             String reason,
+            /** The change in words, e.g. "Weaker Two Factor Authentication for Shop: mode: required → off". */
+            String details,
             String status,
             String requestedBy,
             Instant requestedAt,
@@ -38,17 +40,29 @@ public class ChangeRequestViews {
             /** The signed-in admin may approve or reject it now. */
             boolean canDecide) {}
 
-    /** Platform operators, and tenant super admins of the request's tenant. */
+    /**
+     * Platform operators, and tenant super admins of the request's tenant. Tenant and platform Two Factor
+     * Authentication changes: platform operators only. Nobody decides an exemption of themselves.
+     */
     public boolean isApprover(Row row, Authentication authentication, String actAs) {
+        if (TwoFactorChangeRequests.USER_EXEMPT.equals(row.action())
+                && row.targetLabel().equalsIgnoreCase(email(authentication, actAs))) {
+            return false;
+        }
         if (access.canAccessPlatformSettings(authentication, actAs)) {
             return true;
+        }
+        if (TwoFactorChangeRequests.PLATFORM_DECIDES.contains(row.action())) {
+            return false;
         }
         return row.tenantId() != null && access.canManageTenantGovernance(authentication, actAs, row.tenantId());
     }
 
     public void requireApprover(Row row, Authentication authentication, String actAs) {
         if (!isApprover(row, authentication, actAs)) {
-            throw new AccessDeniedException("Only a platform operator or this tenant's super admin can decide this request.");
+            throw new AccessDeniedException(TwoFactorChangeRequests.PLATFORM_DECIDES.contains(row.action())
+                    ? "Only a platform operator can decide this request."
+                    : "Only a platform operator or this tenant's super admin can decide this request (not one about yourself).");
         }
     }
 
@@ -64,7 +78,7 @@ public class ChangeRequestViews {
                 && isApprover(row, authentication, actAs);
         return new ChangeRequestView(
                 row.id(), row.action(), row.tenantId(), row.tenantName(), row.applicationId(), row.targetId(),
-                row.targetLabel(), row.reason(), row.status().name(), row.requestedBy(), row.requestedAt(),
+                row.targetLabel(), row.reason(), row.details(), row.status().name(), row.requestedBy(), row.requestedAt(),
                 row.decidedBy(), row.decidedAt(), row.decisionNote(), mine, canDecide);
     }
 }

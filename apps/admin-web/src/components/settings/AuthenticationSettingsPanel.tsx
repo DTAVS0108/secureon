@@ -17,9 +17,11 @@ import {
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
 import type { SettingsExposureKey } from "@/lib/api/application-policy";
 import {
+  fetchApplicationMfaTabState,
   setApplicationMfaTabEnabled,
   setApplicationTokenTabEnabled,
 } from "@/lib/api/application-settings";
+import type { ChangeRequest } from "@/lib/api/change-requests";
 import { ApiError } from "@/lib/api/http";
 import { isAuthMethodComingSoon, isFeatureFlagComingSoon } from "@/lib/coming-soon";
 import type { AuthMethod, FeatureFlag, PasswordPolicy } from "@/lib/types";
@@ -295,15 +297,36 @@ function FeatureFlagsPanel({
 }) {
   const { toast } = useToast();
   const [tabTogglePending, setTabTogglePending] = useState(false);
+  // Turning Two Factor Authentication off waits for another admin; this is that request while it waits.
+  const [offRequest, setOffRequest] = useState<ChangeRequest | null>(null);
 
-  /** On: this application has its own two-factor settings (and they apply). Off: platform and tenant settings. */
+  useDeferredEffect(() => {
+    if (!applicationId || !platformExposesTwoFactor) return;
+    let cancelled = false;
+    fetchApplicationMfaTabState(applicationId)
+      .then((s) => !cancelled && setOffRequest(s.pendingChange ?? null))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId, platformExposesTwoFactor]);
+
+  /** On: this application has two-factor with its own settings. Off (after approval): no second step. */
   async function toggleTwoFactor(enabled: boolean) {
     if (!applicationId) return;
     setTabTogglePending(true);
     try {
       const state = await setApplicationMfaTabEnabled(applicationId, enabled);
-      onTwoFactorEnabledChange?.(state.tabEnabled);
-      toast("Settings saved", "success");
+      setOffRequest(state.pendingChange ?? null);
+      // Unchanged while turning off waits for approval: don't treat it as just turned on.
+      if (state.tabEnabled !== Boolean(twoFactorEnabled)) onTwoFactorEnabledChange?.(state.tabEnabled);
+      if (!enabled && state.pendingChange) {
+        toast("Sent for approval: another admin decides on Access review", "success");
+      } else if (state.appliedWithoutApproval) {
+        toast("Turned off without approval (nobody else can approve yet); recorded in the audit log", "success");
+      } else {
+        toast("Settings saved", "success");
+      }
     } catch (e) {
       const msg =
         e instanceof ApiError && e.status === 404
@@ -375,12 +398,19 @@ function FeatureFlagsPanel({
                   <p className="text-xs text-muted">
                     On: this application has two-factor, with its own settings (Authentication → Two Factor
                     Authentication). Off: no second step at sign-in and no two-factor in this application&apos;s
-                    console, unless the platform or tenant locks it as required.
+                    console, unless the platform or tenant locks it as required. Turning it off needs another
+                    admin&apos;s approval.
                   </p>
+                  {offRequest && (
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-300" data-testid="two-factor-off-pending">
+                      Turning off is waiting for approval ({offRequest.mine ? "your request" : `asked by ${offRequest.requestedBy}`}) on
+                      Access review.
+                    </p>
+                  )}
                 </div>
                 <Toggle
                   checked={Boolean(twoFactorEnabled)}
-                  disabled={tabTogglePending}
+                  disabled={tabTogglePending || Boolean(offRequest)}
                   onChange={toggleTwoFactor}
                   aria-label="Two Factor Authentication"
                 />
