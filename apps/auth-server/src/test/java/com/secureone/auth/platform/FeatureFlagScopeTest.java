@@ -34,21 +34,23 @@ class FeatureFlagScopeTest {
     @Test
     void catalogScopes() {
         assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf("self_registration"));
-        assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf("ldap"));
+        assertFalse(FeatureFlagDefaults.catalogKeys().contains("ldap"), "retired until LDAP is built");
+        assertFalse(FeatureFlagDefaults.catalogKeys().contains("recovery_otp"), "Verification & OTP decides recovery codes");
+        assertFalse(FeatureFlagDefaults.catalogKeys().contains("audit_log"), "the audit log is always available");
         assertEquals(FeatureFlagDefaults.SCOPE_APPLICATION, FeatureFlagDefaults.scopeOf(FeatureFlagDefaults.MFA_TRY_ANOTHER_WAY));
-        assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("audit_log"));
+        assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("sessions"));
         assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("integration_checklist"));
         assertEquals(FeatureFlagDefaults.SCOPE_PLATFORM, FeatureFlagDefaults.scopeOf("notification_email_test_ui"));
     }
 
     @Test
     void applicationOverrideOfAConsoleControlIsIgnored() {
-        List<Map<String, Object>> platform = List.of(row("audit_log", true), row("api_reference", false));
-        List<Map<String, Object>> app = List.of(row("audit_log", false), row("api_reference", true));
+        List<Map<String, Object>> platform = List.of(row("sessions", true), row("api_reference", false));
+        List<Map<String, Object>> app = List.of(row("sessions", false), row("api_reference", true));
 
         Map<String, Boolean> effective = enabled(FeatureFlagMerge.resolveEffective(platform, app));
 
-        assertTrue(effective.get("audit_log"), "platform decides console controls");
+        assertTrue(effective.get("sessions"), "platform decides console controls");
         assertFalse(effective.get("api_reference"), "an application cannot turn a console control on");
     }
 
@@ -56,12 +58,12 @@ class FeatureFlagScopeTest {
     void platformSavedValueOfAConsoleControlApplies() {
         // Platform settings = built-in catalog + the platform's own saved values (same merge).
         List<Map<String, Object>> merged = FeatureFlagMerge.merge(
-                FeatureFlagDefaults.platformCatalog(), List.of(row("audit_log", false), row("integration_checklist", true)));
+                FeatureFlagDefaults.platformCatalog(), List.of(row("sessions", false), row("integration_checklist", true)));
 
         Map<String, Boolean> platform = enabled(merged);
-        assertFalse(platform.get("audit_log"), "platform can turn a console control off");
+        assertFalse(platform.get("sessions"), "platform can turn a console control off");
         assertTrue(platform.get("integration_checklist"), "platform can turn a console control on");
-        assertEquals("platform", byKey(merged, "audit_log").get("scope"));
+        assertEquals("platform", byKey(merged, "sessions").get("scope"));
     }
 
     @Test
@@ -79,14 +81,14 @@ class FeatureFlagScopeTest {
 
     @Test
     void adminViewReportsScopeAndPlatformState() {
-        List<Map<String, Object>> platform = List.of(row("self_registration", false), row("audit_log", true));
+        List<Map<String, Object>> platform = List.of(row("self_registration", false), row("sessions", true));
 
         List<Map<String, Object>> admin = FeatureFlagMerge.forApplicationAdmin(platform, null);
 
         assertEquals("application", byKey(admin, "self_registration").get("scope"));
         assertEquals(false, byKey(admin, "self_registration").get("platformEnabled"));
-        assertEquals("platform", byKey(admin, "audit_log").get("scope"));
-        assertEquals(true, byKey(admin, "audit_log").get("enabled"));
+        assertEquals("platform", byKey(admin, "sessions").get("scope"));
+        assertEquals(true, byKey(admin, "sessions").get("enabled"));
     }
 
     @Test
@@ -102,7 +104,7 @@ class FeatureFlagScopeTest {
     @Test
     void savingApplicationOverridesKeepsOnlyApplicationFeatures() {
         List<Map<String, Object>> kept = FeatureFlagMerge.applicationScopedOnly(
-                List.of(row("self_registration", true), row("audit_log", false), row("email_templates", false)));
+                List.of(row("self_registration", true), row("sessions", false), row("email_templates", false)));
 
         assertEquals(List.of("self_registration"), kept.stream().map(f -> f.get("key")).toList());
     }

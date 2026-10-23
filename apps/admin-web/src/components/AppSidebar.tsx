@@ -27,7 +27,6 @@ export function AppSidebar({
   const flags = useAppFlags();
   const items = appNav(applicationId).filter((item) => {
     const section = item.href.split("/").pop() ?? "";
-    if (section === "audit" && !flags.on(APP_FLAG.auditLog)) return false;
     if (section === "sessions" && !flags.on(APP_FLAG.sessions)) return false;
     return canAccessSection(superAdmin, app, section);
   });

@@ -81,7 +81,9 @@ public class PasswordRecoveryService {
         // Everything decided by policy comes before the account lookup, and every outcome below answers
         // in the same shape: whether an account exists (or has a verified phone) must not show.
         String mode = resolveRecoveryMode(applicationId, requestedMode);
-        if ("otp".equals(mode) && !effectiveSettings.isFeatureEnabled(applicationId, "recovery_otp")) {
+        // Verification & OTP › Password recovery is the one place that allows codes (the "Recovery OTP" flag was
+        // retired): a default of "otp" that the allowed modes no longer include falls back to the link when allowed.
+        if ("otp".equals(mode) && !verificationPolicy.allowsRecoveryMode(applicationId, "otp")) {
             if (verificationPolicy.recoveryFallbackToLink(applicationId)) {
                 mode = "link";
             } else {

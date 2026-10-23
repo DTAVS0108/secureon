@@ -90,7 +90,6 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
             authMethods: [{ id: "m_password", enabled: true, implemented: true }],
             featureFlags: [
               { key: "self_service_recovery", enabled: true },
-              { key: "recovery_otp", enabled: true },
               { key: "self_registration", enabled: true },
             ],
             passwordPolicy: {
@@ -253,7 +252,8 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       group: "Sign-in",
       method: "POST",
       path: `${base}/api/v1/applications/${applicationId}/auth/otp/request`,
-      description: "Request a one-time sign-in code by email or SMS (requires m_email_otp or m_sms).",
+      description:
+        "Request a one-time sign-in code by email or SMS (allowed by Verification & OTP › Passwordless modes; SMS also needs an SMS provider).",
       authUiMode: "native",
       auth: "None (public)",
       contentType: "application/json",
@@ -453,7 +453,7 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       description:
         "Request password reset via email link or OTP (email/SMS). Tenant resolved from applicationId. Generic response always (anti-enumeration).",
       authUiMode: "both",
-      auth: "None (public; requires self_service_recovery; OTP requires recovery_otp)",
+      auth: "None (public; requires self_service_recovery; OTP when Verification & OTP › Password recovery allows it)",
       contentType: "application/json",
       requestFields: [
         { name: "identifier", type: "string", required: true, description: "Email or phone (E.164)" },

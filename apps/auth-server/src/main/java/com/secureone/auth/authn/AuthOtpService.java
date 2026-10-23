@@ -155,20 +155,18 @@ public class AuthOtpService {
     }
 
     private void ensureLoginOtpAllowed(UUID applicationId, OtpChannel channel) {
+        // Verification & OTP › Passwordless modes is the one switch; text messages also need an SMS provider.
         if (channel == OtpChannel.SMS) {
             if (!verificationPolicy.allowsLoginPasswordlessMode(applicationId, "phone_otp")) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SMS OTP login is not allowed for this application.");
             }
             if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_sms")) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SMS OTP login is disabled.");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "SMS OTP login needs an SMS provider.");
             }
             return;
         }
         if (!verificationPolicy.allowsLoginPasswordlessMode(applicationId, "email_otp")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email OTP login is not allowed for this application.");
-        }
-        if (!effectiveSettings.isAuthMethodEnabled(applicationId, "m_email_otp")) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email OTP login is disabled.");
         }
     }
 

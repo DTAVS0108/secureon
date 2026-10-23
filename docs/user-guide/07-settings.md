@@ -192,7 +192,7 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 | Card | Fields |
 |------|--------|
 | **Signup verification**: *How new accounts confirm email or phone after registration.* | **Default mode** (**Email link** / **OTP code**), **Allowed modes**, **Required channels** (email, phone), **Allow user channel choice** |
-| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes**, (whether a second step is required is set on the **Two Factor Authentication** tab) |
+| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes** (the one switch for sign-in by email code, text-message code or magic link; text-message codes also need an SMS provider), (whether a second step is required is set on the **Two Factor Authentication** tab) |
 | **Password recovery**: *Forgot-password via email link or OTP (email/SMS).* | **Allowed channels**, **Require verified email/phone**, **Fallback to link if OTP unavailable** |
 
 #### SMS provider
@@ -251,10 +251,8 @@ There are two kinds of flag.
 
 | Flag | Meaning |
 |------|---------|
-| **Self-service Recovery** | Application-scoped forgot-password (link or OTP per verification policy) |
-| **Recovery OTP** | Password reset via email/SMS OTP codes |
+| **Self-service Recovery** | Application-scoped forgot-password: by link or by code, as **Verification & OTP › Password recovery** allows |
 | **Self Registration** | Public user signup on the hosted **Create account** page. Off by default. |
-| **LDAP / AD** | LDAP user import (*Coming soon*) |
 | **2FA: Try another way** | On the two-step verification screen, a **Try another way** button lists every option the user has enabled (authenticator app, passkey, security key, text or email code, backup code) when they can't use the one asked first. When off, users get only the option asked first. On by default. The admin console sign-in follows the **Platform settings** value. Audit log: switching it records **settings.feature_flag_changed** (as for every flag, e.g. *on → off*); signing in with another option records **user.two_step_another_way** (admin console: **admin.console_login.another_way**), e.g. *recovery instead of totp*. |
 
 **Console controls** — parts of the admin console. They are decided in **Platform settings › Feature flags** for every application; applications never see or change them.
@@ -267,10 +265,14 @@ There are two kinds of flag.
 | **Integration checklist** | The go-live checklist and notes on the Integration tab | **Off** |
 | **API reference** | The API reference on the Integration tab | **Off** |
 | **API health check** | The API health check on the Integration tab | **Off** |
-| **Audit log** | The **Audit log** page of every application console (sidebar entry and URL) | On |
 | **Sessions** | The **Sessions** page of every application console (sidebar entry and URL) | On |
 
-Flags hide parts of the console; who may see the data is still decided by roles and permissions.
+Flags hide parts of the console; who may see the data is still decided by roles and permissions. The **Audit log**
+page is always available. A flag is on or off; there is no rollout percentage.
+
+Retired in 0.3.28 (they did nothing, or a second switch decided the same thing): **Recovery OTP** (codes for
+password recovery are allowed under **Verification & OTP › Password recovery**; where the flag was off, the upgrade
+removed codes there), **LDAP / AD** (back when LDAP import is built), **Audit log** (always shown).
 
 **Settings tabs**: **Two Factor Authentication**, *Give this application its own two-factor settings (requires platform to allow Two Factor Authentication under For applications)*; **OAuth tokens tab**, *Show the OAuth tokens settings tab for this application (requires platform to allow OAuth tokens under For applications).*
 

@@ -28,7 +28,7 @@ public final class MfaPolicyDefaults {
             "mode", "minimumStrength", "methods", "defaultMethod", "promptOptional", "promptIntervalDays",
             "allowDontAskAgain", "graceDays", "graceSkips", "enforceFrom", "reminderDays", "rememberDeviceDays",
             "challengeTtlSeconds", "maxChallengeAttempts", "recoveryCodesPerEnrollment", "freshStepMinutes",
-            "trustIdpMfa", "stepUpAfterPassword", "requirePasskeyWhenEnrolled");
+            "stepUpAfterPassword");
 
     /**
      * Settings decided by the platform and the tenant only: they act on what a user has once for every
@@ -56,9 +56,7 @@ public final class MfaPolicyDefaults {
         policy.put("maxChallengeAttempts", 5);
         policy.put("recoveryCodesPerEnrollment", 10);
         policy.put("freshStepMinutes", 5);
-        policy.put("trustIdpMfa", false);
         policy.put("stepUpAfterPassword", true);
-        policy.put("requirePasskeyWhenEnrolled", false);
         policy.put(LOCKS, Map.of());
         return policy;
     }
@@ -106,9 +104,7 @@ public final class MfaPolicyDefaults {
         copyInt(in, out, "maxChallengeAttempts", d, 1, 10);
         copyInt(in, out, "recoveryCodesPerEnrollment", d, 1, 20);
         copyInt(in, out, "freshStepMinutes", d, 1, 60);
-        copyBoolean(in, out, "trustIdpMfa", d);
         copyBoolean(in, out, "stepUpAfterPassword", d);
-        copyBoolean(in, out, "requirePasskeyWhenEnrolled", d);
         out.put(LOCKS, locks(in.get(LOCKS)));
         return out;
     }
@@ -242,9 +238,9 @@ public final class MfaPolicyDefaults {
                     STRENGTHS.indexOf(String.valueOf(candidate)) >= STRENGTHS.indexOf(String.valueOf(current));
             case "methods" -> current instanceof List<?> cur && candidate instanceof List<?> cand
                     && cur.containsAll(cand);
-            case "promptOptional", "stepUpAfterPassword", "requirePasskeyWhenEnrolled" ->
+            case "promptOptional", "stepUpAfterPassword" ->
                     Boolean.TRUE.equals(candidate) || !Boolean.TRUE.equals(current);
-            case "allowDontAskAgain", "trustIdpMfa" ->
+            case "allowDontAskAgain" ->
                     !Boolean.TRUE.equals(candidate) || Boolean.TRUE.equals(current);
             case "promptIntervalDays", "graceDays", "graceSkips", "rememberDeviceDays", "challengeTtlSeconds",
                     "maxChallengeAttempts", "freshStepMinutes" -> number(candidate) <= number(current);

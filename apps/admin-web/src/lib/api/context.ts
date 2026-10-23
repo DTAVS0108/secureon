@@ -44,7 +44,7 @@ export type AdminContext = {
   connectAppEnabled?: boolean;
   /** Platform settings → Feature flags → Client setup code (OAuth client pages; on unless turned off). */
   clientSetupCodeEnabled?: boolean;
-  /** Console controls decided in Platform settings → Feature flags (e.g. audit_log: true). */
+  /** Console controls decided in Platform settings → Feature flags (e.g. sessions: true). */
   consoleFlags?: Record<string, boolean>;
 };
 

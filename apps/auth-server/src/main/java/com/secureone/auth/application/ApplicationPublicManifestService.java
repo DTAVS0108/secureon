@@ -28,6 +28,9 @@ public class ApplicationPublicManifestService {
     private final AccountVerificationService accountVerification;
     private final IdentityProviderService federationProviders;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ApplicationEffectiveSettingsService> effectiveSettings;
+
     public ApplicationPublicManifestService(
             ApplicationRepository applications,
             ApplicationSettingRepository appSettings,
@@ -125,9 +128,18 @@ public class ApplicationPublicManifestService {
         if (Boolean.TRUE.equals(sections.get("authMethods"))) {
             java.util.Set<Object> configuredFederation = new java.util.HashSet<>();
             providers.forEach(p -> configuredFederation.add(p.get("authMethodId")));
-            response.put(
-                    "authMethods",
-                    sanitizeAuthMethods(settings.resolveAuthMethods(applicationId), onlyEnabledAuth, configuredFederation));
+            // One-time-code sign-in follows Verification & OTP › Passwordless modes (and an SMS provider for texts).
+            List<Map<String, Object>> methods = new ArrayList<>();
+            for (Map<String, Object> m : settings.resolveAuthMethods(applicationId)) {
+                Map<String, Object> row = new LinkedHashMap<>(m);
+                String id = String.valueOf(m.get("id"));
+                if (ApplicationEffectiveSettingsService.CODE_SIGN_IN_METHODS.containsKey(id)) {
+                    row.put("enabled", effectiveSettings.getObject().isAuthMethodEnabled(applicationId, id));
+                    row.put("implemented", true);
+                }
+                methods.add(row);
+            }
+            response.put("authMethods", sanitizeAuthMethods(methods, onlyEnabledAuth, configuredFederation));
         }
         if (Boolean.TRUE.equals(sections.get("featureFlags"))) {
             response.put("featureFlags", sanitizeFeatureFlags(settings.resolveFeatureFlags(applicationId)));
@@ -259,10 +271,6 @@ public class ApplicationPublicManifestService {
             row.put("name", f.get("name"));
             row.put("description", f.get("description"));
             row.put("enabled", Boolean.TRUE.equals(f.get("enabled")));
-            Object rollout = f.get("rollout");
-            if (rollout instanceof Number n) {
-                row.put("rollout", n.intValue());
-            }
             Object category = f.get("category");
             if (category != null) {
                 row.put("category", String.valueOf(category));

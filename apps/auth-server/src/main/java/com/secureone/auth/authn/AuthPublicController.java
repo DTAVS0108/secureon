@@ -42,7 +42,9 @@ public class AuthPublicController {
                 .map(m -> {
                     String id = String.valueOf(m.get("id"));
                     boolean implemented = !Boolean.FALSE.equals(m.get("implemented"));
+                    // Without an application: the platform defaults (code sign-in from Passwordless modes).
                     boolean enabled = applicationId != null
+                                    || ApplicationEffectiveSettingsService.CODE_SIGN_IN_METHODS.containsKey(id)
                             ? effectiveSettings.isMethodAvailable(applicationId, id)
                             : Boolean.TRUE.equals(m.get("enabled"));
                     return Map.<String, Object>of(

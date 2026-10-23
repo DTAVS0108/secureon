@@ -10,7 +10,6 @@ export const APP_FLAG = {
   emailTemplates: "email_templates",
   emailTestConsole: "notification_email_test_ui",
   federationAddProvider: "federation_add_provider",
-  auditLog: "audit_log",
   sessions: "sessions",
 } as const;
 
@@ -24,7 +23,6 @@ const DEFAULTS: Record<AppFlagKey, boolean> = {
   email_templates: true,
   notification_email_test_ui: true,
   federation_add_provider: true,
-  audit_log: true,
   sessions: true,
 };
 

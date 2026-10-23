@@ -60,10 +60,6 @@ public class MfaPolicyService {
         return bool(resolvePolicy(applicationId), "stepUpAfterPassword", true);
     }
 
-    public boolean requirePasskeyWhenEnrolled(UUID applicationId) {
-        return bool(resolvePolicy(applicationId), "requirePasskeyWhenEnrolled", false);
-    }
-
     public int rememberDeviceDays(UUID applicationId) {
         return intValue(resolvePolicy(applicationId), "rememberDeviceDays", 0);
     }

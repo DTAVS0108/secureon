@@ -113,7 +113,6 @@ These appear in the console but do not work yet:
 
 | Item | Where |
 |------|-------|
-| **Push Notification** (MFA) | Settings › Authentication |
 | **LDAP / AD** import and directory sync | Settings › User directory; Users › Import |
 | **Push notifications** channel | Settings › Notifications |
 | Top-bar **Search…** | Console top bar |

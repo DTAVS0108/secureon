@@ -24,7 +24,6 @@ public class AuthCatalogRepairService {
     public void repairOnStartup() {
         repairAuthMethodImplemented("m_email_otp", true);
         repairAuthMethodImplemented("m_sms", true);
-        repairAuthMethodImplemented("m_totp", true);
         repairAuthMethodImplemented("m_google", true);
         repairAuthMethodImplemented("m_github", true);
         repairAuthMethodImplemented("m_passkey", true);

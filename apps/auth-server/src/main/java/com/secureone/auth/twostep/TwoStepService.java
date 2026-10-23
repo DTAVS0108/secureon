@@ -253,10 +253,9 @@ public class TwoStepService {
     /** Default method first; otherwise the policy's preferred method, then the strongest. */
     private List<UserMethod> preferred(List<UserMethod> usable, UUID applicationId) {
         String preferred = String.valueOf(policy.resolvePolicy(applicationId).get("defaultMethod"));
-        boolean legacyPasskeyFirst = policy.requirePasskeyWhenEnrolled(applicationId);
         List<UserMethod> out = new ArrayList<>(usable);
         out.sort(Comparator.comparing((UserMethod u) -> !u.isDefault())
-                .thenComparing(u -> !(u.method().id().equals(preferred) || (legacyPasskeyFirst && u.method().isWebAuthn())))
+                .thenComparing(u -> !u.method().id().equals(preferred))
                 .thenComparing(u -> -u.method().strength().ordinal()));
         return out;
     }

@@ -66,7 +66,6 @@ export function normalizeFeatureFlags(raw: unknown): FeatureFlag[] {
       name: typeof row.name === "string" ? row.name : key,
       description: typeof row.description === "string" ? row.description : "",
       enabled: coerceBool(row.enabled, false),
-      rollout: coerceInt(row.rollout, 0),
       category:
         row.category === "oauth" ||
         row.category === "identity" ||

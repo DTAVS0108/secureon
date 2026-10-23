@@ -13,7 +13,6 @@ export type VerificationPolicySection = {
   resendCooldownSeconds?: number;
   identifierTypes?: string[];
   passwordlessModes?: string[];
-  mfaRequired?: string;
   passwordResetMode?: string;
   allowedChannels?: string[];
   requireVerifiedChannel?: boolean;

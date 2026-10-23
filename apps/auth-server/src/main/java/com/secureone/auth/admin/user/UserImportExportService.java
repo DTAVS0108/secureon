@@ -318,10 +318,9 @@ public class UserImportExportService {
         }
     }
 
+    /** LDAP import is not available yet (its "LDAP / AD" feature flag was retired until it is built). */
     private void requireLdapFeature(UUID applicationId) {
-        if (!effectiveSettings.isFeatureEnabled(applicationId, "ldap")) {
-            throw new IllegalStateException("LDAP is disabled. Enable the LDAP / AD feature flag first.");
-        }
+        throw new IllegalStateException("LDAP import is not available yet.");
     }
 
     private Application requireApplication(UUID applicationId) {

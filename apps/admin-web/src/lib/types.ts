@@ -232,7 +232,6 @@ export type FeatureFlag = {
   name: string;
   description: string;
   enabled: boolean;
-  rollout: number;
   /** Grouping for admin UI: oauth, identity, notifications, provisioning */
   category?: string;
   /** Platform master switch; when false, application cannot enable this flag. */

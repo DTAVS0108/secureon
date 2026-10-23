@@ -23,96 +23,67 @@ public final class FeatureFlagDefaults {
 
     public static List<Map<String, Object>> platformCatalog() {
         List<Map<String, Object>> flags = new ArrayList<>();
+        // Retired (V75): recovery_otp (Verification & OTP › Password recovery decides the modes), ldap (not built
+        // yet), audit_log (the audit log is always available), and every flag's "rollout" percentage (never used).
         flags.add(flag(
                 "self_service_recovery",
                 "Self-service Recovery",
-                "Application-scoped forgot-password (link or OTP per verification policy)",
+                "Application-scoped forgot-password (link or code, as Verification & OTP › Password recovery allows)",
                 true,
-                100,
-                "identity"));
-        flags.add(flag(
-                "recovery_otp",
-                "Recovery OTP",
-                "Allow password reset via email/SMS OTP (requires verification policy + SMS for phone)",
-                true,
-                100,
                 "identity"));
         flags.add(flag(
                 "self_registration",
                 "Self Registration",
                 "Public user signup for this application",
                 false,
-                0,
-                "identity"));
-        flags.add(flag(
-                "ldap",
-                "LDAP / AD",
-                "LDAP user import and directory source configuration",
-                false,
-                0,
                 "identity"));
         flags.add(flag(
                 MFA_TRY_ANOTHER_WAY,
                 "2FA: Try another way",
                 "On the two-step verification screen, let users pick any of their enabled options when they can't use the one asked first",
                 true,
-                100,
                 "identity"));
         flags.add(flag(
                 "notification_email_test_ui",
                 "Email test console",
                 "Show the SMTP test panel under Application → Notifications",
                 true,
-                100,
                 "notifications"));
         flags.add(flag(
                 "email_templates",
                 "Email templates",
                 "Show the Email templates editor under Application → Notifications",
                 true,
-                100,
                 "notifications"));
         flags.add(flag(
                 "federation_add_provider",
                 "Add sign-in provider",
                 "Allow adding Google, GitHub, OIDC and SAML providers under Authentication → Identity federation",
                 true,
-                100,
                 "identity"));
         flags.add(flag(
                 "integration_checklist",
                 "Integration checklist",
                 "Show the go-live checklist and notes on the Integration tab",
                 false,
-                0,
                 "integration"));
         flags.add(flag(
                 "api_reference",
                 "API reference",
                 "Show the API reference (endpoints, request and response shapes) on the Integration tab",
                 false,
-                0,
                 "integration"));
         flags.add(flag(
                 "api_health_check",
                 "API health check",
                 "Show the API health check on the Integration tab",
                 false,
-                0,
                 "integration"));
-        flags.add(flag(
-                "audit_log",
-                "Audit log",
-                "Show the Audit log page in this application's console",
-                true,
-                100,
-                "console"));
         flags.add(flag(
                 "sessions",
                 "Sessions",
                 "Show the Sessions page (sign-in history) in this application's console",
                 true,
-                100,
                 "console"));
         return flags;
     }
@@ -122,7 +93,7 @@ public final class FeatureFlagDefaults {
      * flag is a console control decided in Platform settings only; applications never see or change it.
      */
     private static final Set<String> APPLICATION_SCOPED =
-            Set.of("self_service_recovery", "recovery_otp", "self_registration", "ldap", MFA_TRY_ANOTHER_WAY);
+            Set.of("self_service_recovery", "self_registration", MFA_TRY_ANOTHER_WAY);
 
     public static final String SCOPE_APPLICATION = "application";
     public static final String SCOPE_PLATFORM = "platform";
@@ -137,13 +108,12 @@ public final class FeatureFlagDefaults {
     }
 
     private static Map<String, Object> flag(
-            String key, String name, String description, boolean enabled, int rollout, String category) {
+            String key, String name, String description, boolean enabled, String category) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("key", key);
         row.put("name", name);
         row.put("description", description);
         row.put("enabled", enabled);
-        row.put("rollout", rollout);
         row.put("category", category);
         row.put("scope", scopeOf(key));
         return row;

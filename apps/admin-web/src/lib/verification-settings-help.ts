@@ -36,8 +36,6 @@ export const LOGIN_HELP = {
     "Whether users can sign in with email, phone, or both on POST .../auth/otp/request and session login.",
   passwordlessModes:
     "email_otp / phone_otp: one-time codes. magic_link: email link sign-in. Disabled modes are rejected by the API.",
-  mfaRequired:
-    "Policy hint for clients. off = MFA not expected; optional = user choice; required = step-up expected (future MFA factors).",
   otpLength: "Digits for login OTP codes (can differ from signup).",
   otpTtlSeconds: "How long login codes remain valid.",
   maxAttempts: "Wrong-code limit before requesting a new challenge.",

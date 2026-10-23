@@ -40,6 +40,15 @@ public class ApplicationSmsResolver {
         return factory.isConfigured(resolveCredentials(applicationId));
     }
 
+    /**
+     * Text messages can really be sent: the SMS settings are turned on, with a usable provider. (Turned off, codes
+     * only go to the server log, which is not something to offer users.)
+     */
+    public boolean canSend(UUID applicationId) {
+        SmsResolvedCredentials credentials = resolveCredentials(applicationId);
+        return credentials.enabled() && factory.isConfigured(credentials);
+    }
+
     public boolean usesApplicationOverride(UUID applicationId) {
         return applicationId != null && applicationSms.hasOverride(applicationId);
     }

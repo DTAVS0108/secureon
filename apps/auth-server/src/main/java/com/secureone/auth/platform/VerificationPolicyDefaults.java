@@ -76,8 +76,15 @@ public final class VerificationPolicyDefaults {
                 base.put(String.valueOf(e.getKey()), e.getValue());
             }
         }
+        base.keySet().removeAll(RETIRED_KEYS);
         target.put(key, base);
     }
+
+    /**
+     * Settings that no longer exist. {@code mfaRequired}: whether a second step is asked is the Two Factor
+     * Authentication policy's mode (since V72).
+     */
+    private static final java.util.Set<String> RETIRED_KEYS = java.util.Set.of("mfaRequired");
 
     private static Map<String, Object> signupDefaults() {
         Map<String, Object> signup = new LinkedHashMap<>();
@@ -97,7 +104,6 @@ public final class VerificationPolicyDefaults {
         Map<String, Object> login = new LinkedHashMap<>();
         login.put("identifierTypes", List.of("email", "phone"));
         login.put("passwordlessModes", List.of("email_otp", "phone_otp", "magic_link"));
-        login.put("mfaRequired", "optional");
         login.put("otpLength", 6);
         login.put("otpTtlSeconds", 600);
         login.put("maxAttempts", 5);

@@ -21,7 +21,24 @@ public class ApplicationEffectiveSettingsService {
         this.applicationSettings = applicationSettings;
     }
 
+    /**
+     * One-time-code sign-in is decided by Verification & OTP › Passwordless modes (and, for text messages, an SMS
+     * provider), not by a sign-in method switch: these catalog entries only report it to login pages and clients.
+     */
+    public static final Map<String, String> CODE_SIGN_IN_METHODS = Map.of("m_email_otp", "email_otp", "m_sms", "phone_otp");
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.platform.VerificationPolicyService> verificationPolicy;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.notify.SmsNotificationService> sms;
+
     public boolean isAuthMethodEnabled(UUID applicationId, String methodId) {
+        String passwordlessMode = CODE_SIGN_IN_METHODS.get(methodId);
+        if (passwordlessMode != null) {
+            return verificationPolicy.getObject().allowsLoginPasswordlessMode(applicationId, passwordlessMode)
+                    && (!"m_sms".equals(methodId) || sms.getObject().canSend(applicationId));
+        }
         List<Map<String, Object>> methods = applicationId != null
                 ? applicationSettings.resolveAuthMethods(applicationId)
                 : platformAuth.getAuthMethods();
@@ -29,6 +46,9 @@ public class ApplicationEffectiveSettingsService {
     }
 
     public boolean isAuthMethodImplemented(UUID applicationId, String methodId) {
+        if (CODE_SIGN_IN_METHODS.containsKey(methodId)) {
+            return true;
+        }
         List<Map<String, Object>> methods = applicationId != null
                 ? applicationSettings.resolveAuthMethods(applicationId)
                 : platformAuth.getAuthMethods();

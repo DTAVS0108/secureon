@@ -29,6 +29,9 @@ public class AccountVerificationService {
     private final SmsNotificationService sms;
     private final VerificationPolicyService verificationPolicy;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.mfa.MfaPolicyService> mfaPolicy;
+
     public AccountVerificationService(
             UserAccountRepository users,
             AccountNotificationService notifications,
@@ -198,7 +201,8 @@ public class AccountVerificationService {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("identifierTypes", login.getOrDefault("identifierTypes", java.util.List.of("email", "phone")));
         out.put("passwordlessModes", login.getOrDefault("passwordlessModes", java.util.List.of("email_otp", "phone_otp", "magic_link")));
-        out.put("mfaRequired", login.getOrDefault("mfaRequired", "optional"));
+        // Whether a second step is asked comes from the Two Factor Authentication policy (off, optional, required).
+        out.put("mfaRequired", mfaPolicy.getObject().loginMfaRequired(applicationId));
         out.put("otpLength", verificationPolicy.otpLength(applicationId, com.secureone.auth.account.otp.OtpPolicySection.LOGIN));
         out.put("otpTtlSeconds", verificationPolicy.otpTtlSeconds(applicationId, com.secureone.auth.account.otp.OtpPolicySection.LOGIN));
         return out;

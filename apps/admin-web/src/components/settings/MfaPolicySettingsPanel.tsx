@@ -42,7 +42,6 @@ const DEFAULTS: MfaPolicy = {
   maxChallengeAttempts: 5,
   recoveryCodesPerEnrollment: 10,
   freshStepMinutes: 5,
-  trustIdpMfa: false,
   stepUpAfterPassword: true,
   locks: {},
 };
@@ -330,9 +329,6 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
           </SettingRow>
           <SettingRow ctx={ctx} k="stepUpAfterPassword" label="Ask users who have an option (optional mode)" hint="Off: users with an option are not asked unless it is required.">
             <Toggle checked={Boolean(policy.stepUpAfterPassword)} onChange={(v) => patch({ stepUpAfterPassword: v })} aria-label="Ask users who have an option" />
-          </SettingRow>
-          <SettingRow ctx={ctx} k="trustIdpMfa" label="Trust the identity provider's own MFA" hint="Google, Microsoft, OIDC or SAML sign-ins that report MFA are not asked again.">
-            <Toggle checked={Boolean(policy.trustIdpMfa)} onChange={(v) => patch({ trustIdpMfa: v })} aria-label="Trust IdP MFA" />
           </SettingRow>
           <SettingRow ctx={ctx} k="challengeTtlSeconds" label="Time to finish the second step (seconds)">
             <Input type="number" min={60} max={900} value={policy.challengeTtlSeconds ?? 300}

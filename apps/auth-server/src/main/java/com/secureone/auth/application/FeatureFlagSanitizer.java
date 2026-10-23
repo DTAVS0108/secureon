@@ -9,7 +9,8 @@ import java.util.Set;
 
 public final class FeatureFlagSanitizer {
 
-    private static final Set<String> FIELDS = Set.of("key", "name", "description", "enabled", "rollout", "category");
+    /** Stored fields of a flag (a flag is on or off: no "rollout" percentage). */
+    private static final Set<String> FIELDS = Set.of("key", "name", "description", "enabled", "category");
 
     private FeatureFlagSanitizer() {}
 
@@ -40,9 +41,6 @@ public final class FeatureFlagSanitizer {
             clean.put("key", key);
             if (!clean.containsKey("enabled")) {
                 clean.put("enabled", false);
-            }
-            if (!clean.containsKey("rollout")) {
-                clean.put("rollout", 0);
             }
             out.add(clean);
         }

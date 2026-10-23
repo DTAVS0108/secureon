@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { APP_FLAG, appFlagOn } from "@/lib/app-feature-flags";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AuditTable } from "@/app/audit/AuditTable";
-import { loadAdminContextSafe, resolveApplicationMeta } from "@/lib/api/app-workspace";
+import { resolveApplicationMeta } from "@/lib/api/app-workspace";
 import { listAuditEvents } from "@/lib/api/audit";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +15,7 @@ export default async function AppAuditPage({
   const { applicationId } = await params;
   const app = await resolveApplicationMeta(applicationId);
   if (!app) notFound();
-  // Settings → Feature flags → Audit log: the page is not found while the flag is off.
-  if (!appFlagOn((await loadAdminContextSafe()).consoleFlags, APP_FLAG.auditLog)) notFound();
+  // Always available (who may see it is decided by console access, not by a feature flag).
 
   let events: Awaited<ReturnType<typeof listAuditEvents>> = [];
   try {

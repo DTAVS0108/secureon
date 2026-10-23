@@ -48,14 +48,22 @@ class MfaPolicyDefaultsTest {
     @Test
     void stricterOnlySettingsAcceptStricterAndRefuseWeaker() {
         Map<String, String> locks = Map.of("mode", "stricter", "rememberDeviceDays", "stricter", "methods", "stricter",
-                "trustIdpMfa", "stricter");
+                "allowDontAskAgain", "stricter");
         Map<String, Object> base = MfaPolicyDefaults.sanitizeForSave(Map.of("rememberDeviceDays", 30));
         Map<String, Object> out = MfaPolicyDefaults.applyLayer(base, locks, Map.of(
-                "mode", "required", "rememberDeviceDays", 60, "methods", List.of("passkey"), "trustIdpMfa", true));
+                "mode", "required", "rememberDeviceDays", 60, "methods", List.of("passkey"), "allowDontAskAgain", true));
         assertEquals("required", out.get("mode"));          // stricter: accepted
         assertEquals(30, out.get("rememberDeviceDays"));    // longer is weaker: refused
         assertEquals(List.of("passkey"), out.get("methods")); // fewer methods: accepted
-        assertEquals(false, out.get("trustIdpMfa"));          // trusting more is weaker: refused
+        assertEquals(false, out.get("allowDontAskAgain"));    // letting users opt out is weaker: refused
+    }
+
+    @Test
+    void removedSettingsAreDroppedFromStoredPolicies() {
+        Map<String, Object> sanitized = MfaPolicyDefaults.sanitizeForSave(
+                Map.of("trustIdpMfa", true, "requirePasskeyWhenEnrolled", true, "mode", "required"));
+        assertTrue(!sanitized.containsKey("trustIdpMfa") && !sanitized.containsKey("requirePasskeyWhenEnrolled"));
+        assertEquals("required", sanitized.get("mode"));
     }
 
     @Test
@@ -77,20 +85,18 @@ class MfaPolicyDefaultsTest {
     }
 
     @Test
-    void platformDefaultsIncludeRememberDeviceAndPasskeyFlags() {
+    void platformDefaultsIncludeRememberDevice() {
         Map<String, Object> defaults = MfaPolicyDefaults.platformDefaults();
         assertEquals(0, defaults.get("rememberDeviceDays"));
-        assertEquals(false, defaults.get("requirePasskeyWhenEnrolled"));
     }
 
     @Test
     void mergePrefersNonNullOverrides() {
         Map<String, Object> merged = MfaPolicyDefaults.merge(
                 MfaPolicyDefaults.platformDefaults(),
-                Map.of("rememberDeviceDays", 14, "requirePasskeyWhenEnrolled", true));
+                Map.of("rememberDeviceDays", 14, "stepUpAfterPassword", false));
         assertEquals(14, merged.get("rememberDeviceDays"));
-        assertEquals(true, merged.get("requirePasskeyWhenEnrolled"));
-        assertEquals(true, merged.get("stepUpAfterPassword"));
+        assertEquals(false, merged.get("stepUpAfterPassword"));
     }
 
     @Test
@@ -130,7 +136,7 @@ class MfaPolicyDefaultsTest {
         weaker.put("minimumStrength", "any");
         weaker.put("methods", List.of("passkey", "security_key", "totp", "sms"));
         weaker.put("rememberDeviceDays", 30);
-        weaker.put("trustIdpMfa", true);
+        weaker.put("allowDontAskAgain", true);
 
         List<String> found = MfaPolicyDefaults.weakenings(platform, weaker);
         assertEquals(5, found.size(), String.valueOf(found));

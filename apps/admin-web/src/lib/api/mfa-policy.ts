@@ -23,9 +23,7 @@ export type MfaPolicy = {
   maxChallengeAttempts?: number;
   recoveryCodesPerEnrollment?: number;
   freshStepMinutes?: number;
-  trustIdpMfa?: boolean;
   stepUpAfterPassword?: boolean;
-  requirePasskeyWhenEnrolled?: boolean;
   /** Locks this level sets for the levels below (platform, tenant). */
   locks?: Partial<Record<string, LockMode>>;
   /** Locks the level above set (tenant view: the platform's). */

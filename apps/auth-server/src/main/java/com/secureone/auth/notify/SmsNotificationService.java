@@ -31,4 +31,9 @@ public class SmsNotificationService {
     public boolean isConfigured(UUID applicationId) {
         return smsResolver.isConfigured(applicationId);
     }
+
+    /** SMS is turned on with a usable provider (not just the server-log fallback). */
+    public boolean canSend(UUID applicationId) {
+        return smsResolver.canSend(applicationId);
+    }
 }

@@ -43,7 +43,7 @@ const SECTION_META: { key: keyof PublicManifestSections; label: string; descript
   {
     key: "featureFlags",
     label: "Feature flags",
-    description: "Public capability toggles (key, name, enabled, rollout).",
+    description: "Public capability toggles (key, name, enabled).",
   },
   {
     key: "passwordPolicy",

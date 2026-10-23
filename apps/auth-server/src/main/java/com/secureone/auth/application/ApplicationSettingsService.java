@@ -245,10 +245,8 @@ public class ApplicationSettingsService {
         return getUserDirectory(applicationId);
     }
 
+    /** LDAP import is not available yet: the LDAP source always reads as off. */
     private void applyLdapFeatureGate(UUID applicationId, Map<String, Object> config) {
-        if (isFeatureEnabled(applicationId, "ldap")) {
-            return;
-        }
         Object sourcesObj = config.get("sources");
         if (!(sourcesObj instanceof Map<?, ?> sources)) {
             return;
@@ -263,14 +261,6 @@ public class ApplicationSettingsService {
         @SuppressWarnings("unchecked")
         Map<String, Object> sourcesMap = (Map<String, Object>) sourcesObj;
         sourcesMap.put("ldap", ldapSource);
-    }
-
-    private boolean isFeatureEnabled(UUID applicationId, String key) {
-        return resolveFeatureFlags(applicationId).stream()
-                .filter(f -> key.equals(String.valueOf(f.get("key"))))
-                .findFirst()
-                .map(f -> Boolean.TRUE.equals(f.get("enabled")))
-                .orElse(false);
     }
 
     @Transactional(readOnly = true)
