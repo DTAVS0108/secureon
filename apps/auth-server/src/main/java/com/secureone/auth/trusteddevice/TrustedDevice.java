@@ -23,6 +23,10 @@ public class TrustedDevice {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    /** The application it was remembered in; null: sign-ins without an application. */
+    @Column(name = "application_id")
+    private UUID applicationId;
+
     @Column(name = "device_token_hash", nullable = false)
     private String deviceTokenHash;
 

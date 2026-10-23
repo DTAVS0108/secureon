@@ -39,6 +39,8 @@ const METHOD_LABEL: Record<TwoStepMethodId, string> = {
 /**
  * A user's two-step verification for admins: status, options (never secrets), backup codes, deadline, and
  * reset / extend / exempt. Reset and exempt ask the admin to verify it's them first (step-up dialog).
+ * The deadline and exemptions are per application; the user's options and backup codes are one set for every
+ * application of the tenant, so a reset applies everywhere.
  */
 export function UserTwoStepPanel({ userId, applicationId }: { userId: string; applicationId?: string }) {
   const { toast } = useToast();
@@ -47,6 +49,9 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
   const [days, setDays] = useState(7);
   const [exemptUntil, setExemptUntil] = useState("");
   const [exemptReason, setExemptReason] = useState("");
+  // Exempt in this application only (default when there is one) or in every application of the tenant.
+  const [exemptEverywhere, setExemptEverywhere] = useState(!applicationId);
+  const everywhereNote = "This applies to every application of this tenant: the user's options are shared.";
 
   useDeferredEffect(() => {
     let cancelled = false;
@@ -93,14 +98,20 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
         )}
         {view.status === "exempt" && (
           <p className="mt-2 text-sm">
-            Exempt until <LocalTime value={view.exemptUntil} /> by {view.exemptedBy}: “{view.exemptReason}”.
+            Exempt {view.exemptScope === "all" ? "in every application" : "in this application"} until{" "}
+            <LocalTime value={view.exemptUntil} /> by {view.exemptedBy}: “{view.exemptReason}”.
           </p>
         )}
       </section>
 
       <section>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-ui">Options</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-ui">Options</h3>
+            <p className="text-xs text-muted" data-testid="two-step-shared-note">
+              Shared by every application of this tenant; removing one removes it everywhere.
+            </p>
+          </div>
           {view.methods.length > 0 && (
             <Button
               variant="danger"
@@ -108,7 +119,7 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
               disabled={busy}
               data-testid="reset-all-two-step"
               onClick={() => {
-                if (!confirm("Remove every option and backup code, and sign the user out everywhere?")) return;
+                if (!confirm(`Remove every option and backup code, and sign the user out everywhere?\n\n${everywhereNote}`)) return;
                 void run(() => resetUserTwoStep(userId, null, applicationId), "Two-step verification reset");
               }}
             >
@@ -140,7 +151,7 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
                   size="sm"
                   disabled={busy}
                   onClick={() => {
-                    if (!confirm(`Remove ${METHOD_LABEL[m.type]}? The user is signed out everywhere.`)) return;
+                    if (!confirm(`Remove ${METHOD_LABEL[m.type]}? The user is signed out everywhere.\n\n${everywhereNote}`)) return;
                     void run(() => resetUserTwoStep(userId, m.type, applicationId), `${METHOD_LABEL[m.type]} removed`);
                   }}
                 >
@@ -159,7 +170,10 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
       {view.mode === "required" && view.status !== "enabled" && (
         <section className="rounded-xl border border-ui p-4">
           <h3 className="text-sm font-semibold text-ui">More time to set it up</h3>
-          <p className="text-xs text-muted">Moves the deadline (up to {view.maxExtendDays} days).</p>
+          <p className="text-xs text-muted">
+            Moves the deadline {applicationId ? "in this application" : "in every application"} (up to{" "}
+            {view.maxExtendDays} days).
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Input
               type="number"
@@ -192,7 +206,12 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
               variant="secondary"
               className="mt-2"
               disabled={busy}
-              onClick={() => void run(() => endUserTwoStepExemption(userId), "Exemption ended")}
+              onClick={() =>
+                void run(
+                  () => endUserTwoStepExemption(userId, view.exemptScope === "all" ? null : applicationId),
+                  "Exemption ended",
+                )
+              }
             >
               End exemption
             </Button>
@@ -201,6 +220,17 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
               <p className="text-xs text-muted">
                 Signs in without two-step verification until the date. Audited; the user is emailed.
               </p>
+              {applicationId && (
+                <label className="mt-2 flex items-center gap-2 text-sm text-soft">
+                  <input
+                    type="checkbox"
+                    checked={exemptEverywhere}
+                    onChange={(e) => setExemptEverywhere(e.target.checked)}
+                    data-testid="exempt-everywhere"
+                  />
+                  Every application of this tenant (otherwise this application only)
+                </label>
+              )}
               <div className="mt-2 grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
                 <Input type="date" value={exemptUntil} onChange={(e) => setExemptUntil(e.target.value)} data-testid="exempt-until" />
                 <Input
@@ -215,7 +245,18 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
                   variant="secondary"
                   disabled={busy || !exemptUntil || !exemptReason.trim()}
                   data-testid="exempt-two-step"
-                  onClick={() => void run(() => exemptUserTwoStep(userId, exemptUntil, exemptReason.trim()), "User exempted")}
+                  onClick={() =>
+                    void run(
+                      () =>
+                        exemptUserTwoStep(
+                          userId,
+                          exemptUntil,
+                          exemptReason.trim(),
+                          exemptEverywhere ? null : applicationId,
+                        ),
+                      "User exempted",
+                    )
+                  }
                 >
                   Exempt
                 </Button>

@@ -536,14 +536,16 @@
       container.appendChild(el("h3", { text: "Remembered devices" }));
       var devices = el("ul", { class: "ts-list", "data-testid": "devices" });
       (st.devices || []).forEach(function (d) {
+        // A device is remembered in one application; elsewhere the second step is still asked.
+        var where = d.applicationId && opts.applicationId && d.applicationId !== opts.applicationId ? " · another application" : "";
         devices.appendChild(el("li", {}, [
-          el("span", { text: (d.label || "Browser") + " · until " + formatDate(d.expiresAt) }),
+          el("span", { text: (d.label || "Browser") + where + " · until " + formatDate(d.expiresAt) }),
           el("button", { type: "button", class: "ts-link", text: "Forget", onclick: function () {
             call("DELETE", base + "/devices/" + d.id).then(load);
           } }),
         ]));
       });
-      if (!(st.devices || []).length) devices.appendChild(el("li", { class: "ts-muted", text: "None. Devices you tick “don't ask again” on appear here." }));
+      if (!(st.devices || []).length) devices.appendChild(el("li", { class: "ts-muted", text: "None. Devices you tick “don't ask again” on appear here (each counts for the application you ticked it in)." }));
       container.appendChild(devices);
       if ((st.devices || []).length) {
         container.appendChild(el("button", { type: "button", text: "Forget all devices", onclick: function () { call("DELETE", base + "/devices").then(load); } }));

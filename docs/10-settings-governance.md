@@ -52,11 +52,13 @@ Enable **email OTP login** (`m_email_otp`) and **SMS OTP login** (`m_sms`) under
 2. **Application → Settings → Feature flags** — toggle **OAuth tokens tab** (stored as `tabEnabled` on `token_policy`).
 3. When both are on, the **OAuth tokens** tab appears and policy can be edited.
 
-### MFA tab (two-step enable)
+### Two Factor Authentication (application's own settings)
 
-1. **Platform → For applications → Authentication & MFA** — allows apps to configure auth methods.
-2. **Application → Settings → Authentication** — toggle **Enable MFA** (stored in `auth_mfa_tab`, API `/settings/mfa-tab/tab-enabled`).
-3. When enabled, the **MFA** tab appears so factors (TOTP, passkey, etc.) can be configured.
+1. **Platform → For applications → Two Factor Authentication** (exposure key `two-factor`, separate from **Sign-in methods** `auth-methods`; V73 starts it at the value Authentication had) — allows apps to have their own two-factor settings.
+2. **Application → Settings → Feature flags → Settings tabs** — switch **Two Factor Authentication** (stored as `tabEnabled` in `auth_mfa_tab`, API `/settings/mfa-tab/tab-enabled`; audited as `settings.feature_flag_changed`).
+3. When both are on, **Authentication → Two Factor Authentication** appears and the application's own values **apply at sign-in**. When either is off, the application uses the platform and tenant settings: values it saved earlier are kept but not applied, and saving new ones is refused.
+4. **Backup codes per user** (`recoveryCodesPerEnrollment`) is never an application setting: backup codes are one set per user for every application.
+5. State the settings drive is per application (V73): setup deadline, skips, "don't ask again", reminders and exemptions in `user_two_step_state (user_id, application_id)` (zero UUID = no application / every application), and remembered devices in `trusted_device.application_id` with one cookie per application.
 
 ### Feature flags catalog
 

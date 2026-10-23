@@ -341,7 +341,13 @@ public class ApplicationScopedAdminController {
     public Map<String, Object> setMfaTabEnabled(
             @PathVariable UUID applicationId, @RequestBody Map<String, Boolean> body) {
         boolean enabled = Boolean.TRUE.equals(body != null ? body.get("enabled") : null);
-        return settings.saveMfaTabEnabled(applicationId, enabled);
+        boolean was = Boolean.TRUE.equals(settings.getMfaTabState(applicationId).get("tabEnabled"));
+        Map<String, Object> state = settings.saveMfaTabEnabled(applicationId, enabled);
+        // Audited like a feature flag: it is the "Two Factor Authentication" switch under Feature flags.
+        flagAudit.recordChanges(applicationId,
+                List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", was)),
+                List.of(Map.of("key", "two_factor_authentication", "name", "Two Factor Authentication", "enabled", enabled)));
+        return state;
     }
 
     @GetMapping("/settings/password-policy")

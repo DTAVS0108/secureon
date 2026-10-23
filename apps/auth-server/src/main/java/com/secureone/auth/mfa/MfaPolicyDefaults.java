@@ -30,6 +30,12 @@ public final class MfaPolicyDefaults {
             "challengeTtlSeconds", "maxChallengeAttempts", "recoveryCodesPerEnrollment", "freshStepMinutes",
             "trustIdpMfa", "stepUpAfterPassword", "requirePasskeyWhenEnrolled");
 
+    /**
+     * Settings decided by the platform and the tenant only: they act on what a user has once for every
+     * application (backup codes), so one application's value cannot apply.
+     */
+    public static final Set<String> NOT_PER_APPLICATION = Set.of("recoveryCodesPerEnrollment");
+
     private MfaPolicyDefaults() {}
 
     public static Map<String, Object> platformDefaults() {

@@ -39,15 +39,20 @@ export async function loadAuthSettingsAction(applicationId?: string): Promise<{
         fetchApplicationFeatureFlags,
         fetchApplicationPasswordPolicy,
       } = await import("@/lib/api/application-settings");
-      const [authMethods, featureFlagsRaw, passwordPolicyRaw] = await Promise.all([
+      // Each section is open to applications on its own (Platform → For applications): one that is not must
+      // not hide the others (e.g. the Feature flags tab with only the Two Factor Authentication switch).
+      const [authMethods, featureFlagsRaw, passwordPolicyRaw] = await Promise.allSettled([
         fetchApplicationAuthMethods(applicationId),
         fetchApplicationFeatureFlags(applicationId),
         fetchApplicationPasswordPolicy(applicationId),
       ]);
+      const results = [authMethods, featureFlagsRaw, passwordPolicyRaw];
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
       return {
-        authMethods,
-        featureFlags: normalizeFeatureFlags(featureFlagsRaw),
-        passwordPolicy: normalizePasswordPolicy(passwordPolicyRaw),
+        authMethods: authMethods.status === "fulfilled" ? authMethods.value : [],
+        featureFlags: normalizeFeatureFlags(featureFlagsRaw.status === "fulfilled" ? featureFlagsRaw.value : []),
+        passwordPolicy: normalizePasswordPolicy(passwordPolicyRaw.status === "fulfilled" ? passwordPolicyRaw.value : {}),
+        error: results.every((r) => r.status === "rejected") && failed ? formatError(failed.reason) : undefined,
       };
     }
     const [authMethods, featureFlags, passwordPolicy] = await Promise.all([

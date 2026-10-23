@@ -60,7 +60,7 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
         isActive: isAccessReviewNavActive,
       },
       {
-        label: "Two-step verification",
+        label: "Two Factor Authentication",
         href: `/tenants/${tenantId}/two-step`,
         isActive: (pathname: string) => /^\/tenants\/[^/]+\/two-step\/?$/.test(pathname),
       },

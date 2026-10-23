@@ -13,7 +13,7 @@ import { EXPOSURE_HELP } from "@/lib/verification-settings-help";
 
 const GROUPS: { title: string; keys: string[] }[] = [
   { title: "Messaging", keys: ["notifications", "email"] },
-  { title: "Authentication", keys: ["auth-methods", "password-policy", "feature-flags", "token-policy", "verification-policy", "sms"] },
+  { title: "Authentication", keys: ["auth-methods", "two-factor", "password-policy", "feature-flags", "token-policy", "verification-policy", "sms"] },
   { title: "Experience & directory", keys: ["appearance", "user-directory"] },
   { title: "Client integration", keys: ["public-manifest"] },
 ];
@@ -31,8 +31,14 @@ const SECTIONS: { key: string; label: string; description: string; info?: string
   },
   {
     key: "auth-methods",
-    label: "Authentication & MFA",
-    description: "Login methods and MFA factors enabled for users of this application.",
+    label: "Sign-in methods",
+    description: "Password, magic link, passkeys and identity providers for users of this application.",
+  },
+  {
+    key: "two-factor",
+    label: "Two Factor Authentication",
+    description:
+      "Lets each application have its own two-factor settings (its Feature flags → Two Factor Authentication switch). Platform and tenant locks still apply.",
   },
   {
     key: "password-policy",

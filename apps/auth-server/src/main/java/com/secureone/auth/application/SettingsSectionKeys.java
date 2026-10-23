@@ -9,6 +9,7 @@ public final class SettingsSectionKeys {
             Map.entry("notifications", "notifications"),
             Map.entry("email", "email"),
             Map.entry("auth_methods", "auth-methods"),
+            Map.entry("mfa_policy", "two-factor"),
             Map.entry("password_policy", "password-policy"),
             Map.entry("feature_flags", "feature-flags"),
             Map.entry("appearance", "appearance"),

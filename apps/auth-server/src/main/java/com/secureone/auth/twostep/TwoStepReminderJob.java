@@ -54,40 +54,61 @@ public class TwoStepReminderJob {
         RlsScope.runAsPlatform(this::sendDue);
     }
 
-    /** Sends the reminders that are due now; returns how many were sent. */
-    @SuppressWarnings("unchecked")
+    /** Reminder days are at most this many days before a deadline (MfaPolicyDefaults). */
+    private static final int MAX_REMINDER_DAYS = 60;
+
+    /**
+     * Sends the reminders that are due now; returns how many were sent. Each application's deadline is reminded
+     * on that application's reminder days.
+     */
     public int sendDue() {
-        Map<String, Object> platform = policies.platform();
-        List<Integer> days = platform.get("reminderDays") instanceof List<?> l ? (List<Integer>) l : List.of(7, 1);
-        if (days.isEmpty()) {
-            return 0;
-        }
         int sent = 0;
-        int horizon = days.stream().mapToInt(Integer::intValue).max().orElse(7);
-        for (TwoStepStateStore.State s : states.deadlinesWithin(horizon)) {
-            long daysLeft = Math.max(0, Duration.between(Instant.now(), s.deadline()).toHours() + 23) / 24;
-            List<String> already = new ArrayList<>(Arrays.asList(s.remindersSent().split(",")));
-            Integer due = days.stream().filter(d -> daysLeft <= d && !already.contains(String.valueOf(d)))
-                    .min(Integer::compareTo).orElse(null);
-            if (due == null || !twoStep.methods(s.userId()).isEmpty()) {
-                continue;
-            }
-            var user = users.findById(s.userId()).orElse(null);
-            if (user == null || s.exempt(Instant.now())) {
-                continue;
-            }
+        for (TwoStepStateStore.State s : states.deadlinesWithin(MAX_REMINDER_DAYS)) {
+            // One user's or application's problem must not stop the reminders of everyone else.
             try {
-                mail.sendTwoStepReminder(null, user, DATE.format(s.deadline()), publicBaseUrl + "/login.html");
-                sent++;
+                sent += remind(s) ? 1 : 0;
             } catch (RuntimeException ex) {
-                log.warn("Two-step reminder to {} failed: {}", user.getEmail(), ex.getMessage());
+                log.warn("Two-step reminder for user {} in application {} skipped: {}",
+                        s.userId(), s.applicationId(), ex.getMessage());
             }
-            // Every reminder day already passed counts as sent, so a late run sends one email, not several.
-            days.stream().filter(d -> daysLeft <= d).forEach(d -> already.add(String.valueOf(d)));
-            states.save(new TwoStepStateStore.State(s.userId(), s.firstPromptedAt(), s.nextPromptAt(), s.skipsUsed(),
-                    s.deadline(), s.optedOut(), s.exemptUntil(), s.exemptReason(), s.exemptedBy(), s.extendedBy(),
-                    String.join(",", already.stream().filter(x -> !x.isBlank()).distinct().toList())));
         }
+        return sent;
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean remind(TwoStepStateStore.State s) {
+        Map<String, Object> policy = policies.resolve(s.applicationId()).policy();
+        // Only while this application still requires it (it may have gone back to optional since).
+        if (!"required".equals(policy.get("mode"))) {
+            return false;
+        }
+        List<Integer> days = policy.get("reminderDays") instanceof List<?> l ? (List<Integer>) l : List.of(7, 1);
+        if (days.isEmpty()) {
+            return false;
+        }
+        long daysLeft = Math.max(0, Duration.between(Instant.now(), s.deadline()).toHours() + 23) / 24;
+        List<String> already = new ArrayList<>(Arrays.asList(s.remindersSent().split(",")));
+        Integer due = days.stream().filter(d -> daysLeft <= d && !already.contains(String.valueOf(d)))
+                .min(Integer::compareTo).orElse(null);
+        if (due == null || !twoStep.methods(s.userId()).isEmpty()) {
+            return false;
+        }
+        var user = users.findById(s.userId()).orElse(null);
+        if (user == null || twoStep.exempt(s.userId(), s.applicationId(), Instant.now())) {
+            return false;
+        }
+        String signIn = publicBaseUrl + "/login.html"
+                + (s.applicationId() != null ? "?applicationId=" + s.applicationId() : "");
+        boolean sent = false;
+        try {
+            mail.sendTwoStepReminder(s.applicationId(), user, DATE.format(s.deadline()), signIn);
+            sent = true;
+        } catch (RuntimeException ex) {
+            log.warn("Two-step reminder to {} failed: {}", user.getEmail(), ex.getMessage());
+        }
+        // Every reminder day already passed counts as sent, so a late run sends one email, not several.
+        days.stream().filter(d -> daysLeft <= d).forEach(d -> already.add(String.valueOf(d)));
+        states.save(s.withRemindersSent(String.join(",", already.stream().filter(x -> !x.isBlank()).distinct().toList())));
         return sent;
     }
 }

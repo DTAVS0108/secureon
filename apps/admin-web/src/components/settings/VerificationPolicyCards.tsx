@@ -222,7 +222,7 @@ export function VerificationPolicyCards({
             </div>
           </FieldRow>
           <p className="text-xs text-muted">
-            Whether a second step is required is set under <strong>Two-step verification</strong>.
+            Whether a second step is required is set under <strong>Two Factor Authentication</strong>.
           </p>
           <OtpFields section={login} sectionHelp={LOGIN_HELP} onChange={updateLogin} />
         </div>

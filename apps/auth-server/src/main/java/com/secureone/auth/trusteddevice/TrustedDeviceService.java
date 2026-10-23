@@ -14,9 +14,15 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * "Don't ask again on this device". A device is remembered in one application (each application decides
+ * whether and for how long), with its own cookie, so a device remembered in one application never skips the
+ * second step in another.
+ */
 @Service
 public class TrustedDeviceService {
 
+    /** Cookie for sign-ins without an application; applications use {@link #cookieName(UUID)}. */
     public static final String COOKIE_NAME = "secureone_trust";
 
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -27,20 +33,26 @@ public class TrustedDeviceService {
         this.devices = devices;
     }
 
+    static String cookieName(UUID applicationId) {
+        return applicationId == null ? COOKIE_NAME : COOKIE_NAME + "_" + applicationId.toString().replace("-", "");
+    }
+
     @Transactional
-    public void issue(UUID userId, int rememberDeviceDays, HttpServletRequest request, HttpServletResponse response) {
+    public void issue(UUID userId, UUID applicationId, int rememberDeviceDays,
+            HttpServletRequest request, HttpServletResponse response) {
         if (rememberDeviceDays <= 0 || userId == null) {
             return;
         }
         String rawToken = generateToken();
         TrustedDevice device = new TrustedDevice();
         device.setUserId(userId);
+        device.setApplicationId(applicationId);
         device.setDeviceTokenHash(ServiceAccountService.hashKey(rawToken));
         device.setLabel(trimUserAgent(request != null ? request.getHeader(HttpHeaders.USER_AGENT) : null));
         device.setExpiresAt(Instant.now().plus(Duration.ofDays(rememberDeviceDays)));
         devices.save(device);
 
-        ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, rawToken)
+        ResponseCookie cookie = ResponseCookie.from(cookieName(applicationId), rawToken)
                 .httpOnly(true)
                 .secure(request != null && request.isSecure())
                 .path("/")
@@ -50,17 +62,24 @@ public class TrustedDeviceService {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    /**
+     * Whether this browser was remembered in this application, within the days the application allows now
+     * ({@code rememberDeviceDays}: an application that lowered it, or turned it off, is not skipped).
+     */
     @Transactional
-    public boolean isTrusted(UUID userId, HttpServletRequest request) {
-        if (userId == null || request == null) {
+    public boolean isTrusted(UUID userId, UUID applicationId, int rememberDeviceDays, HttpServletRequest request) {
+        if (userId == null || request == null || rememberDeviceDays <= 0) {
             return false;
         }
-        String rawToken = readCookie(request, COOKIE_NAME);
+        String rawToken = readCookie(request, cookieName(applicationId));
         if (rawToken == null || rawToken.isBlank()) {
             return false;
         }
+        Instant now = Instant.now();
         return devices.findByUserIdAndDeviceTokenHash(userId, ServiceAccountService.hashKey(rawToken))
-                .filter(device -> device.getExpiresAt().isAfter(Instant.now()))
+                .filter(device -> java.util.Objects.equals(device.getApplicationId(), applicationId))
+                .filter(device -> device.getExpiresAt().isAfter(now))
+                .filter(device -> device.getCreatedAt().plus(Duration.ofDays(rememberDeviceDays)).isAfter(now))
                 .map(device -> {
                     device.setLastUsedAt(Instant.now());
                     devices.save(device);

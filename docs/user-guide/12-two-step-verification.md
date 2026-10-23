@@ -62,9 +62,28 @@ Settings are layered: **platform → tenant → application**. Each level starts
 
 | Where | Who |
 |-------|-----|
-| **Settings › Authentication › Two-step verification** (platform settings) | Platform operators |
-| **Tenants › {tenant} › Two-step verification** | Platform operators and the tenant's Super Admin |
-| **Settings › Authentication › Two-step verification** (application settings) | Application admins |
+| **Settings › Authentication › Two Factor Authentication** (platform settings) | Platform operators |
+| **Tenants › {tenant} › Two Factor Authentication** | Platform operators and the tenant's Super Admin |
+| **Settings › Authentication › Two Factor Authentication** (application settings) | Application admins, once **Feature flags › Two Factor Authentication** is on |
+
+An application's own settings apply only while the platform opens **Authentication** to applications and the application's **Two Factor Authentication** switch (Feature flags) is on. Otherwise it signs in with the platform and tenant settings, and values it saved earlier wait unused.
+
+| | Platform | Application |
+|---|---|---|
+| Applies to | Sign-ins without an application, and every application without its own settings | Sign-ins to that application |
+| Starts from | Built-in defaults | Platform, then the tenant's defaults |
+| Limits | None; sets the locks for tenants and applications | Locks from platform and tenant (**Only stricter**, **Locked**) |
+| Can set locks | Yes | No |
+| Turned on by | Always on | Platform **For applications › Two Factor Authentication** + the application's **Two Factor Authentication** switch |
+
+Each application manages its own two-factor settings; the platform and tenant give the defaults and may lock a setting when they need a minimum. What a user has is shared, what the settings drive is per application:
+
+| Per application | Shared by every application of the tenant |
+|---|---|
+| Setup deadline, skips used, "don't ask again", reminders | The user's options (authenticator, passkeys, phone, email) |
+| Remembered devices: a device ticked in one application is asked again in the others, and counts only as long as that application's **Remember device** days | Backup codes, and how many are issued (**Backup codes per user** is a platform or tenant setting) |
+| Exemptions and extensions given for that application | Exemptions given for **every application** |
+| Admin console sign-in | Not used: operators always need an authenticator | Not used |
 
 ### Locks
 
@@ -110,9 +129,9 @@ Open the user (**Users › {user}**) and the **Two-step** tab. The status badge 
 | Action | What it does | Who |
 |--------|-------------|-----|
 | **Remove** (one option) | Deletes that option. The user is signed out everywhere and emailed. | Tenant admins and above |
-| **Reset all** | Deletes every option and backup code, forgets remembered devices, signs the user out and emails them. If the application requires two-step verification they set it up at the next sign-in, with no grace period. | Tenant admins and above |
-| **Extend** | Moves the setup deadline. Tenant admins: up to 14 days, once. Super Admins and platform operators: up to 180 days. | Tenant admins and above |
-| **Exempt** / **End exemption** | Lets the user sign in without a second step until a date, with a reason. Audited; the user is emailed. | Tenant Super Admins and platform operators |
+| **Reset all** | Deletes every option and backup code, forgets remembered devices, signs the user out and emails them. Options are shared, so this applies to every application of the tenant (the confirmation says so). If the application requires two-step verification they set it up at the next sign-in, with no grace period. | Tenant admins and above |
+| **Extend** | Moves the setup deadline in this application. Tenant admins: up to 14 days, once per application. Super Admins and platform operators: up to 180 days, and from the tenant's user page for every application at once. | Tenant admins and above |
+| **Exempt** / **End exemption** | Lets the user sign in without a second step until a date, with a reason: in this application, or tick **Every application of this tenant**. Audited; the user is emailed. | Tenant Super Admins and platform operators |
 
 Before a reset, an exemption, approving a change request, rotating a client secret, issuing a key or token, impersonating, or adding a platform operator, the console asks **Verify it's you**: enter an authenticator code, a recovery code, or use your passkey. It is asked again after a few minutes.
 

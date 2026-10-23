@@ -8,7 +8,6 @@ import com.secureone.auth.audit.AuditService;
 import com.secureone.auth.trusteddevice.TrustedDeviceService;
 import com.secureone.auth.twostep.TwoStepMethod;
 import com.secureone.auth.twostep.TwoStepService;
-import com.secureone.auth.twostep.TwoStepStateStore;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +35,11 @@ import org.springframework.web.bind.annotation.RestController;
  * A user's two-step verification, for admins: status, reset (one option or all), extend the setup deadline,
  * exempt. Platform operators and the tenant's super admins can do everything; tenant admins can extend once by
  * up to 14 days; application admins can see the status. Reset and exempt need a recent second step from the admin.
+ *
+ * <p>Each application has its own settings, so the setup deadline and exemptions are per application
+ * ({@code applicationId}); without one, they apply to every application of the tenant (super admins only for
+ * extending). The user's options and backup codes are one set shared by every application, so a reset applies
+ * everywhere.
  */
 @Tag(name = "Admin — users", description = "Two-step verification of a user")
 @RestController
@@ -43,9 +47,11 @@ public class AdminUserTwoStepController {
 
     public record ResetRequest(String method, UUID applicationId) {}
 
+    /** {@code applicationId} null: every application where the user has a deadline. */
     public record ExtendRequest(Integer days, UUID applicationId) {}
 
-    public record ExemptRequest(String until, String reason) {}
+    /** {@code applicationId} null: every application of the tenant. */
+    public record ExemptRequest(String until, String reason, UUID applicationId) {}
 
     private static final int TENANT_ADMIN_MAX_EXTEND_DAYS = 14;
 
@@ -56,7 +62,6 @@ public class AdminUserTwoStepController {
     private final AdminStepUpService stepUp;
     private final AuditService audit;
     private final TrustedDeviceService trustedDevices;
-    private final TwoStepStateStore states;
 
     public AdminUserTwoStepController(
             TwoStepService twoStep,
@@ -65,8 +70,7 @@ public class AdminUserTwoStepController {
             AdminOperatorService operators,
             AdminStepUpService stepUp,
             AuditService audit,
-            TrustedDeviceService trustedDevices,
-            TwoStepStateStore states) {
+            TrustedDeviceService trustedDevices) {
         this.twoStep = twoStep;
         this.users = users;
         this.access = access;
@@ -74,7 +78,6 @@ public class AdminUserTwoStepController {
         this.stepUp = stepUp;
         this.audit = audit;
         this.trustedDevices = trustedDevices;
-        this.states = states;
     }
 
     @Operation(summary = "Two-step status of a user (options without secrets, deadline, exemption)")
@@ -137,18 +140,22 @@ public class AdminUserTwoStepController {
         UserAccount user = requireUser(id);
         requireTenantWrite(authentication, actAs, user.getTenantId());
         int days = body != null && body.days() != null ? body.days() : 0;
+        UUID applicationId = body != null ? body.applicationId() : null;
         boolean governance = access.canManageTenantGovernance(authentication, actAs, user.getTenantId());
         int max = governance ? 180 : TENANT_ADMIN_MAX_EXTEND_DAYS;
         if (days < 1 || days > max) {
             throw new IllegalArgumentException("days must be between 1 and " + max + ".");
         }
-        if (!governance && states.get(user.getId()).extendedBy() != null) {
+        if (!governance && applicationId == null) {
+            throw new AccessDeniedException("Choose the application; only the tenant's super admin can extend every application.");
+        }
+        if (!governance && twoStep.extendedBy(user.getId(), applicationId) != null) {
             throw new AccessDeniedException("The deadline was already extended; ask the tenant's super admin.");
         }
-        twoStep.extend(user, days, operator(authentication, actAs));
-        audit.record(user.getTenantId(), body.applicationId(), "admin", "user.two_step_extended", "user_account", user.getId(),
-                user.getEmail() + " · +" + days + " days", true);
-        return view(user, body.applicationId(), authentication, actAs);
+        twoStep.extend(user, applicationId, days, operator(authentication, actAs));
+        audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_extended", "user_account", user.getId(),
+                user.getEmail() + " · +" + days + " days" + (applicationId == null ? " · every application" : ""), true);
+        return view(user, applicationId, authentication, actAs);
     }
 
     @Operation(summary = "Exempt a user from two-step verification until a date (reason required)")
@@ -167,23 +174,27 @@ public class AdminUserTwoStepController {
             throw new IllegalArgumentException("The exemption must end within a year.");
         }
         String reason = body.reason().trim();
-        twoStep.exempt(user, until, reason.length() > 500 ? reason.substring(0, 500) : reason, operator(authentication, actAs));
-        twoStep.notifyUser(null, user, "An administrator exempted you from two-step verification until "
-                + until.toString().substring(0, 10) + ".");
-        audit.record(user.getTenantId(), "admin", "user.two_step_exempted", "user_account", user.getId(),
-                user.getEmail() + " until " + until + ": " + reason, true);
-        return view(user, null, authentication, actAs);
+        UUID applicationId = body.applicationId();
+        twoStep.exempt(user, applicationId, until, reason.length() > 500 ? reason.substring(0, 500) : reason,
+                operator(authentication, actAs));
+        twoStep.notifyUser(applicationId, user, "An administrator exempted you from two-step verification"
+                + (applicationId == null ? "" : " in this application") + " until " + until.toString().substring(0, 10) + ".");
+        audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exempted", "user_account", user.getId(),
+                user.getEmail() + " until " + until + (applicationId == null ? " · every application" : "") + ": " + reason, true);
+        return view(user, applicationId, authentication, actAs);
     }
 
-    @Operation(summary = "End a user's exemption")
+    @Operation(summary = "End a user's exemption (in one application, or the one for every application)")
     @DeleteMapping("/api/admin/v1/users/{id}/two-step/exempt")
     public Map<String, Object> endExemption(Authentication authentication,
-            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs, @PathVariable UUID id) {
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAs, @PathVariable UUID id,
+            @RequestParam(required = false) UUID applicationId) {
         UserAccount user = requireUser(id);
         requireGovernance(authentication, actAs, user.getTenantId());
-        twoStep.exempt(user, null, null, null);
-        audit.record(user.getTenantId(), "admin", "user.two_step_exemption_ended", "user_account", user.getId(), user.getEmail(), true);
-        return view(user, null, authentication, actAs);
+        twoStep.exempt(user, applicationId, null, null, null);
+        audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exemption_ended", "user_account", user.getId(),
+                user.getEmail() + (applicationId == null ? " · every application" : ""), true);
+        return view(user, applicationId, authentication, actAs);
     }
 
     private Map<String, Object> view(UserAccount user, UUID applicationId, Authentication authentication, String actAs) {

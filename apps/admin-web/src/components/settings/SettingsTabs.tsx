@@ -87,9 +87,9 @@ const AUTH_SUB_TABS: {
   },
   {
     id: "mfa",
-    label: "Two-step verification",
+    label: "Two Factor Authentication",
     description: "Second-step options, whether they are required, setup reminders and the grace period.",
-    exposureKeys: ["auth-methods"],
+    exposureKeys: ["two-factor"],
     requiresMfaTab: true,
   },
   {
@@ -168,6 +168,10 @@ function isTabVisible(
   if (tab === "tokens") {
     return platformAllows && tokenTabEnabled;
   }
+  if (tab === "flags") {
+    // Also home of the application's settings-tab switches (Two Factor Authentication, OAuth tokens).
+    return platformAllows || Boolean(exposure["two-factor"]) || Boolean(exposure["token-policy"]);
+  }
   return platformAllows;
 }
 
@@ -235,8 +239,8 @@ export function SettingsTabs({
       let mfaTabEnabled = false;
       let tokenTabEnabled = false;
 
-      const authExposed = Boolean(exp["auth-methods"]);
-      if (authExposed) {
+      const twoFactorExposed = Boolean(exp["two-factor"]);
+      if (twoFactorExposed) {
         try {
           const mfaState = await fetchApplicationMfaTabState(scopedApplicationId);
           mfaTabEnabled = mfaState.tabEnabled;
@@ -381,8 +385,8 @@ export function SettingsTabs({
         <p className="mb-4 text-sm text-muted">Loading enabled settings…</p>
       )}
 
-      {scopeMode === "application" && exposureReady && Boolean(exposure["auth-methods"]) && !mfaGateReady && (
-        <p className="mb-4 text-sm text-muted">Loading MFA settings…</p>
+      {scopeMode === "application" && exposureReady && Boolean(exposure["two-factor"]) && !mfaGateReady && (
+        <p className="mb-4 text-sm text-muted">Loading Two Factor Authentication settings…</p>
       )}
       {scopeMode === "application" && exposureReady && platformExposesTokens && !tokenGateReady && (
         <p className="mb-4 text-sm text-muted">Loading OAuth token settings…</p>
@@ -467,9 +471,6 @@ export function SettingsTabs({
             <AuthenticationSettingsPanel
               applicationId={applicationId}
               tab={authPanelTab}
-              platformExposesAuthMethods={
-                scopeMode === "application" && Boolean(exposure["auth-methods"])
-              }
               mfaTabEnabled={scopeMode === "platform" ? true : mfaTabEnabled}
               onMfaTabEnabledChange={(enabled) => {
                 setMfaTabEnabled(enabled);
@@ -492,10 +493,13 @@ export function SettingsTabs({
         <AuthenticationSettingsPanel
           applicationId={applicationId}
           tab="flags"
-          platformExposesAuthMethods={
-            scopeMode === "application" && Boolean(exposure["auth-methods"])
-          }
+          platformExposesTwoFactor={scopeMode === "application" && Boolean(exposure["two-factor"])}
           mfaTabEnabled={scopeMode === "platform" ? true : mfaTabEnabled}
+          onMfaTabEnabledChange={(enabled) => {
+            setMfaTabEnabled(enabled);
+            if (enabled) openTab("auth", "mfa");
+          }}
+          platformExposesFeatureFlags={scopeMode === "platform" || Boolean(exposure["feature-flags"])}
           platformExposesOAuthTokens={
             scopeMode === "application" && Boolean(exposure["token-policy"])
           }

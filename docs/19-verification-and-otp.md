@@ -38,7 +38,7 @@ Related: [13 — Auth UI integration](13-auth-ui-integration.md), [05 — Auth s
 | **MFA** | Email OTP (`m_email_otp`), SMS OTP (`m_sms`), TOTP/passkey toggles |
 | **Password policy** | Length, complexity, expiry, history |
 
-Expose sections to applications under **Platform → For applications** (Verification & OTP, SMS, Password policy, Authentication & MFA).
+Expose sections to applications under **Platform → For applications** (Verification & OTP, SMS, Password policy, Sign-in methods, Two Factor Authentication).
 
 ### Verification policy (signup / login / recovery)
 

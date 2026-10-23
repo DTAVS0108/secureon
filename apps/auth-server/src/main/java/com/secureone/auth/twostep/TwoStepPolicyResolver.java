@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secureone.auth.mfa.MfaPolicyDefaults;
 import com.secureone.auth.platform.PlatformSettingsService;
+import com.secureone.auth.platform.SettingsExposureService;
 import com.secureone.auth.tenant.RlsScope;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,8 +19,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The effective two-step policy for an application: the platform policy, then the tenant's defaults, then the
  * application's own settings. Each level may only change what the levels above allow (lock modes:
- * locked / stricter only / open). Reads run in their own platform-scoped transaction because sign-in has no
- * tenant scope yet.
+ * locked / stricter only / open). The application's own settings count only while it has its own two-factor
+ * settings: the platform opens Two Factor Authentication to applications and the application's "Two Factor Authentication"
+ * feature switch is on; otherwise it uses the platform and tenant policy, and its saved values wait unused.
+ * Reads run in their own platform-scoped transaction because sign-in has no tenant scope yet.
  */
 @Service
 public class TwoStepPolicyResolver {
@@ -34,13 +37,16 @@ public class TwoStepPolicyResolver {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final TransactionTemplate platformRead;
+    private final SettingsExposureService exposure;
 
     public TwoStepPolicyResolver(
             PlatformSettingsService platformSettings,
             TenantSettings tenantSettings,
             JdbcTemplate jdbc,
             ObjectMapper json,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions,
+            SettingsExposureService exposure) {
+        this.exposure = exposure;
         this.platformSettings = platformSettings;
         this.tenantSettings = tenantSettings;
         this.jdbc = jdbc;
@@ -66,10 +72,27 @@ public class TwoStepPolicyResolver {
         Map<String, Object> afterTenant = MfaPolicyDefaults.applyLayer(platform, platformLocks, tenantRaw);
         Map<String, String> locks = MfaPolicyDefaults.combineLocks(
                 platformLocks, MfaPolicyDefaults.locks(tenantRaw.get(MfaPolicyDefaults.LOCKS)));
-        Map<String, Object> effective = MfaPolicyDefaults.applyLayer(afterTenant, locks, appOverrides(applicationId));
+        Map<String, Object> own = new LinkedHashMap<>(hasOwnSettings(applicationId) ? appSetting(applicationId, KEY) : Map.of());
+        own.keySet().removeAll(MfaPolicyDefaults.NOT_PER_APPLICATION);
+        Map<String, Object> effective = MfaPolicyDefaults.applyLayer(afterTenant, locks, own);
         effective.put(MfaPolicyDefaults.LOCKS, locks);
         return new Resolved(effective, tenantId, locks);
     }
+
+    /**
+     * Whether the application uses its own two-factor settings: Two Factor Authentication is open to
+     * applications (Platform settings → For applications) and its "Two Factor Authentication" switch is on.
+     */
+    public boolean hasOwnSettings(UUID applicationId) {
+        return applicationId != null
+                && exposure.isExposed(OWN_SETTINGS_EXPOSURE)
+                && Boolean.TRUE.equals(appSetting(applicationId, OWN_SETTINGS_KEY).get("tabEnabled"));
+    }
+
+    /** Exposure section that opens two-factor settings to applications (Platform settings → For applications). */
+    public static final String OWN_SETTINGS_EXPOSURE = "two-factor";
+    /** Application setting holding the "Two Factor Authentication" switch ({@code tabEnabled}). */
+    public static final String OWN_SETTINGS_KEY = "auth_mfa_tab";
 
     /** Effective policy at tenant level (what a tenant's applications start from) and the platform's locks. */
     public Resolved resolveTenant(UUID tenantId) {
@@ -109,7 +132,14 @@ public class TwoStepPolicyResolver {
         Map<String, Object> afterTenant = MfaPolicyDefaults.applyLayer(platform, platformLocks, tenantRaw);
         Map<String, String> locks = MfaPolicyDefaults.combineLocks(
                 platformLocks, MfaPolicyDefaults.locks(tenantRaw.get(MfaPolicyDefaults.LOCKS)));
-        requireAllowed(MfaPolicyDefaults.violations(afterTenant, locks, overrides));
+        List<String> violations = new java.util.ArrayList<>(MfaPolicyDefaults.violations(afterTenant, locks, overrides));
+        for (String key : MfaPolicyDefaults.NOT_PER_APPLICATION) {
+            Object value = overrides.get(key);
+            if (value != null && !value.equals(afterTenant.get(key))) {
+                violations.add(key + " is set by the platform or tenant for every application (backup codes are shared)");
+            }
+        }
+        requireAllowed(violations);
     }
 
     private static void requireAllowed(List<String> violations) {
@@ -126,11 +156,11 @@ public class TwoStepPolicyResolver {
     }
 
     /**
-     * The application's own overrides. Application settings live in the application's schema (the settings
-     * service writes them there through the schema-routed data source), so read that schema explicitly: this
-     * runs at sign-in too, where the current schema may be another one or none.
+     * One of the application's own settings. Application settings live in the application's schema (the
+     * settings service writes them there through the schema-routed data source), so read that schema
+     * explicitly: this runs at sign-in too, where the current schema may be another one or none.
      */
-    private Map<String, Object> appOverrides(UUID applicationId) {
+    private Map<String, Object> appSetting(UUID applicationId, String key) {
         String schema = RlsScope.asPlatform(() -> platformRead.execute(status -> jdbc
                 .query("SELECT schema_name FROM platform.application WHERE id = ?",
                         (rs, i) -> rs.getString(1), applicationId)
@@ -142,7 +172,7 @@ public class TwoStepPolicyResolver {
                         "SELECT value::text FROM " + table + " WHERE application_id = ? AND setting_key = ?",
                         (rs, i) -> read(rs.getString(1)),
                         applicationId,
-                        KEY)
+                        key)
                 .stream()
                 .findFirst()
                 .orElse(Map.of());

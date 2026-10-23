@@ -12,7 +12,7 @@ export default async function TenantTwoStepPage({ params }: { params: Promise<{ 
   return (
     <div className="w-full min-w-0">
       <PageHeader
-        title="Two-step verification"
+        title="Two Factor Authentication"
         description="Defaults for every application of this tenant: options, whether it is required, reminders and the grace period."
       />
       <MfaPolicySettingsPanel tenantId={id} />

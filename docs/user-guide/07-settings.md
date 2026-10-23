@@ -18,7 +18,7 @@ Many settings pages **auto-save** a moment after you change a field (*Changes au
 | **Integration** | | ✓ | IDs, database schema, auth UI URLs, checklist, API reference, health check |
 | **Notifications** | ✓ | ✓ (if opened) | Alert channels, recipients, sender, SMTP, email templates, test email |
 | **Appearance** | ✓ | ✓ (if opened) | Platform: admin console theme. Application: branding and theme for client UIs |
-| **Authentication** | ✓ | ✓ (if opened) | Sub-tabs **Sign-in methods**, **Verification & OTP**, **Two-step verification**, **Password policy** |
+| **Authentication** | ✓ | ✓ (if opened) | Sub-tabs **Sign-in methods**, **Verification & OTP**, **Two Factor Authentication** (applications: only while its Feature flags switch is on), **Password policy** |
 | **Feature flags** | ✓ | ✓ (if opened) | Capability toggles and which settings tabs appear |
 | **User directory** | | ✓ (if opened) | Import/export of users |
 | **Public API** | | ✓ (if opened) | The unauthenticated application manifest |
@@ -160,8 +160,6 @@ A live preview shows the result. **Reset defaults** restores the original theme.
 |------|---------|
 | **Primary login**: *How users authenticate first* | **Password** (username + password), **Magic Link** (email passwordless login), **Passkeys (WebAuthn)** (phishing-resistant sign-in) |
 | **Identity federation** | *Google, GitHub, external OIDC and SAML 2.0 sign-in. Configure the providers below when enabled.* |
-| **Multi-factor methods** | *TOTP, recovery codes, and SMS/email OTP at login when policy requires MFA.* **TOTP Authenticator**, **SMS OTP**, **Email OTP**, **Push Notification** (*Coming soon*) |
-| **Multi-factor authentication** → **Enable MFA** | *When enabled, the MFA sub-tab appears so you can configure multi-factor methods for this application.* |
 
 Switch each method on or off. Users can only use methods that are on (and that are allowed for them personally; see the user's **Sign-in methods** tab).
 
@@ -194,7 +192,7 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 | Card | Fields |
 |------|--------|
 | **Signup verification**: *How new accounts confirm email or phone after registration.* | **Default mode** (**Email link** / **OTP code**), **Allowed modes**, **Required channels** (email, phone), **Allow user channel choice** |
-| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes**, (whether a second step is required is set on the **Two-step verification** tab) |
+| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes**, (whether a second step is required is set on the **Two Factor Authentication** tab) |
 | **Password recovery**: *Forgot-password via email link or OTP (email/SMS).* | **Allowed channels**, **Require verified email/phone**, **Fallback to link if OTP unavailable** |
 
 #### SMS provider
@@ -210,9 +208,11 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 
 Secrets are stored encrypted and can be left blank to keep the saved value.
 
-### Two-step verification
+### Two Factor Authentication
 
-Which second-step options users can use, whether it is **Off**, **Optional** or **Required**, the grace period, reminders, remembered devices and the sign-in limits. Platform settings also have a lock menu on each setting that decides what tenants and applications may change; tenants have the same page under **Tenants › {tenant} › Two-step verification**. Every field is described in [Two-step verification](12-two-step-verification.md#settings).
+Which second-step options users can use, whether it is **Off**, **Optional** or **Required**, the grace period, reminders, remembered devices and the sign-in limits. Platform settings also have a lock menu on each setting that decides what tenants and applications may change; tenants have the same page under **Tenants › {tenant} › Two Factor Authentication**. Every field is described in [Two-step verification](12-two-step-verification.md#settings).
+
+Second-step options are chosen here only (not under Sign-in methods). In application settings this tab appears only when the platform opens **Two Factor Authentication** to applications (**For applications**) and the application's **Feature flags › Settings tabs › Two Factor Authentication** switch is on. While the switch is off the application uses the platform and tenant settings; values saved earlier are kept but not applied (the tab shows *Not applied* if it is opened in that state).
 
 ### Password policy
 
@@ -272,7 +272,7 @@ There are two kinds of flag.
 
 Flags hide parts of the console; who may see the data is still decided by roles and permissions.
 
-**Settings tabs**: **OAuth tokens tab**, *Show the OAuth tokens settings tab for this application (requires platform to allow OAuth tokens under For applications).*
+**Settings tabs**: **Two Factor Authentication**, *Give this application its own two-factor settings (requires platform to allow Two Factor Authentication under For applications)*; **OAuth tokens tab**, *Show the OAuth tokens settings tab for this application (requires platform to allow OAuth tokens under For applications).*
 
 ---
 
@@ -325,7 +325,8 @@ Appears for an application when the platform allows it (**For applications › O
 |---------|----------------------------|
 | **Notifications** | Application email alerts, user mail, SMTP, and templates |
 | **Email sender** | From name, address and reply-to |
-| **Authentication & MFA** | Login methods and MFA factors |
+| **Sign-in methods** | Password, magic link, passkeys and identity providers |
+| **Two Factor Authentication** | The application's own two-factor settings (its Feature flags switch turns them on); platform and tenant locks still apply |
 | **Password policy** | Length, complexity and history rules |
 | **Feature flags** | Capability toggles |
 | **OAuth tokens tab** | Token lifetimes |

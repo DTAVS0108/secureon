@@ -416,7 +416,7 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getMfaTabState(UUID applicationId) {
-        requireExposed("auth-methods");
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
         Map<String, Object> appRow = getAppMap(applicationId, AuthMfaTabDefaults.SETTING_KEY).orElse(Map.of());
         Map<String, Object> out = new LinkedHashMap<>();
@@ -426,7 +426,7 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveMfaTabEnabled(UUID applicationId, boolean enabled) {
-        requireExposed("auth-methods");
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
         Map<String, Object> next = new HashMap<>(AuthMfaTabDefaults.platformDefaults());
         next.putAll(getAppMap(applicationId, AuthMfaTabDefaults.SETTING_KEY).orElse(Map.of()));
@@ -461,6 +461,9 @@ public class ApplicationSettingsService {
         requireApplication(applicationId);
         Map<String, Object> merged = new java.util.LinkedHashMap<>(resolveMfaPolicy(applicationId));
         merged.put("scope", "application");
+        // False: the "Two Factor Authentication" switch is off (or Authentication is not open to applications),
+        // so sign-in uses the platform and tenant policy and any values saved here wait unused.
+        merged.put("ownSettings", twoStepPolicy.hasOwnSettings(applicationId));
         merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "mfa_policy"));
         // Which values this app sets itself, and what it inherits (platform, then tenant), for the settings page.
         merged.put("overrides", getAppMap(applicationId, "mfa_policy").map(m -> List.copyOf(m.keySet())).orElse(List.of()));
@@ -473,7 +476,12 @@ public class ApplicationSettingsService {
      * tenant), so later platform or tenant changes still apply. Values the levels above lock are refused.
      */
     public Map<String, Object> saveMfaPolicy(UUID applicationId, Map<String, Object> body) {
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
+        if (!twoStepPolicy.hasOwnSettings(applicationId)) {
+            throw new IllegalArgumentException(
+                    "Turn on Two Factor Authentication under this application's Settings → Feature flags first.");
+        }
         Map<String, Object> overrides = com.secureone.auth.mfa.MfaPolicyDefaults.sanitizeOverride(body);
         overrides.remove(com.secureone.auth.mfa.MfaPolicyDefaults.LOCKS);
         twoStepPolicy.requireAllowedForApplication(applicationId, overrides);
@@ -565,6 +573,7 @@ public class ApplicationSettingsService {
         Map<String, String> sources = new LinkedHashMap<>();
         Map<String, String> sections = new LinkedHashMap<>();
         sections.put("auth-methods", "auth_methods");
+        sections.put("two-factor", "mfa_policy");
         sections.put("password-policy", "password_policy");
         sections.put("feature-flags", "feature_flags");
         sections.put("appearance", "appearance");
@@ -667,7 +676,11 @@ public class ApplicationSettingsService {
             case "auth_methods" -> saveAuthMethods(applicationId, (List<Map<String, Object>>) merged);
             case "feature_flags" -> saveFeatureFlags(applicationId, (List<Map<String, Object>>) merged);
             case "password_policy" -> savePasswordPolicy(applicationId, (Map<String, Object>) merged);
-            case "mfa_policy" -> saveMfaPolicy(applicationId, (Map<String, Object>) merged);
+            case "mfa_policy" -> {
+                // A file carrying the application's own two-factor settings means it uses them.
+                saveMfaTabEnabled(applicationId, true);
+                saveMfaPolicy(applicationId, (Map<String, Object>) merged);
+            }
             case "verification_policy" -> saveVerificationPolicy(applicationId, (Map<String, Object>) merged);
             case "token_policy" -> saveTokenPolicy(applicationId, (Map<String, Object>) merged);
             case "appearance" -> saveAppearance(applicationId, (Map<String, Object>) merged);

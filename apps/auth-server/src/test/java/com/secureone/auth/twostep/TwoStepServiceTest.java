@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -46,6 +48,7 @@ class TwoStepServiceTest {
     private final List<MfaFactor> userFactors = new ArrayList<>();
     private Map<String, Object> p;
     private TwoStepStateStore.State state;
+    private final Map<UUID, TwoStepStateStore.State> appStates = new HashMap<>();
 
     @BeforeEach
     void setUp() {
@@ -53,7 +56,7 @@ class TwoStepServiceTest {
                 mock(TenantSlugResolver.class), "http://localhost:9000");
         user.setId(UUID.randomUUID());
         p = new HashMap<>(MfaPolicyDefaults.sanitizeForSave(Map.of()));
-        state = TwoStepStateStore.State.empty(user.getId());
+        state = TwoStepStateStore.State.empty(user.getId(), null);
         when(policy.resolvePolicy(any())).thenAnswer(i -> p);
         when(policy.loginMfaRequired(any())).thenAnswer(i -> p.get("mode"));
         when(policy.stepUpAfterPassword(any())).thenReturn(true);
@@ -61,7 +64,7 @@ class TwoStepServiceTest {
                 .map(m -> TwoStepMethod.fromId((String) m).orElseThrow()).toList());
         when(policy.minimumStrength(any())).thenAnswer(i -> TwoStepMethod.Strength.fromId((String) p.get("minimumStrength")));
         when(factors.findByUserIdOrderByCreatedAtAsc(user.getId())).thenReturn(userFactors);
-        when(states.get(user.getId())).thenAnswer(i -> state);
+        when(states.get(eq(user.getId()), any())).thenAnswer(i -> i.getArgument(1) == null ? state : appStates.getOrDefault((UUID) i.getArgument(1), TwoStepStateStore.State.empty(user.getId(), i.getArgument(1))));
     }
 
     private void addFactor(String type, Map<String, Object> meta) {
@@ -107,7 +110,7 @@ class TwoStepServiceTest {
 
     @Test
     void optionalWithoutPromptsOrAfterOptOutSignsIn() {
-        state = new TwoStepStateStore.State(user.getId(), null, null, 0, null, true, null, null, null, null, "");
+        state = new TwoStepStateStore.State(user.getId(), null, null, null, 0, null, true, null, null, null, null, "");
         assertInstanceOf(TwoStepService.SignedIn.class, decide(FactorGrantedAuthority.PASSWORD_AUTHORITY));
     }
 
@@ -124,7 +127,7 @@ class TwoStepServiceTest {
     @Test
     void requiredAfterTheDeadlineCannotBeSkipped() {
         p.put("mode", "required");
-        state = new TwoStepStateStore.State(user.getId(), Instant.now().minusSeconds(86400 * 20), null, 0,
+        state = new TwoStepStateStore.State(user.getId(), null, Instant.now().minusSeconds(86400 * 20), null, 0,
                 Instant.now().minusSeconds(60), false, null, null, null, null, "");
         var d = assertInstanceOf(TwoStepService.Setup.class, decide(FactorGrantedAuthority.PASSWORD_AUTHORITY));
         assertFalse(d.canSkip());
@@ -150,7 +153,7 @@ class TwoStepServiceTest {
     @Test
     void exemptUsersSignIn() {
         p.put("mode", "required");
-        state = new TwoStepStateStore.State(user.getId(), null, null, 0, null, false,
+        state = new TwoStepStateStore.State(user.getId(), null, null, null, 0, null, false,
                 Instant.now().plusSeconds(3600), "travel", "admin@example.com", null, "");
         assertInstanceOf(TwoStepService.SignedIn.class, decide(FactorGrantedAuthority.PASSWORD_AUTHORITY));
     }
@@ -161,6 +164,56 @@ class TwoStepServiceTest {
         addFactor("passkey", Map.of());
         var d = assertInstanceOf(TwoStepService.SecondStep.class, decide(FactorGrantedAuthority.PASSWORD_AUTHORITY));
         assertEquals(TwoStepMethod.PASSKEY, d.methods().get(0).method());
+    }
+
+    // ---- Each application has its own settings, so its own progress -------------------------------------
+
+    private final UUID appA = UUID.randomUUID();
+    private final UUID appB = UUID.randomUUID();
+
+    @Test
+    void dontAskAgainInOneApplicationDoesNotSilenceAnother() {
+        appStates.put(appA, new TwoStepStateStore.State(user.getId(), appA, null, null, 0, null, true, null, null, null, null, ""));
+        assertInstanceOf(TwoStepService.SignedIn.class,
+                service.decide(user, appA, FactorGrantedAuthority.PASSWORD_AUTHORITY, null));
+        assertInstanceOf(TwoStepService.Setup.class,
+                service.decide(user, appB, FactorGrantedAuthority.PASSWORD_AUTHORITY, null), "app B still prompts");
+    }
+
+    @Test
+    void anExemptionForOneApplicationDoesNotCoverAnother() {
+        p.put("mode", "required");
+        appStates.put(appA, new TwoStepStateStore.State(user.getId(), appA, null, null, 0, null, false,
+                Instant.now().plusSeconds(3600), "travel", "admin@example.com", null, ""));
+        assertInstanceOf(TwoStepService.SignedIn.class,
+                service.decide(user, appA, FactorGrantedAuthority.PASSWORD_AUTHORITY, null));
+        assertInstanceOf(TwoStepService.Setup.class,
+                service.decide(user, appB, FactorGrantedAuthority.PASSWORD_AUTHORITY, null));
+    }
+
+    @Test
+    void anExemptionForEveryApplicationCoversEach() {
+        p.put("mode", "required");
+        state = new TwoStepStateStore.State(user.getId(), null, null, null, 0, null, false,
+                Instant.now().plusSeconds(3600), "travel", "admin@example.com", null, "");
+        assertInstanceOf(TwoStepService.SignedIn.class,
+                service.decide(user, appA, FactorGrantedAuthority.PASSWORD_AUTHORITY, null));
+        assertEquals("all", service.status(user, appB).get("exemptScope"));
+    }
+
+    @Test
+    void aRememberedDeviceCountsOnlyWhereItWasRememberedAndAllowed() {
+        addFactor("totp", Map.of());
+        var request = mock(jakarta.servlet.http.HttpServletRequest.class);
+        when(policy.rememberDeviceDays(appA)).thenReturn(30);
+        when(policy.rememberDeviceDays(appB)).thenReturn(0);
+        when(devices.isTrusted(eq(user.getId()), eq(appA), eq(30), any())).thenReturn(true);
+        when(devices.isTrusted(eq(user.getId()), eq(appB), anyInt(), any())).thenReturn(false);
+
+        assertInstanceOf(TwoStepService.SignedIn.class,
+                service.decide(user, appA, FactorGrantedAuthority.PASSWORD_AUTHORITY, request));
+        assertInstanceOf(TwoStepService.SecondStep.class,
+                service.decide(user, appB, FactorGrantedAuthority.PASSWORD_AUTHORITY, request));
     }
 
     @Test

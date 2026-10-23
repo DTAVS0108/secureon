@@ -181,7 +181,9 @@ public class TwoStepService {
             return new SignedIn();
         }
         boolean required = "required".equals(mode);
-        if (request != null && trustedDevices.isTrusted(user.getId(), request)) {
+        // Remembered in this application, within the days it allows now.
+        if (request != null
+                && trustedDevices.isTrusted(user.getId(), applicationId, policy.rememberDeviceDays(applicationId), request)) {
             return new SignedIn();
         }
         List<UserMethod> usable = usable(user.getId(), applicationId, firstFactor, required);
@@ -192,8 +194,9 @@ public class TwoStepService {
             return new SecondStep(preferred(usable, applicationId), recoveryCodes.remaining(user.getId()) > 0);
         }
         Instant now = Instant.now();
-        TwoStepStateStore.State state = states.get(user.getId());
-        if (state.exempt(now)) {
+        // This application's own setup progress: its deadline, skips and "don't ask again".
+        TwoStepStateStore.State state = states.get(user.getId(), applicationId);
+        if (exempt(user.getId(), applicationId, now)) {
             return new SignedIn();
         }
         Map<String, Object> p = policy.resolvePolicy(applicationId);
@@ -207,15 +210,31 @@ public class TwoStepService {
         Instant deadline = state.deadline();
         if (deadline == null) {
             deadline = firstDeadline(p, now);
-            states.save(new TwoStepStateStore.State(
-                    user.getId(), now, null, 0, deadline, false, state.exemptUntil(), state.exemptReason(),
-                    state.exemptedBy(), state.extendedBy(), ""));
-            state = states.get(user.getId());
+            states.save(state.withProgress(now, null, 0, deadline, false, state.extendedBy(), ""));
+            state = states.get(user.getId(), applicationId);
         }
         int skipsAllowed = num(p.get("graceSkips"));
         int skipsLeft = Math.max(0, skipsAllowed - state.skipsUsed());
         boolean canSkip = now.isBefore(deadline) && skipsLeft > 0;
         return new Setup(true, canSkip, deadline, skipsLeft, false, offered(applicationId, true));
+    }
+
+    /**
+     * Exempt in this application, or in every application (the exemption on the row without an application,
+     * which also covers sign-ins without one).
+     */
+    public boolean exempt(UUID userId, UUID applicationId, Instant now) {
+        return states.get(userId, applicationId).exempt(now)
+                || (applicationId != null && states.get(userId, null).exempt(now));
+    }
+
+    /** The exemption that applies here: this application's, else the one for every application. */
+    private TwoStepStateStore.State exemption(UUID userId, UUID applicationId, Instant now) {
+        TwoStepStateStore.State own = states.get(userId, applicationId);
+        if (own.exempt(now) || applicationId == null) {
+            return own;
+        }
+        return states.get(userId, null);
     }
 
     /** The grace period starts at the first prompt (or the enforce-from date when that is later). */
@@ -248,18 +267,18 @@ public class TwoStepService {
         if (!(d instanceof Setup setup) || !setup.canSkip()) {
             return false;
         }
-        TwoStepStateStore.State s = states.get(user.getId());
+        // Counted in this application only: another application keeps its own skips and "don't ask again".
+        TwoStepStateStore.State s = states.get(user.getId(), applicationId);
         Map<String, Object> p = policy.resolvePolicy(applicationId);
         Instant now = Instant.now();
         if (setup.required()) {
-            states.save(new TwoStepStateStore.State(s.userId(), s.firstPromptedAt(), s.nextPromptAt(), s.skipsUsed() + 1,
-                    s.deadline(), s.optedOut(), s.exemptUntil(), s.exemptReason(), s.exemptedBy(), s.extendedBy(), s.remindersSent()));
+            states.save(s.withProgress(s.firstPromptedAt(), s.nextPromptAt(), s.skipsUsed() + 1, s.deadline(),
+                    s.optedOut(), s.extendedBy(), s.remindersSent()));
         } else {
             boolean optOut = dontAskAgain && Boolean.TRUE.equals(p.get("allowDontAskAgain"));
             Instant next = now.plus(Duration.ofDays(num(p.get("promptIntervalDays"))));
-            states.save(new TwoStepStateStore.State(s.userId(), s.firstPromptedAt() != null ? s.firstPromptedAt() : now,
-                    next, s.skipsUsed(), s.deadline(), optOut || s.optedOut(), s.exemptUntil(), s.exemptReason(),
-                    s.exemptedBy(), s.extendedBy(), s.remindersSent()));
+            states.save(s.withProgress(s.firstPromptedAt() != null ? s.firstPromptedAt() : now, next, s.skipsUsed(),
+                    s.deadline(), optOut || s.optedOut(), s.extendedBy(), s.remindersSent()));
         }
         return true;
     }
@@ -348,9 +367,9 @@ public class TwoStepService {
         }
         if (onlyMethod == null || methods(user.getId()).isEmpty()) {
             recoveryCodes.revokeForUser(user.getId());
-            TwoStepStateStore.State s = states.get(user.getId());
-            states.save(new TwoStepStateStore.State(user.getId(), Instant.now(), null, 0, Instant.now(), false,
-                    s.exemptUntil(), s.exemptReason(), s.exemptedBy(), s.extendedBy(), ""));
+            // No grace period in the application the reset was made from.
+            TwoStepStateStore.State s = states.get(user.getId(), applicationId);
+            states.save(s.withProgress(Instant.now(), null, 0, Instant.now(), false, s.extendedBy(), ""));
         }
         trustedDevices.revokeAll(user.getId());
         endSessions(user);
@@ -359,24 +378,41 @@ public class TwoStepService {
                 + ". You were signed out everywhere; you'll set it up again at your next sign-in.");
     }
 
-    public TwoStepStateStore.State extend(UserAccount user, int days, String byWhom) {
-        TwoStepStateStore.State s = states.get(user.getId());
-        Instant base = s.deadline() != null && s.deadline().isAfter(Instant.now()) ? s.deadline() : Instant.now();
-        TwoStepStateStore.State next = new TwoStepStateStore.State(user.getId(),
-                s.firstPromptedAt() != null ? s.firstPromptedAt() : Instant.now(), s.nextPromptAt(), 0,
-                base.plus(Duration.ofDays(days)), s.optedOut(), s.exemptUntil(), s.exemptReason(), s.exemptedBy(),
-                byWhom, "");
-        states.save(next);
-        return next;
+    /**
+     * More time to set up, in one application ({@code applicationId}), or in every application where the user
+     * has a deadline ({@code null}; also the row without an application).
+     */
+    public void extend(UserAccount user, UUID applicationId, int days, String byWhom) {
+        List<TwoStepStateStore.State> rows = applicationId != null
+                ? List.of(states.get(user.getId(), applicationId))
+                : withNoApplicationRow(user.getId(), states.forUser(user.getId()).stream()
+                        .filter(s -> s.deadline() != null || s.applicationId() == null).toList());
+        Instant now = Instant.now();
+        for (TwoStepStateStore.State s : rows) {
+            Instant base = s.deadline() != null && s.deadline().isAfter(now) ? s.deadline() : now;
+            states.save(s.withProgress(s.firstPromptedAt() != null ? s.firstPromptedAt() : now, s.nextPromptAt(), 0,
+                    base.plus(Duration.ofDays(days)), s.optedOut(), byWhom, ""));
+        }
     }
 
-    public TwoStepStateStore.State exempt(UserAccount user, Instant until, String reason, String byWhom) {
-        TwoStepStateStore.State s = states.get(user.getId());
-        TwoStepStateStore.State next = new TwoStepStateStore.State(user.getId(), s.firstPromptedAt(), s.nextPromptAt(),
-                s.skipsUsed(), s.deadline(), s.optedOut(), until, reason, until != null ? byWhom : null, s.extendedBy(),
-                s.remindersSent());
-        states.save(next);
-        return next;
+    private List<TwoStepStateStore.State> withNoApplicationRow(UUID userId, List<TwoStepStateStore.State> rows) {
+        if (rows.stream().anyMatch(s -> s.applicationId() == null)) {
+            return rows;
+        }
+        List<TwoStepStateStore.State> out = new ArrayList<>(rows);
+        out.add(states.get(userId, null));
+        return out;
+    }
+
+    /** Exempts in one application, or in every application ({@code applicationId} null). {@code until} null ends it. */
+    public void exempt(UserAccount user, UUID applicationId, Instant until, String reason, String byWhom) {
+        TwoStepStateStore.State s = states.get(user.getId(), applicationId);
+        states.save(s.withExemption(until, until != null ? reason : null, until != null ? byWhom : null));
+    }
+
+    /** Who already extended this user's deadline in this application (one extension for tenant admins). */
+    public String extendedBy(UUID userId, UUID applicationId) {
+        return states.get(userId, applicationId).extendedBy();
     }
 
     /** Status shown to the user and to admins. */
@@ -385,12 +421,13 @@ public class TwoStepService {
         String mode = policy.loginMfaRequired(applicationId);
         boolean required = "required".equals(mode);
         List<UserMethod> qualifying = usable(user.getId(), applicationId, null, required);
-        TwoStepStateStore.State s = states.get(user.getId());
+        TwoStepStateStore.State s = states.get(user.getId(), applicationId);
         Instant now = Instant.now();
+        TwoStepStateStore.State ex = exemption(user.getId(), applicationId, now);
         String status;
         if (!qualifying.isEmpty()) {
             status = "enabled";
-        } else if (s.exempt(now)) {
+        } else if (ex.exempt(now)) {
             status = "exempt";
         } else if (required) {
             status = s.deadline() == null ? "not_set_up" : s.deadline().isAfter(now) ? "in_grace" : "overdue";
@@ -407,9 +444,11 @@ public class TwoStepService {
         out.put("backupCodesRemaining", recoveryCodes.remaining(user.getId()));
         out.put("deadline", s.deadline() != null ? s.deadline().toString() : null);
         out.put("skipsUsed", s.skipsUsed());
-        out.put("exemptUntil", s.exemptUntil() != null && s.exempt(now) ? s.exemptUntil().toString() : null);
-        out.put("exemptReason", s.exempt(now) ? s.exemptReason() : null);
-        out.put("exemptedBy", s.exempt(now) ? s.exemptedBy() : null);
+        out.put("exemptUntil", ex.exempt(now) ? ex.exemptUntil().toString() : null);
+        out.put("exemptReason", ex.exempt(now) ? ex.exemptReason() : null);
+        out.put("exemptedBy", ex.exempt(now) ? ex.exemptedBy() : null);
+        // "application": this application only; "all": every application of the tenant.
+        out.put("exemptScope", ex.exempt(now) ? (ex.applicationId() != null ? "application" : "all") : null);
         out.put("extendedBy", s.extendedBy());
         return out;
     }

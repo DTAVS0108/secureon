@@ -564,7 +564,7 @@ public class MfaLoginService {
         establishSession(authentication, request, response);
         int rememberDays = policy.rememberDeviceDays(pending.applicationId());
         if (remember && rememberDays > 0) {
-            trustedDevices.issue(pending.userId(), rememberDays, request, response);
+            trustedDevices.issue(pending.userId(), pending.applicationId(), rememberDays, request, response);
         }
         loginSuccessHandler.recordSuccessfulLogin(request, authentication);
         return ResponseEntity.noContent().build();

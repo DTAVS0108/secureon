@@ -3,10 +3,14 @@ package com.secureone.auth.application;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Per-application gate for the MFA settings tab (separate from auth method toggles). */
+/**
+ * The application's "Two Factor Authentication" switch (Settings → Feature flags): on, the application has its
+ * own two-factor settings tab and those settings apply at sign-in; off, it uses the platform and tenant policy.
+ * See {@link com.secureone.auth.twostep.TwoStepPolicyResolver#hasOwnSettings}.
+ */
 public final class AuthMfaTabDefaults {
 
-    public static final String SETTING_KEY = "auth_mfa_tab";
+    public static final String SETTING_KEY = com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_KEY;
 
     private AuthMfaTabDefaults() {}
 

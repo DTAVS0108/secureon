@@ -7,6 +7,7 @@ export type SettingsExposureKey =
   | "notifications"
   | "email"
   | "auth-methods"
+  | "two-factor"
   | "password-policy"
   | "feature-flags"
   | "appearance"

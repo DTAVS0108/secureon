@@ -36,6 +36,8 @@ export type MfaPolicy = {
   inherited?: MfaPolicy;
   scope?: string;
   inheritsPlatformDefaults?: boolean;
+  /** Application: false while its "Two Factor Authentication" switch is off (its own values are not applied). */
+  ownSettings?: boolean;
 };
 
 export const TWO_STEP_METHODS: { id: TwoStepMethodId; label: string; strength: TwoStepStrength; hint: string }[] = [
@@ -99,6 +101,8 @@ export type TwoStepUserView = {
   exemptUntil: string | null;
   exemptReason: string | null;
   exemptedBy: string | null;
+  /** "application": this application only; "all": every application of the tenant. */
+  exemptScope?: "application" | "all" | null;
   extendedBy: string | null;
   rememberedDevices: number;
   canExempt: boolean;
@@ -127,15 +131,18 @@ export function extendUserTwoStep(userId: string, days: number, applicationId?: 
   });
 }
 
-export function exemptUserTwoStep(userId: string, until: string, reason: string) {
+/** {@code applicationId} null or omitted: every application of the tenant. */
+export function exemptUserTwoStep(userId: string, until: string, reason: string, applicationId?: string | null) {
   return apiFetch<TwoStepUserView>(`/api/admin/v1/users/${userId}/two-step/exempt`, {
     method: "POST",
-    body: JSON.stringify({ until, reason }),
+    body: JSON.stringify({ until, reason, applicationId: applicationId ?? null }),
   });
 }
 
-export function endUserTwoStepExemption(userId: string) {
-  return apiFetch<TwoStepUserView>(`/api/admin/v1/users/${userId}/two-step/exempt`, { method: "DELETE" });
+/** Ends the exemption in one application, or the one for every application ({@code applicationId} omitted). */
+export function endUserTwoStepExemption(userId: string, applicationId?: string | null) {
+  const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : "";
+  return apiFetch<TwoStepUserView>(`/api/admin/v1/users/${userId}/two-step/exempt${query}`, { method: "DELETE" });
 }
 
 export function fetchUserTwoStepStatuses(applicationId: string, userIds: string[]): Promise<Record<string, TwoStepUserStatus>> {

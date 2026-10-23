@@ -31,7 +31,7 @@ type Tab = "auth" | "mfa" | "password" | "flags";
 
 const TAB_EXPOSURE: Record<Tab, SettingsExposureKey> = {
   auth: "auth-methods",
-  mfa: "auth-methods",
+  mfa: "two-factor",
   password: "password-policy",
   flags: "feature-flags",
 };
@@ -39,19 +39,23 @@ const TAB_EXPOSURE: Record<Tab, SettingsExposureKey> = {
 export function AuthenticationSettingsPanel({
   tab,
   applicationId,
-  platformExposesAuthMethods = false,
   mfaTabEnabled = false,
   onMfaTabEnabledChange,
   platformExposesOAuthTokens = false,
   oauthTokensTabEnabled = false,
   onOAuthTokensTabEnabledChange,
+  platformExposesFeatureFlags = true,
+  platformExposesTwoFactor = false,
 }: {
   tab: Tab;
   applicationId?: string;
-  /** Platform enabled Authentication & MFA under For applications. */
-  platformExposesAuthMethods?: boolean;
+  /** Application: the "Two Factor Authentication" switch (Feature flags) is on. */
   mfaTabEnabled?: boolean;
   onMfaTabEnabledChange?: (enabled: boolean) => void;
+  /** Platform enabled Feature flags under For applications (always true on the platform). */
+  platformExposesFeatureFlags?: boolean;
+  /** Platform enabled Two Factor Authentication under For applications. */
+  platformExposesTwoFactor?: boolean;
   /** Platform enabled OAuth tokens under For applications. */
   platformExposesOAuthTokens?: boolean;
   oauthTokensTabEnabled?: boolean;
@@ -66,6 +70,8 @@ export function AuthenticationSettingsPanel({
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exposureKey = TAB_EXPOSURE[tab];
+  // Application switches for its own settings tabs, shown on the Feature flags tab.
+  const hasTabSwitches = Boolean(applicationId) && (platformExposesTwoFactor || platformExposesOAuthTokens);
 
   const reload = useCallback(async () => {
     setLoaded(false);
@@ -138,19 +144,6 @@ export function AuthenticationSettingsPanel({
 
       {tab === "auth" && (
         <div className="space-y-6">
-          {applicationId && platformExposesAuthMethods && (
-            <Card padded={false}>
-              <CardHeader
-                title="Multi-factor authentication"
-                description="When enabled, the MFA sub-tab appears so you can configure multi-factor methods for this application."
-              />
-              <MfaTabToggle
-                applicationId={applicationId}
-                mfaTabEnabled={mfaTabEnabled}
-                onMfaTabEnabledChange={onMfaTabEnabledChange}
-              />
-            </Card>
-          )}
           {loaded && primary.length > 0 && !primary.some((m) => m.enabled && !isAuthMethodComingSoon(m)) && (
             <p
               role="alert"
@@ -238,17 +231,21 @@ export function AuthenticationSettingsPanel({
         </p>
       )}
 
-      {tab === "flags" && featureFlags.length === 0 && loaded && (
+      {tab === "flags" && featureFlags.length === 0 && !hasTabSwitches && loaded && (
         <p className="rounded-lg border border-ui bg-surface px-4 py-6 text-sm text-muted">
           No feature flags loaded. Enable <strong>Feature flags</strong> under Platform → For applications
           and restart auth-server if the list stays empty.
         </p>
       )}
 
-      {tab === "flags" && featureFlags.length > 0 && (
+      {tab === "flags" && (featureFlags.length > 0 || hasTabSwitches) && (
         <FeatureFlagsPanel
-          flags={featureFlags}
+          flags={platformExposesFeatureFlags ? featureFlags : []}
           applicationId={applicationId}
+          platformExposesFeatureFlags={platformExposesFeatureFlags}
+          platformExposesTwoFactor={platformExposesTwoFactor}
+          twoFactorEnabled={mfaTabEnabled}
+          onTwoFactorEnabledChange={onMfaTabEnabledChange}
           platformExposesOAuthTokens={platformExposesOAuthTokens}
           oauthTokensTabEnabled={oauthTokensTabEnabled}
           onOAuthTokensTabEnabledChange={onOAuthTokensTabEnabledChange}
@@ -258,55 +255,6 @@ export function AuthenticationSettingsPanel({
           }}
         />
       )}
-    </div>
-  );
-}
-
-function MfaTabToggle({
-  applicationId,
-  mfaTabEnabled,
-  onMfaTabEnabledChange,
-}: {
-  applicationId: string;
-  mfaTabEnabled: boolean;
-  onMfaTabEnabledChange?: (enabled: boolean) => void;
-}) {
-  const { toast } = useToast();
-  const [pending, setPending] = useState(false);
-
-  async function toggle(enabled: boolean) {
-    setPending(true);
-    try {
-      const state = await setApplicationMfaTabEnabled(applicationId, enabled);
-      onMfaTabEnabledChange?.(state.tabEnabled);
-      toast("Settings saved", "success");
-    } catch (e) {
-      const msg =
-        e instanceof ApiError && e.status === 404
-          ? "MFA API not found — restart auth-server (port 9000) and try again."
-          : e instanceof Error
-            ? e.message
-            : "Update failed";
-      toast(msg, "error");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4">
-      <div>
-        <p className="text-sm font-medium text-ui">Enable MFA</p>
-        <p className="text-xs text-muted">
-          Show the <strong>MFA</strong> sub-tab under Authentication to configure TOTP, passkeys, and other factors.
-        </p>
-      </div>
-      <Toggle
-        checked={mfaTabEnabled}
-        disabled={pending}
-        onChange={toggle}
-        aria-label="Enable MFA"
-      />
     </div>
   );
 }
@@ -326,6 +274,10 @@ function FeatureFlagsPanel({
   flags,
   onChange,
   applicationId,
+  platformExposesFeatureFlags = true,
+  platformExposesTwoFactor,
+  twoFactorEnabled,
+  onTwoFactorEnabledChange,
   platformExposesOAuthTokens,
   oauthTokensTabEnabled,
   onOAuthTokensTabEnabledChange,
@@ -333,12 +285,37 @@ function FeatureFlagsPanel({
   flags: FeatureFlag[];
   onChange: (next: FeatureFlag[]) => void;
   applicationId?: string;
+  platformExposesFeatureFlags?: boolean;
+  platformExposesTwoFactor?: boolean;
+  twoFactorEnabled?: boolean;
+  onTwoFactorEnabledChange?: (enabled: boolean) => void;
   platformExposesOAuthTokens?: boolean;
   oauthTokensTabEnabled?: boolean;
   onOAuthTokensTabEnabledChange?: (enabled: boolean) => void;
 }) {
   const { toast } = useToast();
   const [tabTogglePending, setTabTogglePending] = useState(false);
+
+  /** On: this application has its own two-factor settings (and they apply). Off: platform and tenant settings. */
+  async function toggleTwoFactor(enabled: boolean) {
+    if (!applicationId) return;
+    setTabTogglePending(true);
+    try {
+      const state = await setApplicationMfaTabEnabled(applicationId, enabled);
+      onTwoFactorEnabledChange?.(state.tabEnabled);
+      toast("Settings saved", "success");
+    } catch (e) {
+      const msg =
+        e instanceof ApiError && e.status === 404
+          ? "Two-factor API not found — restart auth-server (port 9000) and try again."
+          : e instanceof Error
+            ? e.message
+            : "Update failed";
+      toast(msg, "error");
+    } finally {
+      setTabTogglePending(false);
+    }
+  }
 
   async function toggleOAuthTokensTab(enabled: boolean) {
     if (!applicationId) return;
@@ -382,12 +359,34 @@ function FeatureFlagsPanel({
             : "Defaults for every application, and switches for parts of the admin console."
         }
       />
-      {applicationId && platformExposesOAuthTokens && (
+      {applicationId && (platformExposesTwoFactor || platformExposesOAuthTokens) && (
         <section className="border-t border-ui">
           <p className="px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">
             Settings tabs
           </p>
           <ul className="divide-y divide-ui">
+            {platformExposesTwoFactor && (
+              <li className="flex items-center justify-between gap-4 px-5 py-4" data-testid="flag-two-factor">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-ui">Two Factor Authentication</p>
+                    <code className="font-mono text-[10px] text-faint">two_factor_authentication</code>
+                  </div>
+                  <p className="text-xs text-muted">
+                    Give this application its own two-factor settings (Authentication → Two Factor
+                    Authentication). Off: it uses the platform and tenant settings; values saved here are kept
+                    but not applied.
+                  </p>
+                </div>
+                <Toggle
+                  checked={Boolean(twoFactorEnabled)}
+                  disabled={tabTogglePending}
+                  onChange={toggleTwoFactor}
+                  aria-label="Two Factor Authentication"
+                />
+              </li>
+            )}
+            {platformExposesOAuthTokens && (
             <li className="flex items-center justify-between gap-4 px-5 py-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -406,10 +405,11 @@ function FeatureFlagsPanel({
                 aria-label="Show OAuth tokens tab"
               />
             </li>
+            )}
           </ul>
         </section>
       )}
-      {isApplication && !hasVisible && (
+      {isApplication && platformExposesFeatureFlags && !hasVisible && (
         <p className="border-t border-ui px-5 py-6 text-sm text-muted">
           No features are open to this application. A platform operator turns them on in Platform settings →
           Feature flags → Application features.

@@ -387,6 +387,8 @@ public class AccountTwoStepController {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("id", d.getId().toString());
         out.put("label", d.getLabel());
+        // Remembered in this application only (null: sign-ins without an application).
+        out.put("applicationId", d.getApplicationId() != null ? d.getApplicationId().toString() : null);
         out.put("createdAt", d.getCreatedAt() != null ? d.getCreatedAt().toString() : null);
         out.put("lastUsedAt", d.getLastUsedAt() != null ? d.getLastUsedAt().toString() : null);
         out.put("expiresAt", d.getExpiresAt() != null ? d.getExpiresAt().toString() : null);

@@ -69,7 +69,7 @@ Another platform operator can't see operator factors in the application console,
 
 ## Turn on two-step verification for an application
 
-1. Application **Settings › Authentication › Two-step verification**.
+1. Application **Settings › Feature flags**: switch on **Two Factor Authentication**, then **Settings › Authentication › Two Factor Authentication**.
 2. Choose **Optional** (users are invited and reminded) or **Required**.
 3. For **Required**, set the **Grace period** and how many times users may choose **“Later”**, and optionally **Enforce from** so existing users get time.
 4. Check **Options users can use**. Text message and email codes are off by default.

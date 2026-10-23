@@ -24,20 +24,8 @@ import { listLoginEvents } from "@/lib/api/sessions";
 import { initials } from "@/lib/format";
 import { statusTone } from "@/lib/status";
 import { isAuthMethodComingSoon } from "@/lib/coming-soon";
-import type { AuthMethod, LoginEvent, MfaFactorType, Role, Tenant, User } from "@/lib/types";
+import type { AuthMethod, LoginEvent, Role, Tenant, User } from "@/lib/types";
 import { LocalTime } from "@/components/ui/LocalTime";
-
-const MFA_METHOD_TO_FACTOR: Record<string, MfaFactorType> = {
-  m_totp: "totp",
-  m_passkey: "passkey",
-  m_sms: "sms",
-  m_email_otp: "email",
-  m_push: "push",
-};
-
-function factorTypeForMethodId(methodId: string): MfaFactorType | undefined {
-  return MFA_METHOD_TO_FACTOR[methodId];
-}
 
 type Tab = "overview" | "security" | "mfa" | "roles" | "auth" | "signins";
 
@@ -76,18 +64,12 @@ export function UserDetailPanel({
   const roleById = new Map(roles.map((r) => [r.id, r]));
 
   const enabledAppMethods = authMethods.filter((m) => m.enabled);
-  const enabledMfaMethods = enabledAppMethods.filter((m) => m.category === "mfa");
+  // Two-factor options are decided by the application's Two Factor Authentication settings, not by the sign-in
+  // method catalog, so the Two-step tab is always there.
   const enabledSignInMethods = enabledAppMethods.filter(
     (m) => m.category === "primary" || m.category === "federation",
   );
-  const showMfaTab = enabledMfaMethods.length > 0;
   const showAuthTab = enabledSignInMethods.length > 0;
-  const enabledMfaFactorTypes = new Set(
-    enabledMfaMethods.map((m) => factorTypeForMethodId(m.id)).filter(Boolean) as MfaFactorType[],
-  );
-  const visibleMfaFactors = user.mfaFactors.filter(
-    (f) => enabledMfaFactorTypes.size === 0 || enabledMfaFactorTypes.has(f.type),
-  );
   const allowedAuth = user.allowedAuthMethods ?? {};
 
   useDeferredEffect(() => {
@@ -385,8 +367,8 @@ export function UserDetailPanel({
           <UserSecurityTab
             user={user}
             applicationId={applicationId}
-            mfaFactorCount={visibleMfaFactors.length}
-            showMfaLink={showMfaTab}
+            mfaFactorCount={user.mfaFactors.length}
+            showMfaLink
             onChanged={async () => {
               await reloadUser();
               onUserChanged?.();
@@ -463,17 +445,10 @@ export function UserDetailPanel({
               savingId={authSaving}
               onToggle={toggleUserAuthMethod}
             />
-            {enabledMfaMethods.length > 0 && (
-              <UserAuthMethodToggles
-                title="Multi-factor (allow at sign-in)"
-                methods={enabledMfaMethods}
-                allowed={allowedAuth}
-                savingId={authSaving}
-                onToggle={toggleUserAuthMethod}
-              />
-            )}
             <p className="text-xs text-faint">
               Disabling a method blocks this user from using it; app settings must still have the method enabled.
+              Two-factor options are on the <strong>Two-step</strong> tab: the application&apos;s Two Factor
+              Authentication settings decide which ones count.
             </p>
           </div>
         )}

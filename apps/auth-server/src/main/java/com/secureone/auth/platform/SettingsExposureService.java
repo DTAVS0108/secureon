@@ -13,6 +13,8 @@ public class SettingsExposureService {
             "notifications",
             "email",
             "auth-methods",
+            // Two Factor Authentication: apps may have their own two-factor settings (separate from sign-in methods).
+            "two-factor",
             "password-policy",
             "feature-flags",
             "appearance",

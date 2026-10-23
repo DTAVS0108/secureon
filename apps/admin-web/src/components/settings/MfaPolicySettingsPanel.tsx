@@ -7,7 +7,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
-import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
 import {
   fetchApplicationMfaPolicy,
   resetApplicationMfaPolicy,
@@ -48,7 +47,7 @@ const DEFAULTS: MfaPolicy = {
   locks: {},
 };
 
-const META_KEYS = ["scope", "inheritsPlatformDefaults", "overrides", "inherited", "platformLocks"] as const;
+const META_KEYS = ["scope", "inheritsPlatformDefaults", "overrides", "inherited", "platformLocks", "ownSettings"] as const;
 
 type Level = "platform" | "tenant" | "application";
 
@@ -67,7 +66,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
     setLoaded(false);
     try {
       if (applicationId) {
-        await ensureApplicationPolicyScope(applicationId, "auth-methods");
+        // Two-factor overrides are stored as differences from the inherited settings: no policy-source switch.
         setPolicy({ ...DEFAULTS, ...(await fetchApplicationMfaPolicy(applicationId)) });
       } else if (tenantId) {
         setPolicy({ ...DEFAULTS, ...(await fetchTenantMfaPolicy(tenantId)) });
@@ -75,7 +74,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
         setPolicy({ ...DEFAULTS, ...(await fetchPlatformMfaPolicy()) });
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Failed to load two-step verification settings", "error");
+      toast(e instanceof Error ? e.message : "Failed to load Two Factor Authentication settings", "error");
     } finally {
       setLoaded(true);
     }
@@ -87,8 +86,13 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
 
   // Locks from the levels above: the application sees the combined platform + tenant locks, the tenant the
   // platform's. The platform has none.
+  // Backup codes are one set for every application, so their number is never an application setting.
   const aboveLocks: Partial<Record<string, LockMode>> =
-    level === "application" ? policy.locks ?? {} : level === "tenant" ? policy.platformLocks ?? {} : {};
+    level === "application"
+      ? { ...(policy.locks ?? {}), recoveryCodesPerEnrollment: "locked" }
+      : level === "tenant"
+        ? policy.platformLocks ?? {}
+        : {};
   const ownLocks = level === "application" ? {} : policy.locks ?? {};
 
   const scheduleSave = (next: MfaPolicy) => {
@@ -105,7 +109,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
             ? await saveTenantMfaPolicy(tenantId, body)
             : await savePlatformMfaPolicy(body);
         setPolicy({ ...DEFAULTS, ...saved });
-        toast("Two-step verification saved", "success");
+        toast("Two Factor Authentication saved", "success");
       } catch (e) {
         toast(e instanceof Error ? e.message : "Save failed", "error");
         await reload();
@@ -159,9 +163,19 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
   return (
     <div className={cn("space-y-6", !loaded && "pointer-events-none opacity-60")} data-testid="two-step-settings">
       <Card padded={false}>
-        <CardHeader title="Two-step verification" description={levelText} />
+        <CardHeader title="Two Factor Authentication" description={levelText} />
+        {level === "application" && policy.ownSettings === false && (
+          <p
+            role="status"
+            data-testid="two-factor-not-applied"
+            className="border-t border-ui bg-amber-500/10 px-5 py-3 text-sm text-ui"
+          >
+            Not applied: <strong>Two Factor Authentication</strong> is off under this application&apos;s Feature
+            flags, so sign-in uses the platform and tenant settings shown here.
+          </p>
+        )}
         <ul className="divide-y divide-ui">
-          <SettingRow ctx={ctx} k="mode" label="Two-step verification" hint="Off: never asked. Optional: users choose (and are reminded). Required: everyone must set it up.">
+          <SettingRow ctx={ctx} k="mode" label="Two Factor Authentication" hint="Off: never asked. Optional: users choose (and are reminded). Required: everyone must set it up.">
             <div className="flex flex-wrap gap-2" role="radiogroup">
               {(["off", "optional", "required"] as const).map((m) => (
                 <button
@@ -181,7 +195,7 @@ export function MfaPolicySettingsPanel({ applicationId, tenantId }: { applicatio
               ))}
             </div>
           </SettingRow>
-          <SettingRow ctx={ctx} k="minimumStrength" label="Required strength" hint="What counts when two-step verification is required.">
+          <SettingRow ctx={ctx} k="minimumStrength" label="Required strength" hint="What counts when Two Factor Authentication is required.">
             <Select
               data-testid="minimum-strength"
               value={policy.minimumStrength}
