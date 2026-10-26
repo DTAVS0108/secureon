@@ -154,6 +154,14 @@ export function ClientDetailPanel({
           <CardHeader title="Post-logout redirect URIs" />
           <UriList uris={client.postLogoutRedirectUris} empty="None (optional for OIDC logout)." />
         </Card>
+
+        <Card padded={false}>
+          <CardHeader title="Back-channel logout URL" />
+          <UriList
+            uris={client.backchannelLogoutUri ? [client.backchannelLogoutUri] : []}
+            empty="None. The app is not told when the user signs out of SecureOne."
+          />
+        </Card>
       </div>
 
       <Card className="border-red-500/20" padded={false}>

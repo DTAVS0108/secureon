@@ -3,21 +3,17 @@
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Field";
-import { ComingSoonBadge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
 import { useToast } from "@/components/ui/Toast";
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
-import { fetchApplicationFeatureFlags } from "@/lib/api/application-settings";
 import {
   fetchUserDirectorySettings,
   saveUserDirectorySettings,
   type UserDirectorySettings,
 } from "@/lib/api/user-directory";
-import { normalizeFeatureFlags } from "@/lib/auth-settings-normalize";
-import { isFeatureFlagComingSoon } from "@/lib/coming-soon";
-import { isFeatureEnabled } from "@/lib/feature-flags";
-import type { FeatureFlag } from "@/lib/types";
+
+/** Import sources offered in the Users page import menu. Directory sync (LDAP / AD) is not part of SecureOne. */
+const IMPORT_SOURCES = ["csv", "excel"] as const;
 
 const DEFAULTS: UserDirectorySettings = {
   importEnabled: false,
@@ -25,42 +21,20 @@ const DEFAULTS: UserDirectorySettings = {
   sources: {
     csv: { enabled: true },
     excel: { enabled: true },
-    ldap: { enabled: false },
-  },
-  ldap: {
-    host: "",
-    port: 389,
-    baseDn: "",
-    bindDn: "",
-    bindPassword: "",
-    userFilter: "(mail={0})",
-    useTls: true,
   },
 };
 
 export function UserDirectorySettings({ applicationId }: { applicationId: string }) {
   const { toast } = useToast();
   const [config, setConfig] = useState<UserDirectorySettings>(DEFAULTS);
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const ldapComingSoon = isFeatureFlagComingSoon("ldap");
-  const ldapFeatureEnabled = !ldapComingSoon && isFeatureEnabled(featureFlags, "ldap");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      const [data, flagsRaw] = await Promise.all([
-        fetchUserDirectorySettings(applicationId).catch(() => DEFAULTS),
-        fetchApplicationFeatureFlags(applicationId).catch(() => []),
-      ]);
-      setFeatureFlags(normalizeFeatureFlags(flagsRaw));
-      setConfig({
-        ...DEFAULTS,
-        ...data,
-        sources: { ...DEFAULTS.sources, ...data.sources },
-        ldap: { ...DEFAULTS.ldap, ...data.ldap },
-      });
+      const data = await fetchUserDirectorySettings(applicationId).catch(() => DEFAULTS);
+      setConfig({ ...DEFAULTS, ...data, sources: { ...DEFAULTS.sources, ...data.sources } });
     } catch (e) {
       toast(e instanceof Error ? e.message : "Failed to load user directory settings", "error");
     } finally {
@@ -80,12 +54,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
         try {
           await ensureApplicationPolicyScope(applicationId, "user-directory");
           const saved = await saveUserDirectorySettings(applicationId, next);
-          setConfig({
-            ...DEFAULTS,
-            ...saved,
-            sources: { ...DEFAULTS.sources, ...saved.sources },
-            ldap: { ...DEFAULTS.ldap, ...saved.ldap },
-          });
+          setConfig({ ...DEFAULTS, ...saved, sources: { ...DEFAULTS.sources, ...saved.sources } });
           toast("Settings saved", "success");
         } catch (e) {
           toast(e instanceof Error ? e.message : "Save failed", "error");
@@ -101,29 +70,9 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
     scheduleSave(next);
   }
 
-  function patchSource(key: keyof UserDirectorySettings["sources"], enabled: boolean) {
-    if (key === "ldap" && enabled && ldapComingSoon) return;
-    if (key === "ldap" && enabled && !ldapFeatureEnabled) {
-      toast("Enable the LDAP / AD feature flag under Authentication → Feature flags first.", "error");
-      return;
-    }
-    const next = {
-      ...config,
-      sources: { ...config.sources, [key]: { enabled } },
-    };
-    setConfig(next);
-    scheduleSave(next);
+  function patchSource(key: (typeof IMPORT_SOURCES)[number], enabled: boolean) {
+    patch({ sources: { ...config.sources, [key]: { enabled } } });
   }
-
-  function patchLdap(field: keyof UserDirectorySettings["ldap"], value: string | number | boolean) {
-    const next = { ...config, ldap: { ...config.ldap, [field]: value } };
-    setConfig(next);
-    scheduleSave(next);
-  }
-
-  const importSources = (["csv", "excel", "ldap"] as const).filter(
-    (key) => key !== "ldap" || ldapFeatureEnabled || ldapComingSoon,
-  );
 
   return (
     <div className={`space-y-5 ${!loaded ? "pointer-events-none opacity-60" : ""}`}>
@@ -136,7 +85,7 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
           <li className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
               <p className="text-sm font-medium text-ui">Allow user import</p>
-              <p className="text-xs text-muted">CSV and Excel (CSV format) sources. LDAP is coming soon.</p>
+              <p className="text-xs text-muted">CSV and Excel (CSV format) files.</p>
             </div>
             <Toggle
               checked={config.importEnabled}
@@ -161,104 +110,18 @@ export function UserDirectorySettings({ applicationId }: { applicationId: string
       <Card padded={false}>
         <CardHeader title="Import sources" description="Which formats appear in the import menu." />
         <ul className="divide-y divide-ui">
-          {importSources.map((key) => {
-            const comingSoon = key === "ldap" && ldapComingSoon;
-            return (
-              <li key={key} className="flex items-center justify-between gap-4 px-5 py-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-medium uppercase ${comingSoon ? "text-muted" : "text-ui"}`}>{key}</p>
-                    {comingSoon && <ComingSoonBadge />}
-                  </div>
-                  {comingSoon && (
-                    <p className="text-xs text-muted">
-                      Directory sync is not available yet. Export users from LDAP / AD to CSV and import that.
-                    </p>
-                  )}
-                </div>
-                <Toggle
-                  checked={config.sources[key].enabled}
-                  disabled={comingSoon && !config.sources[key].enabled}
-                  onChange={(v) => patchSource(key, v)}
-                  aria-label={`Enable ${key} import`}
-                />
-              </li>
-            );
-          })}
-        </ul>
-        {!ldapComingSoon && !ldapFeatureEnabled && (
-          <p className="border-t border-ui px-5 py-3 text-xs text-muted">
-            LDAP import is hidden because the <strong>LDAP / AD</strong> feature flag is off. Enable it
-            under Authentication → Feature flags.
-          </p>
-        )}
-      </Card>
-
-      {ldapFeatureEnabled && config.sources.ldap?.enabled && (
-        <Card padded={false}>
-          <CardHeader title="LDAP connection" description="Used when LDAP import is enabled." />
-          <div className="grid gap-4 p-5 md:grid-cols-2">
-            <label className="block text-sm">
-              <span className="text-muted">Host</span>
-              <Input
-                className="mt-1"
-                value={config.ldap.host}
-                onChange={(e) => patchLdap("host", e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Port</span>
-              <Input
-                className="mt-1"
-                type="number"
-                value={config.ldap.port}
-                onChange={(e) => patchLdap("port", Number(e.target.value))}
-              />
-            </label>
-            <label className="block text-sm md:col-span-2">
-              <span className="text-muted">Base DN</span>
-              <Input
-                className="mt-1"
-                value={config.ldap.baseDn}
-                onChange={(e) => patchLdap("baseDn", e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Bind DN</span>
-              <Input
-                className="mt-1"
-                value={config.ldap.bindDn}
-                onChange={(e) => patchLdap("bindDn", e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Bind password</span>
-              <Input
-                className="mt-1"
-                type="password"
-                value={config.ldap.bindPassword}
-                onChange={(e) => patchLdap("bindPassword", e.target.value)}
-              />
-            </label>
-            <label className="block text-sm md:col-span-2">
-              <span className="text-muted">User filter</span>
-              <Input
-                className="mt-1"
-                value={config.ldap.userFilter}
-                onChange={(e) => patchLdap("userFilter", e.target.value)}
-              />
-            </label>
-            <div className="flex items-center justify-between md:col-span-2">
-              <span className="text-sm">Use TLS</span>
+          {IMPORT_SOURCES.map((key) => (
+            <li key={key} className="flex items-center justify-between gap-4 px-5 py-4">
+              <p className="text-sm font-medium uppercase text-ui">{key}</p>
               <Toggle
-                checked={config.ldap.useTls}
-                onChange={(v) => patchLdap("useTls", v)}
-                aria-label="LDAP TLS"
+                checked={config.sources[key]?.enabled !== false}
+                onChange={(v) => patchSource(key, v)}
+                aria-label={`Enable ${key} import`}
               />
-            </div>
-          </div>
-        </Card>
-      )}
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }

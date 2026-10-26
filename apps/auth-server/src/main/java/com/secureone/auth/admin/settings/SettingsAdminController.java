@@ -77,6 +77,26 @@ public class SettingsAdminController {
         return exposure.getExposure();
     }
 
+    /** Applications whose sections differ from the defaults above: applicationId → { section → open/closed }. */
+    @GetMapping("/app-exposure/exceptions")
+    public Map<String, Object> getAppExposureExceptions() {
+        return exposure.getOverrides();
+    }
+
+    /** Replaces one application's exceptions (a section left out follows the default). */
+    @PutMapping("/app-exposure/exceptions/{applicationId}")
+    public Map<String, Object> updateAppExposureExceptions(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID applicationId,
+            @RequestBody Map<String, Boolean> body) {
+        Map<String, Object> saved = exposure.saveOverrides(applicationId, body);
+        exposureAudit.ifAvailable(a -> a.record(null, applicationId, "admin", "settings.app_exposure_exceptions_changed",
+                "application", applicationId, String.valueOf(body), true));
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.audit.AuditService> exposureAudit;
+
     /**
      * Closing Two Factor Authentication to applications waits for another platform operator (every application
      * then follows the platform and tenant settings); the other sections save now.

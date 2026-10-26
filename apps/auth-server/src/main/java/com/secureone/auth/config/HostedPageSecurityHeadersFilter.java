@@ -21,14 +21,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public class HostedPageSecurityHeadersFilter extends OncePerRequestFilter {
 
+    static final String CAPTCHA_SOURCES = "https://challenges.cloudflare.com https://hcaptcha.com https://*.hcaptcha.com"
+            + " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/";
+
     static final String POLICY = String.join(
             "; ",
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            // CAPTCHA providers (Attack protection › Bot protection): their script, frame and checks.
+            "script-src 'self' 'unsafe-inline' " + CAPTCHA_SOURCES,
+            "frame-src " + CAPTCHA_SOURCES,
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data:",
+            // https: so an application's own logo (Appearance) shows on the hosted pages.
+            "img-src 'self' data: https:",
             "font-src 'self' data:",
-            "connect-src 'self'",
+            "connect-src 'self' " + CAPTCHA_SOURCES,
             "object-src 'none'",
             "base-uri 'self'",
             "frame-ancestors 'none'");

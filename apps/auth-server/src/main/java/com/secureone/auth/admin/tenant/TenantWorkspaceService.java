@@ -51,6 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TenantWorkspaceService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.audit.AuditService> auditLog;
+
+
     private static final String TENANT_ADMIN_ROLE_NAME = ApplicationRbacScope.TENANT_ADMIN_ROLE_NAME;
 
     private final AdminOperatorService operators;
@@ -697,6 +701,8 @@ public class TenantWorkspaceService {
     }
 
     private void syncUserRolesForApplication(UUID userId, UUID applicationId, List<UUID> roleIds) {
+        if (auditLog != null) auditLog.ifAvailable(a -> a.record(null, applicationId, "admin", "user.roles_changed", "user_account", userId,
+                (roleIds == null ? 0 : roleIds.size()) + " role(s)", true));
         userRoles.deleteByUserIdAndApplicationId(userId, applicationId);
         if (roleIds == null || roleIds.isEmpty()) {
             return;

@@ -24,7 +24,11 @@ public class OAuth2TokenCustomizerConfig {
 
     @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> jwtEncodingContextCustomizer(
-            ApplicationAccessClaims accessClaims, TenantUserDetailsService users) {
+            ApplicationAccessClaims accessClaims,
+            TenantUserDetailsService users,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> settings,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants) {
         return context -> {
             requireActiveUser(context, users);
             addProfileClaims(context, users);
@@ -39,7 +43,63 @@ public class OAuth2TokenCustomizerConfig {
             }
             applyPolicyLifetime(context);
             addApplicationAccess(context, accessClaims);
+            addApplicationClaims(context, users, clients, settings, tenants);
         };
+    }
+
+    /** The application's own claims (Integration › Token claims), added last so they never replace ours. */
+    private static void addApplicationClaims(
+            JwtEncodingContext context,
+            TenantUserDetailsService users,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> settings,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants) {
+        boolean idToken = OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue());
+        boolean accessToken = OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType());
+        if (!idToken && !accessToken) {
+            return;
+        }
+        java.util.UUID clientRowId;
+        try {
+            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        java.util.UUID applicationId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
+                .findById(clientRowId).map(com.secureone.auth.oauth.OAuthClient::getApplicationId).orElse(null));
+        if (applicationId == null) {
+            return;
+        }
+        List<com.secureone.auth.application.TokenClaimMappings.Claim> claims =
+                com.secureone.auth.tenant.RlsScope.asPlatform(() -> settings.getObject().resolveTokenClaims(applicationId));
+        if (claims.isEmpty()) {
+            return;
+        }
+        UserAccount user = null;
+        String tenantSlug = null;
+        boolean userToken = !AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())
+                && context.getPrincipal() != null;
+        if (userToken) {
+            String name = context.getPrincipal().getName();
+            int sep = name == null ? -1 : name.indexOf(':');
+            if (sep > 0) {
+                tenantSlug = name.substring(0, sep);
+                try {
+                    user = users.resolveAccount(tenantSlug, name.substring(sep + 1));
+                } catch (UsernameNotFoundException ignored) {
+                    // No user: only fixed values apply.
+                }
+            }
+        }
+        for (var claim : claims) {
+            if ((idToken && !claim.idToken()) || (accessToken && !claim.accessToken())) {
+                continue;
+            }
+            Object value = com.secureone.auth.application.TokenClaimMappings.valueFor(claim, user, tenantSlug);
+            if (value != null) {
+                context.getClaims().claims(map -> map.putIfAbsent(claim.name(), value));
+            }
+        }
     }
 
     /**

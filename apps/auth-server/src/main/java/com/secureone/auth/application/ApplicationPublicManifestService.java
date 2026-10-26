@@ -52,7 +52,7 @@ public class ApplicationPublicManifestService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getManifestConfig(UUID applicationId) {
-        requirePublicManifestExposed();
+        requirePublicManifestExposed(applicationId);
         settings.requireApplication(applicationId);
         Map<String, Object> out = configFor(applicationId);
         out.put("scope", "application");
@@ -62,7 +62,7 @@ public class ApplicationPublicManifestService {
     }
 
     public Map<String, Object> saveManifestConfig(UUID applicationId, Map<String, Object> body) {
-        requirePublicManifestExposed();
+        requirePublicManifestExposed(applicationId);
         settings.requireApplication(applicationId);
         Map<String, Object> current = new LinkedHashMap<>(configFor(applicationId));
         current.remove("scope");
@@ -86,7 +86,7 @@ public class ApplicationPublicManifestService {
     }
 
     public void clearManifestConfig(UUID applicationId) {
-        requirePublicManifestExposed();
+        requirePublicManifestExposed(applicationId);
         settings.requireApplication(applicationId);
         appSettings
                 .findByApplicationIdAndKey(applicationId, "public_manifest")
@@ -95,7 +95,7 @@ public class ApplicationPublicManifestService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPublicManifest(UUID applicationId) {
-        requirePublicManifestExposed();
+        requirePublicManifestExposed(applicationId);
         Application app = applications
                 .findById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
@@ -290,10 +290,23 @@ public class ApplicationPublicManifestService {
         }
     }
 
-    private void requirePublicManifestExposed() {
-        if (!exposure.isExposed("public-manifest")) {
+    private void requirePublicManifestExposed(UUID applicationId) {
+        if (!exposure.isExposed("public-manifest", applicationId)) {
             throw new IllegalArgumentException(
                     "Public API settings are not enabled for applications. Enable under Platform settings → For applications.");
         }
+    }
+
+    /** See {@code ApplicationPublicController#branding}. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> branding(UUID applicationId) {
+        settings.requireApplication(applicationId);
+        Map<String, Object> appearance = ClientAppearanceDefaults.sanitizeForPublicManifest(settings.resolveAppearance(applicationId));
+        Map<String, Object> out = new java.util.LinkedHashMap<>(appearance);
+        String name = appearance.get("appName") instanceof String n && !n.isBlank()
+                ? n
+                : applications.findById(applicationId).map(Application::getName).orElse("");
+        out.put("appName", name);
+        return out;
     }
 }

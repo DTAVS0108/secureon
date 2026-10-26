@@ -21,8 +21,9 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/v1/applications/{applicationId}/auth/otp/request`](#318-request-otp) — Request OTP
   - [POST `/api/v1/applications/{applicationId}/auth/otp/verify`](#319-verify-otp) — Verify OTP
   - [POST `/api/v1/applications/{applicationId}/auth/session/login`](#3110-login-session) — Login session
-  - [GET `/api/v1/applications/{applicationId}/signup`](#3111-get-sign-up-options) — Get sign-up options
-  - [POST `/api/v1/applications/{applicationId}/signup`](#3112-signup) — Signup
+  - [GET `/api/v1/applications/{applicationId}/branding`](#3111-get-the-applications-branding-public) — Get the application's branding (public)
+  - [GET `/api/v1/applications/{applicationId}/signup`](#3112-get-sign-up-options) — Get sign-up options
+  - [POST `/api/v1/applications/{applicationId}/signup`](#3113-signup) — Signup
 - [3.2 Public auth](#32-public-auth)
   - [GET `/api/v1/auth/me`](#321-current-browser-session) — Current browser session
   - [GET `/api/v1/auth/methods`](#322-list-methods) — List methods
@@ -388,7 +389,29 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/session
 }'
 ```
 
-### 3.1.11 Get sign-up options
+### 3.1.11 Get the application's branding (public)
+
+`GET /api/v1/applications/{applicationId}/branding`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/branding"
+```
+
+### 3.1.12 Get sign-up options
 
 `GET /api/v1/applications/{applicationId}/signup`
 
@@ -410,7 +433,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/session
 curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/signup"
 ```
 
-### 3.1.12 Signup
+### 3.1.13 Signup
 
 `POST /api/v1/applications/{applicationId}/signup`
 

@@ -44,12 +44,14 @@ export function PlatformAdminNav({
       (item.href !== "/config" || ctx.configAsCodeEnabled) &&
       (item.href !== "/connect" || ctx.connectAppEnabled !== false),
   );
-  // Fixed order: Connect an app (when on), the Tenant group, then OAuth clients and the rest.
+  // Fixed order: Overview, Connect an app (when on), the Tenant group, then OAuth clients and the rest.
+  const overview = items.find((item) => item.href === "/overview");
   const first = items.find((item) => item.href === "/connect");
-  const rest = items.filter((item) => item.href !== "/connect");
+  const rest = items.filter((item) => item.href !== "/connect" && item.href !== "/overview");
 
   return (
     <nav className="flex flex-col gap-0.5">
+      {overview && <SidebarNavItem item={overview} active={pathname === overview.href} />}
       {first && (
         <Link
           href={first.href}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { AppExposureExceptions } from "@/components/settings/AppExposureExceptions";
 import { useToast } from "@/components/ui/Toast";
 import { loadAppExposureAction, saveAppExposureAction } from "@/lib/actions/app-exposure";
 import type { AppSettingsExposure } from "@/lib/api/app-exposure";
@@ -49,7 +50,7 @@ const SECTIONS: { key: string; label: string; description: string; info?: string
     key: "feature-flags",
     label: "Feature flags",
     description:
-      "Lets each application turn off application features (self-registration, recovery, LDAP) that are on here. Console controls are never shown to applications.",
+      "Lets each application turn off application features (self-registration, recovery, Try another way) that are on here. Console controls are never shown to applications.",
   },
   {
     key: "token-policy",
@@ -77,7 +78,7 @@ const SECTIONS: { key: string; label: string; description: string; info?: string
   {
     key: "user-directory",
     label: "User directory",
-    description: "Bulk import and export (CSV, Excel, LDAP) and per-app enablement of those features.",
+    description: "Bulk import and export (CSV, Excel) and per-app enablement of those features.",
   },
   {
     key: "public-manifest",
@@ -169,6 +170,7 @@ export function AppExposureSettings() {
   const sectionByKey = Object.fromEntries(SECTIONS.map((s) => [s.key, s]));
 
   return (
+    <>
     <Card padded={false}>
       <CardHeader
         title="For applications"
@@ -220,5 +222,7 @@ export function AppExposureSettings() {
         ))}
       </div>
     </Card>
+    {loaded && <AppExposureExceptions defaults={exposure as Record<string, boolean>} />}
+    </>
   );
 }

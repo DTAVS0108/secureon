@@ -25,7 +25,7 @@ SECTIONS = [
      "The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device "
      "flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library "
      "calls them for you.",
-     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — extensions"]),
+     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — extensions", "consent-page-controller"]),
     ("02-public-and-setup.md", "Public endpoints and first-run setup",
      "Server information, the sign-in method catalog, documentation discovery and the one-time setup of a new "
      "installation. No authentication.",
@@ -37,9 +37,9 @@ SECTIONS = [
       "Public auth — impersonation"]),
     ("04-account.md", "Account self-service",
      "What a signed-in user can do for themselves: password reset and change, email verification, profile, "
-     "MFA factors, sessions and privacy (export, delete request).",
+     "MFA factors, sessions, email change, connected apps and privacy (export, delete request).",
      ["Account", "Account profile", "Account MFA", "Account sessions", "Account privacy",
-      "Account privacy (session)"]),
+      "Account privacy (session)", "Account email change", "Account connected apps"]),
     ("05-machine-and-scim.md", "Machine-to-machine and SCIM provisioning",
      "Calls made by other systems: service accounts with API keys, and SCIM 2.0 user and group provisioning "
      "from an identity provider.",
@@ -50,9 +50,9 @@ SECTIONS = [
      ["Admin — auth", "Admin — context", "Admin — operator profile", "Admin — operator MFA"]),
     ("07-admin-tenants.md", "Admin API: tenants",
      "Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, "
-     "console roles and access, organizations, access requests and the tenant's SCIM token.",
+     "console roles and access, access requests and the tenant's SCIM token.",
      ["Admin — tenants", "Admin — tenant workspace", "Admin — tenant RBAC", "Admin — tenant console roles",
-      "Admin — console access", "Admin — console capabilities", "Admin — organizations",
+      "Admin — console access", "Admin — console capabilities",
       "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM"]),
     ("08-admin-users.md", "Admin API: users",
      "User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, "
@@ -68,13 +68,13 @@ SECTIONS = [
      ["Admin — application scope", "Admin — application RBAC", "Admin — application logs"]),
     ("11-admin-security-and-governance.md", "Admin API: security and governance",
      "Platform operators, access review, platform roles, sign-in federation providers, service accounts, "
-     "webhooks, the audit log and sessions.",
-     ["Admin — platform operators", "Admin — access review", "Admin — platform RBAC", "Admin — federation",
+     "webhooks, the audit log (search and CSV export), sessions and the console overview.",
+     ["Admin — overview", "Admin — platform operators", "Admin — access review", "Admin — platform RBAC", "Admin — federation",
       "Admin — service accounts", "Admin — webhooks", "Admin — audit", "Admin — sessions"]),
     ("12-admin-platform-settings.md", "Admin API: platform settings and configuration as code",
      "Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature "
-     "flags) and configuration files (export, preview, apply).",
-     ["Admin — platform settings", "Admin — configuration as code"]),
+     "flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).",
+     ["Admin — platform settings", "Attack protection", "Admin — log streams", "Admin — configuration as code"]),
 ]
 
 METHODS = ("get", "post", "put", "patch", "delete")
@@ -122,9 +122,15 @@ TITLES = {
     ("post", "/api/admin/v1/me/mfa/passkey/register/options"): "Start passkey registration",
     ("post", "/api/admin/v1/me/mfa/passkey/register/verify"): "Finish passkey registration",
     ("get", "/api/admin/v1/audit"): "Search the audit log",
+    ("get", "/api/admin/v1/audit/export"): "Export the audit log as CSV",
+    ("get", "/oauth2/consent"): "Consent screen (hosted page, third-party clients)",
+    ("get", "/api/v1/attack-protection"): "Get the CAPTCHA settings for hosted pages (public)",
+    ("post", "/api/admin/v1/settings/log-streams/{streamId}/test"): "Send a test entry to a log stream",
+    ("post", "/api/v1/account/email/change/confirm"): "Confirm a new email (link token)",
+    ("post", "/api/v1/account/email/change/session"): "Change email (browser session)",
+    ("post", "/api/v1/account/email/change"): "Change email (access token)",
+    ("get", "/api/v1/applications/{applicationId}/branding"): "Get the application's branding (public)",
     ("post", "/api/admin/v1/applications/{applicationId}/users/import"): "Import users from a CSV file",
-    ("post", "/api/admin/v1/applications/{applicationId}/users/import/ldap"): "Import users from LDAP",
-    ("post", "/api/admin/v1/applications/{applicationId}/users/import/ldap/preview"): "Preview an LDAP import",
     ("get", "/api/admin/v1/applications/{applicationId}/settings/email-templates/defaults"): "List default email templates",
     ("post", "/api/admin/v1/applications/{applicationId}/users/{userId}/mfa/methods/{methodId}/reset"): "Reset one MFA method of a user",
     ("post", "/api/admin/v1/access-review/complete"): "Record a completed access review (platform)",

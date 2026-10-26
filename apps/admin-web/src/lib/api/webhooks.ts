@@ -18,6 +18,12 @@ export type WebhookDelivery = {
   createdAt: string;
 };
 
+export type WebhookEventInfo = { event: string; description: string };
+
+export async function listWebhookEvents(tenantId: string): Promise<WebhookEventInfo[]> {
+  return apiFetch<WebhookEventInfo[]>(`/api/admin/v1/tenants/${tenantId}/webhooks/events`);
+}
+
 export async function listWebhooks(tenantId: string): Promise<WebhookEndpoint[]> {
   return apiFetch<WebhookEndpoint[]>(`/api/admin/v1/tenants/${tenantId}/webhooks`);
 }

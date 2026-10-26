@@ -17,12 +17,45 @@ public class MfaRecoveryCodeService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    /** Prefix of codes hashed with HMAC-SHA256 under the server pepper (older ones are password hashes). */
+    static final String HMAC_PREFIX = "hmac-sha256:";
+
     private final MfaFactorRepository factors;
     private final PasswordEncoder passwordEncoder;
+    private final String pepper;
 
-    public MfaRecoveryCodeService(MfaFactorRepository factors, PasswordEncoder passwordEncoder) {
+    public MfaRecoveryCodeService(
+            MfaFactorRepository factors,
+            PasswordEncoder passwordEncoder,
+            @org.springframework.beans.factory.annotation.Value("${secureone.otp.pepper:change-me-in-production}") String pepper) {
         this.factors = factors;
         this.passwordEncoder = passwordEncoder;
+        this.pepper = pepper;
+    }
+
+    /**
+     * Backup codes are checked against every unused code, so their hash must be fast: HMAC-SHA256 keyed with the
+     * server pepper (not stored in the database, so a leaked database cannot be searched offline), bound to the user.
+     * A slow password hash here (Argon2id) would cost seconds of CPU per guess.
+     */
+    String hash(UUID userId, String code) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(pepper.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] out = mac.doFinal((userId + ":" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HMAC_PREFIX + java.util.HexFormat.of().formatHex(out);
+        } catch (java.security.GeneralSecurityException e) {
+            throw new IllegalStateException("HMAC-SHA256 not available", e);
+        }
+    }
+
+    boolean matches(UUID userId, String code, String stored) {
+        if (stored.startsWith(HMAC_PREFIX)) {
+            return java.security.MessageDigest.isEqual(
+                    hash(userId, code).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    stored.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return passwordEncoder.matches(code, stored); // codes issued before (bcrypt / Argon2id)
     }
 
     public List<String> issueForUser(UUID userId, int count) {
@@ -33,7 +66,7 @@ public class MfaRecoveryCodeService {
             String code = generateCode();
             plainCodes.add(code);
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("hash", passwordEncoder.encode(code));
+            row.put("hash", hash(userId, code));
             row.put("used", false);
             stored.add(row);
         }
@@ -68,7 +101,7 @@ public class MfaRecoveryCodeService {
                     continue;
                 }
                 Object hash = row.get("hash");
-                if (hash != null && passwordEncoder.matches(code, hash.toString())) {
+                if (hash != null && matches(userId, code, hash.toString())) {
                     row.put("used", true);
                     factor.setLastUsedAt(java.time.Instant.now());
                     factors.save(factor);

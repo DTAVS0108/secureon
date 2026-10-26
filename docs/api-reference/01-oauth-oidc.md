@@ -21,8 +21,8 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/oauth2/revoke`](#118-token-revocation-rfc-7009) — Token revocation (RFC 7009)
   - [POST `/oauth2/token`](#119-token-endpoint) — Token endpoint
   - [GET `/userinfo`](#1110-oidc-userinfo) — OIDC UserInfo
-- [1.2 OAuth 2.1 / OIDC — extensions](#12-oauth-21--oidc--extensions)
-  - [POST `/oauth2/backchannel-logout`](#121-backchannel-logout) — Backchannel logout
+- [1.2 Consent-page-controller](#12-consent-page-controller)
+  - [GET `/oauth2/consent`](#121-consent-screen-hosted-page-third-party-clients) — Consent screen (hosted page, third-party clients)
 
 ## 1.1 OAuth 2.1 / OIDC
 
@@ -279,24 +279,28 @@ curl -s "$SECUREONE_URL/userinfo" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## 1.2 OAuth 2.1 / OIDC — extensions
+## 1.2 Consent-page-controller
 
-Pushed authorization requests, token exchange and other OAuth extensions
+### 1.2.1 Consent screen (hosted page, third-party clients)
 
-### 1.2.1 Backchannel logout
-
-`POST /oauth2/backchannel-logout`
+`GET /oauth2/consent`
 
 **Authentication:** None (public)
 
-**Request body** (`application/json`): object
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `client_id` | query | string | yes |  |
+| `scope` | query | string | yes |  |
+| `state` | query | string | yes |  |
 
 **Responses**
 
 | Status | Meaning | Body |
 |---|---|---|
-| `200` | OK | — |
+| `200` | OK | string |
 
 ```bash
-curl -s -X POST "$SECUREONE_URL/oauth2/backchannel-logout"
+curl -s "$SECUREONE_URL/oauth2/consent?client_id={client_id}&scope={scope}&state={state}"
 ```

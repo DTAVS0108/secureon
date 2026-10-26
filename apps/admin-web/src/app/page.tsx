@@ -5,8 +5,9 @@ import { hasOAuthClients } from "@/lib/oauth-client-registry";
 
 export default async function HomePage() {
   const ctx = await loadAdminContextSafe();
+  // Platform super admins start on the overview, like other identity consoles.
+  if (ctx.platformSuperAdmin) redirect("/overview");
   if (!hasOAuthClients(ctx)) {
-    if (ctx.platformSuperAdmin) redirect("/applications");
     if (ctx.operatorTier === "tenant" || ctx.operatorTier === "tenant_super") redirect("/app");
     redirect("/login");
   }

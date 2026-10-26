@@ -54,6 +54,7 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **New developer — integrate your app (e.g. an online store)** | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | **Roles — who sees and can do what** | **[25 — Roles and access](25-roles-and-access.md)** |
 | **Tenant setup in files; upgrades and rollback** | **[26 — Configuration as code and upgrades](26-configuration-as-code-and-upgrades.md)** |
+| **Attack protection, audit streaming, webhooks, consent, back-channel logout, branding** | **[27 — Security and integration features](27-security-and-integration-features.md)** |
 | **Using the console — page by page, field by field** | **[User guide](user-guide/README.md)** |
 | Vision & glossary | [01 — Overview](01-overview.md) |
 | Stack choices | [02 — Tech Stack](02-tech-stack.md) |

@@ -249,6 +249,16 @@ function OAuthClientForm({
           defaultValue={client?.postLogoutRedirectUris.join("\n")}
         />
       </FieldRow>
+      <FieldRow
+        label="Back-channel logout URL"
+        hint="Optional. When the user signs out of SecureOne (or is suspended), SecureOne POSTs a signed logout_token here so the app ends its session (OIDC Back-Channel Logout)."
+      >
+        <Input
+          name="backchannelLogoutUri"
+          defaultValue={client?.backchannelLogoutUri ?? ""}
+          placeholder="https://app.example.com/backchannel-logout"
+        />
+      </FieldRow>
       <div className="flex flex-wrap items-center gap-6 rounded-lg border border-ui bg-ui-elevated/50 px-4 py-3">
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -260,6 +270,15 @@ function OAuthClientForm({
           />
           Require PKCE
         </label>
+        <label className="flex items-center gap-2 text-sm" title="For apps made by someone else: users see which access the app asks for and approve it.">
+          <input
+            type="checkbox"
+            name="consentRequired"
+            defaultChecked={client?.consentRequired ?? false}
+            className="rounded border-ui"
+          />
+          Third-party app: ask users for consent
+        </label>
         <label className="flex items-center gap-2 text-sm">
           Token subject (sub)
           <select
@@ -269,9 +288,15 @@ function OAuthClientForm({
             title="user_id: the account ID, which never changes. Legacy: tenant:email, which changes if the user changes email."
           >
             <option value="user_id">User ID (stable)</option>
-            <option value="legacy">Legacy (tenant:email)</option>
+            <option value="legacy">Legacy (tenant:email; changes when the user changes email)</option>
           </select>
         </label>
+        {client?.subjectType === "legacy" && (
+          <p className="basis-full text-xs text-amber-700 dark:text-amber-300">
+            With the legacy subject, a user who changes their email looks like a new user to this app (their
+            sub changes) and is signed out of it. Switch to User ID unless the app depends on tenant:email.
+          </p>
+        )}
         <span className="text-xs text-muted">
           Auth at token endpoint:{" "}
           <strong>{confidential ? authMethod : "none (public client)"}</strong>

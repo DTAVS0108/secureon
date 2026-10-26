@@ -194,15 +194,7 @@ public class ApplicationScopedAdminController {
         return userImportExport.importFromFile(applicationId, file, source);
     }
 
-    @PostMapping("/users/import/ldap/preview")
-    public Map<String, Object> previewLdapImport(@PathVariable UUID applicationId) {
-        return userImportExport.previewLdap(applicationId);
-    }
 
-    @PostMapping("/users/import/ldap")
-    public Map<String, Object> importFromLdap(@PathVariable UUID applicationId) {
-        return userImportExport.importFromLdap(applicationId);
-    }
 
     @GetMapping("/settings/workspace")
     public Map<String, Object> getSettingsWorkspace(@PathVariable UUID applicationId) {
@@ -611,5 +603,16 @@ public class ApplicationScopedAdminController {
     public Map<String, Object> updateClientIntegration(
             @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
         return settings.saveClientIntegration(applicationId, body);
+    }
+
+    @GetMapping("/settings/token-claims")
+    public Map<String, Object> getTokenClaims(@PathVariable UUID applicationId) {
+        return settings.getTokenClaims(applicationId);
+    }
+
+    @PutMapping("/settings/token-claims")
+    public Map<String, Object> updateTokenClaims(
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
+        return settings.saveTokenClaims(applicationId, body);
     }
 }

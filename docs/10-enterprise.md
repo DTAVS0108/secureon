@@ -80,6 +80,8 @@ mindmap
 - **Time-bound / just-in-time access** grants (extends `user_role.expires_at`).
 
 ## 5. Organizations, Groups & Delegated Administration (B2B)
+
+> **Status:** sub-organizations inside a tenant were removed (V78) — they had no members or sign-in rules. Tenants are the customer boundary; groups and delegated administration below remain.
 - **Organizations & sub-organizations**, **nested groups**, group-based role mapping.
 - **Delegated administration** — org admins manage only their org via fine-grained admin scopes.
 - Teams / membership with inherited permissions.

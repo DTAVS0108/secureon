@@ -107,6 +107,8 @@ public class OAuthClientAdminService {
         client.setRequirePkce(request.pkceRequired() != null ? request.pkceRequired() : defaultPkceRequired(type));
         client.setSubjectType(request.subjectType() != null ? subjectType(request.subjectType()) : OAuthClient.SUBJECT_USER_ID);
         client.setSetupFramework(setupFramework(request.setupFramework()));
+        client.setBackchannelLogoutUri(com.secureone.auth.oauth.BackchannelLogoutService.validateUri(request.backchannelLogoutUri()));
+        client.setConsentRequired(Boolean.TRUE.equals(request.consentRequired()));
         client.setTokenEndpointAuthMethod(
                 request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()
                         ? request.tokenEndpointAuthMethod()
@@ -148,6 +150,10 @@ public class OAuthClientAdminService {
         if (request.pkceRequired() != null) client.setRequirePkce(request.pkceRequired());
         if (request.subjectType() != null) client.setSubjectType(subjectType(request.subjectType()));
         if (request.setupFramework() != null) client.setSetupFramework(setupFramework(request.setupFramework()));
+        if (request.consentRequired() != null) client.setConsentRequired(request.consentRequired());
+        if (request.backchannelLogoutUri() != null) {
+            client.setBackchannelLogoutUri(com.secureone.auth.oauth.BackchannelLogoutService.validateUri(request.backchannelLogoutUri()));
+        }
         if (request.tokenEndpointAuthMethod() != null) {
             client.setTokenEndpointAuthMethod(request.tokenEndpointAuthMethod());
         }
@@ -286,7 +292,9 @@ public class OAuthClientAdminService {
                 client.getUpdatedAt(),
                 oAuthEndpoints(),
                 client.getSubjectType(),
-                client.getSetupFramework());
+                client.getSetupFramework(),
+                client.getBackchannelLogoutUri(),
+                client.isConsentRequired());
     }
 
     /** A framework id such as "electron" or "python-bff"; blank clears it. */

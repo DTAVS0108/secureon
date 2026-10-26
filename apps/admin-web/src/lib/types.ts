@@ -55,6 +55,10 @@ export type OAuthClient = {
   scopes: string[];
   redirectUris: string[];
   postLogoutRedirectUris: string[];
+  /** OIDC Back-Channel Logout URL (SecureOne POSTs a logout_token here when the user signs out). */
+  backchannelLogoutUri: string | null;
+  /** Third-party client: users approve its access on a consent screen. */
+  consentRequired: boolean;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;

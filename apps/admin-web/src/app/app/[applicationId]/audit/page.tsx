@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { AuditTable } from "@/app/audit/AuditTable";
+import { AuditSearchPanel } from "@/components/audit/AuditSearchPanel";
 import { resolveApplicationMeta } from "@/lib/api/app-workspace";
-import { listAuditEvents } from "@/lib/api/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +16,6 @@ export default async function AppAuditPage({
   if (!app) notFound();
   // Always available (who may see it is decided by console access, not by a feature flag).
 
-  let events: Awaited<ReturnType<typeof listAuditEvents>> = [];
-  try {
-    events = await listAuditEvents(applicationId, app.tenantId);
-  } catch {
-    /* show empty table */
-  }
-
   return (
     <div className="w-full min-w-0">
       <PageHeader
@@ -31,7 +23,7 @@ export default async function AppAuditPage({
         title="Audit log"
         description={`${app.name} · ${app.tenantName}`}
       />
-      <AuditTable events={events} />
+      <AuditSearchPanel applicationId={applicationId} />
     </div>
   );
 }

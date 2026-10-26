@@ -55,7 +55,11 @@ public final class ClientAppearanceDefaults {
                     "inputBorder",
                     "inputPlaceholder",
                     "mutedText",
-                    "dividerColor"));
+                    "dividerColor",
+                    "language"));
+
+    /** Languages the hosted sign-in pages are translated into ("auto": the person's browser language). */
+    public static final java.util.Set<String> LANGUAGES = java.util.Set.of("auto", "en", "es", "fr", "de", "pt", "hi");
 
     public static Map<String, Object> platformDefaults() {
         Map<String, Object> root = new LinkedHashMap<>();
@@ -97,6 +101,7 @@ public final class ClientAppearanceDefaults {
         root.put("inputPlaceholder", "#9ca3af");
         root.put("mutedText", "#6b7280");
         root.put("dividerColor", "#e5e7eb");
+        root.put("language", "auto");
         return root;
     }
 
@@ -129,6 +134,7 @@ public final class ClientAppearanceDefaults {
     public static String problem(String key, Object value) {
         return switch (key) {
             case "mode" -> MODES.contains(String.valueOf(value)) ? null : "must be light, dark or system";
+            case "language" -> LANGUAGES.contains(String.valueOf(value)) ? null : "must be one of " + String.join(", ", new java.util.TreeSet<>(LANGUAGES));
             case "gradientPreset" -> GRADIENT_PRESETS.contains(String.valueOf(value)) ? null : "is not a known gradient";
             case "gradientScope" -> GRADIENT_SCOPES.contains(String.valueOf(value)) ? null : "must be page, brand or both";
             case "gradientAngle" -> inRange(value, 0, 360) ? null : "must be 0 to 360";

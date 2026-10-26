@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { FederationProvidersPanel } from "@/components/settings/FederationProvidersPanel";
 import { AccessRequestsPanel } from "@/components/tenants/AccessRequestsPanel";
-import { OrganizationsPanel } from "@/components/tenants/OrganizationsPanel";
 import { ServiceAccountsPanel } from "@/components/tenants/ServiceAccountsPanel";
 import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
 import { TenantWorkspacePanel } from "@/components/tenant/TenantWorkspacePanel";
@@ -86,7 +85,6 @@ export function TenantDetailPanels({
         onMutated={refreshAll}
       />
       <FederationProvidersPanel tenantId={tenant.id} />
-      <OrganizationsPanel tenantId={tenant.id} />
       <AccessRequestsPanel tenantId={tenant.id} users={workspace.users} applications={applications} />
       <ServiceAccountsPanel tenantId={tenant.id} />
       <WebhooksPanel tenantId={tenant.id} />

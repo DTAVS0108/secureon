@@ -77,6 +77,14 @@ public class OAuthClient {
     @Column(name = "setup_framework")
     private String setupFramework;
 
+    /** OIDC Back-Channel Logout: where SecureOne POSTs a logout_token when the user signs out (null: none). */
+    @Column(name = "backchannel_logout_uri")
+    private String backchannelLogoutUri;
+
+    /** Third-party client: users approve the access it asks for (consent screen). */
+    @Column(name = "consent_required", nullable = false)
+    private boolean consentRequired;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -100,6 +108,22 @@ public class OAuthClient {
 
     public String getSetupFramework() {
         return setupFramework;
+    }
+
+    public boolean isConsentRequired() {
+        return consentRequired;
+    }
+
+    public void setConsentRequired(boolean consentRequired) {
+        this.consentRequired = consentRequired;
+    }
+
+    public String getBackchannelLogoutUri() {
+        return backchannelLogoutUri;
+    }
+
+    public void setBackchannelLogoutUri(String backchannelLogoutUri) {
+        this.backchannelLogoutUri = backchannelLogoutUri;
     }
 
     public void setSetupFramework(String setupFramework) {

@@ -53,7 +53,7 @@ public record TenantConfig(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonPropertyOrder({"clientId", "type", "status", "grantTypes", "scopes", "redirectUris", "postLogoutRedirectUris",
-            "pkceRequired", "tokenEndpointAuthMethod", "subjectType", "clientSecretEnv"})
+            "pkceRequired", "tokenEndpointAuthMethod", "subjectType", "backchannelLogoutUri", "consentRequired", "clientSecretEnv"})
     public record Client(
             String clientId,
             String type,
@@ -65,6 +65,10 @@ public record TenantConfig(
             Boolean pkceRequired,
             String tokenEndpointAuthMethod,
             String subjectType,
+            /** OIDC Back-Channel Logout URL (optional). */
+            String backchannelLogoutUri,
+            /** Third-party client: users see a consent screen (optional, default false). */
+            Boolean consentRequired,
             /** Name of an environment variable on the server that holds this confidential client's secret. */
             String clientSecretEnv) {}
 

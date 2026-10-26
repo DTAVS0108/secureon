@@ -30,6 +30,12 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
     private final TenantRepository tenants;
     private final SignInApplicationResolver signInApplication;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.protection.AttackProtectionService> attackProtection;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.webhook.WebhookEventPublisher> webhooks;
+
     public FormLoginFailureHandler(
             RequestCache requestCache,
             TenantUserDetailsService userDetailsService,
@@ -71,6 +77,8 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
                 AuthRequestContext.formatSessionRef(request),
                 LoginAttemptDiagnostics.formatLogLine(snapshot, reasonCode, exception));
         recordFailure(request, snapshot, reasonCode, exception, diagnostics);
+        // Repeated failures from one address bring up the CAPTCHA (Attack protection › sign-in after failures).
+        if (attackProtection != null) attackProtection.ifAvailable(p -> p.recordSignInFailure(com.secureone.auth.logging.ClientIpResolver.resolve(request)));
         super.onAuthenticationFailure(request, response, exception);
     }
 
@@ -89,6 +97,18 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
             UserAccount account = userDetailsService.resolveAccount(
                     username.substring(0, sep).trim().toLowerCase(Locale.ROOT),
                     username.substring(sep + 1).trim().toLowerCase(Locale.ROOT));
+            if (webhooks != null) webhooks.ifAvailable(p -> {
+                java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+                payload.put("userId", account.getId().toString());
+                payload.put("email", account.getEmail());
+                payload.put("reason", reasonCode);
+                payload.put("ipAddress", com.secureone.auth.logging.ClientIpResolver.resolve(request));
+                try {
+                    p.publish(account.getTenantId(), signInApplication.current(), "user.login.failed", payload);
+                } catch (RuntimeException ignored) {
+                    // A webhook never changes the sign-in result.
+                }
+            });
             loginHistory.recordFailure(
                     account,
                     // The app being signed in to, so the failure shows in that app's Sessions list.

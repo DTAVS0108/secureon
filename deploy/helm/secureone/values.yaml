@@ -38,6 +38,8 @@ env:
   # Public URL users and apps see (https in production). Usually the ingress host.
   SECUREONE_ISSUER_URL: https://id.example.com
   SECUREONE_PUBLIC_BASE_URL: https://id.example.com
+  # The ingress controller's pod range: only it may send X-Forwarded-For (addresses or /8, /16, /24, /32 ranges).
+  SECUREONE_TRUSTED_PROXIES: "10.0.0.0/8"
   SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
   SECUREONE_REDIS_URL: redis://redis:6379
 

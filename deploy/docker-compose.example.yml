@@ -28,6 +28,8 @@ services:
       SECUREONE_ENV: ${SECUREONE_ENV:-production}
       SECUREONE_ISSUER_URL: ${PUBLIC_URL:?set PUBLIC_URL, e.g. https://id.example.com}
       SECUREONE_PUBLIC_BASE_URL: ${PUBLIC_URL}
+      # Your reverse proxy's address or range (/8, /16, /24, /32): only it may send X-Forwarded-For. docs/runbooks/custom-domain.md
+      SECUREONE_TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
       SECUREONE_DB_USERNAME: secureone
       SECUREONE_BOOTSTRAP_ADMIN_EMAIL: ${ADMIN_EMAIL:-}

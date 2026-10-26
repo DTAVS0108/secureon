@@ -76,6 +76,11 @@ public class AccountProfileService {
         passwords.changePassword(user.getId(), currentPassword, newPassword, applicationId);
     }
 
+    /** The user an access token belongs to. */
+    public UserAccount userFor(Jwt jwt) {
+        return resolveUser(jwt);
+    }
+
     private UserAccount resolveUser(Jwt jwt) {
         String subject = jwt.getSubject();
         if (subject == null || subject.isBlank()) {

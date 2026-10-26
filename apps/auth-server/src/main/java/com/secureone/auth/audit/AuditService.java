@@ -18,6 +18,9 @@ public class AuditService {
     private final AuditLogRepository repository;
     private final com.secureone.auth.application.ApplicationRepository applications;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<org.springframework.context.ApplicationEventPublisher> events;
+
     public AuditService(AuditLogRepository repository, com.secureone.auth.application.ApplicationRepository applications) {
         this.repository = repository;
         this.applications = applications;
@@ -82,7 +85,34 @@ public class AuditService {
             meta.put("requestId", requestId);
         }
         log.setMetadata(meta);
-        repository.save(log);
+        AuditLog saved = repository.save(log);
+        // Webhooks and log streams pick it up after the change commits.
+        if (events != null) events.ifAvailable(p -> p.publishEvent(new AuditRecordedEvent(saved)));
+    }
+
+    /**
+     * Records in a transaction of its own, with platform scope: for end-user flows (their own two-step options,
+     * sessions) whose surrounding transaction runs under the user's tenant scope or none. Never throws.
+     */
+    public void recordIndependently(
+            UUID tenantId, UUID applicationId, String actorEmail, String action, String targetType, UUID targetId,
+            String targetLabel, boolean success) {
+        try {
+            com.secureone.auth.tenant.RlsScope.runAsPlatform(() -> independent().executeWithoutResult(status ->
+                    record(tenantId, applicationId, actorEmail, action, targetType, targetId, targetLabel, success)));
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(AuditService.class).warn("Audit {} not recorded: {}", action, e.getMessage());
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.transaction.PlatformTransactionManager transactions;
+
+    private org.springframework.transaction.support.TransactionTemplate independent() {
+        org.springframework.transaction.support.TransactionTemplate t =
+                new org.springframework.transaction.support.TransactionTemplate(transactions);
+        t.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return t;
     }
 
     /** Callers pass "admin" as a placeholder; record the operator who is actually signed in. */

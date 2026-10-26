@@ -4,7 +4,7 @@
 
 > Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
 
-Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, organizations, access requests and the tenant's SCIM token.
+Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, access requests and the tenant's SCIM token.
 
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
@@ -20,8 +20,8 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/tenants/{tenantId}/admin-operators/{userId}/applications/{applicationId}`](#717-make-a-user-tenant-admin-of-an-application) — Make a user tenant admin of an application
   - [DELETE `/api/admin/v1/tenants/{tenantId}/admin-operators/{userId}/applications/{applicationId}`](#718-remove-a-users-tenant-admin-role-for-an-application) — Remove a user's tenant admin role for an application
   - [GET `/api/admin/v1/tenants/{tenantId}/two-step-policy`](#719-effective-tenant-defaults-the-tenants-own-overrides-and-locks-and-the-platforms-locks) — Effective tenant defaults, the tenant's own overrides and locks, and the platform's locks
-  - [PUT `/api/admin/v1/tenants/{tenantId}/two-step-policy`](#7110-save-the-tenants-defaults-and-locks-refused-where-the-platform-does-not-allow-it) — Save the tenant's defaults and locks (refused where the platform does not allow it)
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/two-step-policy`](#7111-back-to-the-platform-policy-removes-the-tenants-defaults-and-locks) — Back to the platform policy (removes the tenant's defaults and locks)
+  - [PUT `/api/admin/v1/tenants/{tenantId}/two-step-policy`](#7110-save-the-tenants-defaults-and-locks-weaker-values-or-removed-locks-wait-for-a-platform-operator) — Save the tenant's defaults and locks (weaker values or removed locks wait for a platform operator)
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/two-step-policy`](#7111-back-to-the-platform-policy-waits-for-a-platform-operator-when-that-is-weaker) — Back to the platform policy (waits for a platform operator when that is weaker)
 - [7.2 Tenant workspace](#72-tenant-workspace)
   - [GET `/api/admin/v1/tenant-workspace`](#721-get-tenant-workspace) — Get tenant workspace
   - [GET `/api/admin/v1/tenant-workspace/admin-operators`](#722-list-admin-operators) — List admin operators
@@ -56,24 +56,18 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/tenants/{tenantId}/users/{userId}/console-capabilities`](#761-list-console-capabilities) — List console capabilities
   - [PUT `/api/admin/v1/tenants/{tenantId}/users/{userId}/console-capabilities`](#762-update-console-capabilities) — Update console capabilities
   - [GET `/api/admin/v1/tenants/{tenantId}/users/{userId}/console-capabilities/catalog`](#763-get-catalog) — Get catalog
-- [7.7 Organizations](#77-organizations)
-  - [GET `/api/admin/v1/tenants/{tenantId}/organizations`](#771-list-organizations) — List organizations
-  - [POST `/api/admin/v1/tenants/{tenantId}/organizations`](#772-create-organization) — Create organization
-  - [GET `/api/admin/v1/tenants/{tenantId}/organizations/{id}`](#773-get-organization) — Get organization
-  - [PUT `/api/admin/v1/tenants/{tenantId}/organizations/{id}`](#774-update-organization) — Update organization
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/organizations/{id}`](#775-remove-organization) — Remove organization
-- [7.8 Access requests](#78-access-requests)
-  - [GET `/api/admin/v1/tenants/{tenantId}/access-requests`](#781-list-access-requests) — List access requests
-  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests`](#782-create-access-request) — Create access request
-  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests/{id}/approve`](#783-approve-access-request) — Approve access request
-  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests/{id}/deny`](#784-deny) — Deny
-- [7.9 Tenant SCIM](#79-tenant-scim)
-  - [GET `/api/admin/v1/tenants/{tenantId}/scim`](#791-get-scim) — Get SCIM
-  - [POST `/api/admin/v1/tenants/{tenantId}/scim/token`](#792-create-the-tenants-scim-token) — Create the tenant's SCIM token
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/scim/token`](#793-revoke-the-tenants-scim-token) — Revoke the tenant's SCIM token
-- [7.10 SCIM](#710-scim)
-  - [GET `/api/admin/v1/settings/scim`](#7101-get-scim) — Get SCIM
-  - [PUT `/api/admin/v1/settings/scim`](#7102-update-scim) — Update SCIM
+- [7.7 Access requests](#77-access-requests)
+  - [GET `/api/admin/v1/tenants/{tenantId}/access-requests`](#771-list-access-requests) — List access requests
+  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests`](#772-create-access-request) — Create access request
+  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests/{id}/approve`](#773-approve-access-request) — Approve access request
+  - [POST `/api/admin/v1/tenants/{tenantId}/access-requests/{id}/deny`](#774-deny) — Deny
+- [7.8 Tenant SCIM](#78-tenant-scim)
+  - [GET `/api/admin/v1/tenants/{tenantId}/scim`](#781-get-scim) — Get SCIM
+  - [POST `/api/admin/v1/tenants/{tenantId}/scim/token`](#782-create-the-tenants-scim-token) — Create the tenant's SCIM token
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/scim/token`](#783-revoke-the-tenants-scim-token) — Revoke the tenant's SCIM token
+- [7.9 SCIM](#79-scim)
+  - [GET `/api/admin/v1/settings/scim`](#791-get-scim) — Get SCIM
+  - [PUT `/api/admin/v1/settings/scim`](#792-update-scim) — Update SCIM
 
 ## 7.1 Tenants
 
@@ -310,7 +304,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/two-step-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.1.10 Save the tenant's defaults and locks (refused where the platform does not allow it)
+### 7.1.10 Save the tenant's defaults and locks (weaker values or removed locks wait for a platform operator)
 
 `PUT /api/admin/v1/tenants/{tenantId}/two-step-policy`
 
@@ -335,7 +329,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/two-step-policy" 
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.1.11 Back to the platform policy (removes the tenant's defaults and locks)
+### 7.1.11 Back to the platform policy (waits for a platform operator when that is weaker)
 
 `DELETE /api/admin/v1/tenants/{tenantId}/two-step-policy`
 
@@ -1199,137 +1193,11 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/users/{userId}/console-c
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 7.7 Organizations
-
-Tenant organization hierarchy (stub)
-
-### 7.7.1 List organizations
-
-`GET /api/admin/v1/tenants/{tenantId}/organizations`
-
-**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-|---|---|---|---|---|
-| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `200` | OK | object[] |
-
-```bash
-curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/organizations" \
-  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-### 7.7.2 Create organization
-
-`POST /api/admin/v1/tenants/{tenantId}/organizations`
-
-**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-|---|---|---|---|---|
-| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
-
-**Request body** (`application/json`): object
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `201` | Created | object |
-
-```bash
-curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/organizations" \
-  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-### 7.7.3 Get organization
-
-`GET /api/admin/v1/tenants/{tenantId}/organizations/{id}`
-
-**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-|---|---|---|---|---|
-| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
-| `id` | path | string (uuid) | yes | ID of the item (UUID) |
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `200` | OK | object |
-
-```bash
-curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/organizations/{id}" \
-  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-### 7.7.4 Update organization
-
-`PUT /api/admin/v1/tenants/{tenantId}/organizations/{id}`
-
-**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-|---|---|---|---|---|
-| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
-| `id` | path | string (uuid) | yes | ID of the item (UUID) |
-
-**Request body** (`application/json`): object
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `200` | OK | object |
-
-```bash
-curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/organizations/{id}" \
-  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-### 7.7.5 Remove organization
-
-`DELETE /api/admin/v1/tenants/{tenantId}/organizations/{id}`
-
-**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
-
-**Parameters**
-
-| Name | In | Type | Required | Description |
-|---|---|---|---|---|
-| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
-| `id` | path | string (uuid) | yes | ID of the item (UUID) |
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `204` | No Content | — |
-
-```bash
-curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/organizations/{id}" \
-  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-## 7.8 Access requests
+## 7.7 Access requests
 
 Identity governance access request workflow (stub)
 
-### 7.8.1 List access requests
+### 7.7.1 List access requests
 
 `GET /api/admin/v1/tenants/{tenantId}/access-requests`
 
@@ -1352,7 +1220,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-requests" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.8.2 Create access request
+### 7.7.2 Create access request
 
 `POST /api/admin/v1/tenants/{tenantId}/access-requests`
 
@@ -1377,7 +1245,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-requests"
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.8.3 Approve access request
+### 7.7.3 Approve access request
 
 `POST /api/admin/v1/tenants/{tenantId}/access-requests/{id}/approve`
 
@@ -1402,7 +1270,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-requests/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.8.4 Deny
+### 7.7.4 Deny
 
 `POST /api/admin/v1/tenants/{tenantId}/access-requests/{id}/deny`
 
@@ -1427,11 +1295,11 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-requests/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 7.9 Tenant SCIM
+## 7.8 Tenant SCIM
 
 SCIM 2.0 provisioning token for one tenant
 
-### 7.9.1 Get SCIM
+### 7.8.1 Get SCIM
 
 `GET /api/admin/v1/tenants/{tenantId}/scim`
 
@@ -1454,7 +1322,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/scim" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.9.2 Create the tenant's SCIM token
+### 7.8.2 Create the tenant's SCIM token
 
 `POST /api/admin/v1/tenants/{tenantId}/scim/token`
 
@@ -1477,7 +1345,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/scim/token" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.9.3 Revoke the tenant's SCIM token
+### 7.8.3 Revoke the tenant's SCIM token
 
 `DELETE /api/admin/v1/tenants/{tenantId}/scim/token`
 
@@ -1500,11 +1368,11 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/scim/token" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 7.10 SCIM
+## 7.9 SCIM
 
 Platform SCIM provisioning settings
 
-### 7.10.1 Get SCIM
+### 7.9.1 Get SCIM
 
 `GET /api/admin/v1/settings/scim`
 
@@ -1521,7 +1389,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/scim" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 7.10.2 Update SCIM
+### 7.9.2 Update SCIM
 
 `PUT /api/admin/v1/settings/scim`
 

@@ -54,7 +54,7 @@ public class EmailTokenService {
         return switch (type) {
             case VERIFY_EMAIL -> 24;
             case RESET_PASSWORD, SET_PASSWORD -> 1;
-            case MAGIC_LINK -> 1;
+            case MAGIC_LINK, CHANGE_EMAIL -> 1;
         };
     }
 }

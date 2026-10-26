@@ -38,6 +38,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class TwoStepService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.audit.AuditService> audit;
+
+
     private static final Logger log = LoggerFactory.getLogger(TwoStepService.class);
 
     /** One of a user's second-step options. {@code masked} is the phone or email shown to the user. */
@@ -299,6 +303,7 @@ public class TwoStepService {
         }
         states.completed(user.getId());
         notifyUser(applicationId, user, method.label() + " was added as a way to verify it's you.");
+        auditChange(user, applicationId, "user.two_factor_enrolled", method);
         return codes;
     }
 
@@ -308,6 +313,19 @@ public class TwoStepService {
             trustedDevices.revokeAll(user.getId());
         }
         notifyUser(applicationId, user, method.label() + " was removed from the ways to verify it's you.");
+        auditChange(user, applicationId, "two_step.factor_removed", method);
+    }
+
+    /** Audit log (and webhooks) for a user's own change to their second-step options. */
+    private void auditChange(UserAccount user, UUID applicationId, String action, TwoStepMethod method) {
+        if (audit != null) audit.ifAvailable(a -> {
+            try {
+                a.recordIndependently(user.getTenantId(), applicationId, user.getEmail(), action,
+                        "user_account", user.getId(), method.label(), true);
+            } catch (RuntimeException e) {
+                log.warn("Could not audit {} for {}: {}", action, user.getEmail(), e.getMessage());
+            }
+        });
     }
 
     public void setDefault(UUID userId, UUID factorId) {

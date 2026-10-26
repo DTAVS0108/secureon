@@ -84,15 +84,15 @@ public class ApplicationSettingsService {
     @Transactional(readOnly = true)
     public Map<String, Boolean> getExposureForApplication(UUID applicationId) {
         requireApplication(applicationId);
-        return exposure.getExposure();
+        return exposure.getExposureFor(applicationId);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getWorkspace(UUID applicationId) {
         requireApplication(applicationId);
         Map<String, Object> workspace = new LinkedHashMap<>();
-        workspace.put("exposure", exposure.getExposure());
-        Map<String, Boolean> exposed = exposure.getExposure();
+        Map<String, Boolean> exposed = exposure.getExposureFor(applicationId);
+        workspace.put("exposure", exposed);
         if (Boolean.TRUE.equals(exposed.get("notifications"))) {
             workspace.put("notifications", getNotifications(applicationId));
         }
@@ -125,8 +125,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getTokenPolicy(UUID applicationId) {
-        requireExposed("token-policy");
         requireApplication(applicationId);
+        requireExposed("token-policy", applicationId);
         Map<String, Object> merged = resolveTokenPolicy(applicationId);
         boolean own = hasOverride(applicationId, "token_policy");
         merged.put("tabEnabled", own);
@@ -138,8 +138,8 @@ public class ApplicationSettingsService {
     /** The OAuth tokens switch is on exactly when this application has its own token policy. */
     @Transactional(readOnly = true)
     public Map<String, Object> getTokenTabState(UUID applicationId) {
-        requireExposed("token-policy");
         requireApplication(applicationId);
+        requireExposed("token-policy", applicationId);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("platformExposed", true);
         out.put("tabEnabled", hasOverride(applicationId, "token_policy"));
@@ -148,8 +148,8 @@ public class ApplicationSettingsService {
 
     /** On: start this application's own token policy from the platform's. Off: back to the platform's. */
     public Map<String, Object> saveTokenTabEnabled(UUID applicationId, boolean enabled) {
-        requireExposed("token-policy");
         requireApplication(applicationId);
+        requireExposed("token-policy", applicationId);
         if (enabled) {
             snapshotEffectiveAsOverride(applicationId, "token_policy");
             syncTokenPolicyToApplicationConfig(applicationId);
@@ -160,8 +160,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveTokenPolicy(UUID applicationId, Map<String, Object> body) {
-        requireExposed("token-policy");
         requireApplication(applicationId);
+        requireExposed("token-policy", applicationId);
         Map<String, Object> sanitized = TokenPolicyDefaults.sanitizeForSave(body);
         PlatformMinimums.token(platformTokenPolicy(), sanitized).requireNothingRaised();
         saveAppMap(applicationId, "token_policy", sanitized);
@@ -205,8 +205,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPublicManifestConfigSummary(UUID applicationId) {
-        requireExposed("public-manifest");
         requireApplication(applicationId);
+        requireExposed("public-manifest", applicationId);
         Map<String, Object> platform = platformSettings.get("public_manifest_defaults");
         if (platform == null || platform.isEmpty()) {
             platform = PublicManifestDefaults.platformDefaults();
@@ -221,44 +221,57 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getUserDirectory(UUID applicationId) {
-        requireExposed("user-directory");
         requireApplication(applicationId);
+        requireExposed("user-directory", applicationId);
         Map<String, Object> platform = platformSettings.get("user_directory");
         if (platform == null || platform.isEmpty()) {
             platform = UserDirectoryDefaults.platformDefaults();
         }
         Map<String, Object> merged = UserDirectoryDefaults.merge(platform, getAppMap(applicationId, "user_directory").orElse(Map.of()));
-        applyLdapFeatureGate(applicationId, merged);
         merged.put("scope", "application");
         merged.put("inheritsPlatformDefaults", !hasOverride(applicationId, "user_directory"));
         return merged;
     }
 
     public Map<String, Object> saveUserDirectory(UUID applicationId, Map<String, Object> body) {
-        requireExposed("user-directory");
         requireApplication(applicationId);
-        Map<String, Object> sanitized = new LinkedHashMap<>(body);
-        applyLdapFeatureGate(applicationId, sanitized);
+        requireExposed("user-directory", applicationId);
+        // Only the import/export switches and CSV/Excel sources (anything else, such as old LDAP fields, is dropped).
+        Map<String, Object> sanitized = UserDirectoryDefaults.merge(UserDirectoryDefaults.platformDefaults(), body);
         saveAppMap(applicationId, "user_directory", sanitized);
         return getUserDirectory(applicationId);
     }
 
-    /** LDAP import is not available yet: the LDAP source always reads as off. */
-    private void applyLdapFeatureGate(UUID applicationId, Map<String, Object> config) {
-        Object sourcesObj = config.get("sources");
-        if (!(sourcesObj instanceof Map<?, ?> sources)) {
-            return;
+
+    /** Integration › Token claims: this application's own claims in its tokens. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getTokenClaims(UUID applicationId) {
+        requireApplication(applicationId);
+        Map<String, Object> out = new LinkedHashMap<>();
+        Object raw = getAppMap(applicationId, TokenClaimMappings.SETTING_KEY).map(m -> m.get("claims")).orElse(List.of());
+        out.put("claims", raw);
+        out.put("sources", new java.util.TreeSet<>(TokenClaimMappings.SOURCES));
+        return out;
+    }
+
+    public Map<String, Object> saveTokenClaims(UUID applicationId, Map<String, Object> body) {
+        requireApplication(applicationId);
+        List<Map<String, Object>> claims = TokenClaimMappings.sanitize(body != null ? body.get("claims") : null);
+        if (claims.isEmpty()) {
+            appSettings.findByApplicationIdAndKey(applicationId, TokenClaimMappings.SETTING_KEY).ifPresent(appSettings::delete);
+        } else {
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("claims", claims);
+            saveAppRaw(applicationId, TokenClaimMappings.SETTING_KEY, value);
         }
-        Object ldapObj = sources.get("ldap");
-        if (!(ldapObj instanceof Map<?, ?> ldap)) {
-            return;
-        }
-        Map<String, Object> ldapSource = new LinkedHashMap<>();
-        ldap.forEach((k, v) -> ldapSource.put(k.toString(), v));
-        ldapSource.put("enabled", false);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> sourcesMap = (Map<String, Object>) sourcesObj;
-        sourcesMap.put("ldap", ldapSource);
+        return getTokenClaims(applicationId);
+    }
+
+    /** For token issuance (no admin checks). */
+    @Transactional(readOnly = true)
+    public List<TokenClaimMappings.Claim> resolveTokenClaims(UUID applicationId) {
+        return TokenClaimMappings.parse(
+                getAppMap(applicationId, TokenClaimMappings.SETTING_KEY).map(m -> m.get("claims")).orElse(null));
     }
 
     @Transactional(readOnly = true)
@@ -288,8 +301,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getNotifications(UUID applicationId) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         Map<String, Object> merged = ApplicationNotificationDefaults.mergeNotifications(
                 getAppMap(applicationId, "notifications").orElse(null));
         merged.put("scope", "application");
@@ -298,16 +311,16 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveNotifications(UUID applicationId, Map<String, Object> body) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         saveAppMap(applicationId, "notifications", ApplicationNotificationDefaults.sanitizeNotifications(body));
         return getNotifications(applicationId);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getEmail(UUID applicationId) {
-        requireExposed("email");
         requireApplication(applicationId);
+        requireExposed("email", applicationId);
         Map<String, Object> merged =
                 ApplicationNotificationDefaults.mergeEmail(getAppMap(applicationId, "email").orElse(null));
         merged.put("scope", "application");
@@ -316,22 +329,22 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveEmail(UUID applicationId, Map<String, Object> body) {
-        requireExposed("email");
         requireApplication(applicationId);
+        requireExposed("email", applicationId);
         saveAppMap(applicationId, "email", ApplicationNotificationDefaults.sanitizeEmail(body));
         return getEmail(applicationId);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getSmtp(UUID applicationId) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         return smtpSettings.getPublicSettings(applicationId);
     }
 
     public Map<String, Object> saveSmtp(UUID applicationId, Map<String, Object> body) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         Map<String, Object> saved = smtpSettings.save(applicationId, body);
         mailSenderProvider.invalidate(applicationId);
         return saved;
@@ -339,14 +352,14 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getEmailTemplates(UUID applicationId) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         return emailTemplates.getTemplates(applicationId);
     }
 
     public Map<String, Object> saveEmailTemplates(UUID applicationId, Map<String, Object> body) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         return emailTemplates.saveTemplates(applicationId, body);
     }
 
@@ -357,8 +370,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> resetEmailTemplate(UUID applicationId, String templateKey) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         return emailTemplates.resetTemplate(applicationId, templateKey);
     }
 
@@ -369,15 +382,15 @@ public class ApplicationSettingsService {
             List<String> bcc,
             String templateKey,
             Map<String, String> customData) {
-        requireExposed("notifications");
         requireApplication(applicationId);
+        requireExposed("notifications", applicationId);
         emailService.sendTestEmail(applicationId, to, cc, bcc, templateKey, customData);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getSms(UUID applicationId) {
-        requireExposed("sms");
         requireApplication(applicationId);
+        requireExposed("sms", applicationId);
         if (hasOverride(applicationId, "sms")) {
             return applicationSmsSettings.getPublicSettings(applicationId);
         }
@@ -388,37 +401,37 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveSms(UUID applicationId, Map<String, Object> body) {
-        requireExposed("sms");
         requireApplication(applicationId);
+        requireExposed("sms", applicationId);
         return applicationSmsSettings.save(applicationId, body);
     }
 
     public void sendTestSms(UUID applicationId, String toE164) {
-        requireExposed("sms");
         requireApplication(applicationId);
+        requireExposed("sms", applicationId);
         smsNotification.sendTest(applicationId, toE164);
     }
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAuthMethods(UUID applicationId) {
-        requireExposed("auth-methods");
         requireApplication(applicationId);
+        requireExposed("auth-methods", applicationId);
         List<Map<String, Object>> merged = resolveAuthMethods(applicationId);
         merged.forEach(m -> m.put("inheritsPlatformDefaults", !hasOverride(applicationId, "auth_methods")));
         return merged;
     }
 
     public List<Map<String, Object>> saveAuthMethods(UUID applicationId, List<Map<String, Object>> body) {
-        requireExposed("auth-methods");
         requireApplication(applicationId);
+        requireExposed("auth-methods", applicationId);
         saveAppRaw(applicationId, "auth_methods", withinPlatformMethods(stripMeta(copyList(body))));
         return getAuthMethods(applicationId);
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> getMfaTabState(UUID applicationId) {
-        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE, applicationId);
         Map<String, Object> appRow = getAppMap(applicationId, AuthMfaTabDefaults.SETTING_KEY).orElse(Map.of());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("platformExposed", true);
@@ -427,8 +440,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveMfaTabEnabled(UUID applicationId, boolean enabled) {
-        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE, applicationId);
         Map<String, Object> next = new HashMap<>(AuthMfaTabDefaults.platformDefaults());
         next.putAll(getAppMap(applicationId, AuthMfaTabDefaults.SETTING_KEY).orElse(Map.of()));
         next.put("tabEnabled", enabled);
@@ -438,8 +451,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPasswordPolicy(UUID applicationId) {
-        requireExposed("password-policy");
         requireApplication(applicationId);
+        requireExposed("password-policy", applicationId);
         boolean inherits = !hasOverride(applicationId, "password_policy");
         Map<String, Object> merged = new HashMap<>(resolvePasswordPolicy(applicationId));
         merged.put("scope", "application");
@@ -450,8 +463,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> savePasswordPolicy(UUID applicationId, Map<String, Object> body) {
-        requireExposed("password-policy");
         requireApplication(applicationId);
+        requireExposed("password-policy", applicationId);
         Map<String, Object> sanitized = PasswordPolicySanitizer.sanitize(body);
         PlatformMinimums.password(authSettings.getPasswordPolicy(), sanitized).requireNothingRaised();
         saveAppMap(applicationId, "password_policy", sanitized);
@@ -480,8 +493,8 @@ public class ApplicationSettingsService {
      * tenant), so later platform or tenant changes still apply. Values the levels above lock are refused.
      */
     public Map<String, Object> saveMfaPolicy(UUID applicationId, Map<String, Object> body) {
-        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE);
         requireApplication(applicationId);
+        requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE, applicationId);
         if (!twoStepPolicy.hasOwnSettings(applicationId)) {
             throw new IllegalArgumentException(
                     "Turn on Two Factor Authentication under this application's Settings → Feature flags first.");
@@ -514,8 +527,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getVerificationPolicy(UUID applicationId) {
-        requireExposed("verification-policy");
         requireApplication(applicationId);
+        requireExposed("verification-policy", applicationId);
         boolean inherits = !hasOverride(applicationId, "verification_policy");
         // What sign-in enforces: the app's override, otherwise the platform policy (not the code defaults).
         Map<String, Object> merged = new HashMap<>(resolveVerificationPolicy(applicationId));
@@ -525,8 +538,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveVerificationPolicy(UUID applicationId, Map<String, Object> body) {
-        requireExposed("verification-policy");
         requireApplication(applicationId);
+        requireExposed("verification-policy", applicationId);
         Map<String, Object> sanitized = VerificationPolicyDefaults.sanitizeForSave(body);
         PlatformMinimums.verification(platformVerificationPolicy(), sanitized).requireNothingRaised();
         saveAppMap(applicationId, "verification_policy", sanitized);
@@ -535,15 +548,15 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getFeatureFlags(UUID applicationId) {
-        requireExposed("feature-flags");
         requireApplication(applicationId);
+        requireExposed("feature-flags", applicationId);
         List<Map<String, Object>> platform = authSettings.getFeatureFlags();
         return FeatureFlagMerge.forApplicationAdmin(platform, getAppRaw(applicationId, "feature_flags"));
     }
 
     public List<Map<String, Object>> saveFeatureFlags(UUID applicationId, List<Map<String, Object>> body) {
-        requireExposed("feature-flags");
         requireApplication(applicationId);
+        requireExposed("feature-flags", applicationId);
         List<Map<String, Object>> platform = authSettings.getFeatureFlags();
         List<Map<String, Object>> sanitized = FeatureFlagSanitizer.sanitize(stripMeta(copyList(body)));
         // Only application features can be overridden; console controls stay platform decisions.
@@ -555,8 +568,8 @@ public class ApplicationSettingsService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getAppearance(UUID applicationId) {
-        requireExposed("appearance");
         requireApplication(applicationId);
+        requireExposed("appearance", applicationId);
         Map<String, Object> merged =
                 ClientAppearanceDefaults.merge(
                         ClientAppearanceDefaults.platformDefaults(),
@@ -567,8 +580,8 @@ public class ApplicationSettingsService {
     }
 
     public Map<String, Object> saveAppearance(UUID applicationId, Map<String, Object> body) {
-        requireExposed("appearance");
         requireApplication(applicationId);
+        requireExposed("appearance", applicationId);
         Map<String, Object> appearance = ClientAppearanceDefaults.stripMeta(body);
         appearance.keySet().retainAll(ClientAppearanceDefaults.PUBLIC_MANIFEST_KEYS);
         ClientAppearanceDefaults.requireValid(appearance);
@@ -593,7 +606,7 @@ public class ApplicationSettingsService {
         sections.put("email", "email");
         sections.put("sms", "sms");
         for (var entry : sections.entrySet()) {
-            if (exposure.isExposed(entry.getKey())) {
+            if (exposure.isExposed(entry.getKey(), applicationId)) {
                 sources.put(entry.getKey(), policySource(applicationId, entry.getValue()));
             }
         }
@@ -606,7 +619,7 @@ public class ApplicationSettingsService {
         if (settingKey == null) {
             throw new IllegalArgumentException("Unknown settings section: " + exposureKey);
         }
-        requireExposed(exposureKey);
+        requireExposed(exposureKey, applicationId);
         return policySource(applicationId, settingKey);
     }
 
@@ -616,7 +629,7 @@ public class ApplicationSettingsService {
         if (settingKey == null) {
             throw new IllegalArgumentException("Unknown settings section: " + exposureKey);
         }
-        requireExposed(exposureKey);
+        requireExposed(exposureKey, applicationId);
         if ("platform".equalsIgnoreCase(source)) {
             clearOverride(applicationId, settingKey);
             return "platform";
@@ -632,7 +645,7 @@ public class ApplicationSettingsService {
         requireApplication(applicationId);
         String exposureKey = SettingsSectionKeys.exposureForSettingKey(key);
         if (exposureKey != null) {
-            requireExposed(exposureKey);
+            requireExposed(exposureKey, applicationId);
         }
         appSettings
                 .findByApplicationIdAndKey(applicationId, key)
@@ -798,6 +811,13 @@ public class ApplicationSettingsService {
             // Overrides are stored as differences, so "own policy" starts empty and inherits until changed.
             case "mfa_policy" -> saveAppMap(applicationId, settingKey, new HashMap<>());
             default -> throw new IllegalArgumentException("Unsupported setting key: " + settingKey);
+        }
+    }
+
+    private void requireExposed(String sectionKey, UUID applicationId) {
+        if (!exposure.isExposed(sectionKey, applicationId)) {
+            throw new IllegalArgumentException(
+                    "This setting section is not enabled for this application. Enable it under Platform settings → For applications.");
         }
     }
 
@@ -1094,6 +1114,9 @@ public class ApplicationSettingsService {
     /** Origins of this application's OAuth client redirect and post-logout addresses. */
     private Set<String> trustedClientOrigins(UUID applicationId) {
         List<String> uris = new ArrayList<>();
+        if (oauthClients == null) {
+            return java.util.Set.of();
+        }
         for (var client : oauthClients.getObject().findByApplicationIdOrderByCreatedAtDesc(applicationId)) {
             uris.addAll(client.getRedirectUris());
             uris.addAll(client.getPostLogoutRedirectUris());

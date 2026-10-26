@@ -4,7 +4,7 @@
 
 > Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
 
-Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags) and configuration files (export, preview, apply).
+Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).
 
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
@@ -13,35 +13,45 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [12.1 Platform settings](#121-platform-settings)
   - [GET `/api/admin/v1/settings/app-exposure`](#1211-get-app-exposure) — Get app exposure
   - [PUT `/api/admin/v1/settings/app-exposure`](#1212-update-app-exposure) — Update app exposure
-  - [GET `/api/admin/v1/settings/appearance`](#1213-get-appearance) — Get appearance
-  - [PUT `/api/admin/v1/settings/appearance`](#1214-update-appearance) — Update appearance
-  - [GET `/api/admin/v1/settings/auth-methods`](#1215-list-auth-methods) — List auth methods
-  - [PUT `/api/admin/v1/settings/auth-methods`](#1216-update-auth-methods) — Update auth methods
-  - [GET `/api/admin/v1/settings/email`](#1217-get-email) — Get email
-  - [PUT `/api/admin/v1/settings/email`](#1218-update-email) — Update email
-  - [GET `/api/admin/v1/settings/feature-flags`](#1219-list-feature-flags) — List feature flags
-  - [PUT `/api/admin/v1/settings/feature-flags`](#12110-update-feature-flags) — Update feature flags
-  - [GET `/api/admin/v1/settings/mfa-policy`](#12111-get-mfa-policy) — Get MFA policy
-  - [PUT `/api/admin/v1/settings/mfa-policy`](#12112-update-mfa-policy) — Update MFA policy
-  - [GET `/api/admin/v1/settings/notifications`](#12113-list-notifications) — List notifications
-  - [PUT `/api/admin/v1/settings/notifications`](#12114-update-notifications) — Update notifications
-  - [GET `/api/admin/v1/settings/password-policy`](#12115-get-password-policy) — Get password policy
-  - [PUT `/api/admin/v1/settings/password-policy`](#12116-update-password-policy) — Update password policy
-  - [GET `/api/admin/v1/settings/platform-features`](#12117-list-platform-features) — List platform features
-  - [PUT `/api/admin/v1/settings/platform-features`](#12118-update-platform-features) — Update platform features
-  - [GET `/api/admin/v1/settings/sms`](#12119-get-sms) — Get SMS
-  - [PUT `/api/admin/v1/settings/sms`](#12120-update-sms) — Update SMS
-  - [POST `/api/admin/v1/settings/sms/test`](#12121-send-a-test-sms) — Send a test SMS
-  - [GET `/api/admin/v1/settings/smtp`](#12122-get-smtp) — Get SMTP
-  - [PUT `/api/admin/v1/settings/smtp`](#12123-update-smtp) — Update SMTP
-  - [GET `/api/admin/v1/settings/token-policy`](#12124-get-token-policy) — Get token policy
-  - [PUT `/api/admin/v1/settings/token-policy`](#12125-update-token-policy) — Update token policy
-  - [GET `/api/admin/v1/settings/verification-policy`](#12126-get-verification-policy) — Get verification policy
-  - [PUT `/api/admin/v1/settings/verification-policy`](#12127-update-verification-policy) — Update verification policy
-- [12.2 Configuration as code](#122-configuration-as-code)
-  - [POST `/api/admin/v1/config/import`](#1221-preview-or-apply-a-configuration-file) — Preview or apply a configuration file
-  - [GET `/api/admin/v1/config/platform/export`](#1222-export-the-platform-configuration) — Export the platform configuration
-  - [GET `/api/admin/v1/config/tenants/{slug}/export`](#1223-export-a-tenants-configuration) — Export a tenant's configuration
+  - [GET `/api/admin/v1/settings/app-exposure/exceptions`](#1213-list-exceptions) — List exceptions
+  - [PUT `/api/admin/v1/settings/app-exposure/exceptions/{applicationId}`](#1214-update-exception) — Update exception
+  - [GET `/api/admin/v1/settings/appearance`](#1215-get-appearance) — Get appearance
+  - [PUT `/api/admin/v1/settings/appearance`](#1216-update-appearance) — Update appearance
+  - [GET `/api/admin/v1/settings/auth-methods`](#1217-list-auth-methods) — List auth methods
+  - [PUT `/api/admin/v1/settings/auth-methods`](#1218-update-auth-methods) — Update auth methods
+  - [GET `/api/admin/v1/settings/email`](#1219-get-email) — Get email
+  - [PUT `/api/admin/v1/settings/email`](#12110-update-email) — Update email
+  - [GET `/api/admin/v1/settings/feature-flags`](#12111-list-feature-flags) — List feature flags
+  - [PUT `/api/admin/v1/settings/feature-flags`](#12112-update-feature-flags) — Update feature flags
+  - [GET `/api/admin/v1/settings/mfa-policy`](#12113-get-mfa-policy) — Get MFA policy
+  - [PUT `/api/admin/v1/settings/mfa-policy`](#12114-update-mfa-policy) — Update MFA policy
+  - [GET `/api/admin/v1/settings/notifications`](#12115-list-notifications) — List notifications
+  - [PUT `/api/admin/v1/settings/notifications`](#12116-update-notifications) — Update notifications
+  - [GET `/api/admin/v1/settings/password-policy`](#12117-get-password-policy) — Get password policy
+  - [PUT `/api/admin/v1/settings/password-policy`](#12118-update-password-policy) — Update password policy
+  - [GET `/api/admin/v1/settings/platform-features`](#12119-list-platform-features) — List platform features
+  - [PUT `/api/admin/v1/settings/platform-features`](#12120-update-platform-features) — Update platform features
+  - [GET `/api/admin/v1/settings/sms`](#12121-get-sms) — Get SMS
+  - [PUT `/api/admin/v1/settings/sms`](#12122-update-sms) — Update SMS
+  - [POST `/api/admin/v1/settings/sms/test`](#12123-send-a-test-sms) — Send a test SMS
+  - [GET `/api/admin/v1/settings/smtp`](#12124-get-smtp) — Get SMTP
+  - [PUT `/api/admin/v1/settings/smtp`](#12125-update-smtp) — Update SMTP
+  - [GET `/api/admin/v1/settings/token-policy`](#12126-get-token-policy) — Get token policy
+  - [PUT `/api/admin/v1/settings/token-policy`](#12127-update-token-policy) — Update token policy
+  - [GET `/api/admin/v1/settings/verification-policy`](#12128-get-verification-policy) — Get verification policy
+  - [PUT `/api/admin/v1/settings/verification-policy`](#12129-update-verification-policy) — Update verification policy
+- [12.2 Attack protection](#122-attack-protection)
+  - [GET `/api/admin/v1/settings/attack-protection`](#1221-get-attack-protection) — Get attack protection
+  - [PUT `/api/admin/v1/settings/attack-protection`](#1222-update-attack-protection) — Update attack protection
+  - [GET `/api/v1/attack-protection`](#1223-get-the-captcha-settings-for-hosted-pages-public) — Get the CAPTCHA settings for hosted pages (public)
+- [12.3 Log streams](#123-log-streams)
+  - [GET `/api/admin/v1/settings/log-streams`](#1231-list-log-streams) — List log streams
+  - [PUT `/api/admin/v1/settings/log-streams`](#1232-update-log-streams) — Update log streams
+  - [POST `/api/admin/v1/settings/log-streams/{streamId}/test`](#1233-send-a-test-entry-to-a-log-stream) — Send a test entry to a log stream
+- [12.4 Configuration as code](#124-configuration-as-code)
+  - [POST `/api/admin/v1/config/import`](#1241-preview-or-apply-a-configuration-file) — Preview or apply a configuration file
+  - [GET `/api/admin/v1/config/platform/export`](#1242-export-the-platform-configuration) — Export the platform configuration
+  - [GET `/api/admin/v1/config/tenants/{slug}/export`](#1243-export-a-tenants-configuration) — Export a tenant's configuration
 
 ## 12.1 Platform settings
 
@@ -83,7 +93,49 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/app-exposure" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.3 Get appearance
+### 12.1.3 List exceptions
+
+`GET /api/admin/v1/settings/app-exposure/exceptions`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/settings/app-exposure/exceptions" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.1.4 Update exception
+
+`PUT /api/admin/v1/settings/app-exposure/exceptions/{applicationId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/app-exposure/exceptions/{applicationId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.1.5 Get appearance
 
 `GET /api/admin/v1/settings/appearance`
 
@@ -100,7 +152,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/appearance" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.4 Update appearance
+### 12.1.6 Update appearance
 
 `PUT /api/admin/v1/settings/appearance`
 
@@ -119,7 +171,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/appearance" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.5 List auth methods
+### 12.1.7 List auth methods
 
 `GET /api/admin/v1/settings/auth-methods`
 
@@ -136,7 +188,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/auth-methods" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.6 Update auth methods
+### 12.1.8 Update auth methods
 
 `PUT /api/admin/v1/settings/auth-methods`
 
@@ -159,7 +211,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/auth-methods" \
 ]'
 ```
 
-### 12.1.7 Get email
+### 12.1.9 Get email
 
 `GET /api/admin/v1/settings/email`
 
@@ -176,7 +228,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/email" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.8 Update email
+### 12.1.10 Update email
 
 `PUT /api/admin/v1/settings/email`
 
@@ -195,7 +247,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/email" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.9 List feature flags
+### 12.1.11 List feature flags
 
 `GET /api/admin/v1/settings/feature-flags`
 
@@ -212,7 +264,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/feature-flags" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.10 Update feature flags
+### 12.1.12 Update feature flags
 
 `PUT /api/admin/v1/settings/feature-flags`
 
@@ -235,7 +287,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/feature-flags" \
 ]'
 ```
 
-### 12.1.11 Get MFA policy
+### 12.1.13 Get MFA policy
 
 `GET /api/admin/v1/settings/mfa-policy`
 
@@ -252,7 +304,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/mfa-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.12 Update MFA policy
+### 12.1.14 Update MFA policy
 
 `PUT /api/admin/v1/settings/mfa-policy`
 
@@ -271,7 +323,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/mfa-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.13 List notifications
+### 12.1.15 List notifications
 
 `GET /api/admin/v1/settings/notifications`
 
@@ -288,7 +340,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/notifications" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.14 Update notifications
+### 12.1.16 Update notifications
 
 `PUT /api/admin/v1/settings/notifications`
 
@@ -307,7 +359,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/notifications" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.15 Get password policy
+### 12.1.17 Get password policy
 
 `GET /api/admin/v1/settings/password-policy`
 
@@ -324,7 +376,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/password-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.16 Update password policy
+### 12.1.18 Update password policy
 
 `PUT /api/admin/v1/settings/password-policy`
 
@@ -343,7 +395,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/password-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.17 List platform features
+### 12.1.19 List platform features
 
 `GET /api/admin/v1/settings/platform-features`
 
@@ -360,7 +412,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/platform-features" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.18 Update platform features
+### 12.1.20 Update platform features
 
 `PUT /api/admin/v1/settings/platform-features`
 
@@ -379,7 +431,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/platform-features" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.19 Get SMS
+### 12.1.21 Get SMS
 
 `GET /api/admin/v1/settings/sms`
 
@@ -396,7 +448,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/sms" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.20 Update SMS
+### 12.1.22 Update SMS
 
 `PUT /api/admin/v1/settings/sms`
 
@@ -415,7 +467,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/sms" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.21 Send a test SMS
+### 12.1.23 Send a test SMS
 
 `POST /api/admin/v1/settings/sms/test`
 
@@ -442,7 +494,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/settings/sms/test" \
 }'
 ```
 
-### 12.1.22 Get SMTP
+### 12.1.24 Get SMTP
 
 `GET /api/admin/v1/settings/smtp`
 
@@ -459,7 +511,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/smtp" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.23 Update SMTP
+### 12.1.25 Update SMTP
 
 `PUT /api/admin/v1/settings/smtp`
 
@@ -478,7 +530,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/smtp" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.24 Get token policy
+### 12.1.26 Get token policy
 
 `GET /api/admin/v1/settings/token-policy`
 
@@ -495,7 +547,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/token-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.25 Update token policy
+### 12.1.27 Update token policy
 
 `PUT /api/admin/v1/settings/token-policy`
 
@@ -514,7 +566,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/token-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.26 Get verification policy
+### 12.1.28 Get verification policy
 
 `GET /api/admin/v1/settings/verification-policy`
 
@@ -531,7 +583,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/verification-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.1.27 Update verification policy
+### 12.1.29 Update verification policy
 
 `PUT /api/admin/v1/settings/verification-policy`
 
@@ -550,11 +602,130 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/verification-policy" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 12.2 Configuration as code
+## 12.2 Attack protection
+
+Bot protection (CAPTCHA) and IP rules
+
+### 12.2.1 Get attack protection
+
+`GET /api/admin/v1/settings/attack-protection`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/settings/attack-protection" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.2.2 Update attack protection
+
+`PUT /api/admin/v1/settings/attack-protection`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/attack-protection" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.2.3 Get the CAPTCHA settings for hosted pages (public)
+
+`GET /api/v1/attack-protection`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/attack-protection"
+```
+
+## 12.3 Log streams
+
+Audit log streaming to a SIEM and log retention
+
+### 12.3.1 List log streams
+
+`GET /api/admin/v1/settings/log-streams`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/settings/log-streams" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.3.2 Update log streams
+
+`PUT /api/admin/v1/settings/log-streams`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/log-streams" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.3.3 Send a test entry to a log stream
+
+`POST /api/admin/v1/settings/log-streams/{streamId}/test`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `streamId` | path | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/settings/log-streams/{streamId}/test" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 12.4 Configuration as code
 
 Export a tenant to a file; preview and apply a file
 
-### 12.2.1 Preview or apply a configuration file
+### 12.4.1 Preview or apply a configuration file
 
 `POST /api/admin/v1/config/import`
 
@@ -582,7 +753,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/config/import" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.2.2 Export the platform configuration
+### 12.4.2 Export the platform configuration
 
 `GET /api/admin/v1/config/platform/export`
 
@@ -607,7 +778,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/config/platform/export" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 12.2.3 Export a tenant's configuration
+### 12.4.3 Export a tenant's configuration
 
 `GET /api/admin/v1/config/tenants/{slug}/export`
 

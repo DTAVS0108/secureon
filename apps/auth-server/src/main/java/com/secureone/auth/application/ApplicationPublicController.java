@@ -60,6 +60,15 @@ public class ApplicationPublicController {
         return manifest.getPublicManifest(applicationId);
     }
 
+    /**
+     * The application's look for SecureOne's hosted pages (sign-in, sign-up, password reset…): name, logo, colours
+     * and default language. Always public: these pages need it before anyone signs in, and it holds nothing secret.
+     */
+    @GetMapping("/{applicationId}/branding")
+    public Map<String, Object> branding(@PathVariable UUID applicationId) {
+        return manifest.branding(applicationId);
+    }
+
     /** Whether self-service sign-up is available (for integrated apps such as e-commerce clients). */
     @GetMapping("/{applicationId}/signup")
     public Map<String, Object> signupOptions(@PathVariable UUID applicationId) {

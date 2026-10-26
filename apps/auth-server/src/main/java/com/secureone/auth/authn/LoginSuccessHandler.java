@@ -33,6 +33,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.session.NewDeviceAlertService> newDeviceAlerts;
+
+
     private static final Logger log = LoggerFactory.getLogger(LoginSuccessHandler.class);
 
     private final RequestCache requestCache;
@@ -118,6 +122,15 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             // Enrolls only when the app allows self registration; OAuth authorize enforces the result.
             access.admit(applicationId, account.getId());
         }
+        boolean newDevice = false;
+        if (newDeviceAlerts != null) {
+            try {
+                newDevice = newDeviceAlerts.getObject().isNewDevice(
+                        account.getId(), request.getHeader("User-Agent"), request.getRemoteAddr());
+            } catch (RuntimeException ignored) {
+                // Never blocks sign-in.
+            }
+        }
         loginHistory.record(
                 account,
                 applicationId,
@@ -134,6 +147,10 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
                 AuthRequestContext.formatSessionRef(request),
                 username);
         publishLoginSucceededWebhook(account, applicationId, request);
+        if (newDevice) {
+            newDeviceAlerts.getObject().alert(applicationId, account, request.getHeader("User-Agent"),
+                    com.secureone.auth.logging.ClientIpResolver.resolve(request));
+        }
     }
 
     private void publishLoginSucceededWebhook(UserAccount account, UUID applicationId, HttpServletRequest request) {

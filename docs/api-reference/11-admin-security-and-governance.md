@@ -4,67 +4,116 @@
 
 > Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
 
-Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log and sessions.
+Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log (search and CSV export), sessions and the console overview.
 
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
 
-- [11.1 Platform operators](#111-platform-operators)
-  - [GET `/api/admin/v1/platform-operators`](#1111-list-platform-operators) — List platform operators
-  - [POST `/api/admin/v1/platform-operators`](#1112-create-platform-operator) — Create platform operator
-  - [DELETE `/api/admin/v1/platform-operators/{userId}`](#1113-delete-platform-operator) — Delete platform operator
-- [11.2 Access review](#112-access-review)
-  - [GET `/api/admin/v1/access-review`](#1121-get-access-review) — Get access review
-  - [POST `/api/admin/v1/access-review/complete`](#1122-record-a-completed-access-review-platform) — Record a completed access review (platform)
-  - [GET `/api/admin/v1/tenants/{tenantId}/access-review`](#1123-get-access-review) — Get access review
-  - [POST `/api/admin/v1/tenants/{tenantId}/access-review/complete`](#1124-record-a-completed-access-review-tenant) — Record a completed access review (tenant)
-- [11.3 Platform RBAC](#113-platform-rbac)
-  - [GET `/api/admin/v1/permissions`](#1131-list-permissions) — List permissions
-  - [POST `/api/admin/v1/permissions`](#1132-create-permission) — Create permission
-  - [GET `/api/admin/v1/permissions/{id}`](#1133-get-permission) — Get permission
-  - [PUT `/api/admin/v1/permissions/{id}`](#1134-update-permission) — Update permission
-  - [DELETE `/api/admin/v1/permissions/{id}`](#1135-delete-permission) — Delete permission
-  - [GET `/api/admin/v1/roles`](#1136-list-roles) — List roles
-  - [POST `/api/admin/v1/roles`](#1137-create-role) — Create role
-  - [GET `/api/admin/v1/roles/{id}`](#1138-get-role) — Get role
-  - [PUT `/api/admin/v1/roles/{id}`](#1139-update-role) — Update role
-  - [DELETE `/api/admin/v1/roles/{id}`](#11310-delete-role) — Delete role
-- [11.4 Federation](#114-federation)
-  - [GET `/api/admin/v1/applications/{applicationId}/federation/providers`](#1141-list-providers) — List providers
-  - [POST `/api/admin/v1/applications/{applicationId}/federation/providers`](#1142-create-provider) — Create provider
-  - [PUT `/api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`](#1143-update-provider) — Update provider
-  - [DELETE `/api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`](#1144-remove-provider) — Remove provider
-  - [GET `/api/admin/v1/tenants/{tenantId}/federation/providers`](#1145-list-providers) — List providers
-  - [POST `/api/admin/v1/tenants/{tenantId}/federation/providers`](#1146-create-provider) — Create provider
-  - [PUT `/api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`](#1147-update-provider) — Update provider
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`](#1148-remove-provider) — Remove provider
-- [11.5 Service accounts](#115-service-accounts)
-  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts`](#1151-list-service-accounts) — List service accounts
-  - [POST `/api/admin/v1/tenants/{tenantId}/service-accounts`](#1152-create-service-account) — Create service account
-  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1153-get-service-account) — Get service account
-  - [PUT `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1154-update-service-account) — Update service account
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1155-remove-service-account) — Remove service account
-  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`](#1156-list-keys) — List keys
-  - [POST `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`](#1157-create-key) — Create key
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys/{keyId}`](#1158-remove-key) — Remove key
-- [11.6 Webhooks](#116-webhooks)
-  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks`](#1161-list-webhooks) — List webhooks
-  - [POST `/api/admin/v1/tenants/{tenantId}/webhooks`](#1162-create-webhook) — Create webhook
-  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1163-get-webhook) — Get webhook
-  - [PUT `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1164-update-webhook) — Update webhook
-  - [DELETE `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1165-remove-webhook) — Remove webhook
-  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries`](#1166-list-deliveries) — List deliveries
-- [11.7 Audit](#117-audit)
-  - [GET `/api/admin/v1/audit`](#1171-search-the-audit-log) — Search the audit log
-- [11.8 Sessions](#118-sessions)
-  - [GET `/api/admin/v1/sessions`](#1181-list-sessions) — List sessions
+- [11.1 Overview](#111-overview)
+  - [GET `/api/admin/v1/overview`](#1111-get-overview) — Get overview
+  - [GET `/api/admin/v1/tenants/{tenantId}/overview`](#1112-get-overview) — Get overview
+- [11.2 Platform operators](#112-platform-operators)
+  - [GET `/api/admin/v1/platform-operators`](#1121-list-platform-operators) — List platform operators
+  - [POST `/api/admin/v1/platform-operators`](#1122-create-platform-operator) — Create platform operator
+  - [DELETE `/api/admin/v1/platform-operators/{userId}`](#1123-delete-platform-operator) — Delete platform operator
+- [11.3 Access review](#113-access-review)
+  - [GET `/api/admin/v1/access-review`](#1131-get-access-review) — Get access review
+  - [POST `/api/admin/v1/access-review/complete`](#1132-record-a-completed-access-review-platform) — Record a completed access review (platform)
+  - [GET `/api/admin/v1/tenants/{tenantId}/access-review`](#1133-get-access-review) — Get access review
+  - [POST `/api/admin/v1/tenants/{tenantId}/access-review/complete`](#1134-record-a-completed-access-review-tenant) — Record a completed access review (tenant)
+- [11.4 Platform RBAC](#114-platform-rbac)
+  - [GET `/api/admin/v1/permissions`](#1141-list-permissions) — List permissions
+  - [POST `/api/admin/v1/permissions`](#1142-create-permission) — Create permission
+  - [GET `/api/admin/v1/permissions/{id}`](#1143-get-permission) — Get permission
+  - [PUT `/api/admin/v1/permissions/{id}`](#1144-update-permission) — Update permission
+  - [DELETE `/api/admin/v1/permissions/{id}`](#1145-delete-permission) — Delete permission
+  - [GET `/api/admin/v1/roles`](#1146-list-roles) — List roles
+  - [POST `/api/admin/v1/roles`](#1147-create-role) — Create role
+  - [GET `/api/admin/v1/roles/{id}`](#1148-get-role) — Get role
+  - [PUT `/api/admin/v1/roles/{id}`](#1149-update-role) — Update role
+  - [DELETE `/api/admin/v1/roles/{id}`](#11410-delete-role) — Delete role
+- [11.5 Federation](#115-federation)
+  - [GET `/api/admin/v1/applications/{applicationId}/federation/providers`](#1151-list-providers) — List providers
+  - [POST `/api/admin/v1/applications/{applicationId}/federation/providers`](#1152-create-provider) — Create provider
+  - [PUT `/api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`](#1153-update-provider) — Update provider
+  - [DELETE `/api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`](#1154-remove-provider) — Remove provider
+  - [GET `/api/admin/v1/tenants/{tenantId}/federation/providers`](#1155-list-providers) — List providers
+  - [POST `/api/admin/v1/tenants/{tenantId}/federation/providers`](#1156-create-provider) — Create provider
+  - [PUT `/api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`](#1157-update-provider) — Update provider
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`](#1158-remove-provider) — Remove provider
+- [11.6 Service accounts](#116-service-accounts)
+  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts`](#1161-list-service-accounts) — List service accounts
+  - [POST `/api/admin/v1/tenants/{tenantId}/service-accounts`](#1162-create-service-account) — Create service account
+  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1163-get-service-account) — Get service account
+  - [PUT `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1164-update-service-account) — Update service account
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}`](#1165-remove-service-account) — Remove service account
+  - [GET `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`](#1166-list-keys) — List keys
+  - [POST `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`](#1167-create-key) — Create key
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys/{keyId}`](#1168-remove-key) — Remove key
+- [11.7 Webhooks](#117-webhooks)
+  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks`](#1171-list-webhooks) — List webhooks
+  - [POST `/api/admin/v1/tenants/{tenantId}/webhooks`](#1172-create-webhook) — Create webhook
+  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/events`](#1173-list-events) — List events
+  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1174-get-webhook) — Get webhook
+  - [PUT `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1175-update-webhook) — Update webhook
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1176-remove-webhook) — Remove webhook
+  - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries`](#1177-list-deliveries) — List deliveries
+- [11.8 Audit](#118-audit)
+  - [GET `/api/admin/v1/audit`](#1181-search-the-audit-log) — Search the audit log
+  - [GET `/api/admin/v1/audit/export`](#1182-export-the-audit-log-as-csv) — Export the audit log as CSV
+- [11.9 Sessions](#119-sessions)
+  - [GET `/api/admin/v1/sessions`](#1191-list-sessions) — List sessions
 
-## 11.1 Platform operators
+## 11.1 Overview
+
+Console home: sign-ins, active users, two-factor use, security events
+
+### 11.1.1 Get overview
+
+`GET /api/admin/v1/overview`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/overview" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.1.2 Get overview
+
+`GET /api/admin/v1/tenants/{tenantId}/overview`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/overview" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 11.2 Platform operators
 
 Named accounts that hold the platform super admin role
 
-### 11.1.1 List platform operators
+### 11.2.1 List platform operators
 
 `GET /api/admin/v1/platform-operators`
 
@@ -81,7 +130,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/platform-operators" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.1.2 Create platform operator
+### 11.2.2 Create platform operator
 
 `POST /api/admin/v1/platform-operators`
 
@@ -112,7 +161,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/platform-operators" \
 }'
 ```
 
-### 11.1.3 Delete platform operator
+### 11.2.3 Delete platform operator
 
 `DELETE /api/admin/v1/platform-operators/{userId}`
 
@@ -135,11 +184,11 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/platform-operators/{userId}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.2 Access review
+## 11.3 Access review
 
 Who holds console and platform roles, with last use and MFA
 
-### 11.2.1 Get access review
+### 11.3.1 Get access review
 
 `GET /api/admin/v1/access-review`
 
@@ -156,7 +205,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/access-review" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.2.2 Record a completed access review (platform)
+### 11.3.2 Record a completed access review (platform)
 
 `POST /api/admin/v1/access-review/complete`
 
@@ -185,7 +234,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/access-review/complete" \
 }'
 ```
 
-### 11.2.3 Get access review
+### 11.3.3 Get access review
 
 `GET /api/admin/v1/tenants/{tenantId}/access-review`
 
@@ -208,7 +257,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-review" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.2.4 Record a completed access review (tenant)
+### 11.3.4 Record a completed access review (tenant)
 
 `POST /api/admin/v1/tenants/{tenantId}/access-review/complete`
 
@@ -243,11 +292,11 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/access-review/co
 }'
 ```
 
-## 11.3 Platform RBAC
+## 11.4 Platform RBAC
 
 Platform-wide roles and permissions
 
-### 11.3.1 List permissions
+### 11.4.1 List permissions
 
 `GET /api/admin/v1/permissions`
 
@@ -270,7 +319,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/permissions?applicationId={applicationId}" 
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.3.2 Create permission
+### 11.4.2 Create permission
 
 `POST /api/admin/v1/permissions`
 
@@ -305,7 +354,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/permissions?applicationId={applicat
 }'
 ```
 
-### 11.3.3 Get permission
+### 11.4.3 Get permission
 
 `GET /api/admin/v1/permissions/{id}`
 
@@ -329,7 +378,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/permissions/{id}?applicationId={application
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.3.4 Update permission
+### 11.4.4 Update permission
 
 `PUT /api/admin/v1/permissions/{id}`
 
@@ -365,7 +414,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/permissions/{id}?applicationId={appl
 }'
 ```
 
-### 11.3.5 Delete permission
+### 11.4.5 Delete permission
 
 `DELETE /api/admin/v1/permissions/{id}`
 
@@ -389,7 +438,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/permissions/{id}?applicationId={a
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.3.6 List roles
+### 11.4.6 List roles
 
 `GET /api/admin/v1/roles`
 
@@ -413,7 +462,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/roles" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.3.7 Create role
+### 11.4.7 Create role
 
 `POST /api/admin/v1/roles`
 
@@ -456,7 +505,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/roles" \
 }'
 ```
 
-### 11.3.8 Get role
+### 11.4.8 Get role
 
 `GET /api/admin/v1/roles/{id}`
 
@@ -480,7 +529,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/roles/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.3.9 Update role
+### 11.4.9 Update role
 
 `PUT /api/admin/v1/roles/{id}`
 
@@ -526,7 +575,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/roles/{id}" \
 }'
 ```
 
-### 11.3.10 Delete role
+### 11.4.10 Delete role
 
 `DELETE /api/admin/v1/roles/{id}`
 
@@ -550,11 +599,11 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/roles/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.4 Federation
+## 11.5 Federation
 
 Configure Google, GitHub, and OIDC identity providers
 
-### 11.4.1 List providers
+### 11.5.1 List providers
 
 `GET /api/admin/v1/applications/{applicationId}/federation/providers`
 
@@ -577,7 +626,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/federation/pro
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.2 Create provider
+### 11.5.2 Create provider
 
 `POST /api/admin/v1/applications/{applicationId}/federation/providers`
 
@@ -602,7 +651,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/federa
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.3 Update provider
+### 11.5.3 Update provider
 
 `PUT /api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`
 
@@ -628,7 +677,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/federat
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.4 Remove provider
+### 11.5.4 Remove provider
 
 `DELETE /api/admin/v1/applications/{applicationId}/federation/providers/{providerId}`
 
@@ -652,7 +701,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/fede
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.5 List providers
+### 11.5.5 List providers
 
 `GET /api/admin/v1/tenants/{tenantId}/federation/providers`
 
@@ -675,7 +724,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/federation/providers" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.6 Create provider
+### 11.5.6 Create provider
 
 `POST /api/admin/v1/tenants/{tenantId}/federation/providers`
 
@@ -700,7 +749,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/federation/provi
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.7 Update provider
+### 11.5.7 Update provider
 
 `PUT /api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`
 
@@ -726,7 +775,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/federation/provid
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.4.8 Remove provider
+### 11.5.8 Remove provider
 
 `DELETE /api/admin/v1/tenants/{tenantId}/federation/providers/{providerId}`
 
@@ -750,11 +799,11 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/federation/pro
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.5 Service accounts
+## 11.6 Service accounts
 
 Machine-to-machine service accounts and API keys
 
-### 11.5.1 List service accounts
+### 11.6.1 List service accounts
 
 `GET /api/admin/v1/tenants/{tenantId}/service-accounts`
 
@@ -777,7 +826,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.2 Create service account
+### 11.6.2 Create service account
 
 `POST /api/admin/v1/tenants/{tenantId}/service-accounts`
 
@@ -802,7 +851,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.3 Get service account
+### 11.6.3 Get service account
 
 `GET /api/admin/v1/tenants/{tenantId}/service-accounts/{id}`
 
@@ -826,7 +875,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.4 Update service account
+### 11.6.4 Update service account
 
 `PUT /api/admin/v1/tenants/{tenantId}/service-accounts/{id}`
 
@@ -852,7 +901,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.5 Remove service account
+### 11.6.5 Remove service account
 
 `DELETE /api/admin/v1/tenants/{tenantId}/service-accounts/{id}`
 
@@ -876,7 +925,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accoun
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.6 List keys
+### 11.6.6 List keys
 
 `GET /api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`
 
@@ -900,7 +949,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts/{id}/ke
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.7 Create key
+### 11.6.7 Create key
 
 `POST /api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys`
 
@@ -926,7 +975,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accounts
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.5.8 Remove key
+### 11.6.8 Remove key
 
 `DELETE /api/admin/v1/tenants/{tenantId}/service-accounts/{id}/keys/{keyId}`
 
@@ -951,11 +1000,11 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/service-accoun
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.6 Webhooks
+## 11.7 Webhooks
 
 Outbound webhook endpoints and delivery history
 
-### 11.6.1 List webhooks
+### 11.7.1 List webhooks
 
 `GET /api/admin/v1/tenants/{tenantId}/webhooks`
 
@@ -978,7 +1027,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.6.2 Create webhook
+### 11.7.2 Create webhook
 
 `POST /api/admin/v1/tenants/{tenantId}/webhooks`
 
@@ -1003,7 +1052,30 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.6.3 Get webhook
+### 11.7.3 List events
+
+`GET /api/admin/v1/tenants/{tenantId}/webhooks/events`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/events" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.7.4 Get webhook
 
 `GET /api/admin/v1/tenants/{tenantId}/webhooks/{id}`
 
@@ -1027,7 +1099,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.6.4 Update webhook
+### 11.7.5 Update webhook
 
 `PUT /api/admin/v1/tenants/{tenantId}/webhooks/{id}`
 
@@ -1053,7 +1125,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.6.5 Remove webhook
+### 11.7.6 Remove webhook
 
 `DELETE /api/admin/v1/tenants/{tenantId}/webhooks/{id}`
 
@@ -1077,7 +1149,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}"
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 11.6.6 List deliveries
+### 11.7.7 List deliveries
 
 `GET /api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries`
 
@@ -1101,11 +1173,11 @@ curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.7 Audit
+## 11.8 Audit
 
 Security and admin action audit log
 
-### 11.7.1 Search the audit log
+### 11.8.1 Search the audit log
 
 `GET /api/admin/v1/audit`
 
@@ -1117,24 +1189,58 @@ Security and admin action audit log
 |---|---|---|---|---|
 | `applicationId` | query | string (uuid) | no | Application ID (UUID) |
 | `tenantId` | query | string (uuid) | no | Tenant ID (UUID) |
+| `from` | query | string (date-time) | no |  |
+| `to` | query | string (date-time) | no |  |
+| `action` | query | string | no |  |
+| `actor` | query | string | no |  |
+| `result` | query | string | no |  |
 | `limit` | query | integer (int32) | no |  |
 
 **Responses**
 
 | Status | Meaning | Body |
 |---|---|---|
-| `200` | OK | [AuditEventResponse](13-data-models.md#auditeventresponse)[] |
+| `200` | OK | [Row](13-data-models.md#row)[] |
 
 ```bash
 curl -s "$SECUREONE_URL/api/admin/v1/audit" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-## 11.8 Sessions
+### 11.8.2 Export the audit log as CSV
+
+`GET /api/admin/v1/audit/export`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | query | string (uuid) | no | Application ID (UUID) |
+| `tenantId` | query | string (uuid) | no | Tenant ID (UUID) |
+| `from` | query | string (date-time) | no |  |
+| `to` | query | string (date-time) | no |  |
+| `action` | query | string | no |  |
+| `actor` | query | string | no |  |
+| `result` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/audit/export" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 11.9 Sessions
 
 Login history and active sessions
 
-### 11.8.1 List sessions
+### 11.9.1 List sessions
 
 `GET /api/admin/v1/sessions`
 

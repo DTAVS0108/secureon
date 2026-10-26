@@ -48,7 +48,16 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
   return {
     label: "Tenant",
     children: [
-      { label: "Tenants", href: `/tenants/${tenantId}`, isActive: isTenantListNavActive },
+      {
+        label: "Overview",
+        href: `/tenants/${tenantId}/overview`,
+        isActive: (pathname: string) => /^\/tenants\/[^/]+\/overview\/?$/.test(pathname),
+      },
+      {
+        label: "Tenants",
+        href: `/tenants/${tenantId}`,
+        isActive: (pathname: string) => isTenantListNavActive(pathname) && !pathname.endsWith("/overview"),
+      },
       {
         label: "Roles & Permissions",
         href: `/tenants/${tenantId}/roles`,
@@ -71,6 +80,12 @@ export function tenantNavGroupForOperator(tenantId: string): SidebarNavGroupConf
 /** Super-admin / platform operations (shown at bottom of sidebar). */
 export const SUPER_ADMIN_NAV: NavItem[] = [
   {
+    label: "Overview",
+    href: "/overview",
+    description: "Sign-ins, active users, two-factor use and security events",
+    superAdminOnly: true,
+  },
+  {
     label: "Connect an app",
     href: "/connect",
     description: "Register an app and get setup code for its framework",
@@ -80,6 +95,12 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     label: "OAuth clients",
     href: "/applications",
     description: "Enterprise client registry",
+    superAdminOnly: true,
+  },
+  {
+    label: "Audit log",
+    href: "/audit",
+    description: "Every tenant's audit log: search, filter, export",
     superAdminOnly: true,
   },
   {

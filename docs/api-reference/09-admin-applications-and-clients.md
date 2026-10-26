@@ -31,6 +31,8 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/change-requests/{id}/reject`](#933-reject-change-request) — Reject change request
   - [POST `/api/admin/v1/change-requests/{id}/withdraw`](#934-withdraw-change-request) — Withdraw change request
   - [GET `/api/admin/v1/tenants/{tenantId}/change-requests`](#935-list-change-requests-one-tenant) — List change requests (one tenant)
+  - [GET `/api/admin/v1/tenants/{tenantId}/two-factor/review`](#936-two-factor-authentication-review-for-one-tenant) — Two Factor Authentication review for one tenant
+  - [GET `/api/admin/v1/two-factor/review`](#937-two-factor-authentication-review-for-every-tenant-platform-operators) — Two Factor Authentication review for every tenant (platform operators)
 
 ## 9.1 Applications
 
@@ -240,7 +242,9 @@ curl -s "$SECUREONE_URL/api/admin/v1/oauth-clients" \
 |---|---|---|---|
 | `applicationId` | string (uuid) | no |  |
 | `applicationName` | string | no |  |
+| `backchannelLogoutUri` | string | no |  |
 | `clientId` | string | no |  |
+| `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
@@ -266,7 +270,9 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients" \
   --data '{
   "applicationId": "{applicationId}",
   "applicationName": "Acme Shop",
+  "backchannelLogoutUri": "https://app.example.com",
   "clientId": "{clientId}",
+  "consentRequired": true,
   "grantTypes": [
     "authorization_code",
     "refresh_token"
@@ -331,6 +337,8 @@ curl -s "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}" \
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `backchannelLogoutUri` | string | no |  |
+| `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
@@ -353,6 +361,8 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
+  "backchannelLogoutUri": "https://app.example.com",
+  "consentRequired": true,
   "grantTypes": [
     "authorization_code",
     "refresh_token"
@@ -449,7 +459,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}/rotate-secret" \
 
 ## 9.3 Change approvals
 
-High-impact changes that wait for a second admin
+Two Factor Authentication review
 
 ### 9.3.1 List change requests (every tenant)
 
@@ -577,5 +587,45 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/change-requests/{id}/withdraw" \
 
 ```bash
 curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/change-requests" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 9.3.6 Two Factor Authentication review for one tenant
+
+`GET /api/admin/v1/tenants/{tenantId}/two-factor/review`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [Review](13-data-models.md#review) |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/two-factor/review" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 9.3.7 Two Factor Authentication review for every tenant (platform operators)
+
+`GET /api/admin/v1/two-factor/review`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [Review](13-data-models.md#review) |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/two-factor/review" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

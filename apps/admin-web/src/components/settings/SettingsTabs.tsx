@@ -6,6 +6,8 @@ import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ApplicationAppearanceSettings } from "@/components/settings/ApplicationAppearanceSettings";
 import { AppExposureSettings } from "@/components/settings/AppExposureSettings";
+import { AttackProtectionSettings } from "@/components/settings/AttackProtectionSettings";
+import { LogStreamingSettings } from "@/components/settings/LogStreamingSettings";
 import { AuthenticationSettingsPanel } from "@/components/settings/AuthenticationSettingsPanel";
 import { NotificationsSettings } from "@/components/settings/NotificationsSettings";
 import { PlatformNotificationsSettings } from "@/components/settings/PlatformNotificationsSettings";
@@ -14,6 +16,7 @@ import { PolicySourceBar } from "@/components/settings/PolicySourceBar";
 import { PublicManifestSettings } from "@/components/settings/PublicManifestSettings";
 import { ScimSettingsPanel } from "@/components/settings/ScimSettingsPanel";
 import { SettingsScopeBanner } from "@/components/settings/SettingsScopeBanner";
+import { TokenClaimsCard } from "@/components/settings/TokenClaimsCard";
 import { TokenPolicySettings } from "@/components/settings/TokenPolicySettings";
 import { VerificationSettingsPanel } from "@/components/settings/VerificationSettingsPanel";
 import { UserDirectorySettings } from "@/components/settings/UserDirectorySettings";
@@ -45,6 +48,8 @@ export type SettingsTabId =
   | "public-api"
   | "tokens"
   | "verification"
+  | "protection"
+  | "logs"
   | "apps";
 
 type Tab = SettingsTabId;
@@ -118,6 +123,8 @@ const TAB_META: {
   { id: "users", label: "User directory", exposureKeys: ["user-directory"] },
   { id: "public-api", label: "Public API", exposureKeys: ["public-manifest"] },
   { id: "tokens", label: "OAuth tokens", exposureKeys: ["token-policy"] },
+  { id: "protection", label: "Attack protection", exposureKeys: null },
+  { id: "logs", label: "Logs & streaming", exposureKeys: null },
   { id: "apps", label: "For applications", exposureKeys: null },
 ];
 
@@ -152,7 +159,7 @@ function isTabVisible(
   tokenTabEnabled: boolean,
   mfaTabEnabled: boolean,
 ): boolean {
-  if (tab === "apps") return scope.mode === "platform";
+  if (tab === "apps" || tab === "protection" || tab === "logs") return scope.mode === "platform";
   if (tab === "integration") return scope.mode === "application";
   if (tab === "auth") {
     if (scope.mode === "platform") return true;
@@ -415,7 +422,10 @@ export function SettingsTabs({
       </div>
 
       {tab === "integration" && applicationId && (
-        <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={openTab} />
+        <>
+          <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={openTab} />
+          <TokenClaimsCard applicationId={applicationId} />
+        </>
       )}
       {tab === "notifications" && scopeMode === "platform" && <PlatformNotificationsSettings />}
       {tab === "notifications" && applicationId && (
@@ -537,6 +547,8 @@ export function SettingsTabs({
           }}
         />
       )}
+      {tab === "protection" && scopeMode === "platform" && <AttackProtectionSettings />}
+      {tab === "logs" && scopeMode === "platform" && <LogStreamingSettings />}
       {tab === "apps" && scopeMode === "platform" && (
         <div className="space-y-6">
           <AppExposureSettings />

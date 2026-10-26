@@ -70,9 +70,22 @@ export type ClientWidgetColors = {
   dividerColor: string;
 };
 
+/** Languages SecureOne's hosted pages are translated into; "auto" follows the person's browser. */
+export const HOSTED_PAGE_LANGUAGES = [
+  { code: "auto", name: "Browser language (automatic)" },
+  { code: "en", name: "English" },
+  { code: "es", name: "Español" },
+  { code: "fr", name: "Français" },
+  { code: "de", name: "Deutsch" },
+  { code: "pt", name: "Português" },
+  { code: "hi", name: "हिन्दी" },
+] as const;
+
 export type ClientBranding = {
   appName: string;
   logoUrl: string;
+  /** Default language of the hosted sign-in pages. */
+  language: string;
 };
 
 export type ClientAppearance = UiPreferences & ClientWidgetColors & ClientBranding;
@@ -93,6 +106,7 @@ export const DEFAULT_CLIENT_WIDGET_COLORS: ClientWidgetColors = {
 export const DEFAULT_CLIENT_BRANDING: ClientBranding = {
   appName: "",
   logoUrl: "",
+  language: "auto",
 };
 
 export const DEFAULT_UI_PREFERENCES: UiPreferences = {

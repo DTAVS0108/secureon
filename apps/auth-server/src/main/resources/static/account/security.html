@@ -34,6 +34,8 @@
       input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; margin: 0.5rem 0; }
       code { font-size: 0.8rem; word-break: break-all; }
     </style>
+    <script src="/account/i18n.js"></script>
+    <script src="/account/hosted.js"></script>
   </head>
   <body>
     <h1>Account security</h1>
@@ -43,6 +45,24 @@
     <section>
       <h2>Two-step verification</h2>
       <div id="two-step" data-testid="two-step-account"></div>
+    </section>
+
+    <section>
+      <h2>Sign-in email</h2>
+      <p class="muted">We send a link to the new address. Your email changes only when you open it.</p>
+      <form id="email-form">
+        <label for="new-email">New email address</label>
+        <input id="new-email" type="email" autocomplete="email" required />
+        <label for="email-password">Current password (if your account has one)</label>
+        <input id="email-password" type="password" autocomplete="current-password" />
+        <button type="submit">Change email</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Connected apps</h2>
+      <p class="muted">Apps that can use your account. Removing one signs it out of your account.</p>
+      <ul id="consents" class="sessions"></ul>
     </section>
 
     <section>
@@ -110,6 +130,33 @@
         });
       }
 
+      async function loadConsents() {
+        const rows = await api("/api/v1/account/consents");
+        const ul = document.getElementById("consents");
+        ul.innerHTML = "";
+        if (!rows || rows.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "No connected apps.";
+          ul.appendChild(li);
+          return;
+        }
+        rows.forEach((c) => {
+          const li = document.createElement("li");
+          const label = document.createElement("span");
+          label.textContent = c.name + (c.scopes && c.scopes.length ? " · " + c.scopes.join(", ") : "");
+          li.appendChild(label);
+          const btn = document.createElement("button");
+          btn.textContent = "Remove";
+          btn.onclick = async () => {
+            if (!confirm("Remove " + c.name + "?")) return;
+            await api(`/api/v1/account/consents/${encodeURIComponent(c.id)}`, { method: "DELETE" });
+            await loadConsents();
+          };
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
       document.getElementById("revoke-others").onclick = async () => {
         try {
           await api("/api/v1/account/sessions", { method: "DELETE" });
@@ -118,12 +165,29 @@
         } catch (e) { showBanner(e.message, false); }
       };
 
+      document.getElementById("email-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          const data = await api("/api/v1/account/email/change/session", {
+            method: "POST",
+            body: JSON.stringify({
+              newEmail: document.getElementById("new-email").value,
+              currentPassword: document.getElementById("email-password").value,
+              applicationId,
+            }),
+          });
+          document.getElementById("email-password").value = "";
+          showBanner(data.message, true);
+        } catch (err) { showBanner(err.message, false); }
+      });
+
       if (applicationId) {
         document.getElementById("login-link").href = `/login.html?applicationId=${encodeURIComponent(applicationId)}`;
       }
 
       window.SecureOneTwoStep.renderAccount(document.getElementById("two-step"), { applicationId });
       loadSessions().catch((e) => showBanner(e.message, false));
+      loadConsents().catch(() => undefined);
     </script>
   </body>
 </html>

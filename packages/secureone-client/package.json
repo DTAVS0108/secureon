@@ -1,6 +1,6 @@
 {
   "name": "@secureone/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript client for SecureOne public APIs and OAuth PKCE",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,10 +13,19 @@
   },
   "scripts": {
     "build": "tsc",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
   },
-  "files": ["dist", "README.md"]
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

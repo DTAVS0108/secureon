@@ -74,6 +74,10 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 @Configuration
 public class SecurityConfig {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.oauth.BackchannelLogoutService backchannelLogout;
+
+
     @Bean
     OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint(
             RequestCache requestCache, ApplicationOAuthClientResolver applications, DeviceCodeLookup deviceCodes) {
@@ -152,6 +156,8 @@ public class SecurityConfig {
                                 .errorResponseHandler((request, response, exception) ->
                                         response.sendRedirect(DEVICE_PAGE + "?status=" + deviceErrorStatus(exception))))
                         .authorizationEndpoint(endpoint -> endpoint
+                                // Third-party clients (consent required): the user approves the access first.
+                                .consentPage(com.secureone.auth.oauth.ConsentPageController.PATH)
                                 // Integration mistakes (unregistered redirect_uri, scope, missing PKCE) explained.
                                 .errorResponseHandler(com.secureone.auth.config.oauth.OAuthErrorExplainer
                                         .authorizationFailureHandler(registeredClients, environment.isProduction()))
@@ -165,7 +171,13 @@ public class SecurityConfig {
                         .oidc(oidc -> oidc
                                 .userInfoEndpoint(userInfo -> userInfo.userInfoMapper(oidcUserInfoMapper))
                                 // Sessions from a SAML IdP are also signed out there (single logout).
-                                .logoutEndpoint(logout -> logout.logoutResponseHandler(new SamlAwareOidcLogoutHandler(samlLogout)))))
+                                .logoutEndpoint(logout -> logout.logoutResponseHandler(
+                                        new com.secureone.auth.oauth.BackchannelNotifyingLogoutHandler(
+                                                new SamlAwareOidcLogoutHandler(samlLogout), backchannelLogout)))
+                                // OIDC Back-Channel Logout 1.0: clients may register a URL for logout tokens.
+                                .providerConfigurationEndpoint(config -> config.providerConfigurationCustomizer(c -> c
+                                        .claim("backchannel_logout_supported", true)
+                                        .claim("backchannel_logout_session_supported", false)))))
                 .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
@@ -250,6 +262,7 @@ public class SecurityConfig {
                     String uri = request.getRequestURI();
                     return uri.equals("/api/v1/account/profile")
                             || uri.equals("/api/v1/account/password/change")
+                            || uri.equals("/api/v1/account/email/change")
                             || bearerPrivacy.matches(request);
                 })
                 .cors(Customizer.withDefaults())
@@ -352,7 +365,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/passkey/**",
                                 "/scim/v2/**",
                                 "/api/v1/applications/**",
-                                "/oauth2/backchannel-logout",
+                                "/api/v1/attack-protection",
                                 "/account/**",
                                 "/login",
                                 "/login.html")
@@ -385,7 +398,13 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .failureHandler(loginFailureHandler)
                         .successHandler(loginSuccessHandler)
-                        .permitAll());
+                        .permitAll())
+                // Signing out at SecureOne also signs the user out of applications with back-channel logout.
+                .logout(logout -> logout.addLogoutHandler((request, response, authentication) -> {
+                    if (authentication != null) {
+                        backchannelLogout.signedOut(authentication.getName());
+                    }
+                }));
         return http.build();
     }
 }

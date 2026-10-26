@@ -21,13 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class WebhookTargetPolicy {
 
     /** Events the platform publishes; "*" subscribes to all of them. */
-    static final Set<String> KNOWN_EVENTS = Set.of(
-            "*",
-            "user.created",
-            "user.login.succeeded",
-            "access_request.created",
-            "access_request.approved",
-            "access_request.denied");
+    static final Set<String> KNOWN_EVENTS = WebhookEvents.subscribable();
 
     private final boolean allowPrivateTargets;
 

@@ -19,6 +19,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
             "com.secureone.auth.application",
             "com.secureone.auth.configascode",
             "com.secureone.auth.mfa",
+            "com.secureone.auth.protection",
+            "com.secureone.auth.audit",
             "com.secureone.auth.twostep"
         })
 public class ApiExceptionHandler {

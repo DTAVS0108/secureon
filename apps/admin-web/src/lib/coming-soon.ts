@@ -5,8 +5,8 @@ import type { AuthMethod } from "@/lib/types";
  * badge and cannot be switched on (switching an already-on one off stays allowed).
  */
 
-/** Feature flags with no working feature behind them. `ldap`: directory sync is not connected. */
-export const COMING_SOON_FEATURE_FLAGS: ReadonlySet<string> = new Set(["ldap"]);
+/** Feature flags with no working feature behind them (none today). */
+export const COMING_SOON_FEATURE_FLAGS: ReadonlySet<string> = new Set<string>();
 
 /** Auth methods are pending when the catalog says `implemented: false` (today: Push Notification). */
 export function isAuthMethodComingSoon(method: AuthMethod): boolean {

@@ -25,6 +25,8 @@ type OAuthClientDto = {
   scopes: string[];
   redirectUris: string[];
   postLogoutRedirectUris?: string[];
+  backchannelLogoutUri?: string | null;
+  consentRequired?: boolean;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
@@ -50,6 +52,8 @@ function mapClient(dto: OAuthClientDto): OAuthClient {
     scopes: dto.scopes ?? [],
     redirectUris: dto.redirectUris ?? [],
     postLogoutRedirectUris: dto.postLogoutRedirectUris ?? [],
+    backchannelLogoutUri: dto.backchannelLogoutUri ?? null,
+    consentRequired: dto.consentRequired ?? false,
     confidential: dto.confidential ?? (type === "web" || type === "m2m"),
     pkceRequired: dto.pkceRequired ?? type !== "m2m",
     tokenEndpointAuthMethod:
@@ -94,6 +98,10 @@ export type OAuthClientWriteInput = {
   pkceRequired?: boolean;
   tokenEndpointAuthMethod?: string;
   subjectType?: string;
+  /** OIDC Back-Channel Logout URL; "" clears it. */
+  backchannelLogoutUri?: string;
+  /** Third-party client: users see a consent screen. */
+  consentRequired?: boolean;
   /** Framework chosen in Connect an app (setup code on the client page). */
   setupFramework?: string;
 };

@@ -32,7 +32,7 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
     /** Tenant-scoped resources a tenant super admin may manage for their own tenant. */
     private static final Pattern TENANT_GOVERNANCE_PATH = Pattern.compile(
             "^/api/admin/v1/tenants/[0-9a-fA-F-]{36}/"
-                    + "(?:console-access|console-roles|tenant-rbac|organizations|federation/providers|service-accounts|webhooks|access-requests|access-review|change-requests|two-step-policy|scim)"
+                    + "(?:console-access|console-roles|tenant-rbac|federation/providers|service-accounts|webhooks|access-requests|access-review|change-requests|two-step-policy|scim|overview)"
                     + "(?:/|$)");
 
     private static final Pattern PLATFORM_WIDE_WITHOUT_APP =

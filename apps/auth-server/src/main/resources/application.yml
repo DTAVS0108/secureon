@@ -8,6 +8,16 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
+  # @Async work (webhooks, back-channel logout, alerts): bounded, so a slow receiver cannot pile up threads or
+  # memory. When full, the caller runs the task itself rather than losing it.
+  task:
+    execution:
+      pool:
+        core-size: 8
+        max-size: 32
+        queue-capacity: 5000
+      thread-name-prefix: secureone-async-
+
   datasource:
     url: ${SECUREONE_DB_URL:jdbc:postgresql://localhost:5432/secureone?currentSchema=platform}
     username: ${SECUREONE_DB_USERNAME:secureone}
@@ -75,8 +85,8 @@ spring:
 
 server:
   port: ${SECUREONE_PORT:9000}
-  # Behind a load balancer: Tomcat applies X-Forwarded-For/-Proto only from trusted internal proxies
-  # (private and loopback addresses), so clients cannot spoof their IP for audit logs or rate limits.
+  # X-Forwarded-For/-Proto are applied only from loopback (the console's own proxy) and the addresses in
+  # SECUREONE_TRUSTED_PROXIES (see TrustedProxiesConfig), so clients cannot choose their own address.
   forward-headers-strategy: ${SECUREONE_FORWARD_HEADERS_STRATEGY:native}
 
 secureone:
@@ -87,6 +97,8 @@ secureone:
     migrate: ${SECUREONE_DB_MIGRATE:auto}
   # Tenant configuration files (YAML/JSON, a file or a directory) applied at every start-up. See docs/26.
   config-import: ${SECUREONE_CONFIG_IMPORT:}
+  # Reverse proxies / load balancers whose X-Forwarded-For is believed: addresses or IPv4 /8 /16 /24 /32 ranges.
+  trusted-proxies: ${SECUREONE_TRUSTED_PROXIES:}
   swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:true}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:true}
   # Emergency platform login with the configured account (spring.security.user.*). Always available

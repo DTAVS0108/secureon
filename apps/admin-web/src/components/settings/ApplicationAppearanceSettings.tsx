@@ -5,7 +5,8 @@ import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceThemeEditor } from "@/components/settings/appearance/AppearanceThemeEditor";
 import { ClientThemePreview, WidgetColorFields } from "@/components/settings/appearance/appearance-shared";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { FieldRow, Input } from "@/components/ui/Field";
+import { FieldRow, Input, Select } from "@/components/ui/Field";
+import { HOSTED_PAGE_LANGUAGES } from "@/lib/theme/types";
 import { useToast } from "@/components/ui/Toast";
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
 import {
@@ -97,7 +98,7 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
       <Card padded={false}>
         <CardHeader
           title="Application branding"
-          description="Name and logo returned in the public manifest appearance block."
+          description="Name, logo and language of SecureOne's sign-in pages for this application (also in the public manifest)."
         />
         <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
           <FieldRow label="App display name">
@@ -112,6 +113,15 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
               onChange={(e) => patch({ logoUrl: e.target.value })}
               placeholder="https://…"
             />
+          </FieldRow>
+          <FieldRow label="Sign-in page language" hint="People can still pick another language on the page">
+            <Select value={appearance.language} onChange={(e) => patch({ language: e.target.value })}>
+              {HOSTED_PAGE_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
           </FieldRow>
         </div>
       </Card>

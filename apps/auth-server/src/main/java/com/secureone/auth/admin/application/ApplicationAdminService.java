@@ -37,6 +37,9 @@ public class ApplicationAdminService {
     private final RbacBootstrapService rbacBootstrap;
     private final TenantQuotaService tenantQuotas;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.platform.SettingsExposureService> exposure;
+
     public ApplicationAdminService(
             ApplicationRepository applicationRepository,
             OAuthClientRepository oauthClients,
@@ -149,6 +152,14 @@ public class ApplicationAdminService {
         applicationRepository.delete(app);
         applicationRepository.flush();
         schemaProvisioner.drop(schemaName);
+        // Its settings-exposure exceptions go with it (they would otherwise linger in the console list).
+        if (exposure != null) {
+            exposure.ifAvailable(e -> {
+                if (e.getOverrides().containsKey(id.toString())) {
+                    e.saveOverrides(id, java.util.Map.of());
+                }
+            });
+        }
         auditService.record(
                 app.getTenantId(), "admin", "application.deleted", "application", id, app.getName(), true);
         emailService.sendAdminNotification(id, "Application deleted", "Removed application: " + app.getName());

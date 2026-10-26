@@ -30,7 +30,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [PATCH `/api/admin/v1/users/{id}/status`](#8117-update-status) — Update status
   - [GET `/api/admin/v1/users/{id}/two-step`](#8118-two-step-status-of-a-user-options-without-secrets-deadline-exemption) — Two-step status of a user (options without secrets, deadline, exemption)
   - [POST `/api/admin/v1/users/{id}/two-step/exempt`](#8119-exempt-a-user-from-two-step-verification-until-a-date-reason-required) — Exempt a user from two-step verification until a date (reason required)
-  - [DELETE `/api/admin/v1/users/{id}/two-step/exempt`](#8120-end-a-users-exemption) — End a user's exemption
+  - [DELETE `/api/admin/v1/users/{id}/two-step/exempt`](#8120-end-a-users-exemption-in-one-application-or-the-one-for-every-application) — End a user's exemption (in one application, or the one for every application)
   - [POST `/api/admin/v1/users/{id}/two-step/extend`](#8121-give-a-user-more-time-to-set-up-two-step-verification) — Give a user more time to set up two-step verification
   - [POST `/api/admin/v1/users/{id}/two-step/reset`](#8122-reset-a-users-two-step-verification-one-option-or-all-ends-their-sessions) — Reset a user's two-step verification (one option or all); ends their sessions
   - [POST `/api/admin/v1/users/{id}/unlock`](#8123-unlock-user) — Unlock user
@@ -546,6 +546,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/users/{id}/two-step" \
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
 | `reason` | string | no |  |
 | `until` | string | no |  |
 
@@ -560,12 +561,13 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/exempt" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
+  "applicationId": "{applicationId}",
   "reason": "Short explanation",
   "until": "until"
 }'
 ```
 
-### 8.1.20 End a user's exemption
+### 8.1.20 End a user's exemption (in one application, or the one for every application)
 
 `DELETE /api/admin/v1/users/{id}/two-step/exempt`
 
@@ -576,6 +578,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/exempt" \
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
 | `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `applicationId` | query | string (uuid) | no | Application ID (UUID) |
 
 **Responses**
 

@@ -1,21 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { isFeatureFlagComingSoon } from "@/lib/coming-soon";
-import { fetchApplicationFeatureFlags } from "@/lib/api/application-settings";
 import {
   exportUsersCsv,
   importUsersFile,
-  previewLdapImport,
   type UserDirectorySettings,
   type UserDirectorySourceKey,
 } from "@/lib/api/user-directory";
-import { normalizeFeatureFlags } from "@/lib/auth-settings-normalize";
-import { isFeatureEnabled } from "@/lib/feature-flags";
 
 export function UserImportExportMenu({
   applicationId,
@@ -29,24 +23,6 @@ export function UserImportExportMenu({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [importSource, setImportSource] = useState<UserDirectorySourceKey>("csv");
-  const [ldapFeatureEnabled, setLdapFeatureEnabled] = useState(false);
-
-  useDeferredEffect(() => {
-    fetchApplicationFeatureFlags(applicationId)
-      // LDAP sync is not connected yet ("Coming soon"), so it is never offered here.
-      .then((raw) =>
-        setLdapFeatureEnabled(
-          !isFeatureFlagComingSoon("ldap") && isFeatureEnabled(normalizeFeatureFlags(raw), "ldap"),
-        ),
-      )
-      .catch(() => setLdapFeatureEnabled(false));
-  }, [applicationId]);
-
-  useDeferredEffect(() => {
-    if (importSource === "ldap" && !ldapFeatureEnabled) {
-      setImportSource("csv");
-    }
-  }, [importSource, ldapFeatureEnabled]);
 
   if (!directory) return null;
 
@@ -94,21 +70,7 @@ export function UserImportExportMenu({
     }
   }
 
-  async function handleLdapPreview() {
-    setBusy("ldap");
-    try {
-      const preview = await previewLdapImport(applicationId);
-      toast(String(preview.message ?? "LDAP preview complete"), preview.ready ? "success" : "info");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "LDAP preview failed", "error");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const enabledSources = (["csv", "excel", "ldap"] as const).filter(
-    (k) => sources[k]?.enabled && (k !== "ldap" || ldapFeatureEnabled),
-  );
+  const enabledSources = (["csv", "excel"] as const).filter((k) => sources[k]?.enabled !== false);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -132,13 +94,11 @@ export function UserImportExportMenu({
               className="rounded-lg border border-ui bg-ui-surface px-2 py-1.5 text-xs text-ui"
               aria-label="Import source"
             >
-              {sources.csv?.enabled && <option value="csv">CSV</option>}
-              {sources.excel?.enabled && <option value="excel">Excel (CSV)</option>}
-              {sources.ldap?.enabled && ldapFeatureEnabled && <option value="ldap">LDAP</option>}
+              {sources.csv?.enabled !== false && <option value="csv">CSV</option>}
+              {sources.excel?.enabled !== false && <option value="excel">Excel (CSV)</option>}
             </select>
           )}
-          {importSource !== "ldap" ? (
-            <>
+          <>
               <input
                 ref={fileRef}
                 type="file"
@@ -158,18 +118,7 @@ export function UserImportExportMenu({
               >
                 {busy === "import" ? "Importing…" : "Import users"}
               </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={busy !== null}
-              onClick={() => void handleLdapPreview()}
-            >
-              {busy === "ldap" ? "Checking…" : "Test LDAP config"}
-            </Button>
-          )}
+          </>
         </>
       )}
     </div>

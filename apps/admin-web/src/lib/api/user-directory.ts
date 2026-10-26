@@ -2,21 +2,12 @@ import { appScopeHeaders } from "./http";
 import { browserApiFetch as apiFetch } from "./browser-client";
 import { withBasePath } from "@/lib/config";
 
-export type UserDirectorySourceKey = "csv" | "excel" | "ldap";
+export type UserDirectorySourceKey = "csv" | "excel";
 
 export type UserDirectorySettings = {
   importEnabled: boolean;
   exportEnabled: boolean;
-  sources: Record<UserDirectorySourceKey, { enabled: boolean }>;
-  ldap: {
-    host: string;
-    port: number;
-    baseDn: string;
-    bindDn: string;
-    bindPassword: string;
-    userFilter: string;
-    useTls: boolean;
-  };
+  sources: Partial<Record<UserDirectorySourceKey, { enabled: boolean }>>;
   scope?: string;
   inheritsPlatformDefaults?: boolean;
 };
@@ -107,9 +98,3 @@ export async function importUsersFile(
   return body as UserImportResult;
 }
 
-export async function previewLdapImport(appId: string): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(
-    `/api/admin/v1/applications/${appId}/users/import/ldap/preview`,
-    scoped(appId, { method: "POST", body: JSON.stringify({}) }),
-  );
-}

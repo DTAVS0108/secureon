@@ -282,6 +282,9 @@ function oauthClientWritePayload(fd: FormData) {
     pkceRequired: fd.get("pkceRequired") === "on",
     tokenEndpointAuthMethod: str(fd, "tokenEndpointAuthMethod"),
     subjectType: str(fd, "subjectType") || undefined,
+    // "" clears it on update.
+    backchannelLogoutUri: str(fd, "backchannelLogoutUri"),
+    consentRequired: fd.get("consentRequired") === "on",
   };
 }
 

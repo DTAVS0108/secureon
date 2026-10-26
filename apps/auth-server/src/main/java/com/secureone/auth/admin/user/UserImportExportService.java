@@ -84,48 +84,6 @@ public class UserImportExportService {
         return importRows(applicationId, app, rows, "api");
     }
 
-    @Transactional(readOnly = true)
-    public Map<String, Object> previewLdap(UUID applicationId) {
-        requireImportEnabled(applicationId);
-        requireSourceEnabled(applicationId, "ldap");
-        Map<String, Object> config = settings.getUserDirectory(applicationId);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> ldap = (Map<String, Object>) config.getOrDefault("ldap", Map.of());
-        String host = stringVal(ldap.get("host"));
-        String baseDn = stringVal(ldap.get("baseDn"));
-        List<String> issues = new ArrayList<>();
-        if (host.isBlank()) {
-            issues.add("LDAP host is required");
-        }
-        if (baseDn.isBlank()) {
-            issues.add("Base DN is required");
-        }
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("ready", issues.isEmpty());
-        result.put("issues", issues);
-        result.put(
-                "message",
-                issues.isEmpty()
-                        ? "Configuration looks valid. Live directory sync will bind when LDAP integration is enabled in a future release."
-                        : "Fix LDAP settings before importing.");
-        result.put("sampleUsers", List.of());
-        return result;
-    }
-
-    public Map<String, Object> importFromLdap(UUID applicationId) {
-        requireImportEnabled(applicationId);
-        requireSourceEnabled(applicationId, "ldap");
-        Map<String, Object> preview = previewLdap(applicationId);
-        if (!Boolean.TRUE.equals(preview.get("ready"))) {
-            throw new IllegalArgumentException("LDAP is not configured: " + preview.get("issues"));
-        }
-        Application app = requireApplication(applicationId);
-        auditService.record(
-                app.getTenantId(), "admin", "user.import.ldap", "application", applicationId, "pending", false);
-        throw new IllegalStateException(
-                "LDAP user sync is not connected yet. Use CSV/Excel import, or export users from your directory to CSV.");
-    }
-
     private Map<String, Object> importRows(
             UUID applicationId, Application app, List<Map<String, String>> rows, String source) {
         int created = 0;
@@ -305,9 +263,6 @@ public class UserImportExportService {
     }
 
     private void requireSourceEnabled(UUID applicationId, String source) {
-        if ("ldap".equalsIgnoreCase(source)) {
-            requireLdapFeature(applicationId);
-        }
         Map<String, Object> config = settings.getUserDirectory(applicationId);
         @SuppressWarnings("unchecked")
         Map<String, Object> sources = (Map<String, Object>) config.getOrDefault("sources", Map.of());
@@ -316,11 +271,6 @@ public class UserImportExportService {
         if (src == null || !Boolean.TRUE.equals(src.get("enabled"))) {
             throw new IllegalStateException("Import source '" + source + "' is disabled in User directory settings.");
         }
-    }
-
-    /** LDAP import is not available yet (its "LDAP / AD" feature flag was retired until it is built). */
-    private void requireLdapFeature(UUID applicationId) {
-        throw new IllegalStateException("LDAP import is not available yet.");
     }
 
     private Application requireApplication(UUID applicationId) {

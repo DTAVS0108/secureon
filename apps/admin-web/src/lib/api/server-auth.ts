@@ -16,7 +16,8 @@ export async function adminAuthHeader(): Promise<string | null> {
  * the auth-server's /admin proxy, which sets X-Forwarded-For to the real client address. Passing it
  * on lets the auth-server rate-limit and audit console sign-ins per client instead of per console.
  * Off unless SECUREONE_TRUST_PROXY_HEADERS=true: a console reachable directly must not let callers
- * pick their own address (the auth-server trusts the header from private addresses).
+ * pick their own address (the auth-server trusts the header from loopback, which is how the console
+ * reaches it in the single image, and from SECUREONE_TRUSTED_PROXIES).
  */
 const TRUST_PROXY_HEADERS = process.env.SECUREONE_TRUST_PROXY_HEADERS === "true";
 

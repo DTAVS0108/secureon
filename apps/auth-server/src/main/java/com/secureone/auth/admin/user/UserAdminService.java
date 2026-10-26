@@ -45,6 +45,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UserAdminService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.BackchannelLogoutService> backchannelLogout;
+
+
     /** Lazy: two-step reset ends sessions and emails the user; it depends on beans built after this one. */
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.twostep.TwoStepService> twoStep;
@@ -470,6 +474,7 @@ public class UserAdminService {
 
     public void delete(UUID id) {
         UserAccount user = require(id);
+        signOutOfApplications(user);
         userApplications.deleteByUserId(id);
         userRoleRepository.deleteByUserId(id);
         mfaFactors.deleteByUserId(id);
@@ -486,7 +491,16 @@ public class UserAdminService {
         userRepository.save(user);
         auditService.record(user.getTenantId(), "admin", "user.status_changed", "user_account", user.getId(), user.getEmail(), true);
         notifyStatusChange(user, previousStatus, nextStatus, null);
+        if (!"ACTIVE".equalsIgnoreCase(nextStatus)) {
+            signOutOfApplications(user);
+        }
         return toResponse(user);
+    }
+
+    /** Back-channel logout: applications end the sessions of a user who is suspended or deleted. */
+    private void signOutOfApplications(UserAccount user) {
+        if (backchannelLogout != null) backchannelLogout.ifAvailable(b -> tenantRepository.findById(user.getTenantId())
+                .ifPresent(t -> b.signedOut(t.getSlug(), user.getEmail(), user.getId())));
     }
 
     private void notifyStatusChange(
@@ -707,6 +721,8 @@ public class UserAdminService {
         // Editing a user inside one application replaces only that application's roles; apps that
         // share the platform tables would otherwise lose each other's assignments.
         UUID applicationId = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
+        auditService.record(null, applicationId, "admin", "user.roles_changed", "user_account", userId,
+                (roleIds == null ? 0 : roleIds.size()) + " role(s)", true);
         if (applicationId != null) {
             userRoleRepository.deleteByUserIdAndApplicationId(userId, applicationId);
         } else {

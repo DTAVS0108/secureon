@@ -89,7 +89,7 @@ class ChangeRequestServiceTest {
 
     private OAuthClientResponse client() {
         return new OAuthClientResponse(clientId, UUID.randomUUID(), UUID.randomUUID(), "Shop", "web-client",
-                "web", "active", null, null, null, null, true, true, null, true, null, null, null, null, null);
+                "web", "active", null, null, null, null, true, true, null, true, null, null, null, null, null, null, false);
     }
 
     @Test

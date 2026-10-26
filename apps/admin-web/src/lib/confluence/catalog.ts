@@ -247,7 +247,7 @@ export const CONFLUENCE_CATEGORIES: ConfluenceCategory[] = [
         slug: "api-admin-tenants",
         title: "7. Admin API: tenants",
         file: "api-reference/07-admin-tenants.md",
-        description: "Tenants, workspace, roles, console access, organizations",
+        description: "Tenants, workspace, roles, console access",
       },
       {
         slug: "api-admin-users",

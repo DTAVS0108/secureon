@@ -175,7 +175,8 @@ public class TenantConfigService {
                 .map(c -> new TenantConfig.Client(
                         c.clientId(), c.type(), c.status(), sorted(c.grantTypes()), sorted(c.scopes()),
                         sorted(c.redirectUris()), sorted(c.postLogoutRedirectUris()), c.pkceRequired(),
-                        c.tokenEndpointAuthMethod(), c.subjectType(), null))
+                        c.tokenEndpointAuthMethod(), c.subjectType(), c.backchannelLogoutUri(),
+                        c.consentRequired() ? Boolean.TRUE : null, null))
                 .toList();
         List<TenantConfig.Permission> permissions = permissionAdmin.list(app.getId()).stream()
                 .sorted(Comparator.comparing(RoleAdminDtos.PermissionResponse::key))
@@ -641,7 +642,8 @@ public class TenantConfigService {
                         var created = clientAdmin.create(new OAuthClientCreateRequest(
                                 app.value, null, tenant.value, target, spec2.type(), spec2.status(), spec2.grantTypes(),
                                 spec2.scopes(), spec2.redirectUris(), spec2.postLogoutRedirectUris(), spec2.pkceRequired(),
-                                spec2.tokenEndpointAuthMethod(), spec2.subjectType(), null));
+                                spec2.tokenEndpointAuthMethod(), spec2.subjectType(), null, spec2.backchannelLogoutUri(),
+                                spec2.consentRequired()));
                         if (secretValue != null) {
                             clientAdmin.setClientSecret(created.client().id(), secretValue);
                         } else if (created.clientSecret() != null) {
@@ -661,6 +663,10 @@ public class TenantConfigService {
                     }
                     diffText(diff, "tokenEndpointAuthMethod", existing.tokenEndpointAuthMethod(), spec2.tokenEndpointAuthMethod(), true);
                     diffText(diff, "subjectType", existing.subjectType(), spec2.subjectType(), true);
+                    diffText(diff, "backchannelLogoutUri", existing.backchannelLogoutUri(), spec2.backchannelLogoutUri(), true);
+                    if (spec2.consentRequired() != null && spec2.consentRequired() != existing.consentRequired()) {
+                        diff.add("consentRequired: " + existing.consentRequired() + " → " + spec2.consentRequired());
+                    }
                     boolean fieldsChanged = !diff.isEmpty();
                     boolean secretChanged = secretValue != null && secretValue.length() >= 32
                             && !clientAdmin.clientSecretMatches(existing.id(), secretValue);
@@ -673,7 +679,7 @@ public class TenantConfigService {
                                 clientAdmin.update(existing.id(), new OAuthClientUpdateRequest(
                                         spec2.type(), spec2.status(), spec2.grantTypes(), spec2.scopes(), spec2.redirectUris(),
                                         spec2.postLogoutRedirectUris(), spec2.pkceRequired(), spec2.tokenEndpointAuthMethod(),
-                                        spec2.subjectType(), null));
+                                        spec2.subjectType(), null, spec2.backchannelLogoutUri(), spec2.consentRequired()));
                             }
                             if (secretChanged) {
                                 clientAdmin.setClientSecret(existing.id(), secretValue);

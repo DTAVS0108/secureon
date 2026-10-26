@@ -4,7 +4,7 @@
 
 > Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
 
-What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions and privacy (export, delete request).
+What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions, email change, connected apps and privacy (export, delete request).
 
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
@@ -60,6 +60,13 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [4.6 Account privacy (session)](#46-account-privacy-session)
   - [POST `/api/v1/account/privacy/session/delete-request`](#461-request-account-deletion) — Request account deletion
   - [GET `/api/v1/account/privacy/session/export`](#462-export-personal-data) — Export personal data
+- [4.7 Account email change](#47-account-email-change)
+  - [POST `/api/v1/account/email/change`](#471-change-email-integrated-apps-bearer-token) — Change email (integrated apps, Bearer token)
+  - [POST `/api/v1/account/email/change/confirm`](#472-confirm-the-new-email-from-the-emailed-link) — Confirm the new email from the emailed link
+  - [POST `/api/v1/account/email/change/session`](#473-change-email-hosted-account-security-page-browser-session) — Change email (hosted Account security page, browser session)
+- [4.8 Account connected apps](#48-account-connected-apps)
+  - [GET `/api/v1/account/consents`](#481-list-consents) — List consents
+  - [DELETE `/api/v1/account/consents/{registeredClientId}`](#482-delete-consent) — Delete consent
 
 ## 4.1 Account
 
@@ -1163,4 +1170,140 @@ Session-authenticated GDPR export for hosted privacy portal.
 ```bash
 curl -s "$SECUREONE_URL/api/v1/account/privacy/session/export" \
   -b cookies.txt
+```
+
+## 4.7 Account email change
+
+Users change their sign-in email; the new address must be confirmed
+
+### 4.7.1 Change email (integrated apps, Bearer token)
+
+`POST /api/v1/account/email/change`
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`, [ChangeEmailRequest](13-data-models.md#changeemailrequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
+| `currentPassword` | string | no |  |
+| `newEmail` | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/v1/account/email/change" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "applicationId": "{applicationId}",
+  "currentPassword": "Choose-a-Strong-Pass-1!",
+  "newEmail": "user@example.com"
+}'
+```
+
+### 4.7.2 Confirm the new email from the emailed link
+
+`POST /api/v1/account/email/change/confirm`
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`, [ConfirmRequest](13-data-models.md#confirmrequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
+| `code` | string | yes |  |
+| `factorId` | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/v1/account/email/change/confirm" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "applicationId": "{applicationId}",
+  "code": "123456",
+  "factorId": "{factorId}"
+}'
+```
+
+### 4.7.3 Change email (hosted Account security page, browser session)
+
+`POST /api/v1/account/email/change/session`
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`, [ChangeEmailRequest](13-data-models.md#changeemailrequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
+| `currentPassword` | string | no |  |
+| `newEmail` | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/v1/account/email/change/session" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "applicationId": "{applicationId}",
+  "currentPassword": "Choose-a-Strong-Pass-1!",
+  "newEmail": "user@example.com"
+}'
+```
+
+## 4.8 Account connected apps
+
+Third-party applications the user allowed, and withdrawing them
+
+### 4.8.1 List consents
+
+`GET /api/v1/account/consents`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/account/consents"
+```
+
+### 4.8.2 Delete consent
+
+`DELETE /api/v1/account/consents/{registeredClientId}`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `registeredClientId` | path | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/v1/account/consents/{registeredClientId}"
 ```

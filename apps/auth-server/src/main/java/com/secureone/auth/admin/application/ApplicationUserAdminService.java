@@ -22,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ApplicationUserAdminService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.audit.AuditService> auditLog;
+
+
     private static final String SELF_REGISTERED_ACTION = "user.self_registered";
 
     private final ApplicationRepository applications;
@@ -121,6 +125,8 @@ public class ApplicationUserAdminService {
     public void revokeAccess(UUID applicationId, UUID userId) {
         requireApplication(applicationId);
         memberships.deleteByUserIdAndApplicationId(userId, applicationId);
+        if (auditLog != null) auditLog.ifAvailable(a -> a.record(null, applicationId, "admin", "user.application_access_revoked",
+                "user_account", userId, null, true));
     }
 
     private List<UUID> findPendingInviteUserIds(UUID tenantId, UUID applicationId) {

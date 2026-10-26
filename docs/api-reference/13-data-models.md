@@ -44,6 +44,14 @@
 | `password` | string | no |  |
 | `tenantSlug` | string | no |  |
 
+## AdminRow
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | no |  |
+| `role` | string | no |  |
+| `userId` | string (uuid) | no |  |
+
 ## AdminSetPasswordRequest
 
 | Field | Type | Required | Description |
@@ -108,6 +116,18 @@
 | `tenantId` | string (uuid) | no |  |
 | `updatedAt` | string (date-time) | no |  |
 
+## ApplicationRow
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `id` | string (uuid) | no |  |
+| `lockedAbove` | boolean | no |  |
+| `managed` | boolean | no |  |
+| `mode` | string | no |  |
+| `name` | string | no |  |
+| `switchedOff` | boolean | no |  |
+| `tenantName` | string | no |  |
+
 ## ApplicationUpdateRequest
 
 | Field | Type | Required | Description |
@@ -115,18 +135,6 @@
 | `description` | string | no |  |
 | `name` | string | yes |  |
 | `status` | string | no |  |
-
-## AuditEventResponse
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `action` | string | no |  |
-| `actor` | string | no |  |
-| `id` | string (uuid) | no |  |
-| `ip` | string | no |  |
-| `result` | string | no |  |
-| `target` | string | no |  |
-| `timestamp` | string (date-time) | no |  |
 
 ## BulkRosterImportRequest
 
@@ -149,6 +157,14 @@
 | `kind` | string | no |  |
 | `target` | string | no |  |
 
+## ChangeEmailRequest
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
+| `currentPassword` | string | no |  |
+| `newEmail` | string | no |  |
+
 ## ChangePasswordRequest
 
 | Field | Type | Required | Description |
@@ -166,6 +182,7 @@
 | `decidedAt` | string (date-time) | no |  |
 | `decidedBy` | string | no |  |
 | `decisionNote` | string | no |  |
+| `details` | string | no |  |
 | `id` | string (uuid) | no |  |
 | `mine` | boolean | no |  |
 | `reason` | string | no |  |
@@ -285,10 +302,23 @@
 | `tenantSlug` | string | no |  |
 | `userId` | string (uuid) | no |  |
 
+## ExemptionRow
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
+| `applicationName` | string | no |  |
+| `email` | string | no |  |
+| `exemptedBy` | string | no |  |
+| `reason` | string | no |  |
+| `until` | string (date-time) | no |  |
+| `userId` | string (uuid) | no |  |
+
 ## ExemptRequest
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `applicationId` | string (uuid) | no |  |
 | `reason` | string | no |  |
 | `until` | string | no |  |
 
@@ -439,7 +469,9 @@
 |---|---|---|---|
 | `applicationId` | string (uuid) | no |  |
 | `applicationName` | string | no |  |
+| `backchannelLogoutUri` | string | no |  |
 | `clientId` | string | no |  |
+| `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
@@ -465,9 +497,11 @@
 |---|---|---|---|
 | `applicationId` | string (uuid) | no |  |
 | `applicationName` | string | no |  |
+| `backchannelLogoutUri` | string | no |  |
 | `clientId` | string | no |  |
 | `clientSecretConfigured` | boolean | no |  |
 | `confidential` | boolean | no |  |
+| `consentRequired` | boolean | no |  |
 | `createdAt` | string (date-time) | no |  |
 | `grantTypes` | string[] | no |  |
 | `id` | string (uuid) | no |  |
@@ -494,6 +528,8 @@
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `backchannelLogoutUri` | string | no |  |
+| `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
@@ -706,6 +742,16 @@
 | `prune` | boolean | no |  |
 | `secrets` | [CreatedSecret](13-data-models.md#createdsecret)[] | no |  |
 | `tenant` | string | no |  |
+
+## Review
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `adminsWithoutTwoFactor` | [AdminRow](13-data-models.md#adminrow)[] | no |  |
+| `applications` | [ApplicationRow](13-data-models.md#applicationrow)[] | no |  |
+| `approvalsActive` | boolean | no |  |
+| `approvers` | integer (int32) | no |  |
+| `exemptions` | [ExemptionRow](13-data-models.md#exemptionrow)[] | no |  |
 
 ## RoleAssignedUserResponse
 

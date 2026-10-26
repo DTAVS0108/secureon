@@ -240,6 +240,40 @@ public class EmailNotificationService {
         sendUserTemplate(appId, user, "verify_email", verifyLink);
     }
 
+    /**
+     * Email change: the confirmation link goes to the new address (proving the person controls it), using the
+     * verify-email template.
+     */
+    public void sendEmailChangeVerification(UUID applicationId, UserAccount user, String newEmail, String confirmLink) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            throw new IllegalStateException("No application context for email.");
+        }
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            requireMail(ctx);
+        }
+        Map<String, String> vars = userVariables(ctx, user, confirmLink);
+        vars.put("userEmail", newEmail);
+        sendTemplated(ctx, newEmail, "verify_email", vars, List.of(), List.of());
+    }
+
+    /** A security notice to an address the user is moving away from (their account is no longer under it). */
+    public void sendSecurityNoticeTo(UUID applicationId, UserAccount user, String toEmail, String event, String accountLink) {
+        UUID appId = emailContext.resolveApplicationId(applicationId, user);
+        if (appId == null) {
+            return;
+        }
+        ApplicationEmailContext ctx = emailContext.context(appId);
+        if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
+            return;
+        }
+        Map<String, String> vars = userVariables(ctx, user, accountLink);
+        vars.put("securityEvent", event);
+        vars.put("userEmail", toEmail);
+        sendTemplated(ctx, toEmail, "account_security_notice", vars, List.of(), List.of());
+    }
+
     public void sendVerifyEmailOtp(UUID applicationId, UserAccount user, String code, int ttlSeconds) {
         UUID appId = emailContext.resolveApplicationId(applicationId, user);
         ensureUserTransactionalEmailEnabled(appId);

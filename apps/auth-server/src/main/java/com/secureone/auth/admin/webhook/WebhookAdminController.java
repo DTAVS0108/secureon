@@ -34,6 +34,14 @@ public class WebhookAdminController {
         return service.list(tenantId);
     }
 
+    /** Events a webhook can subscribe to, with what each means. */
+    @GetMapping("/events")
+    public List<Map<String, String>> events(@PathVariable UUID tenantId) {
+        return com.secureone.auth.webhook.WebhookEvents.CATALOG.entrySet().stream()
+                .map(e -> Map.of("event", e.getKey(), "description", e.getValue()))
+                .toList();
+    }
+
     @GetMapping("/{id}")
     public Map<String, Object> get(@PathVariable UUID tenantId, @PathVariable UUID id) {
         return service.get(tenantId, id);

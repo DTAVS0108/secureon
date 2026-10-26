@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm email · SecureOne</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 26rem; margin: 3rem auto; padding: 0 1rem; color: #111; }
+      button { width: 100%; padding: 0.6rem; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+      .msg { margin: 1rem 0; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; }
+      .ok { background: #ecfdf5; color: #065f46; }
+      .err { background: #fef2f2; color: #991b1b; }
+    </style>
+    <script src="/account/i18n.js"></script>
+    <script src="/account/hosted.js"></script>
+  </head>
+  <body>
+    <h1>Confirm your new email</h1>
+    <p>Confirm to use this address to sign in from now on.</p>
+    <!-- A button, not an automatic request: link scanners in mail systems open links without a person. -->
+    <button type="button" id="confirm">Confirm new email</button>
+    <div id="msg" class="msg" hidden></div>
+    <p><a id="login-link" href="/login.html">Sign in</a></p>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const token = params.get("token");
+      const applicationId = params.get("applicationId");
+      if (applicationId) {
+        document.getElementById("login-link").href = "/login.html?applicationId=" + encodeURIComponent(applicationId);
+      }
+      function show(text, ok) {
+        const el = document.getElementById("msg");
+        el.textContent = text;
+        el.className = "msg " + (ok ? "ok" : "err");
+        el.hidden = false;
+      }
+      if (!token) show("Missing token. Use the link from your email.", false);
+      document.getElementById("confirm").addEventListener("click", async () => {
+        const res = await fetch("/api/v1/account/email/change/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          document.getElementById("confirm").hidden = true;
+          show(data.message || "Your email has been changed.", true);
+        } else {
+          show(data.detail || "This link is invalid or has expired.", false);
+        }
+      });
+    </script>
+  </body>
+</html>

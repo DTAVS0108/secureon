@@ -7,34 +7,38 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CopyValue } from "@/components/ui/CopyValue";
 import { FieldRow, Input } from "@/components/ui/Field";
+import { LocalTime } from "@/components/ui/LocalTime";
 import { useToast } from "@/components/ui/Toast";
 import {
   createWebhook,
   deleteWebhook,
+  listWebhookDeliveries,
+  listWebhookEvents,
   listWebhooks,
+  type WebhookDelivery,
   type WebhookEndpoint,
+  type WebhookEventInfo,
 } from "@/lib/api/webhooks";
-
-const DEFAULT_EVENTS = [
-  "user.login.succeeded",
-  "user.created",
-  "access_request.created",
-  "access_request.approved",
-  "access_request.denied",
-];
 
 export function WebhooksPanel({ tenantId }: { tenantId: string }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<WebhookEndpoint[]>([]);
+  const [catalog, setCatalog] = useState<WebhookEventInfo[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [url, setUrl] = useState("");
+  const [allEvents, setAllEvents] = useState(true);
+  const [chosen, setChosen] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
 
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      setRows(await listWebhooks(tenantId));
+      const [hooks, events] = await Promise.all([listWebhooks(tenantId), listWebhookEvents(tenantId).catch(() => [])]);
+      setRows(hooks);
+      setCatalog(events);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Failed to load webhooks", "error");
     } finally {
@@ -48,11 +52,21 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
 
   async function handleCreate() {
     if (!url.trim()) return;
+    if (!allEvents && chosen.length === 0) {
+      toast("Choose at least one event, or All events.", "error");
+      return;
+    }
     setCreating(true);
     try {
-      const created = await createWebhook(tenantId, { url: url.trim(), events: DEFAULT_EVENTS, enabled: true });
+      const created = await createWebhook(tenantId, {
+        url: url.trim(),
+        events: allEvents ? ["*"] : chosen,
+        enabled: true,
+      });
       if (created.secret) setNewSecret(created.secret);
       setUrl("");
+      setChosen([]);
+      setAllEvents(true);
       toast("Webhook created", "success");
       await reload();
     } catch (e) {
@@ -62,24 +76,67 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
     }
   }
 
+  async function toggleDeliveries(id: string) {
+    if (openId === id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(id);
+    try {
+      setDeliveries((await listWebhookDeliveries(tenantId, id)).slice(0, 10));
+    } catch {
+      setDeliveries([]);
+    }
+  }
+
   return (
     <Card padded={false} className={!loaded ? "pointer-events-none opacity-60" : ""}>
       <CardHeader
         title="Webhooks"
-        description="Outbound HTTPS notifications for login and lifecycle events (HMAC-signed)."
+        description="HTTPS notifications when users, roles and sign-ins change (signed with HMAC-SHA256)."
       />
       <div className="space-y-4 px-5 pb-5">
         <FieldRow label="Endpoint URL">
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/hooks/secureone" />
         </FieldRow>
-        <p className="text-xs text-muted">Events: {DEFAULT_EVENTS.join(", ")}</p>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-ui">Events</legend>
+          <label className="flex items-center gap-2 text-sm text-ui">
+            <input type="radio" checked={allEvents} onChange={() => setAllEvents(true)} /> All events
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ui">
+            <input type="radio" checked={!allEvents} onChange={() => setAllEvents(false)} /> Only these
+          </label>
+          {!allEvents && (
+            <ul className="grid gap-1 rounded-xl border border-ui p-3 sm:grid-cols-2">
+              {catalog.map((e) => (
+                <li key={e.event}>
+                  <label className="flex items-start gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={chosen.includes(e.event)}
+                      onChange={(ev) =>
+                        setChosen(ev.target.checked ? [...chosen, e.event] : chosen.filter((x) => x !== e.event))
+                      }
+                    />
+                    <span>
+                      <code className="font-mono text-[11px] text-ui">{e.event}</code>
+                      <span className="block text-muted">{e.description}</span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </fieldset>
         <Button onClick={() => void handleCreate()} disabled={creating || !url.trim()}>
           {creating ? "Creating…" : "Add webhook"}
         </Button>
 
         {newSecret && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
-            <p className="text-sm font-medium text-ui">Signing secret (copy now)</p>
+          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <p className="text-sm font-medium text-ui">Signing secret (copy now; it is not shown again)</p>
             <CopyValue value={newSecret} />
             <Button variant="secondary" size="sm" onClick={() => setNewSecret(null)}>
               Done
@@ -92,16 +149,47 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
         ) : (
           <ul className="divide-y divide-ui rounded-xl border border-ui">
             {rows.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ui">{row.url}</p>
-                  <Badge tone={row.enabled ? "success" : "neutral"} className="mt-1">
-                    {row.enabled ? "enabled" : "disabled"}
-                  </Badge>
+              <li key={row.id} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ui">{row.url}</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {row.events.includes("*") || row.events.length === 0
+                        ? "All events"
+                        : `${row.events.length} event(s): ${row.events.join(", ")}`}
+                    </p>
+                    <Badge tone={row.enabled ? "success" : "neutral"} className="mt-1">
+                      {row.enabled ? "enabled" : "disabled"}
+                    </Badge>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => void toggleDeliveries(row.id)}>
+                      {openId === row.id ? "Hide deliveries" : "Deliveries"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => void deleteWebhook(tenantId, row.id).then(reload)}>
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => void deleteWebhook(tenantId, row.id).then(reload)}>
-                  Delete
-                </Button>
+                {openId === row.id && (
+                  <ul className="mt-3 space-y-1 text-xs">
+                    {deliveries.length === 0 && <li className="text-muted">No deliveries yet.</li>}
+                    {deliveries.map((d) => (
+                      <li key={d.id} className="flex flex-wrap justify-between gap-2">
+                        <span>
+                          <code className="font-mono">{d.eventType}</code> ·{" "}
+                          <span className={d.status === "DELIVERED" ? "text-emerald-600" : "text-amber-600"}>
+                            {d.status}
+                            {d.responseCode ? ` (${d.responseCode})` : ""}
+                          </span>
+                        </span>
+                        <span className="text-faint">
+                          <LocalTime value={d.createdAt} format="datetime" />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

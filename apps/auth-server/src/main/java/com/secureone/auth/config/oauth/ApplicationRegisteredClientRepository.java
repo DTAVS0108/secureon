@@ -132,7 +132,8 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
         }
 
         builder.clientSettings(ClientSettings.builder()
-                .requireAuthorizationConsent(false)
+                // Third-party clients ask the user first (consent screen at /oauth2/consent).
+                .requireAuthorizationConsent(client.isConsentRequired())
                 .requireProofKey(pkceRequired)
                 .setting(SubjectClaims.SETTING, client.getSubjectType() != null ? client.getSubjectType() : OAuthClient.SUBJECT_LEGACY)
                 .build());
