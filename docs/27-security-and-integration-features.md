@@ -28,20 +28,74 @@ API for your own screens: `GET /api/v1/applications/{id}/branding` (public).
 - **Audit log** (platform: every tenant; application: that application) with filters (tenant, dates, action, actor, result) and **CSV export** (up to 100,000 rows; the export itself is audited).
 - **Logs & streaming**: keep the audit log and sign-in history 30–3650 days (default 365; purged nightly in batches of 5,000); stream every audit entry to up to five HTTPS endpoints (JSON, or Splunk HTTP Event Collector), with a header for the API key (stored encrypted) and a test button. Entries are sent in batches every 2 seconds (up to 500 per POST: a JSON array, or concatenated Splunk events). A batch a stream refuses is retried on the next two rounds, then dropped. Up to 10,000 entries wait while a stream is down, after which the oldest are dropped and a warning is logged.
 
+- **Audit log integrity**: entries cannot be changed, and are removed only by retention after at least 30 days (enforced in the database). Every change to platform or application settings is recorded as `settings.<section>_changed`, with the values saved (secrets masked). `actor_type` is ADMIN (console and admin API), USER (a person's own account) or SYSTEM (jobs).
+
 ## Webhooks (tenant)
 
-Tenant → Webhooks: HMAC-signed HTTPS notifications for all events, or a chosen set: user created / updated / deleted / suspended / locked / unlocked, email verified / changed, password changed, two-factor added / removed, roles changed, application access granted / revoked, sign-in succeeded / failed, session ended, role and group changes, account deletion requests, access requests. Recent deliveries are listed per webhook.
+Tenant → Webhooks: HMAC-signed HTTPS notifications for all events, or a chosen set: user created / updated / deleted / suspended / locked / unlocked, email verified / changed, password changed, two-factor added / removed, roles changed, application access granted / revoked, sign-in succeeded / failed, session ended, role and group changes, account deletion requests, access requests.
 Events list: `GET /api/admin/v1/tenants/{id}/webhooks/events`.
+
+- **Delivery**: events are stored and sent after the change commits. A delivery the receiver does not accept (no answer, or not 2xx) is tried again after 1 and 5 minutes, then 30 minutes, then 2, 6, 12 and 24 hours: 8 tries over about two days. After that it is marked failed, and **Send again** queues it once more. Each delivery shows its tries, last error and next try.
+- **Signature**: `X-SecureOne-Signature-256: t=<unix time>,v1=<hex HMAC-SHA256 of "t.body">`. Refuse timestamps older than 5 minutes, and use `X-SecureOne-Delivery` (also `X-SecureOne-Attempt`) to ignore repeats. `X-SecureOne-Signature: sha256=<hex HMAC of the body>` remains for older receivers.
+- **Rotate secret**: a new secret is shown once. The old one also signs, as a second `v1`, for 0–168 hours (default 24), so the receiver can switch over.
+- **Send test**: sends a `webhook.test` event now and shows what the endpoint answered.
+- **Application webhooks** (application **Settings → Integration → Webhooks**, for the application's admins): the same features, for that application's events only. The tenant's webhooks receive every application's events. A tenant webhook limited to one application must name an application of that tenant. API: `/api/admin/v1/applications/{id}/settings/webhooks`.
+
+## Platform operators (platform)
+
+Access review → Platform operators: **Super admin** (changes anything) or **Read-only** (sees everything a super admin sees and changes nothing: for auditors and support). At least one super admin always remains, and no one can change their own role. Adding, removing and changing roles need a fresh second step.
+
+## Tenants (platform)
+
+- **Suspending** a tenant signs every user out: their refresh tokens and app grants are revoked, their browser sessions end, and each app with a back-channel logout URL is told. New sign-ins, token refreshes and client-credentials tokens for the tenant's apps are refused until it is active again.
+- **Deleting** a tenant needs a fresh second step and the tenant's slug typed again. Users are signed out first. The tenant's applications are deleted with their data (their database schemas too) and their settings exceptions.
+
+## Impersonation (admin)
+
+An admin can sign in as a user (Users → user → Sign in as user, with a reason) to see what they see.
+- It needs a fresh second step. Platform operators and console admins cannot be impersonated.
+- It never adds the user to an application; impersonating within an application needs them to be a member already.
+- The one-time link works for 2 minutes. The session ends after 15 minutes without use.
+- The hosted pages show a banner naming the admin. The user's account cannot be changed meanwhile (password, email, two-step, sessions, connected apps, deletion).
+- Tokens issued during it carry `act: {"sub": "<admin>"}` (RFC 8693), so apps can tell.
+- The reason is in the audit log.
+
+## Signing keys (platform)
+
+Platform settings → OAuth tokens → Signing keys:
+- The next key is always published in JWKS ahead of time.
+- **Rotate** makes it the signing key at once. The old key stays published, so tokens it signed keep verifying, until **Retire previous key**, which you do after the longest token lifetime.
+- Every server picks a rotation up within 30 seconds.
+
+A key set with `SECUREONE_JWK_PRIVATE_KEY_PEM` is rotated in the environment instead: set the new key, and the old one as `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM`.
 
 ## Users
 
+- **Change password** (Account security page, or `POST /api/v1/account/password/change` with the user's access token): needs the current password. On the page, this browser stays signed in and the user's other browser sessions end. The change is audited and the "password changed" notice is emailed.
+- **Suspending or disabling** a user (console, API, SCIM deprovisioning, or the user asking for deletion) signs them out everywhere: grants and refresh tokens are revoked, browser sessions end (no new authorization codes), userinfo refuses their access tokens, and each application with a back-channel logout URL is told. Access tokens already issued still pass an API's local JWT check until they expire. A password reset link or code never turns a suspended or disabled account back on, even one sent before the change.
+- **Sessions** (Users → user → Security): the user's browser sessions and the applications holding a grant for them (no token values). **Sign out everywhere** ends them all and tells the applications; the account stays active. In an application's console, the same view and button cover that application only. API: `GET /api/admin/v1/users/{id}/sessions`, `POST /api/admin/v1/users/{id}/sign-out` (and `/api/admin/v1/applications/{appId}/users/{id}/...`).
+- **Profile attributes** (Users → user → Security): values from sign-up fields, imports or set by an admin; an empty value removes one. Keys: a letter, then letters, digits or `_` (up to 40); reserved names (`email`, `authMethods`…) are refused. API: `GET`/`PUT /api/admin/v1/users/{id}/attributes`.
+- **Linked sign-in** (Account security page, and Users → user → Security): the Google, SAML… accounts a user signs in with; the user or an admin can unlink one. The last one cannot be unlinked while the account has no password.
 - **Change email** (Account security page, or `POST /api/v1/account/email/change` with the user's access token): the current password is checked (accounts without one, such as Google, SAML or passkey-only accounts, must have signed in within the last 10 minutes), a link goes to the new address, and the email changes only when it is opened; the old address is told at both steps. Applications signed in under the old address get a back-channel logout.
 - **Connected apps** (Account security page): the apps the user allowed on the consent screen, and any other app that still holds a valid token for them; removing one withdraws consent and revokes its tokens.
 - Security notices (password changed, sign-in changes, new device, account locked) are always sent.
+- **Temporary passwords**: an admin who sets a password can tick "Temporary" (ticked by default in the console; the API takes `"temporary": true`). The user signs in with it and is taken straight to choosing their own. Over the API sign-in, the answer is 403 with `passwordChangeRequired` and a `changeToken` for `POST /api/v1/account/password/reset`.
+- **Personal data export** (Account → Privacy): profile, phone, custom attributes, two-step methods, sign-in history (latest 500), connected apps, application memberships and roles, and trusted devices.
+- **Account deletion**: a user's request turns the account off at once. It is listed under the tenant's **Deletion requests**, where admins delete it now or cancel. Requests not handled are completed automatically 30 days after they were made. Deleting an account also removes its OAuth grants and consents, browser sessions, and its memberships, roles and groups in every application.
+
+## Applications
+
+- **Removing a user from an application**: their membership, the application's roles and groups and a pending invitation to it are removed; the grants and consents of its OAuth clients end (refresh tokens stop working) and those clients get a back-channel logout. Self-registration does not make them a member again; an admin adding them back does. Audited as `user.application_access_revoked` with `tenant:email`. Their account and other applications are untouched.
+- **Users list** (`GET /api/admin/v1/users?applicationId=…`): `search` (email, username, name), `status` (active, invited, suspended, disabled), and `page` (from 0) with `size` (default 50, at most 500); `X-Total-Count` gives the number of matches. Reading the list never changes memberships.
+- **Deleting an application** needs its slug typed again and a fresh second step. With OAuth clients it needs a second admin, as deleting one client does (202 with the change request; a platform operator or the tenant's super admin approves on Access review). Everyone signed in to it is signed out first: its clients' grants end, with a back-channel logout.
+- **Sign-up** (**Settings → Authentication → Sign-up**): allowed email domains (empty: any; `*.example.com` for subdomains) and blocked ones, for hosted sign-up and for accounts made by signing in with Google or SAML; and up to 20 extra fields on the hosted sign-up page (text, list or checkbox, optionally required), saved as the user's attributes. Apps calling `POST /api/v1/applications/{id}/signup` send them in `attributes`; `GET …/signup` lists them in `fields`.
+- **Role end dates** (Users → user → Security, in the application's console): a role can be given until a date. It stops counting at that moment (tokens, console permissions) and the assignment is then removed, audited as `user.role_expired`. Saving a user's roles keeps the end dates. API: `PUT`/`DELETE /api/admin/v1/applications/{id}/users/{userId}/role-assignments/{roleId}` with `{"expiresAt": "2026-12-31T18:00:00Z"}`.
 
 ## OAuth clients
 
+- **RP-initiated logout** (`/connect/logout`): ends the browser session and revokes the grants given during it (their refresh tokens stop working; `offline_access` grants are kept, as intended), then tells the other applications. Send the latest ID token as `id_token_hint` (a refresh replaces the earlier one).
 - **Back-channel logout URL** (OIDC Back-Channel Logout 1.0): SecureOne POSTs a signed `logout_token` (RS256, `typ: logout+jwt`, `sub` as the client sees it, and `sid` after an application's RP-initiated logout) to every application the user signed in to. This happens when the user signs out of SecureOne, when all their sessions are ended (admin or two-step reset, SAML logout), and when they are suspended, deleted or change their email. The address is checked again when sending: one that now resolves to a private network is skipped. Discovery advertises `backchannel_logout_supported`. The TypeScript SDK has `verifyLogoutToken()`.
+- **Rotate secret** (confidential clients): the new secret is shown once. The old one keeps working for 0–168 hours (the console asks; 0 when it leaked), so the app can be updated without an outage.
 - **Token subject**: User ID (stable, the default) or legacy `tenant:email`. With the legacy subject, a user who changes their email looks like a new user to the app; the client form warns about this.
 - **Third-party app: ask users for consent**: users see what the app asks for and allow or cancel (`/oauth2/consent`); the choice is remembered and can be withdrawn under Connected apps.
 

@@ -10,11 +10,17 @@ public interface WebhookEndpointRepository extends JpaRepository<WebhookEndpoint
 
     List<WebhookEndpoint> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
 
+    List<WebhookEndpoint> findByTenantIdAndApplicationIdOrderByCreatedAtDesc(UUID tenantId, UUID applicationId);
+
+    /**
+     * The endpoints for an event: the tenant's (all its applications) and, for an event of one application, that
+     * application's own. An application's endpoint never receives another application's or tenant-wide events.
+     */
     @Query("""
             SELECT e FROM WebhookEndpoint e
             WHERE e.tenantId = :tenantId
               AND e.enabled = true
-              AND (:applicationId IS NULL OR e.applicationId IS NULL OR e.applicationId = :applicationId)
+              AND (e.applicationId IS NULL OR e.applicationId = :applicationId)
             """)
     List<WebhookEndpoint> findMatching(
             @Param("tenantId") UUID tenantId, @Param("applicationId") UUID applicationId);

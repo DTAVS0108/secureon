@@ -52,6 +52,10 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/config/import`](#1241-preview-or-apply-a-configuration-file) — Preview or apply a configuration file
   - [GET `/api/admin/v1/config/platform/export`](#1242-export-the-platform-configuration) — Export the platform configuration
   - [GET `/api/admin/v1/config/tenants/{slug}/export`](#1243-export-a-tenants-configuration) — Export a tenant's configuration
+- [12.5 Signing keys](#125-signing-keys)
+  - [GET `/api/admin/v1/settings/signing-keys`](#1251-list-signing-keys) — List signing keys
+  - [POST `/api/admin/v1/settings/signing-keys/retire-previous`](#1252-create-retire-previou) — Create retire previou
+  - [POST `/api/admin/v1/settings/signing-keys/rotate`](#1253-rotate) — Rotate
 
 ## 12.1 Platform settings
 
@@ -801,5 +805,60 @@ YAML by default; format=json for JSON.
 
 ```bash
 curl -s "$SECUREONE_URL/api/admin/v1/config/tenants/{slug}/export" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 12.5 Signing keys
+
+Rotate the OAuth/OIDC token signing key
+
+### 12.5.1 List signing keys
+
+`GET /api/admin/v1/settings/signing-keys`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/settings/signing-keys" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.5.2 Create retire previou
+
+`POST /api/admin/v1/settings/signing-keys/retire-previous`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/settings/signing-keys/retire-previous" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 12.5.3 Rotate
+
+`POST /api/admin/v1/settings/signing-keys/rotate`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/settings/signing-keys/rotate" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

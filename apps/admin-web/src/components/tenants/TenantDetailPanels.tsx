@@ -5,6 +5,7 @@ import { FederationProvidersPanel } from "@/components/settings/FederationProvid
 import { AccessRequestsPanel } from "@/components/tenants/AccessRequestsPanel";
 import { ServiceAccountsPanel } from "@/components/tenants/ServiceAccountsPanel";
 import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
+import { DeletionRequestsPanel } from "@/components/tenants/DeletionRequestsPanel";
 import { TenantWorkspacePanel } from "@/components/tenant/TenantWorkspacePanel";
 import { AdminConsoleAccessPanel } from "@/components/tenants/AdminConsoleAccessPanel";
 import type { ConsoleAccessAssignment } from "@/lib/api/admin-console-access";
@@ -88,6 +89,7 @@ export function TenantDetailPanels({
       <AccessRequestsPanel tenantId={tenant.id} users={workspace.users} applications={applications} />
       <ServiceAccountsPanel tenantId={tenant.id} />
       <WebhooksPanel tenantId={tenant.id} />
+      <DeletionRequestsPanel tenantId={tenant.id} />
     </>
   );
 }

@@ -105,11 +105,36 @@ public final class AuthContextAttributes {
         setAcr(request, "2");
     }
 
+    /** Authority carried by an impersonated sign-in ("IMPERSONATED_BY:" + the administrator). */
+    public static final String IMPERSONATED_BY_AUTHORITY = "IMPERSONATED_BY:";
+
+    /** An impersonated session ends after this long without use (a normal one lasts much longer). */
+    public static final int IMPERSONATION_IDLE_SECONDS = 15 * 60;
+
     public static void markImpersonation(HttpServletRequest request, String adminPrincipal) {
         HttpSession session = session(request);
         if (session != null && adminPrincipal != null) {
             session.setAttribute(SESSION_IMPERSONATED_BY, adminPrincipal);
+            session.setMaxInactiveInterval(IMPERSONATION_IDLE_SECONDS);
         }
+    }
+
+    /** The administrator signed in as this user, or null for the user's own sign-in. */
+    public static String impersonatedBy(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        for (var authority : authentication.getAuthorities()) {
+            String value = authority.getAuthority();
+            if (value != null && value.startsWith(IMPERSONATED_BY_AUTHORITY)) {
+                return value.substring(IMPERSONATED_BY_AUTHORITY.length());
+            }
+        }
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt
+                && jwt.getClaim("act") instanceof java.util.Map<?, ?> act && act.get("sub") != null) {
+            return String.valueOf(act.get("sub"));
+        }
+        return null;
     }
 
     public static List<String> amr(HttpServletRequest request) {

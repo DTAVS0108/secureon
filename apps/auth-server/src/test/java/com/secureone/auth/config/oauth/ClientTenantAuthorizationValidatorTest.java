@@ -74,6 +74,7 @@ class ClientTenantAuthorizationValidatorTest {
         user.setId(UUID.randomUUID());
         user.setTenantId(tenant.getId());
         user.setEmail("jane@acme.test");
+        user.setStatus("ACTIVE");
     }
 
     @Test
@@ -127,6 +128,32 @@ class ClientTenantAuthorizationValidatorTest {
         when(access.admit(app.getId(), user.getId())).thenReturn(true);
 
         assertDoesNotThrow(() -> validator.accept(context(signedIn("ACME:Jane@acme.test"))));
+    }
+
+    @Test
+    void suspendedUserWithABrowserSessionGetsNoCode() {
+        stubClientTenant();
+        user.setStatus("SUSPENDED");
+        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+
+        OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
+                OAuth2AuthorizationCodeRequestAuthenticationException.class,
+                () -> validator.accept(context(signedIn("acme:jane@acme.test"))));
+
+        assertEquals(OAuth2ErrorCodes.ACCESS_DENIED, ex.getError().getErrorCode());
+        verify(access, never()).admit(any(), any());
+    }
+
+    @Test
+    void userOfASuspendedTenantGetsNoCode() {
+        stubClientTenant();
+        tenant.setStatus("SUSPENDED");
+        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+
+        assertThrows(
+                OAuth2AuthorizationCodeRequestAuthenticationException.class,
+                () -> validator.accept(context(signedIn("acme:jane@acme.test"))));
+        verify(access, never()).admit(any(), any());
     }
 
     @Test

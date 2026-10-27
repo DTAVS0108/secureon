@@ -49,7 +49,8 @@ public final class UserAdminDtos {
             List<UUID> roleIds,
             UUID applicationId) {}
 
-    public record AdminSetPasswordRequest(@NotBlank @Size(min = 8, max = 128) String password) {}
+    /** {@code temporary: true}: the user must choose a new password the first time they sign in with it. */
+    public record AdminSetPasswordRequest(@NotBlank @Size(min = 8, max = 128) String password, Boolean temporary) {}
 
     public record UserUpdateRequest(
             @NotBlank @Email String email,

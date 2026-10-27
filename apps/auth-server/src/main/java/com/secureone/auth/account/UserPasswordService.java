@@ -34,6 +34,19 @@ public class UserPasswordService {
         this.lockout = lockout;
     }
 
+    /**
+     * A reset link or code, or an invitation, completes a pending account (and ends a lockout); it never turns a
+     * suspended or disabled one back on, even with a link sent before the administrator's change. Checked before the
+     * new password is saved.
+     */
+    public static void assertMayRecover(com.secureone.auth.user.UserAccount user) {
+        String status = user.getStatus();
+        if ("SUSPENDED".equalsIgnoreCase(status) || "DISABLED".equalsIgnoreCase(status)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "This account is not active. Contact your administrator.");
+        }
+    }
+
     public boolean hasPassword(UUID userId) {
         return credentials.findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(userId).isPresent();
     }
@@ -62,6 +75,11 @@ public class UserPasswordService {
     }
 
     public void setPassword(UUID userId, String plainPassword, UUID applicationId) {
+        setPassword(userId, plainPassword, applicationId, false);
+    }
+
+    /** {@code mustChange}: a temporary password (set by an administrator) the user replaces at their next sign-in. */
+    public void setPassword(UUID userId, String plainPassword, UUID applicationId, boolean mustChange) {
         policy.validateForSetPassword(userId, plainPassword, applicationId);
         String algorithm = policy.hashAlgorithm(applicationId);
         Instant expiresAt = policy.expiresAtForNewCredential(applicationId);
@@ -74,6 +92,7 @@ public class UserPasswordService {
         cred.setPasswordHash(passwordEncoder.encode(plainPassword));
         cred.setAlgorithm(algorithm);
         cred.setExpiresAt(expiresAt);
+        cred.setMustChange(mustChange);
         cred.setCurrent(true);
         credentials.saveAndFlush(cred);
 

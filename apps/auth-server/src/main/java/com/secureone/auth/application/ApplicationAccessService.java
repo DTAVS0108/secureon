@@ -5,7 +5,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Decides whether a signed-in tenant user may use an application. Existing members are admitted;
- * non-members are enrolled with the default role only when the app allows self registration.
+ * non-members are enrolled with the default role only when the app allows self registration, and
+ * not when an administrator removed them from the app.
  */
 @Service
 public class ApplicationAccessService {
@@ -30,7 +31,8 @@ public class ApplicationAccessService {
             if (memberships.isMember(applicationId, userId)) {
                 return true;
             }
-            if (!effectiveSettings.isFeatureEnabled(applicationId, SELF_REGISTRATION_FEATURE)) {
+            if (!effectiveSettings.isFeatureEnabled(applicationId, SELF_REGISTRATION_FEATURE)
+                    || memberships.wasRemoved(applicationId, userId)) {
                 return false;
             }
             memberships.ensureMemberWithDefaultRole(applicationId, userId);

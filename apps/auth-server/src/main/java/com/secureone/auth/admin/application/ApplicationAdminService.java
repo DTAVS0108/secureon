@@ -149,6 +149,10 @@ public class ApplicationAdminService {
     public void delete(UUID id) {
         Application app = require(id);
         String schemaName = app.getSchemaName();
+        // Everyone signed in to it is signed out first (its clients' grants would otherwise linger), and its
+        // clients with a back-channel logout URL are told.
+        var termination = accessTermination != null ? accessTermination.getIfAvailable() : null;
+        int signedOut = termination != null ? termination.endApplication(id) : 0;
         applicationRepository.delete(app);
         applicationRepository.flush();
         schemaProvisioner.drop(schemaName);
@@ -160,10 +164,13 @@ public class ApplicationAdminService {
                 }
             });
         }
-        auditService.record(
-                app.getTenantId(), "admin", "application.deleted", "application", id, app.getName(), true);
+        auditService.record(app.getTenantId(), "admin", "application.deleted", "application", id,
+                app.getName() + " (" + signedOut + " user(s) signed out)", true);
         emailService.sendAdminNotification(id, "Application deleted", "Removed application: " + app.getName());
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.account.UserAccessTermination> accessTermination;
 
     private Application require(UUID id) {
         return applicationRepository

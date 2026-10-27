@@ -40,4 +40,17 @@ public class ImpersonationAuthController {
         }
         response.sendRedirect(redirect);
     }
+
+    /** For the hosted pages' banner: whether an administrator is signed in as this user, and who. */
+    @GetMapping("/status")
+    public java.util.Map<String, Object> status(org.springframework.security.core.Authentication authentication) {
+        String by = AuthContextAttributes.impersonatedBy(authentication);
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("impersonated", by != null);
+        if (by != null) {
+            out.put("by", by);
+            out.put("user", authentication.getName());
+        }
+        return out;
+    }
 }

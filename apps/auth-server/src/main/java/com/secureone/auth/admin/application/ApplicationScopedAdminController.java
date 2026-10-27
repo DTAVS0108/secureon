@@ -90,6 +90,102 @@ public class ApplicationScopedAdminController {
         users.revokeAccess(applicationId, userId);
     }
 
+    /** The user's grants for this application's clients (browser sessions are shared by all apps: not shown here). */
+    @GetMapping("/users/{userId}/sessions")
+    public Map<String, Object> userSessions(@PathVariable UUID applicationId, @PathVariable UUID userId) {
+        requireMember(applicationId, userId);
+        return userAdmin.activeSessions(userId, applicationId);
+    }
+
+    /** Signs the user out of this application: its clients' grants end, with a back-channel logout to them. */
+    @PostMapping("/users/{userId}/sign-out")
+    public Map<String, Object> signOutUser(@PathVariable UUID applicationId, @PathVariable UUID userId) {
+        requireMember(applicationId, userId);
+        return userAdmin.signOutEverywhere(userId, applicationId);
+    }
+
+    /** The user's profile attributes, with this application's sign-up fields (to label them). */
+    @GetMapping("/users/{userId}/attributes")
+    public Map<String, Object> userAttributes(@PathVariable UUID applicationId, @PathVariable UUID userId) {
+        requireMember(applicationId, userId);
+        return Map.of(
+                "attributes", userAdmin.profileAttributes(userId),
+                "fields", settings.resolveSignupPolicy(applicationId).fields().stream()
+                        .map(com.secureone.auth.application.SignupPolicy.Field::toMap).toList());
+    }
+
+    @PutMapping("/users/{userId}/attributes")
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> saveUserAttributes(
+            @PathVariable UUID applicationId, @PathVariable UUID userId, @RequestBody Map<String, Object> body) {
+        requireMember(applicationId, userId);
+        Object raw = body != null ? body.get("attributes") : null;
+        userAdmin.saveProfileAttributes(userId, raw instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of());
+        return userAttributes(applicationId, userId);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.federation.LinkedIdentityService linkedIdentities;
+
+    /** The Google, SAML… accounts the user signs in with. */
+    @GetMapping("/users/{userId}/identities")
+    public List<Map<String, Object>> userIdentities(@PathVariable UUID applicationId, @PathVariable UUID userId) {
+        requireMember(applicationId, userId);
+        return linkedIdentities.list(userId);
+    }
+
+    /** Refused (409) when it is the user's only way to sign in. */
+    @DeleteMapping("/users/{userId}/identities/{identityId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unlinkUserIdentity(
+            @PathVariable UUID applicationId, @PathVariable UUID userId, @PathVariable UUID identityId) {
+        requireMember(applicationId, userId);
+        linkedIdentities.unlink(userId, identityId, "admin");
+    }
+
+    /** The user's roles here, each with its end date (none: for good). */
+    @GetMapping("/users/{userId}/role-assignments")
+    public List<Map<String, Object>> roleAssignments(@PathVariable UUID applicationId, @PathVariable UUID userId) {
+        requireMember(applicationId, userId);
+        return userAdmin.applicationRoleAssignments(userId, applicationId);
+    }
+
+    /**
+     * Gives the user a role, for good or until {@code expiresAt} (ISO-8601, e.g. 2026-12-31T18:00:00Z); on a role
+     * they have, changes its end. At the end the role stops counting at once and the assignment is removed.
+     */
+    @PutMapping("/users/{userId}/role-assignments/{roleId}")
+    public Map<String, Object> grantRole(
+            @PathVariable UUID applicationId,
+            @PathVariable UUID userId,
+            @PathVariable UUID roleId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        requireMember(applicationId, userId);
+        Object raw = body != null ? body.get("expiresAt") : null;
+        java.time.Instant expiresAt = null;
+        if (raw != null && !raw.toString().isBlank()) {
+            try {
+                expiresAt = java.time.Instant.parse(raw.toString().trim());
+            } catch (java.time.format.DateTimeParseException e) {
+                throw new IllegalArgumentException("expiresAt must be an ISO-8601 time, e.g. 2026-12-31T18:00:00Z.");
+            }
+        }
+        return userAdmin.grantApplicationRole(userId, applicationId, roleId, expiresAt);
+    }
+
+    @DeleteMapping("/users/{userId}/role-assignments/{roleId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeRole(@PathVariable UUID applicationId, @PathVariable UUID userId, @PathVariable UUID roleId) {
+        requireMember(applicationId, userId);
+        userAdmin.revokeApplicationRole(userId, applicationId, roleId);
+    }
+
+    private void requireMember(UUID applicationId, UUID userId) {
+        if (!users.resolveApplicationMemberUserIds(applicationId).contains(userId)) {
+            throw new com.secureone.auth.admin.ResourceNotFoundException("User not found in this application: " + userId);
+        }
+    }
+
     @GetMapping("/users/{userId}")
     public UserResponse getUser(@PathVariable UUID applicationId, @PathVariable UUID userId) {
         return userAdmin.get(userId, applicationId);
@@ -128,7 +224,7 @@ public class ApplicationScopedAdminController {
             @PathVariable UUID applicationId,
             @PathVariable UUID userId,
             @Valid @RequestBody com.secureone.auth.admin.user.UserAdminDtos.AdminSetPasswordRequest request) {
-        userAdmin.adminSetPassword(userId, request.password(), applicationId);
+        userAdmin.adminSetPassword(userId, request.password(), applicationId, Boolean.TRUE.equals(request.temporary()));
     }
 
     @PostMapping("/users/{userId}/password/remove")
@@ -614,5 +710,17 @@ public class ApplicationScopedAdminController {
     public Map<String, Object> updateTokenClaims(
             @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
         return settings.saveTokenClaims(applicationId, body);
+    }
+
+    /** Who may sign up (allowed and blocked email domains) and the extra fields the sign-up page asks. */
+    @GetMapping("/settings/signup-policy")
+    public Map<String, Object> getSignupPolicy(@PathVariable UUID applicationId) {
+        return settings.getSignupPolicy(applicationId);
+    }
+
+    @PutMapping("/settings/signup-policy")
+    public Map<String, Object> updateSignupPolicy(
+            @PathVariable UUID applicationId, @RequestBody Map<String, Object> body) {
+        return settings.saveSignupPolicy(applicationId, body);
     }
 }

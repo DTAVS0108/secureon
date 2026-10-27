@@ -108,7 +108,16 @@ public class EmailNotificationService {
         sendAdminNotification(applicationId, null, subject, body);
     }
 
+    /** Informational: an email that cannot be sent is logged and never stops the action that caused it. */
     public void sendAdminNotification(UUID applicationId, UserAccount user, String subject, String body) {
+        try {
+            sendAdminNotificationNow(applicationId, user, subject, body);
+        } catch (RuntimeException e) {
+            log.warn("Admin notification '{}' not sent: {}", subject, e.getMessage());
+        }
+    }
+
+    private void sendAdminNotificationNow(UUID applicationId, UserAccount user, String subject, String body) {
         if (applicationId == null && user == null) {
             sendPlatformAdminNotification(subject, body);
             return;
@@ -136,7 +145,16 @@ public class EmailNotificationService {
         sendAdminSecurityAlert(applicationId, null, subject, body);
     }
 
+    /** Informational, like {@link #sendAdminNotification}: never stops the action that caused it. */
     public void sendAdminSecurityAlert(UUID applicationId, UserAccount user, String subject, String body) {
+        try {
+            sendAdminSecurityAlertNow(applicationId, user, subject, body);
+        } catch (RuntimeException e) {
+            log.warn("Admin security alert '{}' not sent: {}", subject, e.getMessage());
+        }
+    }
+
+    private void sendAdminSecurityAlertNow(UUID applicationId, UserAccount user, String subject, String body) {
         if (applicationId == null && user == null) {
             sendPlatformSecurityAlert(subject, body);
             return;

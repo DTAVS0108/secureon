@@ -81,6 +81,16 @@ public class AccountSessionService {
         return count;
     }
 
+    /**
+     * Ends every browser session of the principal without the usual audit entry and logout notices (the caller
+     * records one entry for the whole action and notifies the applications itself).
+     */
+    public int endAllQuietly(String principalName) {
+        Map<String, ? extends Session> found = sessions.findByPrincipalName(principalName);
+        found.keySet().forEach(sessions::deleteById);
+        return found.size();
+    }
+
     private void assertOwned(String principalName, String sessionId) {
         Map<String, ? extends Session> found = sessions.findByPrincipalName(principalName);
         if (!found.containsKey(sessionId)) {

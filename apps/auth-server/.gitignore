@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local testing (curl cookie jars, saved headers and bodies: may hold session cookies) ###
+/*.txt

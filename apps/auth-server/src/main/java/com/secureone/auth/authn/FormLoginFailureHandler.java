@@ -56,6 +56,20 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
             throws IOException, ServletException {
         String authorizeUrl =
                 OAuthLoginRedirectSupport.resolvePendingAuthorizeUrl(request, response, requestCache);
+        if (exception instanceof com.secureone.auth.account.PasswordChangeRequiredException change) {
+            // A temporary password: straight to choosing their own, then they sign in (and continue to the app).
+            String target = "/account/reset-password.html?temporary=1&token="
+                    + URLEncoder.encode(change.changeToken(), StandardCharsets.UTF_8);
+            String applicationId = request.getParameter("applicationId");
+            if (applicationId != null && !applicationId.isBlank()) {
+                target += "&applicationId=" + URLEncoder.encode(applicationId.trim(), StandardCharsets.UTF_8);
+            }
+            if (authorizeUrl != null && !authorizeUrl.isBlank()) {
+                target += "&continue=" + URLEncoder.encode(authorizeUrl, StandardCharsets.UTF_8);
+            }
+            response.sendRedirect(target);
+            return;
+        }
         String errorParam = exception instanceof org.springframework.security.authentication.CredentialsExpiredException
                 ? "error=expired"
                 : "error";

@@ -60,6 +60,26 @@
     </section>
 
     <section>
+      <h2>Password</h2>
+      <p class="muted">This device stays signed in; your other devices are signed out.</p>
+      <form id="password-change-form">
+        <label for="current-password">Current password</label>
+        <input id="current-password" type="password" autocomplete="current-password" required />
+        <label for="new-password">New password</label>
+        <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
+        <label for="confirm-password">Repeat the new password</label>
+        <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required />
+        <button type="submit">Change password</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Linked sign-in</h2>
+      <p class="muted">Accounts you can sign in with instead of a password (Google, your organization…).</p>
+      <ul id="identities" class="sessions"></ul>
+    </section>
+
+    <section>
       <h2>Connected apps</h2>
       <p class="muted">Apps that can use your account. Removing one signs it out of your account.</p>
       <ul id="consents" class="sessions"></ul>
@@ -157,6 +177,36 @@
         });
       }
 
+      async function loadIdentities() {
+        const rows = await api("/api/v1/account/identities");
+        const ul = document.getElementById("identities");
+        ul.innerHTML = "";
+        if (!rows || rows.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "None linked.";
+          ul.appendChild(li);
+          return;
+        }
+        rows.forEach((row) => {
+          const li = document.createElement("li");
+          const label = document.createElement("span");
+          label.textContent = row.provider + (row.email ? " · " + row.email : "");
+          li.appendChild(label);
+          const btn = document.createElement("button");
+          btn.textContent = "Unlink";
+          btn.onclick = async () => {
+            if (!confirm("Unlink " + row.provider + "? You will no longer sign in with it.")) return;
+            try {
+              await api(`/api/v1/account/identities/${encodeURIComponent(row.id)}`, { method: "DELETE" });
+              showBanner(row.provider + " unlinked.", true);
+              await loadIdentities();
+            } catch (e) { showBanner(e.message, false); }
+          };
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      }
+
       document.getElementById("revoke-others").onclick = async () => {
         try {
           await api("/api/v1/account/sessions", { method: "DELETE" });
@@ -181,6 +231,26 @@
         } catch (err) { showBanner(err.message, false); }
       });
 
+      document.getElementById("password-change-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const current = document.getElementById("current-password");
+        const next = document.getElementById("new-password");
+        const again = document.getElementById("confirm-password");
+        if (next.value !== again.value) {
+          showBanner("The new passwords do not match.", false);
+          return;
+        }
+        try {
+          const data = await api("/api/v1/account/password/change/session", {
+            method: "POST",
+            body: JSON.stringify({ currentPassword: current.value, newPassword: next.value, applicationId }),
+          });
+          current.value = next.value = again.value = "";
+          showBanner(data.message, true);
+          await loadSessions();
+        } catch (err) { showBanner(err.message, false); }
+      });
+
       if (applicationId) {
         document.getElementById("login-link").href = `/login.html?applicationId=${encodeURIComponent(applicationId)}`;
       }
@@ -188,6 +258,7 @@
       window.SecureOneTwoStep.renderAccount(document.getElementById("two-step"), { applicationId });
       loadSessions().catch((e) => showBanner(e.message, false));
       loadConsents().catch(() => undefined);
+      loadIdentities().catch(() => undefined);
     </script>
   </body>
 </html>

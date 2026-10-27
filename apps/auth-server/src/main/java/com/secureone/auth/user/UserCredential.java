@@ -45,6 +45,10 @@ public class UserCredential {
     @Column(name = "expiry_expired_notice_sent_at")
     private Instant expiryExpiredNoticeSentAt;
 
+    /** A temporary password from an administrator: the user must choose a new one at their next sign-in. */
+    @Column(name = "must_change", nullable = false)
+    private boolean mustChange;
+
     @PrePersist
     void onCreate() {
         if (id == null) {

@@ -46,6 +46,13 @@ public class WebhookEndpoint {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** After a rotation, the old secret also signs deliveries until this time (receivers switch over). */
+    @Column(name = "previous_secret_encrypted")
+    private String previousSecretEncrypted;
+
+    @Column(name = "previous_secret_expires_at")
+    private Instant previousSecretExpiresAt;
+
     @PrePersist
     void onCreate() {
         if (id == null) {

@@ -48,42 +48,53 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/applications/{applicationId}/settings/public-manifest`](#10135-get-public-manifest) — Get public manifest
   - [PUT `/api/admin/v1/applications/{applicationId}/settings/public-manifest`](#10136-update-public-manifest) — Update public manifest
   - [DELETE `/api/admin/v1/applications/{applicationId}/settings/public-manifest`](#10137-remove-public-manifest) — Remove public manifest
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/sms`](#10138-get-sms) — Get SMS
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/sms`](#10139-update-sms) — Update SMS
-  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/sms`](#10140-remove-sms) — Remove SMS
-  - [POST `/api/admin/v1/applications/{applicationId}/settings/sms/test`](#10141-send-a-test-sms) — Send a test SMS
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/smtp`](#10142-get-smtp) — Get SMTP
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/smtp`](#10143-update-smtp) — Update SMTP
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-claims`](#10144-list-token-claims) — List token claims
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-claims`](#10145-update-token-claims) — Update token claims
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10146-get-token-policy) — Get token policy
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10147-update-token-policy) — Update token policy
-  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10148-remove-token-policy) — Remove token policy
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-policy/tab-enabled`](#10149-update-tab-enabled) — Update tab enabled
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-policy/tab-state`](#10150-get-tab-state) — Get tab state
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10151-get-user-directory) — Get user directory
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10152-update-user-directory) — Update user directory
-  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10153-remove-user-directory) — Remove user directory
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10154-get-verification-policy) — Get verification policy
-  - [PUT `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10155-update-verification-policy) — Update verification policy
-  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10156-remove-verification-policy) — Remove verification policy
-  - [GET `/api/admin/v1/applications/{applicationId}/settings/workspace`](#10157-get-workspace) — Get workspace
-  - [GET `/api/admin/v1/applications/{applicationId}/users`](#10158-list-users) — List users
-  - [GET `/api/admin/v1/applications/{applicationId}/users/export`](#10159-export-user) — Export user
-  - [POST `/api/admin/v1/applications/{applicationId}/users/import`](#10160-import-users-from-a-csv-file) — Import users from a CSV file
-  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10161-get-user) — Get user
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10162-add-a-user-to-the-application) — Add a user to the application
-  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10163-remove-a-user-from-the-application) — Remove a user from the application
-  - [PUT `/api/admin/v1/applications/{applicationId}/users/{userId}/auth-methods`](#10164-update-auth-methods) — Update auth methods
-  - [PATCH `/api/admin/v1/applications/{applicationId}/users/{userId}/email-verification`](#10165-update-email-verification) — Update email verification
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/email/resend-verification`](#10166-resend-email-verification) — Resend email verification
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/email/verify`](#10167-verify-email) — Verify email
-  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}/mfa/factors/{factorId}`](#10168-remove-factor) — Remove factor
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/mfa/methods/{methodId}/reset`](#10169-reset-one-mfa-method-of-a-user) — Reset one MFA method of a user
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/remove`](#10170-remove-password) — Remove password
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/reset-email`](#10171-reset-password-email) — Reset password email
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/set`](#10172-set-password) — Set password
-  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/set-password-email`](#10173-set-password-email) — Set password email
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/signup-policy`](#10138-get-signup-policy) — Get signup policy
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/signup-policy`](#10139-update-signup-policy) — Update signup policy
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/sms`](#10140-get-sms) — Get SMS
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/sms`](#10141-update-sms) — Update SMS
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/sms`](#10142-remove-sms) — Remove SMS
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/sms/test`](#10143-send-a-test-sms) — Send a test SMS
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/smtp`](#10144-get-smtp) — Get SMTP
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/smtp`](#10145-update-smtp) — Update SMTP
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-claims`](#10146-list-token-claims) — List token claims
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-claims`](#10147-update-token-claims) — Update token claims
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10148-get-token-policy) — Get token policy
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10149-update-token-policy) — Update token policy
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/token-policy`](#10150-remove-token-policy) — Remove token policy
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/token-policy/tab-enabled`](#10151-update-tab-enabled) — Update tab enabled
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/token-policy/tab-state`](#10152-get-tab-state) — Get tab state
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10153-get-user-directory) — Get user directory
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10154-update-user-directory) — Update user directory
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/user-directory`](#10155-remove-user-directory) — Remove user directory
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10156-get-verification-policy) — Get verification policy
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10157-update-verification-policy) — Update verification policy
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/verification-policy`](#10158-remove-verification-policy) — Remove verification policy
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/workspace`](#10159-get-workspace) — Get workspace
+  - [GET `/api/admin/v1/applications/{applicationId}/users`](#10160-list-users) — List users
+  - [GET `/api/admin/v1/applications/{applicationId}/users/export`](#10161-export-user) — Export user
+  - [POST `/api/admin/v1/applications/{applicationId}/users/import`](#10162-import-users-from-a-csv-file) — Import users from a CSV file
+  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10163-get-user) — Get user
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10164-add-a-user-to-the-application) — Add a user to the application
+  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}`](#10165-remove-a-user-from-the-application) — Remove a user from the application
+  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}/attributes`](#10166-list-attributes) — List attributes
+  - [PUT `/api/admin/v1/applications/{applicationId}/users/{userId}/attributes`](#10167-update-attributes) — Update attributes
+  - [PUT `/api/admin/v1/applications/{applicationId}/users/{userId}/auth-methods`](#10168-update-auth-methods) — Update auth methods
+  - [PATCH `/api/admin/v1/applications/{applicationId}/users/{userId}/email-verification`](#10169-update-email-verification) — Update email verification
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/email/resend-verification`](#10170-resend-email-verification) — Resend email verification
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/email/verify`](#10171-verify-email) — Verify email
+  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}/identities`](#10172-list-identities) — List identities
+  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}/identities/{identityId}`](#10173-remove-identity) — Remove identity
+  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}/mfa/factors/{factorId}`](#10174-remove-factor) — Remove factor
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/mfa/methods/{methodId}/reset`](#10175-reset-one-mfa-method-of-a-user) — Reset one MFA method of a user
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/remove`](#10176-remove-password) — Remove password
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/reset-email`](#10177-reset-password-email) — Reset password email
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/set`](#10178-set-password) — Set password
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/password/set-password-email`](#10179-set-password-email) — Set password email
+  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments`](#10180-list-role-assignments) — List role assignments
+  - [PUT `/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}`](#10181-update-role-assignment) — Update role assignment
+  - [DELETE `/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}`](#10182-remove-role-assignment) — Remove role assignment
+  - [GET `/api/admin/v1/applications/{applicationId}/users/{userId}/sessions`](#10183-list-sessions) — List sessions
+  - [POST `/api/admin/v1/applications/{applicationId}/users/{userId}/sign-out`](#10184-sign-out) — Sign out
 - [10.2 Application RBAC](#102-application-rbac)
   - [GET `/api/admin/v1/applications/{applicationId}/groups`](#1021-list-groups) — List groups
   - [POST `/api/admin/v1/applications/{applicationId}/groups`](#1022-create-group) — Create group
@@ -107,6 +118,16 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [10.3 Application logs](#103-application-logs)
   - [GET `/api/admin/v1/logs`](#1031-search-application-logs) — Search application logs
   - [DELETE `/api/admin/v1/logs`](#1032-delete-application-logs) — Delete application logs
+- [10.4 Application webhooks](#104-application-webhooks)
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/webhooks`](#1041-list-webhooks) — List webhooks
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks`](#1042-create-webhook) — Create webhook
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/webhooks/events`](#1043-list-events) — List events
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}`](#1044-update-webhook) — Update webhook
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}`](#1045-remove-webhook) — Remove webhook
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries`](#1046-list-deliveries) — List deliveries
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries/{deliveryId}/redeliver`](#1047-redeliver) — Redeliver
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/rotate-secret`](#1048-rotate-webhook-secret) — Rotate webhook secret
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/test`](#1049-test-webhook) — Test webhook
 
 ## 10.1 Application scope
 
@@ -1020,7 +1041,55 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/sett
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.38 Get SMS
+### 10.1.38 Get signup policy
+
+`GET /api/admin/v1/applications/{applicationId}/settings/signup-policy`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/signup-policy" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.39 Update signup policy
+
+`PUT /api/admin/v1/applications/{applicationId}/settings/signup-policy`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/signup-policy" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.40 Get SMS
 
 `GET /api/admin/v1/applications/{applicationId}/settings/sms`
 
@@ -1043,7 +1112,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/sms" 
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.39 Update SMS
+### 10.1.41 Update SMS
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/sms`
 
@@ -1068,7 +1137,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.40 Remove SMS
+### 10.1.42 Remove SMS
 
 `DELETE /api/admin/v1/applications/{applicationId}/settings/sms`
 
@@ -1091,7 +1160,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/sett
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.41 Send a test SMS
+### 10.1.43 Send a test SMS
 
 `POST /api/admin/v1/applications/{applicationId}/settings/sms/test`
 
@@ -1124,7 +1193,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settin
 }'
 ```
 
-### 10.1.42 Get SMTP
+### 10.1.44 Get SMTP
 
 `GET /api/admin/v1/applications/{applicationId}/settings/smtp`
 
@@ -1147,7 +1216,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/smtp"
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.43 Update SMTP
+### 10.1.45 Update SMTP
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/smtp`
 
@@ -1172,7 +1241,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.44 List token claims
+### 10.1.46 List token claims
 
 `GET /api/admin/v1/applications/{applicationId}/settings/token-claims`
 
@@ -1195,7 +1264,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/token
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.45 Update token claims
+### 10.1.47 Update token claims
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/token-claims`
 
@@ -1220,7 +1289,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.46 Get token policy
+### 10.1.48 Get token policy
 
 `GET /api/admin/v1/applications/{applicationId}/settings/token-policy`
 
@@ -1243,7 +1312,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/token
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.47 Update token policy
+### 10.1.49 Update token policy
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/token-policy`
 
@@ -1268,7 +1337,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.48 Remove token policy
+### 10.1.50 Remove token policy
 
 `DELETE /api/admin/v1/applications/{applicationId}/settings/token-policy`
 
@@ -1291,7 +1360,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/sett
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.49 Update tab enabled
+### 10.1.51 Update tab enabled
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/token-policy/tab-enabled`
 
@@ -1316,7 +1385,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.50 Get tab state
+### 10.1.52 Get tab state
 
 `GET /api/admin/v1/applications/{applicationId}/settings/token-policy/tab-state`
 
@@ -1339,7 +1408,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/token
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.51 Get user directory
+### 10.1.53 Get user directory
 
 `GET /api/admin/v1/applications/{applicationId}/settings/user-directory`
 
@@ -1362,7 +1431,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/user-
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.52 Update user directory
+### 10.1.54 Update user directory
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/user-directory`
 
@@ -1387,7 +1456,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.53 Remove user directory
+### 10.1.55 Remove user directory
 
 `DELETE /api/admin/v1/applications/{applicationId}/settings/user-directory`
 
@@ -1410,7 +1479,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/sett
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.54 Get verification policy
+### 10.1.56 Get verification policy
 
 `GET /api/admin/v1/applications/{applicationId}/settings/verification-policy`
 
@@ -1433,7 +1502,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/verif
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.55 Update verification policy
+### 10.1.57 Update verification policy
 
 `PUT /api/admin/v1/applications/{applicationId}/settings/verification-policy`
 
@@ -1458,7 +1527,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.56 Remove verification policy
+### 10.1.58 Remove verification policy
 
 `DELETE /api/admin/v1/applications/{applicationId}/settings/verification-policy`
 
@@ -1481,7 +1550,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/sett
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.57 Get workspace
+### 10.1.59 Get workspace
 
 `GET /api/admin/v1/applications/{applicationId}/settings/workspace`
 
@@ -1504,7 +1573,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/works
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.58 List users
+### 10.1.60 List users
 
 `GET /api/admin/v1/applications/{applicationId}/users`
 
@@ -1527,7 +1596,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.59 Export user
+### 10.1.61 Export user
 
 `GET /api/admin/v1/applications/{applicationId}/users/export`
 
@@ -1551,7 +1620,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/export" 
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.60 Import users from a CSV file
+### 10.1.62 Import users from a CSV file
 
 `POST /api/admin/v1/applications/{applicationId}/users/import`
 
@@ -1582,7 +1651,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -F "file=@users.csv"
 ```
 
-### 10.1.61 Get user
+### 10.1.63 Get user
 
 `GET /api/admin/v1/applications/{applicationId}/users/{userId}`
 
@@ -1606,7 +1675,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.62 Add a user to the application
+### 10.1.64 Add a user to the application
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}`
 
@@ -1630,7 +1699,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.63 Remove a user from the application
+### 10.1.65 Remove a user from the application
 
 `DELETE /api/admin/v1/applications/{applicationId}/users/{userId}`
 
@@ -1654,7 +1723,57 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/user
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.64 Update auth methods
+### 10.1.66 List attributes
+
+`GET /api/admin/v1/applications/{applicationId}/users/{userId}/attributes`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/attributes" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.67 Update attributes
+
+`PUT /api/admin/v1/applications/{applicationId}/users/{userId}/attributes`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/attributes" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.68 Update auth methods
 
 `PUT /api/admin/v1/applications/{applicationId}/users/{userId}/auth-methods`
 
@@ -1688,7 +1807,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{
 }'
 ```
 
-### 10.1.65 Update email verification
+### 10.1.69 Update email verification
 
 `PATCH /api/admin/v1/applications/{applicationId}/users/{userId}/email-verification`
 
@@ -1714,7 +1833,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.66 Resend email verification
+### 10.1.70 Resend email verification
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/email/resend-verification`
 
@@ -1738,7 +1857,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.67 Verify email
+### 10.1.71 Verify email
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/email/verify`
 
@@ -1762,7 +1881,56 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.68 Remove factor
+### 10.1.72 List identities
+
+`GET /api/admin/v1/applications/{applicationId}/users/{userId}/identities`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/identities" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.73 Remove identity
+
+`DELETE /api/admin/v1/applications/{applicationId}/users/{userId}/identities/{identityId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+| `identityId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/identities/{identityId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.74 Remove factor
 
 `DELETE /api/admin/v1/applications/{applicationId}/users/{userId}/mfa/factors/{factorId}`
 
@@ -1787,7 +1955,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/user
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.69 Reset one MFA method of a user
+### 10.1.75 Reset one MFA method of a user
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/mfa/methods/{methodId}/reset`
 
@@ -1812,7 +1980,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.70 Remove password
+### 10.1.76 Remove password
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/password/remove`
 
@@ -1836,7 +2004,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.71 Reset password email
+### 10.1.77 Reset password email
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/password/reset-email`
 
@@ -1860,7 +2028,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 10.1.72 Set password
+### 10.1.78 Set password
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/password/set`
 
@@ -1878,6 +2046,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `password` | string | yes |  |
+| `temporary` | boolean | no |  |
 
 **Responses**
 
@@ -1890,11 +2059,12 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "password": "Choose-a-Strong-Pass-1!"
+  "password": "Choose-a-Strong-Pass-1!",
+  "temporary": true
 }'
 ```
 
-### 10.1.73 Set password email
+### 10.1.79 Set password email
 
 `POST /api/admin/v1/applications/{applicationId}/users/{userId}/password/set-password-email`
 
@@ -1915,6 +2085,130 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/
 
 ```bash
 curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/password/set-password-email" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.80 List role assignments
+
+`GET /api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.81 Update role assignment
+
+`PUT /api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+| `roleId` | path | string (uuid) | yes | Role ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.82 Remove role assignment
+
+`DELETE /api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+| `roleId` | path | string (uuid) | yes | Role ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/role-assignments/{roleId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.83 List sessions
+
+`GET /api/admin/v1/applications/{applicationId}/users/{userId}/sessions`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/sessions" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.1.84 Sign out
+
+`POST /api/admin/v1/applications/{applicationId}/users/{userId}/sign-out`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}/sign-out" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
@@ -2566,5 +2860,228 @@ Delete logs matching the same filters as search. Requires a date boundary: use p
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/logs" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 10.4 Application webhooks
+
+Webhook endpoints that receive one application's events
+
+### 10.4.1 List webhooks
+
+`GET /api/admin/v1/applications/{applicationId}/settings/webhooks`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.2 Create webhook
+
+`POST /api/admin/v1/applications/{applicationId}/settings/webhooks`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `201` | Created | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.3 List events
+
+`GET /api/admin/v1/applications/{applicationId}/settings/webhooks/events`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/events" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.4 Update webhook
+
+`PUT /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.5 Remove webhook
+
+`DELETE /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.6 List deliveries
+
+`GET /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.7 Redeliver
+
+`POST /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries/{deliveryId}/redeliver`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `deliveryId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries/{deliveryId}/redeliver" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.8 Rotate webhook secret
+
+`POST /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/rotate-secret`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `keepOldHours` | query | integer (int32) | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/rotate-secret" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.4.9 Test webhook
+
+`POST /api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/test`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/test" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

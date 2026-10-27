@@ -151,9 +151,19 @@ export function UsersPanel({
   }
 
   async function removeUser(userId: string) {
-    await revokeApplicationUser(app.id, userId);
-    toast("User removed from this application", "success");
-    reload();
+    if (
+      !window.confirm(
+        "Remove this user from the application? Their roles and groups here are removed, they are signed out of it, and sign-up does not add them back. Their account and other applications are not affected.",
+      )
+    )
+      return;
+    try {
+      await revokeApplicationUser(app.id, userId);
+      toast("User removed from this application and signed out of it", "success");
+      reload();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not remove the user", "error");
+    }
   }
 
   return (

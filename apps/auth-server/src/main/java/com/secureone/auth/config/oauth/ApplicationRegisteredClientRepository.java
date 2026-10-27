@@ -71,13 +71,20 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
                 .orElse(null);
     }
 
+    /** The client, its application and its organization must all be active (a suspended tenant gets no tokens). */
     private boolean isActive(OAuthClient client) {
         return "ACTIVE".equalsIgnoreCase(client.getStatus())
                 && applications
                         .findById(client.getApplicationId())
-                        .map(app -> "ACTIVE".equalsIgnoreCase(app.getStatus()))
+                        .filter(app -> "ACTIVE".equalsIgnoreCase(app.getStatus()))
+                        .map(app -> tenants == null || tenants.findById(app.getTenantId())
+                                .map(t -> "ACTIVE".equalsIgnoreCase(t.getStatus()))
+                                .orElse(false))
                         .orElse(false);
     }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.tenant.TenantRepository tenants;
 
     private RegisteredClient toRegisteredClient(OAuthClient client) {
         Application app = applications.findById(client.getApplicationId()).orElse(null);
@@ -127,7 +134,15 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
             builder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
             String secret = client.getClientSecret() != null ? client.getClientSecret() : "";
             if (!secret.isBlank()) {
-                builder.clientSecret(encodeSecret(secret));
+                String previous = client.getPreviousClientSecret();
+                if (previous != null && client.getPreviousSecretExpiresAt() != null
+                        && client.getPreviousSecretExpiresAt().isAfter(java.time.Instant.now())) {
+                    // Rotation overlap: the old secret works too until it expires.
+                    builder.clientSecret(com.secureone.auth.config.AppConfig.DualSecret.encoded(
+                            encodeSecret(secret), encodeSecret(previous), client.getPreviousSecretExpiresAt()));
+                } else {
+                    builder.clientSecret(encodeSecret(secret));
+                }
             }
         }
 

@@ -11,6 +11,7 @@
 | `email` | string | no |  |
 | `firstName` | string | no |  |
 | `lastName` | string | no |  |
+| `role` | string | no |  |
 
 ## AdminContextResponse
 
@@ -57,6 +58,7 @@
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `password` | string | yes |  |
+| `temporary` | boolean | no |  |
 
 ## ApplicationContextItem
 
@@ -809,6 +811,12 @@
 | `id` | string (uuid) | no |  |
 | `name` | string | no |  |
 
+## RoleRequest
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `role` | string | no |  |
+
 ## RoleSummaryResponse
 
 | Field | Type | Required | Description |
@@ -845,6 +853,7 @@
 | `grantedAt` | string (date-time) | no |  |
 | `grantedBy` | string | no |  |
 | `lastLoginAt` | string (date-time) | no |  |
+| `role` | string | no |  |
 | `status` | string | no |  |
 | `userId` | string (uuid) | no |  |
 
@@ -910,6 +919,7 @@
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `attributes` | object | no |  |
 | `displayName` | string | no |  |
 | `email` | string (email) | yes |  |
 | `firstName` | string | no |  |

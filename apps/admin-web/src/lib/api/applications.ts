@@ -76,8 +76,17 @@ export async function updateApplicationApi(
   );
 }
 
-export async function deleteApplicationApi(id: string): Promise<void> {
-  await apiFetch<void>(`/api/admin/v1/applications/${id}`, { method: "DELETE" });
+/**
+ * Deletes an application: `confirm` is its slug typed again, and the operator's second step must be fresh (the
+ * browser asks for it). An application with OAuth clients needs a second admin: `pending` is then true and the
+ * request waits on Access review.
+ */
+export async function deleteApplicationApi(id: string, confirm: string): Promise<{ pending: boolean }> {
+  const res = await apiFetch<{ id?: string; status?: string } | undefined>(
+    `/api/admin/v1/applications/${id}?confirm=${encodeURIComponent(confirm)}`,
+    { method: "DELETE" },
+  );
+  return { pending: Boolean(res && res.status === "PENDING") };
 }
 
 export async function isolateApplicationApi(id: string): Promise<ApplicationProduct> {

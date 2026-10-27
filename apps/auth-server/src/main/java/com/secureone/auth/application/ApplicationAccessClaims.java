@@ -58,6 +58,7 @@ public class ApplicationAccessClaims {
                     SELECT ur.role_id FROM %1$s.user_role ur
                     JOIN %1$s.role r ON r.id = ur.role_id
                     WHERE ur.user_id = ? AND r.application_id = ?
+                      AND (ur.expires_at IS NULL OR ur.expires_at > now())
                     UNION
                     SELECT gr.role_id FROM %1$s.rbac_group_member gm
                     JOIN %1$s.rbac_group g ON g.id = gm.group_id

@@ -17,6 +17,9 @@ import { PublicManifestSettings } from "@/components/settings/PublicManifestSett
 import { ScimSettingsPanel } from "@/components/settings/ScimSettingsPanel";
 import { SettingsScopeBanner } from "@/components/settings/SettingsScopeBanner";
 import { TokenClaimsCard } from "@/components/settings/TokenClaimsCard";
+import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
+import { SignupPolicyCard } from "@/components/settings/SignupPolicyCard";
+import { SigningKeysCard } from "@/components/settings/SigningKeysCard";
 import { TokenPolicySettings } from "@/components/settings/TokenPolicySettings";
 import { VerificationSettingsPanel } from "@/components/settings/VerificationSettingsPanel";
 import { UserDirectorySettings } from "@/components/settings/UserDirectorySettings";
@@ -34,7 +37,7 @@ import {
 import { coerceAppSettingsExposure } from "@/lib/settings-exposure";
 import { useAdminContext } from "@/components/AdminContextProvider";
 
-export type AuthSubTabId = "login" | "verification" | "mfa" | "password";
+export type AuthSubTabId = "login" | "verification" | "mfa" | "password" | "signup";
 
 export type SettingsTabId =
   | "integration"
@@ -104,6 +107,12 @@ const AUTH_SUB_TABS: {
     description: "Complexity, expiry, reuse and account lockout.",
     exposureKeys: ["password-policy"],
   },
+  {
+    id: "signup",
+    label: "Sign-up",
+    description: "Allowed and blocked email domains for new accounts, and extra fields on the sign-up page.",
+    exposureKeys: null,
+  },
 ];
 
 export type SettingsScope =
@@ -139,6 +148,8 @@ function isAuthSubTabVisible(
   exposureError: string | undefined,
   mfaTabEnabled: boolean,
 ): boolean {
+  // Sign-up rules are each application's own (the platform has none).
+  if (subTab === "signup") return scope.mode === "application";
   if (scope.mode === "platform") return true;
   if (!exposureReady || exposureError) return false;
   const meta = AUTH_SUB_TABS.find((t) => t.id === subTab);
@@ -425,6 +436,7 @@ export function SettingsTabs({
         <>
           <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={openTab} />
           <TokenClaimsCard applicationId={applicationId} />
+          <WebhooksPanel applicationId={applicationId} />
         </>
       )}
       {tab === "notifications" && scopeMode === "platform" && <PlatformNotificationsSettings />}
@@ -455,7 +467,10 @@ export function SettingsTabs({
         </>
       )}
       {exposureReady && tab === "tokens" && tokenTabEnabled && (
-        <TokenPolicySettings applicationId={applicationId} />
+        <>
+          <TokenPolicySettings applicationId={applicationId} />
+          {scopeMode === "platform" && <SigningKeysCard />}
+        </>
       )}
       {tab === "auth" && exposureReady && (
         <>
@@ -499,7 +514,8 @@ export function SettingsTabs({
           {authSubTab === "verification" && (
             <VerificationSettingsPanel key={resetNonce} applicationId={applicationId} />
           )}
-          {authSubTab !== "verification" && (
+          {authSubTab === "signup" && applicationId && <SignupPolicyCard applicationId={applicationId} />}
+          {authSubTab !== "verification" && authSubTab !== "signup" && (
             <AuthenticationSettingsPanel
               key={`${authPanelTab}-${resetNonce}`}
               applicationId={applicationId}

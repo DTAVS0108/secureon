@@ -30,11 +30,56 @@ public class AppConfig {
     @Bean
     PasswordEncoder passwordEncoder() {
         PasswordEncoder bcrypt = new LegacyBcrypt();
+        DualSecret dual = new DualSecret();
         DelegatingPasswordEncoder encoder = new DelegatingPasswordEncoder(
                 PASSWORD_HASH_ID,
-                Map.of(PASSWORD_HASH_ID, Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8(), "bcrypt", bcrypt));
+                Map.of(PASSWORD_HASH_ID, Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8(), "bcrypt", bcrypt,
+                        DualSecret.ID, dual));
         encoder.setDefaultPasswordEncoderForMatches(bcrypt);
+        dual.single = encoder;
         return encoder;
+    }
+
+    /**
+     * Two client secrets during a rotation's overlap: {@code {dual}<current hash>|<previous hash>|<unix expiry>}.
+     * The current one always matches; the previous one until the expiry, so apps can switch over without an
+     * outage. Only built for OAuth clients (see ApplicationRegisteredClientRepository); never stored.
+     */
+    public static final class DualSecret implements PasswordEncoder {
+        public static final String ID = "dual";
+        private PasswordEncoder single;
+
+        public static String encoded(String currentHash, String previousHash, java.time.Instant previousExpiresAt) {
+            return "{" + ID + "}" + currentHash + "|" + previousHash + "|" + previousExpiresAt.getEpochSecond();
+        }
+
+        @Override
+        public String encode(CharSequence rawPassword) {
+            throw new UnsupportedOperationException("Dual secrets are built from two stored hashes.");
+        }
+
+        @Override
+        public boolean matches(CharSequence rawPassword, String encodedPassword) {
+            String[] parts = encodedPassword == null ? new String[0] : encodedPassword.split("\\|");
+            if (parts.length != 3) {
+                return false;
+            }
+            if (single.matches(rawPassword, parts[0])) {
+                return true;
+            }
+            long expires;
+            try {
+                expires = Long.parseLong(parts[2]);
+            } catch (NumberFormatException e) {
+                return false;
+            }
+            return java.time.Instant.now().getEpochSecond() < expires && single.matches(rawPassword, parts[1]);
+        }
+
+        @Override
+        public boolean upgradeEncoding(String encodedPassword) {
+            return false;
+        }
     }
 
     /** bcrypt for hashes stored before Argon2id; a password over its 72-byte limit simply does not match. */

@@ -39,15 +39,44 @@ public class WebhookEndpointService {
                 .toList();
     }
 
+    /** One application's own endpoints (the tenant's also receive its events, but are managed at tenant level). */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> listForApplication(UUID tenantId, UUID applicationId) {
+        return endpoints.findByTenantIdAndApplicationIdOrderByCreatedAtDesc(tenantId, applicationId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /** An endpoint of this application (for the application's administrators); others are not found. */
+    @Transactional(readOnly = true)
+    public void requireApplicationEndpoint(UUID tenantId, UUID applicationId, UUID id) {
+        if (!applicationId.equals(requireEndpoint(tenantId, id).getApplicationId())) {
+            throw new ResourceNotFoundException("Webhook endpoint not found: " + id);
+        }
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> get(UUID tenantId, UUID id) {
         return toResponse(requireEndpoint(tenantId, id));
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.application.ApplicationRepository applications;
+
+    /** An endpoint may be limited to one application of its own tenant. */
+    private UUID applicationOf(UUID tenantId, Object raw) {
+        UUID applicationId = parseUuid(raw);
+        if (applicationId != null && applications != null && applications.findById(applicationId)
+                .filter(a -> tenantId.equals(a.getTenantId())).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The application is not one of this tenant's.");
+        }
+        return applicationId;
+    }
+
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listDeliveries(UUID tenantId, UUID endpointId) {
         requireEndpoint(tenantId, endpointId);
-        return deliveries.findByEndpointIdOrderByCreatedAtDesc(endpointId).stream()
+        return deliveries.findTop100ByEndpointIdOrderByCreatedAtDesc(endpointId).stream()
                 .map(this::toDeliveryResponse)
                 .toList();
     }
@@ -56,7 +85,7 @@ public class WebhookEndpointService {
         String url = targets.validateForRegistration(requiredString(body.get("url"), "url"));
         WebhookEndpoint endpoint = new WebhookEndpoint();
         endpoint.setTenantId(tenantId);
-        endpoint.setApplicationId(parseUuid(body.get("applicationId")));
+        endpoint.setApplicationId(applicationOf(tenantId, body.get("applicationId")));
         endpoint.setUrl(url);
         String rawSecret = WebhookDeliveryService.generateSecret();
         endpoint.setSecretEncrypted(secrets.encrypt(rawSecret));
@@ -74,7 +103,7 @@ public class WebhookEndpointService {
             endpoint.setUrl(targets.validateForRegistration(requiredString(body.get("url"), "url")));
         }
         if (body.containsKey("applicationId")) {
-            endpoint.setApplicationId(parseUuid(body.get("applicationId")));
+            endpoint.setApplicationId(applicationOf(tenantId, body.get("applicationId")));
         }
         if (body.containsKey("events")) {
             endpoint.setEvents(parseEvents(body.get("events")));
@@ -84,6 +113,47 @@ public class WebhookEndpointService {
         }
         return toResponse(endpoints.save(endpoint));
     }
+
+    /**
+     * New signing secret, shown once. The old one keeps signing too (a second {@code v1} signature) for
+     * {@code keepOldHours} (0 to 168), so receivers can switch without missing events.
+     */
+    public Map<String, Object> rotateSecret(UUID tenantId, UUID id, int keepOldHours) {
+        if (keepOldHours < 0 || keepOldHours > 168) {
+            throw new IllegalArgumentException("Keep the old secret for 0 to 168 hours.");
+        }
+        WebhookEndpoint endpoint = requireEndpoint(tenantId, id);
+        String rawSecret = WebhookDeliveryService.generateSecret();
+        if (keepOldHours > 0) {
+            endpoint.setPreviousSecretEncrypted(endpoint.getSecretEncrypted());
+            endpoint.setPreviousSecretExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(keepOldHours)));
+        } else {
+            endpoint.setPreviousSecretEncrypted(null);
+            endpoint.setPreviousSecretExpiresAt(null);
+        }
+        endpoint.setSecretEncrypted(secrets.encrypt(rawSecret));
+        Map<String, Object> out = toResponse(endpoints.save(endpoint));
+        out.put("secret", rawSecret);
+        return out;
+    }
+
+    /** Sends a test event now and returns what the endpoint answered. */
+    public Map<String, Object> sendTest(UUID tenantId, UUID id) {
+        return delivery.sendTest(requireEndpoint(tenantId, id));
+    }
+
+    /** Queues one past delivery again, from the first try. */
+    public Map<String, Object> redeliver(UUID tenantId, UUID endpointId, UUID deliveryId) {
+        requireEndpoint(tenantId, endpointId);
+        WebhookDelivery row = deliveries.findById(deliveryId)
+                .filter(d -> endpointId.equals(d.getEndpointId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Webhook delivery not found: " + deliveryId));
+        delivery.redeliver(row);
+        return toDeliveryResponse(row);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private WebhookDeliveryService delivery;
 
     /** Sets the signing secret to a value the operator supplies (configuration files). */
     public void setSecret(UUID tenantId, UUID id, String rawSecret) {
@@ -117,6 +187,9 @@ public class WebhookEndpointService {
         out.put("events", endpoint.getEvents());
         out.put("enabled", endpoint.isEnabled());
         out.put("createdAt", endpoint.getCreatedAt().toString());
+        boolean overlap = endpoint.getPreviousSecretExpiresAt() != null
+                && endpoint.getPreviousSecretExpiresAt().isAfter(java.time.Instant.now());
+        out.put("previousSecretValidUntil", overlap ? endpoint.getPreviousSecretExpiresAt().toString() : null);
         return out;
     }
 
@@ -129,6 +202,10 @@ public class WebhookEndpointService {
         out.put("status", delivery.getStatus());
         out.put("responseCode", delivery.getResponseCode());
         out.put("createdAt", delivery.getCreatedAt().toString());
+        out.put("attempts", delivery.getAttempts());
+        out.put("lastError", delivery.getLastError());
+        out.put("nextAttemptAt", delivery.getNextAttemptAt() != null ? delivery.getNextAttemptAt().toString() : null);
+        out.put("deliveredAt", delivery.getDeliveredAt() != null ? delivery.getDeliveredAt().toString() : null);
         return out;
     }
 

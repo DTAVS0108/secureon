@@ -37,15 +37,65 @@ class OAuth2SigningKeyServiceTest {
         return lock;
     }
 
+    /** Settings that keep what is saved (the signing key service reads back its own writes). */
+    @SuppressWarnings("unchecked")
+    private static PlatformSettingsService storedSettings() {
+        PlatformSettingsService settings = mock(PlatformSettingsService.class);
+        Map<String, Map<String, Object>> store = new HashMap<>();
+        when(settings.get(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(inv -> new HashMap<>(store.getOrDefault(inv.getArgument(0), Map.of())));
+        when(settings.saveMap(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap()))
+                .thenAnswer(inv -> {
+                    store.put(inv.getArgument(0), new HashMap<>((Map<String, Object>) inv.getArgument(1)));
+                    return inv.getArgument(1);
+                });
+        return settings;
+    }
+
     @Test
     void storesThePrivateKeyOnlyEncrypted() {
-        PlatformSettingsService settings = mock(PlatformSettingsService.class);
-        when(settings.get("oauth2_signing_jwk")).thenReturn(new HashMap<>());
+        PlatformSettingsService settings = storedSettings();
         new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "").loadOrCreateSigningKey();
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(settings).saveMap(eq("oauth2_signing_jwk"), captor.capture());
-        assertEquals(false, captor.getValue().containsKey("privateKeyPem"));
-        assertEquals(false, String.valueOf(captor.getValue().get("privateKeyEncrypted")).contains("PRIVATE KEY"));
+        Map<String, Object> stored = settings.get("oauth2_signing_jwk");
+        assertEquals(false, stored.containsKey("privateKeyPem"));
+        assertEquals(false, String.valueOf(stored.get("privateKeyEncrypted")).contains("PRIVATE KEY"));
+        assertEquals(false, String.valueOf(stored.get("next")).contains("PRIVATE KEY"));
+    }
+
+    @Test
+    void theNextKeyIsPublishedAheadAndRotationPromotesIt() {
+        PlatformSettingsService settings = storedSettings();
+        OAuth2SigningKeyService service = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "");
+        RSAKey first = service.loadOrCreateSigningKey();
+        java.util.List<RSAKey> before = service.verificationKeys();
+        assertEquals(2, before.size(), "current + next");
+        String nextKid = before.get(1).getKeyID();
+
+        Map<String, Object> status = service.rotate();
+        assertEquals(nextKid, status.get("currentKid"), "the published next key now signs");
+        assertEquals(first.getKeyID(), status.get("previousKid"), "the old key stays published");
+        assertNotNull(status.get("nextKid"));
+        java.util.List<RSAKey> after = service.verificationKeys();
+        assertEquals(3, after.size(), "current + next + previous");
+        assertEquals(nextKid, service.loadOrCreateSigningKey().getKeyID());
+
+        // Another server (its own cache) picks the rotation up from storage.
+        OAuth2SigningKeyService other = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "");
+        assertEquals(nextKid, other.loadOrCreateSigningKey().getKeyID());
+
+        service.retirePrevious();
+        assertEquals(2, service.verificationKeys().size(), "previous key no longer accepted");
+        assertThrows(IllegalArgumentException.class, service::retirePrevious);
+    }
+
+    @Test
+    void keysFromTheEnvironmentAreRotatedThere() throws Exception {
+        RSAKey key = new OAuth2SigningKeyService(storedSettings(), SECRETS, inlineLock(), devEnv(), "", "")
+                .loadOrCreateSigningKey();
+        OAuth2SigningKeyService fromEnv =
+                new OAuth2SigningKeyService(storedSettings(), SECRETS, inlineLock(), devEnv(), pem(key), "");
+        assertThrows(IllegalArgumentException.class, fromEnv::rotate);
+        assertEquals("environment", fromEnv.status().get("source"));
     }
 
     @Test
@@ -65,14 +115,13 @@ class OAuth2SigningKeyServiceTest {
         assertEquals(original.getKeyID(), reloaded.getKeyID());
         assertEquals(original.toRSAPublicKey(), reloaded.toRSAPublicKey());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(old).saveMap(eq("oauth2_signing_jwk"), captor.capture());
-        assertEquals(false, captor.getValue().containsKey("privateKeyPem"));
+        verify(old, org.mockito.Mockito.atLeastOnce()).saveMap(eq("oauth2_signing_jwk"), captor.capture());
+        assertEquals(false, captor.getAllValues().get(0).containsKey("privateKeyPem"));
     }
 
     @Test
     void generatesAndCachesKeyInDevelopment() {
-        PlatformSettingsService settings = mock(PlatformSettingsService.class);
-        when(settings.get("oauth2_signing_jwk")).thenReturn(new HashMap<>());
+        PlatformSettingsService settings = storedSettings();
 
         OAuth2SigningKeyService service = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "");
         RSAKey first = service.loadOrCreateSigningKey();
@@ -80,19 +129,15 @@ class OAuth2SigningKeyServiceTest {
 
         assertNotNull(first.getKeyID());
         assertEquals(first.getKeyID(), second.getKeyID());
-        verify(settings).saveMap(eq("oauth2_signing_jwk"), org.mockito.ArgumentMatchers.anyMap());
+        // The key, then the next key published ahead; nothing more while cached.
+        verify(settings, org.mockito.Mockito.times(2)).saveMap(eq("oauth2_signing_jwk"), org.mockito.ArgumentMatchers.anyMap());
     }
 
     @Test
     void reloadsPersistedKey() {
-        PlatformSettingsService settings = mock(PlatformSettingsService.class);
-        when(settings.get("oauth2_signing_jwk")).thenReturn(new HashMap<>());
+        PlatformSettingsService settings = storedSettings();
         OAuth2SigningKeyService bootstrap = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "");
         RSAKey created = bootstrap.loadOrCreateSigningKey();
-
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(settings).saveMap(eq("oauth2_signing_jwk"), captor.capture());
-        when(settings.get("oauth2_signing_jwk")).thenReturn(captor.getValue());
 
         OAuth2SigningKeyService reloaded = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), devEnv(), "", "");
         assertEquals(created.getKeyID(), reloaded.loadOrCreateSigningKey().getKeyID());

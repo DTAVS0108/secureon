@@ -378,14 +378,31 @@
     ".so-lang { margin: 2rem 0 1rem; font-size: 0.8rem; color: var(--so-muted, #6b7280); display: flex; gap: 0.5rem; align-items: center; }",
     ".so-lang label { margin: 0; display: inline; }",
     ".so-lang select { width: auto; padding: 0.25rem 0.5rem; margin: 0; font-size: 0.8rem; }",
+    ".so-impersonation { position: sticky; top: 0; z-index: 50; margin: 0 0 1rem; padding: 0.6rem 1rem; background: #b45309; color: #fff; font-size: 0.85rem; text-align: center; }",
   ].join("\n");
   document.head.appendChild(style);
+
+  /** An administrator signed in as this user: a banner says so on every page (account changes are refused). */
+  function showImpersonation() {
+    fetch("/api/v1/auth/impersonation/status", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s || !s.impersonated) return;
+        var bar = document.createElement("div");
+        bar.className = "so-impersonation";
+        bar.setAttribute("role", "status");
+        bar.textContent = "An administrator (" + s.by + ") is signed in as this user. Account changes are not available.";
+        document.body.insertBefore(bar, document.body.firstChild);
+      })
+      .catch(function () {});
+  }
 
   function start() {
     addPicker();
     applyLanguage();
     loadBranding();
     setupCaptcha();
+    showImpersonation();
     // Text the pages add or change later (messages, two-step dialogs) is translated as it appears.
     new MutationObserver(function (mutations) {
       if (lang === "en") return;

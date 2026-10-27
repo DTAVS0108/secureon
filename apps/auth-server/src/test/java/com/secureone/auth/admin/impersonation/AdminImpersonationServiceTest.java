@@ -90,8 +90,8 @@ class AdminImpersonationServiceTest {
         AdminImpersonationService.ImpersonationTokenResponse response =
                 service.createToken(userId, "operator@example.com", "support ticket", null);
 
-        assertEquals(900, response.expiresInSeconds());
-        verify(valueOps).set(any(String.class), any(String.class), eq(Duration.ofMinutes(15)));
+        assertEquals(120, response.expiresInSeconds());
+        verify(valueOps).set(any(String.class), any(String.class), eq(Duration.ofMinutes(2)));
         verify(audit)
                 .record(
                         eq(tenantId),
@@ -100,7 +100,7 @@ class AdminImpersonationServiceTest {
                         eq("user.impersonate"),
                         eq("user"),
                         eq(userId),
-                        eq("user@example.com"),
+                        eq("user@example.com — reason: support ticket"),
                         eq(true));
     }
 

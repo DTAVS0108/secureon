@@ -39,7 +39,8 @@ SECTIONS = [
      "What a signed-in user can do for themselves: password reset and change, email verification, profile, "
      "MFA factors, sessions, email change, connected apps and privacy (export, delete request).",
      ["Account", "Account profile", "Account MFA", "Account sessions", "Account privacy",
-      "Account privacy (session)", "Account email change", "Account connected apps"]),
+      "Account privacy (session)", "Account email change", "Account connected apps",
+      "Account password change", "Account linked sign-in"]),
     ("05-machine-and-scim.md", "Machine-to-machine and SCIM provisioning",
      "Calls made by other systems: service accounts with API keys, and SCIM 2.0 user and group provisioning "
      "from an identity provider.",
@@ -53,7 +54,7 @@ SECTIONS = [
      "console roles and access, access requests and the tenant's SCIM token.",
      ["Admin — tenants", "Admin — tenant workspace", "Admin — tenant RBAC", "Admin — tenant console roles",
       "Admin — console access", "Admin — console capabilities",
-      "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM"]),
+      "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM", "Admin — deletion requests"]),
     ("08-admin-users.md", "Admin API: users",
      "User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, "
      "unlock and impersonation.",
@@ -65,7 +66,8 @@ SECTIONS = [
     ("10-admin-application-console.md", "Admin API: application console",
      "Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, "
      "permissions, groups, settings and logs.",
-     ["Admin — application scope", "Admin — application RBAC", "Admin — application logs"]),
+     ["Admin — application scope", "Admin — application RBAC", "Admin — application logs",
+      "Admin — application webhooks"]),
     ("11-admin-security-and-governance.md", "Admin API: security and governance",
      "Platform operators, access review, platform roles, sign-in federation providers, service accounts, "
      "webhooks, the audit log (search and CSV export), sessions and the console overview.",
@@ -74,7 +76,8 @@ SECTIONS = [
     ("12-admin-platform-settings.md", "Admin API: platform settings and configuration as code",
      "Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature "
      "flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).",
-     ["Admin — platform settings", "Attack protection", "Admin — log streams", "Admin — configuration as code"]),
+     ["Admin — platform settings", "Attack protection", "Admin — log streams", "Admin — configuration as code",
+      "Admin — signing keys"]),
 ]
 
 METHODS = ("get", "post", "put", "patch", "delete")

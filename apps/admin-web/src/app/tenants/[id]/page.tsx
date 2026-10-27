@@ -3,10 +3,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/ui/StatCard";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TenantFormModal } from "@/components/forms/TenantFormModal";
 import { TenantDetailPanels } from "@/components/tenants/TenantDetailPanels";
-import { tenantDeleteAction } from "@/lib/actions";
+import { TenantDeleteButton } from "@/components/tenants/TenantDeleteButton";
 import { getTenant } from "@/lib/api/tenants";
 import { listApplications } from "@/lib/api/applications";
 import { listRoles } from "@/lib/api/roles";
@@ -69,14 +68,7 @@ export default async function TenantDetailPage({
                 </ButtonLink>
                 <TenantFormModal tenant={tenant} triggerLabel="Edit" triggerVariant="secondary" />
                 {!tenant.system && (
-                  <ConfirmDialog
-                    action={tenantDeleteAction}
-                    id={tenant.id}
-                    triggerLabel="Delete"
-                    triggerVariant="danger"
-                    title={`Delete ${tenant.name}?`}
-                    message="This removes the tenant and all associated configuration. This action cannot be undone."
-                  />
+                  <TenantDeleteButton tenant={tenant} />
                 )}
               </>
             )}

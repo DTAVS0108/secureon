@@ -54,14 +54,42 @@ public class TenantAdminController {
 
     @PutMapping("/{id}")
     public TenantResponse update(@PathVariable UUID id, @Valid @RequestBody TenantUpdateRequest request) {
-        return service.update(id, request);
+        TenantResponse before = service.get(id);
+        TenantResponse after = service.update(id, request);
+        // Suspending signs every user out: grants, browser sessions, and a back-channel logout to their apps.
+        if ("active".equalsIgnoreCase(before.status()) && !"active".equalsIgnoreCase(after.status())) {
+            int users = termination.endAll(id, after.slug());
+            service.recordAccessEnded(id, after.name(), users, "suspended");
+        }
+        return after;
     }
 
+    /**
+     * Deletes the tenant with everything in it. Needs a recent second step and the tenant's slug typed again
+     * ({@code ?confirm=slug}), like GitHub's repository deletion; its users are signed out first.
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable UUID id) {
+    public void delete(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
+            @PathVariable UUID id,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String confirm) {
+        stepUp.require(stepUpRequest);
+        TenantResponse tenant = service.get(id);
+        if (confirm == null || !confirm.trim().equalsIgnoreCase(tenant.slug())) {
+            throw new IllegalArgumentException("Type the tenant's slug (" + tenant.slug() + ") to confirm deletion.");
+        }
+        service.assertDeletable(id);
+        int users = termination.endAll(id, tenant.slug());
+        service.recordAccessEnded(id, tenant.name(), users, "deleted");
         service.delete(id);
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private TenantAccessTermination termination;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.admin.AdminStepUpService stepUp;
 
     /** Super-admin: users with Tenant Admin role in this tenant. */
     @GetMapping("/{tenantId}/admin-operators")

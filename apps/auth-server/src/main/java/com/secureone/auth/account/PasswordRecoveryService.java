@@ -142,6 +142,7 @@ public class PasswordRecoveryService {
             throw new IllegalArgumentException("Invalid challenge for this application.");
         }
         UserAccount user = users.findById(challenge.getUserId()).orElseThrow();
+        UserPasswordService.assertMayRecover(user);
         UUID appId = applicationId != null ? applicationId : challenge.getApplicationId();
         passwords.setPassword(user.getId(), newPassword, appId);
         AccountLockoutService.clearOn(user); // a new password ends any lockout; this save must not restore it

@@ -67,6 +67,11 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [4.8 Account connected apps](#48-account-connected-apps)
   - [GET `/api/v1/account/consents`](#481-list-consents) — List consents
   - [DELETE `/api/v1/account/consents/{registeredClientId}`](#482-delete-consent) — Delete consent
+- [4.9 Account password change](#49-account-password-change)
+  - [POST `/api/v1/account/password/change/session`](#491-change-password-hosted-account-security-page-browser-session) — Change password (hosted Account security page, browser session)
+- [4.10 Account linked sign-in](#410-account-linked-sign-in)
+  - [GET `/api/v1/account/identities`](#4101-my-linked-sign-in-accounts) — My linked sign-in accounts
+  - [DELETE `/api/v1/account/identities/{identityId}`](#4102-unlink-one) — Unlink one
 
 ## 4.1 Account
 
@@ -1306,4 +1311,82 @@ curl -s "$SECUREONE_URL/api/v1/account/consents"
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/v1/account/consents/{registeredClientId}"
+```
+
+## 4.9 Account password change
+
+Users change their password on the hosted Account security page
+
+### 4.9.1 Change password (hosted Account security page, browser session)
+
+`POST /api/v1/account/password/change/session`
+
+Needs the current password. This browser stays signed in; the user's other browser sessions end.
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`, [ChangePasswordRequest](13-data-models.md#changepasswordrequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `currentPassword` | string | yes |  |
+| `newPassword` | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/v1/account/password/change/session" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "currentPassword": "Choose-a-Strong-Pass-1!",
+  "newPassword": "Choose-a-Strong-Pass-1!"
+}'
+```
+
+## 4.10 Account linked sign-in
+
+The Google, SAML… accounts a user signs in with (hosted Account security page)
+
+### 4.10.1 My linked sign-in accounts
+
+`GET /api/v1/account/identities`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/account/identities"
+```
+
+### 4.10.2 Unlink one
+
+`DELETE /api/v1/account/identities/{identityId}`
+
+Refused (409) when it is the only way the account signs in.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `identityId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/v1/account/identities/{identityId}"
 ```

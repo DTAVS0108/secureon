@@ -1,8 +1,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeleteApplicationButton } from "@/components/applications/DeleteApplicationButton";
 import { OAuthClientFormModal } from "@/components/forms/OAuthClientFormModal";
-import { applicationProductDeleteAction } from "@/lib/actions";
 import { statusTone } from "@/lib/status";
 import type { ApplicationProduct, Tenant } from "@/lib/types";
 
@@ -50,17 +49,7 @@ export function ApplicationsWithoutClients({
                 triggerVariant="secondary"
                 triggerSize="sm"
               />
-              <ConfirmDialog
-                action={applicationProductDeleteAction}
-                id={app.id}
-                triggerLabel="Delete application"
-                triggerVariant="danger"
-                triggerSize="sm"
-                title={`Delete ${app.name}?`}
-                message="Permanently deletes the application with its roles, permissions, groups, settings, sign-in providers and webhooks, and its database schema. People keep their tenant accounts but lose access to this application. This cannot be undone."
-                confirmLabel="Delete application"
-                confirmText={app.slug}
-              />
+              <DeleteApplicationButton app={app} />
             </div>
           </li>
         ))}

@@ -24,6 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChangeRequestService {
 
     public static final String OAUTH_CLIENT_DELETE = "oauth_client.delete";
+    /** Deleting an application deletes its OAuth clients: the same approval as deleting one of them. */
+    public static final String APPLICATION_DELETE = "application.delete";
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.admin.application.ApplicationAdminService> applications;
 
     private static final int HISTORY_LIMIT = 50;
     private static final int NOTE_MAX = 500;
@@ -46,6 +51,9 @@ public class ChangeRequestService {
     }
 
     private static String targetType(Row row) {
+        if (APPLICATION_DELETE.equals(row.action())) {
+            return "application";
+        }
         return isTwoFactor(row) ? "two_factor" : "oauth_client";
     }
 
@@ -76,6 +84,26 @@ public class ChangeRequestService {
 
     public Optional<Row> pendingClientDelete(UUID clientId) {
         return requests.findPending(OAUTH_CLIENT_DELETE, clientId);
+    }
+
+    /** Asks for an application (with OAuth clients) to be deleted; returns the pending request. */
+    @Transactional
+    public Row requestApplicationDelete(
+            com.secureone.auth.admin.application.ApplicationAdminDtos.ApplicationResponse app, String requester, String reason) {
+        Optional<Row> existing = requests.findPending(APPLICATION_DELETE, app.id());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        String label = app.name() + " (" + app.slug() + ", " + app.oauthClientCount() + " OAuth client(s))";
+        Row row = requests.create(APPLICATION_DELETE, app.tenantId(), app.id(), app.id(),
+                label.length() > 255 ? label.substring(0, 255) : label, trim(reason), requester);
+        audit.record(app.tenantId(), app.id(), requester, "change_request.requested",
+                "application", app.id(), "Delete " + row.targetLabel(), true);
+        return row;
+    }
+
+    public Optional<Row> pendingApplicationDelete(UUID applicationId) {
+        return requests.findPending(APPLICATION_DELETE, applicationId);
     }
 
     public Row get(UUID id) {
@@ -136,6 +164,16 @@ public class ChangeRequestService {
     private String apply(Row row) {
         if (isTwoFactor(row)) {
             return twoFactor.getObject().apply(row);
+        }
+        if (APPLICATION_DELETE.equals(row.action())) {
+            var service = applications.getObject();
+            try {
+                service.get(row.targetId());
+            } catch (ResourceNotFoundException gone) {
+                return "The application no longer exists.";
+            }
+            service.delete(row.targetId());
+            return null;
         }
         if (!OAUTH_CLIENT_DELETE.equals(row.action())) {
             throw new IllegalStateException("Unknown change: " + row.action());

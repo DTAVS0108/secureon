@@ -145,6 +145,7 @@ public class AccountNotificationService {
     public Map<String, String> setPasswordFromInvite(String rawToken, String newPassword, UUID applicationIdParam) {
         var token = emailTokens.requireValid(rawToken, EmailTokenType.SET_PASSWORD);
         UserAccount user = users.findById(token.getUserId()).orElseThrow();
+        UserPasswordService.assertMayRecover(user);
         UUID applicationId = resolveInviteApplicationId(user, applicationIdParam);
         passwords.setPassword(user.getId(), newPassword, applicationId);
         emailTokens.consume(token);
@@ -166,6 +167,7 @@ public class AccountNotificationService {
     public Map<String, String> resetPassword(String rawToken, String newPassword) {
         var token = emailTokens.requireValid(rawToken, EmailTokenType.RESET_PASSWORD);
         UserAccount user = users.findById(token.getUserId()).orElseThrow();
+        UserPasswordService.assertMayRecover(user);
         UUID applicationId = emailContext.resolveApplicationId(null, user);
         passwords.setPassword(user.getId(), newPassword, applicationId);
         emailTokens.consume(token);

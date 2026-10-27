@@ -68,6 +68,10 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [7.9 SCIM](#79-scim)
   - [GET `/api/admin/v1/settings/scim`](#791-get-scim) — Get SCIM
   - [PUT `/api/admin/v1/settings/scim`](#792-update-scim) — Update SCIM
+- [7.10 Deletion requests](#710-deletion-requests)
+  - [GET `/api/admin/v1/tenants/{tenantId}/deletion-requests`](#7101-list-deletion-requests) — List deletion requests
+  - [POST `/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/cancel`](#7102-cancel) — Cancel
+  - [POST `/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/complete`](#7103-complete-deletion-request) — Complete deletion request
 
 ## 7.1 Tenants
 
@@ -196,6 +200,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{id}" \
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
 | `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `confirm` | query | string | no |  |
 
 **Responses**
 
@@ -1405,5 +1410,80 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/scim" \
 
 ```bash
 curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/scim" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 7.10 Deletion requests
+
+Users who asked for their account to be deleted
+
+### 7.10.1 List deletion requests
+
+`GET /api/admin/v1/tenants/{tenantId}/deletion-requests`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/deletion-requests" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.10.2 Cancel
+
+`POST /api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/cancel`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/cancel" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.10.3 Complete deletion request
+
+`POST /api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/complete`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/complete" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

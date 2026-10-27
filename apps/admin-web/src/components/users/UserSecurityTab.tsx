@@ -5,6 +5,8 @@ import { SecuritySection } from "@/components/users/SecuritySection";
 import { UserAccountSecurityActions } from "@/components/users/UserAccountSecurityActions";
 import { UserEmailActions } from "@/components/users/UserEmailActions";
 import { UserPasswordActions } from "@/components/users/UserPasswordActions";
+import { UserSessionsCard } from "@/components/users/UserSessionsCard";
+import { RoleEndDatesCard, UserAttributesCard, UserIdentitiesCard } from "@/components/users/UserProfileExtras";
 import type { User } from "@/lib/types";
 
 export function UserSecurityTab({
@@ -31,6 +33,37 @@ export function UserSecurityTab({
         description="Status, lockout, and suspension. Suspended users cannot sign in."
       >
         <UserAccountSecurityActions user={user} onChanged={onChanged} />
+      </SecuritySection>
+
+      <SecuritySection
+        title="Sessions"
+        description={
+          applicationId
+            ? "Where the user is signed in to this application. Signing out ends its refresh tokens and tells the application (back-channel logout)."
+            : "Browser sessions and the applications the user is signed in to. Signing out ends them all and tells the applications."
+        }
+      >
+        <UserSessionsCard userId={user.id} applicationId={applicationId} />
+      </SecuritySection>
+
+      {applicationId && (
+        <SecuritySection
+          title="Role end dates"
+          description="A role can be given until a date: it stops counting then (tokens, console access) and is removed."
+        >
+          <RoleEndDatesCard userId={user.id} applicationId={applicationId} />
+        </SecuritySection>
+      )}
+
+      <SecuritySection
+        title="Profile attributes"
+        description="Values from sign-up fields, imports or set here. They can go in tokens (Integration › Token claims)."
+      >
+        <UserAttributesCard userId={user.id} applicationId={applicationId} />
+      </SecuritySection>
+
+      <SecuritySection title="Linked sign-in" description="Google, SAML and other accounts this user signs in with.">
+        <UserIdentitiesCard userId={user.id} applicationId={applicationId} />
       </SecuritySection>
 
       <SecuritySection

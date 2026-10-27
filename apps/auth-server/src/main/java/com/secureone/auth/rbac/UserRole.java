@@ -9,9 +9,15 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * A role given to a user, for good or until {@code expiresAt}. An expired assignment is never read (it gives
+ * nothing from that moment) and is removed by {@link ExpiredRoleAssignmentCleanup}.
+ */
 @Entity
 @Table(name = "user_role")
+@SQLRestriction("(expires_at IS NULL OR expires_at > now())")
 @Getter
 @Setter
 public class UserRole {
@@ -28,6 +34,9 @@ public class UserRole {
 
     @Column(name = "granted_at", nullable = false, updatable = false)
     private Instant grantedAt;
+
+    @Column(name = "expires_at")
+    private Instant expiresAt;
 
     @PrePersist
     void onCreate() {

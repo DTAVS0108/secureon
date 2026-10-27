@@ -3,10 +3,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { StatCard } from "@/components/ui/StatCard";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/Table";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TenantDeleteButton } from "@/components/tenants/TenantDeleteButton";
 import { TenantFormModal } from "@/components/forms/TenantFormModal";
 import { listTenants } from "@/lib/api/tenants";
-import { tenantDeleteAction } from "@/lib/actions";
 import { redirect } from "next/navigation";
 import { isTenantSuperAdmin } from "@/lib/operator-access";
 import { requireTenantGovernanceAccess } from "@/lib/platform-access";
@@ -77,15 +76,7 @@ export default async function TenantsPage() {
                       <Badge tone="neutral">Reserved</Badge>
                     </span>
                   ) : (
-                    <ConfirmDialog
-                      action={tenantDeleteAction}
-                      id={t.id}
-                      triggerLabel="Delete"
-                      triggerVariant="ghost"
-                      triggerSize="sm"
-                      title={`Delete ${t.name}?`}
-                      message="This removes the tenant and all associated configuration. This action cannot be undone."
-                    />
+                    <TenantDeleteButton tenant={t} triggerVariant="ghost" triggerSize="sm" />
                   )}
                 </div>
               </TD>

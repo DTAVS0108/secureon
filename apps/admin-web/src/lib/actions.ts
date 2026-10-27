@@ -5,10 +5,8 @@ import "@/lib/api/server-auth";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { fetchAdminContext } from "@/lib/api/context";
 import {
   createApplicationApi,
-  deleteApplicationApi,
   isolateApplicationApi,
   updateApplicationApi,
 } from "./api/applications";
@@ -30,7 +28,6 @@ import {
 } from "./api/groups";
 import {
   createTenantApi,
-  deleteTenantApi,
   updateTenantApi,
 } from "./api/tenants";
 import {
@@ -151,18 +148,6 @@ export async function tenantUpdateAction(_prev: FormState, fd: FormData): Promis
   }
 }
 
-export async function tenantDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
-  const id = str(fd, "id");
-  try {
-    if (id) await deleteTenantApi(id);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Could not delete the tenant." };
-  }
-  revalidatePath("/tenants");
-  revalidatePath("/");
-  redirect("/tenants");
-}
-
 // ---- Applications (product) ----
 
 function applicationProductWritePayload(fd: FormData) {
@@ -240,19 +225,6 @@ export async function applicationProductUpdateAction(_prev: FormState, fd: FormD
   }
 }
 
-export async function applicationProductDeleteAction(fd: FormData): Promise<{ error?: string } | void> {
-  const id = str(fd, "id");
-  try {
-    if (id) await deleteApplicationApi(id);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Could not delete the application." };
-  }
-  revalidatePath("/applications");
-  revalidatePath("/app");
-  revalidatePath("/audit");
-  const ctx = await fetchAdminContext().catch(() => null);
-  redirect(ctx && !ctx.platformSuperAdmin ? (ctx.connectAppEnabled !== false ? "/connect" : "/app") : "/applications");
-}
 
 export async function applicationIsolateAction(fd: FormData): Promise<FormState> {
   const id = str(fd, "id");
@@ -482,7 +454,7 @@ export async function userAdminSetPasswordAction(
     return fail("Password must be at least 8 characters.");
   }
   try {
-    await adminSetUserPasswordApi(id, password, applicationId || undefined);
+    await adminSetUserPasswordApi(id, password, applicationId || undefined, fd.get("temporary") === "on");
     revalidateUserPaths({ applicationId, userId: id });
     return ok();
   } catch (e) {

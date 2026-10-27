@@ -16,7 +16,8 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/applications/{id}`](#913-get-application) — Get application
   - [PUT `/api/admin/v1/applications/{id}`](#914-update-application) — Update application
   - [DELETE `/api/admin/v1/applications/{id}`](#915-delete-application) — Delete application
-  - [POST `/api/admin/v1/applications/{id}/isolate`](#916-isolate-application) — Isolate application
+  - [GET `/api/admin/v1/applications/{id}/delete-request`](#916-get-delete-request) — Get delete request
+  - [POST `/api/admin/v1/applications/{id}/isolate`](#917-isolate-application) — Isolate application
 - [9.2 OAuth clients](#92-oauth-clients)
   - [GET `/api/admin/v1/oauth-clients`](#921-list-oauth-clients) — List OAuth clients
   - [POST `/api/admin/v1/oauth-clients`](#922-create-oauth-client) — Create OAuth client
@@ -167,19 +168,44 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{id}" \
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
 | `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `confirm` | query | string | no |  |
+| `reason` | query | string | no | Why the change is needed (shown to approvers) |
 
 **Responses**
 
 | Status | Meaning | Body |
 |---|---|---|
-| `204` | No Content | — |
+| `200` | OK | object |
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 9.1.6 Isolate application
+### 9.1.6 Get delete request
+
+`GET /api/admin/v1/applications/{id}/delete-request`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [ChangeRequestView](13-data-models.md#changerequestview) |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{id}/delete-request" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 9.1.7 Isolate application
 
 `POST /api/admin/v1/applications/{id}/isolate`
 
@@ -445,6 +471,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}/delete-request" \
 | Name | In | Type | Required | Description |
 |---|---|---|---|---|
 | `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `keepOldHours` | query | integer (int32) | no |  |
 
 **Responses**
 

@@ -90,6 +90,23 @@ public class TenantUserDetailsService implements UserDetailsService {
         }
     }
 
+    /**
+     * The account's status for issuing tokens: its own status, or {@code TENANT_SUSPENDED} when its organization
+     * is not active (a suspended organization gets no new tokens, refresh included).
+     */
+    public String tokenStatus(String tenantSlug, String email) {
+        Tenant tenant = tenants
+                .findBySlug(tenantSlug.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new UsernameNotFoundException("Unknown tenant"));
+        if (!"ACTIVE".equalsIgnoreCase(tenant.getStatus())) {
+            return "TENANT_SUSPENDED";
+        }
+        return users
+                .findByTenantIdAndEmail(tenant.getId(), email.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"))
+                .getStatus();
+    }
+
     public UserAccount resolveAccount(String tenantSlug, String email) {
         Tenant tenant = tenants
                 .findBySlug(tenantSlug.trim().toLowerCase(Locale.ROOT))

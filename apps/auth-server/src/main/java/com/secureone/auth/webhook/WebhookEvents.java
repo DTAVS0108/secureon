@@ -71,6 +71,13 @@ public final class WebhookEvents {
         a.put("user.two_step_reset", "user.two_factor_removed");
         a.put("two_step.factor_removed", "user.two_factor_removed");
         a.put("user.roles_changed", "user.roles_changed");
+        a.put("user.role_granted", "user.roles_changed");
+        a.put("user.role_revoked", "user.roles_changed");
+        a.put("user.role_expired", "user.roles_changed");
+        a.put("user.attributes_changed", "user.updated");
+        a.put("user.identity_unlinked", "user.updated");
+        a.put("user.signed_out_everywhere", "session.revoked");
+        a.put("user.signed_out_of_application", "session.revoked");
         a.put("user.application_access_granted", "user.application_access_granted");
         a.put("user.application_access_revoked", "user.application_access_revoked");
         a.put("session.revoked", "session.revoked");

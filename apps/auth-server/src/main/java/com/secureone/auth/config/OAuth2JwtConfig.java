@@ -1,7 +1,6 @@
 package com.secureone.auth.config;
 
 import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.secureone.auth.config.oauth.OAuth2SigningKeyService;
@@ -22,8 +21,10 @@ public class OAuth2JwtConfig {
     @Bean
     @Primary
     JWKSource<SecurityContext> jwkSource(OAuth2SigningKeyService signingKeys) {
-        // Published in JWKS and used for verification: current key + previous key during a rotation.
-        return new ImmutableJWKSet<>(new JWKSet(java.util.List.<com.nimbusds.jose.jwk.JWK>copyOf(signingKeys.verificationKeys())));
+        // Published in JWKS and used for verification: the current key, the next one (published ahead of a
+        // rotation) and the previous one (until retired). Read on each use, so a rotation shows up everywhere.
+        return (selector, context) -> selector.select(
+                new JWKSet(java.util.List.<com.nimbusds.jose.jwk.JWK>copyOf(signingKeys.verificationKeys())));
     }
 
     @Bean

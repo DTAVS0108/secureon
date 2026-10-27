@@ -71,6 +71,24 @@ public class AdminAccessService {
         return isNamedPlatformOperator(authentication);
     }
 
+    /** A platform operator with the read-only role: sees what a super admin sees, changes nothing. */
+    public boolean isReadOnlyPlatformOperator(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || isBreakGlass(authentication)
+                || !isNamedPlatformOperator(authentication)) {
+            return false;
+        }
+        String cacheKey = PLATFORM_OPERATOR_ATTR + "readOnly:" + authentication.getName();
+        var attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs != null && attrs.getAttribute(cacheKey, RequestAttributes.SCOPE_REQUEST) instanceof Boolean cached) {
+            return cached;
+        }
+        boolean result = platformOperators.isReadOnlyEmail(operators.resolveEmail(authentication, null));
+        if (attrs != null) {
+            attrs.setAttribute(cacheKey, result, RequestAttributes.SCOPE_REQUEST);
+        }
+        return result;
+    }
+
     /** The configured emergency account ({@code spring.security.user.name}); not a named person. */
     public boolean isBreakGlass(Authentication authentication) {
         return authentication != null

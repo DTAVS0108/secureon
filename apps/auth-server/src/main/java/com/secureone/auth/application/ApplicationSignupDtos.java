@@ -16,5 +16,7 @@ public final class ApplicationSignupDtos {
             String lastName,
             String displayName,
             String verificationMode,
-            String verificationChannel) {}
+            String verificationChannel,
+            /** Values of the application's extra sign-up fields, by key. */
+            java.util.Map<String, Object> attributes) {}
 }

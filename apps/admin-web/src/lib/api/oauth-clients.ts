@@ -144,9 +144,10 @@ export async function saveOAuthClientSetupFrameworkApi(id: string, setupFramewor
   });
 }
 
-export async function rotateOAuthClientSecretApi(id: string): Promise<string> {
+/** {@code keepOldHours}: the old secret keeps working that long (0 to 168; 0 when it leaked). */
+export async function rotateOAuthClientSecretApi(id: string, keepOldHours = 0): Promise<string> {
   const res = await apiFetch<{ clientSecret: string }>(
-    `/api/admin/v1/oauth-clients/${id}/rotate-secret`,
+    `/api/admin/v1/oauth-clients/${id}/rotate-secret?keepOldHours=${keepOldHours}`,
     { method: "POST" },
   );
   return res.clientSecret;

@@ -41,7 +41,44 @@ public class PlatformOperatorService {
         this.audit = audit;
     }
 
-    public record AddOperatorRequest(String email, String firstName, String lastName) {}
+    /** {@code role}: SUPER_ADMIN (default) or READ_ONLY (sees everything, changes nothing). */
+    public record AddOperatorRequest(String email, String firstName, String lastName, String role) {}
+
+    static String normalizeRole(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return PlatformOperators.ROLE_SUPER_ADMIN;
+        }
+        String role = raw.trim().toUpperCase(Locale.ROOT).replace('-', '_');
+        if (!role.equals(PlatformOperators.ROLE_SUPER_ADMIN) && !role.equals(PlatformOperators.ROLE_READ_ONLY)) {
+            throw new IllegalArgumentException("Role must be SUPER_ADMIN or READ_ONLY.");
+        }
+        return role;
+    }
+
+    /** Changes an operator between full access and read-only (at least one full-access operator remains). */
+    @Transactional
+    public PlatformOperators.Row changeRole(UUID userId, String rawRole, String actor, String actorEmail) {
+        String role = normalizeRole(rawRole);
+        UserAccount user = users.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Platform operator not found"));
+        String current = operators.roleOf(userId);
+        if (current == null) {
+            throw new ResourceNotFoundException("Platform operator not found");
+        }
+        if (current.equals(role)) {
+            return operators.list().stream().filter(r -> r.userId().equals(userId)).findFirst().orElseThrow();
+        }
+        if (actorEmail != null && actorEmail.equalsIgnoreCase(user.getEmail())) {
+            throw new ConflictException("You cannot change your own platform role.");
+        }
+        if (PlatformOperators.ROLE_SUPER_ADMIN.equals(current) && operators.countSuperAdmins() <= 1) {
+            throw new ConflictException("Keep at least one platform super admin.");
+        }
+        operators.setRole(userId, role);
+        audit.record(user.getTenantId(), actor, "platform_operator.role_changed", "user_account", userId,
+                user.getEmail() + ": " + current + " → " + role, true);
+        return operators.list().stream().filter(r -> r.userId().equals(userId)).findFirst().orElseThrow();
+    }
 
     @Transactional(readOnly = true)
     public List<PlatformOperators.Row> list() {
@@ -64,8 +101,10 @@ public class PlatformOperatorService {
         } else if (operators.isOperator(user.getId())) {
             throw new ConflictException("Already a platform operator: " + email);
         }
-        operators.grant(user.getId(), actor);
-        audit.record(platform.getId(), actor, "platform_operator.granted", "user_account", user.getId(), email, true);
+        String role = normalizeRole(request.role());
+        operators.grant(user.getId(), actor, role);
+        audit.record(platform.getId(), actor, "platform_operator.granted", "user_account", user.getId(),
+                email + " (" + role + ")", true);
         UUID id = user.getId();
         return operators.list().stream()
                 .filter(r -> r.userId().equals(id))
@@ -84,6 +123,9 @@ public class PlatformOperatorService {
         // With none left, nobody can run the platform (and approvals have no one to decide them).
         if (operators.isOperator(userId) && operators.list().size() <= 1) {
             throw new ConflictException("Keep at least one platform operator: add another before removing this one.");
+        }
+        if (PlatformOperators.ROLE_SUPER_ADMIN.equals(operators.roleOf(userId)) && operators.countSuperAdmins() <= 1) {
+            throw new ConflictException("Keep at least one platform super admin: give another operator full access first.");
         }
         if (!operators.revoke(userId)) {
             throw new ResourceNotFoundException("Platform operator not found");

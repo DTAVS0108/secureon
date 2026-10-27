@@ -58,6 +58,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/v1/auth/device/lookup`](#341-look-up-a-device-user-code) — Look up a device user code
 - [3.5 Impersonation](#35-impersonation)
   - [GET `/api/v1/auth/impersonation/consume`](#351-consume-impersonation-token-and-establish-a-user-session) — Consume impersonation token and establish a user session
+  - [GET `/api/v1/auth/impersonation/status`](#352-list-status) — List status
 
 ## 3.1 Application public API
 
@@ -449,6 +450,7 @@ curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/signup"
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `attributes` | object | no |  |
 | `displayName` | string | no |  |
 | `email` | string (email) | yes |  |
 | `firstName` | string | no |  |
@@ -468,6 +470,7 @@ curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/signup"
 curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/signup" \
   -H "Content-Type: application/json" \
   --data '{
+  "attributes": {},
   "displayName": "Acme Shop",
   "email": "user@example.com",
   "firstName": "Jane",
@@ -1274,4 +1277,20 @@ Consume admin impersonation tokens
 
 ```bash
 curl -s "$SECUREONE_URL/api/v1/auth/impersonation/consume?token={token}"
+```
+
+### 3.5.2 List status
+
+`GET /api/v1/auth/impersonation/status`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/auth/impersonation/status"
 ```

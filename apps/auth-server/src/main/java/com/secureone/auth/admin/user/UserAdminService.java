@@ -314,10 +314,16 @@ public class UserAdminService {
     }
 
     public void adminSetPassword(UUID id, String plainPassword, UUID applicationId) {
+        adminSetPassword(id, plainPassword, applicationId, false);
+    }
+
+    /** {@code temporary}: the user must choose their own password the first time they sign in with this one. */
+    public void adminSetPassword(UUID id, String plainPassword, UUID applicationId, boolean temporary) {
         UserAccount user = require(id);
-        passwords.setPassword(user.getId(), plainPassword, applicationId);
+        passwords.setPassword(user.getId(), plainPassword, applicationId, temporary);
         auditService.record(
-                user.getTenantId(), "admin", "user.password_set", "user_account", user.getId(), user.getEmail(), true);
+                user.getTenantId(), "admin", "user.password_set", "user_account", user.getId(),
+                user.getEmail() + (temporary ? " (temporary: must change at next sign-in)" : ""), true);
         emailService.sendAdminSecurityAlert(
                 applicationId,
                 user,
@@ -448,6 +454,7 @@ public class UserAdminService {
                 throw new ConflictException("User email already exists in tenant: " + email);
             }
         });
+        String previousEmail = user.getEmail();
         user.setEmail(email);
         user.setUsername(resolveUsername(request.username(), email));
         user.setDisplayName(displayName(request.firstName(), request.lastName()));
@@ -456,6 +463,9 @@ public class UserAdminService {
         user.setStatus(nextStatus);
         userRepository.save(user);
         notifyStatusChange(user, previousStatus, nextStatus, null);
+        if ("ACTIVE".equalsIgnoreCase(previousStatus) && !"ACTIVE".equalsIgnoreCase(nextStatus)) {
+            endAccess(user, previousEmail);
+        }
         if (request.emailVerified() != null) {
             boolean verified = Boolean.TRUE.equals(request.emailVerified());
             if (verified != require(id).isEmailVerified()) {
@@ -474,7 +484,7 @@ public class UserAdminService {
 
     public void delete(UUID id) {
         UserAccount user = require(id);
-        signOutOfApplications(user);
+        eraseEverywhere(user);
         userApplications.deleteByUserId(id);
         userRoleRepository.deleteByUserId(id);
         mfaFactors.deleteByUserId(id);
@@ -492,10 +502,185 @@ public class UserAdminService {
         auditService.record(user.getTenantId(), "admin", "user.status_changed", "user_account", user.getId(), user.getEmail(), true);
         notifyStatusChange(user, previousStatus, nextStatus, null);
         if (!"ACTIVE".equalsIgnoreCase(nextStatus)) {
-            signOutOfApplications(user);
+            endAccess(user, user.getEmail());
         }
         return toResponse(user);
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.account.UserAccessTermination> accessTermination;
+
+    /**
+     * Where the user is signed in: their browser sessions at SecureOne, and the applications holding a grant (a
+     * refresh token, or an access token not yet expired). With {@code applicationId}, that application's grants only
+     * and no browser sessions (they are shared by the user's applications). No token values are returned.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> activeSessions(UUID id, UUID applicationId) {
+        UserAccount user = require(id);
+        String principal = principalOf(user);
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        java.util.List<java.util.Map<String, Object>> browser = new java.util.ArrayList<>();
+        if (applicationId == null && sessions != null) {
+            sessions.ifAvailable(s -> s.list(principal, null).forEach(v -> {
+                java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("id", v.id());
+                row.put("createdAt", v.createdAt());
+                row.put("lastAccessedAt", v.lastAccessedAt());
+                browser.add(row);
+            }));
+        }
+        out.put("browserSessions", browser);
+        String sql = """
+                SELECT a.id, oc.client_id AS "clientId", coalesce(app.name, oc.client_name) AS "name",
+                       oc.application_id AS "applicationId", a.authorized_scopes AS "scopes",
+                       a.access_token_issued_at AS "lastTokenAt", a.access_token_expires_at AS "accessTokenExpiresAt",
+                       a.refresh_token_expires_at AS "refreshTokenExpiresAt"
+                FROM platform.oauth2_authorization a
+                JOIN platform.oauth_client oc ON oc.id::text = a.registered_client_id
+                LEFT JOIN platform.application app ON app.id = oc.application_id
+                WHERE a.principal_name = ?
+                  AND (a.refresh_token_expires_at > now() OR a.access_token_expires_at > now())
+                """ + (applicationId != null ? " AND oc.application_id = ?" : "") + " ORDER BY a.access_token_issued_at DESC NULLS LAST";
+        out.put("applicationGrants", jdbc == null ? java.util.List.of() : applicationId != null
+                ? jdbc.queryForList(sql, principal, applicationId)
+                : jdbc.queryForList(sql, principal));
+        return out;
+    }
+
+    /**
+     * An administrator signs the user out: everywhere (grants, browser sessions, back-channel logout to the apps), or
+     * with {@code applicationId} of that application only. The account stays active: they can sign in again.
+     */
+    public java.util.Map<String, Object> signOutEverywhere(UUID id, UUID applicationId) {
+        UserAccount user = require(id);
+        var termination = accessTermination != null ? accessTermination.getIfAvailable() : null;
+        if (termination == null) {
+            throw new IllegalStateException("Signing out is not available.");
+        }
+        int browser = 0;
+        int grants;
+        if (applicationId != null) {
+            grants = termination.endInApplication(user, applicationId);
+        } else {
+            grants = jdbc == null ? 0 : jdbc.queryForObject(
+                    "SELECT count(*) FROM platform.oauth2_authorization WHERE principal_name = ?", Integer.class, principalOf(user));
+            browser = termination.endEverywhere(user);
+        }
+        auditService.record(user.getTenantId(), applicationId, "admin",
+                applicationId != null ? "user.signed_out_of_application" : "user.signed_out_everywhere",
+                "user_account", user.getId(), principalOf(user) + " (" + browser + " browser session(s), " + grants + " app grant(s))", true);
+        return java.util.Map.of("browserSessionsEnded", browser, "applicationGrantsEnded", grants);
+    }
+
+    /** Attributes SecureOne keeps for itself on the account: never shown or changed as profile attributes. */
+    private static final java.util.Set<String> INTERNAL_ATTRIBUTES = java.util.Set.of(
+            "pendingEmail", "pendingEmailApplicationId", "pendingInviteApplicationId", "authMethods");
+    private static final java.util.regex.Pattern ATTRIBUTE_KEY = java.util.regex.Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]{0,39}$");
+
+    /** The user's own profile attributes (sign-up fields, imported or set by an administrator). */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> profileAttributes(UUID id) {
+        java.util.Map<String, Object> stored = require(id).getAttributes();
+        java.util.Map<String, Object> out = new java.util.TreeMap<>(stored != null ? stored : java.util.Map.of());
+        out.keySet().removeAll(INTERNAL_ATTRIBUTES);
+        return out;
+    }
+
+    /**
+     * Replaces the user's profile attributes (SecureOne's own are kept). Keys: a letter, then letters, digits or _
+     * (up to 40); values text (up to 1000 characters), true/false or a number; at most 50.
+     */
+    public java.util.Map<String, Object> saveProfileAttributes(UUID id, java.util.Map<String, Object> attributes) {
+        UserAccount user = require(id);
+        java.util.Map<String, Object> given = attributes != null ? attributes : java.util.Map.of();
+        if (given.size() > 50) {
+            throw new IllegalArgumentException("At most 50 attributes.");
+        }
+        java.util.Map<String, Object> next = new java.util.LinkedHashMap<>();
+        (user.getAttributes() != null ? user.getAttributes() : java.util.Map.<String, Object>of()).forEach((k, v) -> {
+            if (INTERNAL_ATTRIBUTES.contains(k)) {
+                next.put(k, v);
+            }
+        });
+        given.forEach((key, value) -> {
+            if (!ATTRIBUTE_KEY.matcher(key).matches() || com.secureone.auth.application.SignupPolicy.RESERVED_KEYS.contains(key)) {
+                throw new IllegalArgumentException("Attribute \"" + key + "\": a letter, then letters, digits or _ (up to 40), not a reserved name.");
+            }
+            if (value == null || (value instanceof String s && s.isBlank())) {
+                return; // an empty value removes the attribute
+            }
+            if (!(value instanceof String || value instanceof Boolean || value instanceof Number)) {
+                throw new IllegalArgumentException("Attribute \"" + key + "\": text, true/false or a number.");
+            }
+            if (value instanceof String s && s.length() > 1000) {
+                throw new IllegalArgumentException("Attribute \"" + key + "\" is too long (at most 1000 characters).");
+            }
+            next.put(key, value instanceof String s ? s.trim() : value);
+        });
+        user.setAttributes(next);
+        userRepository.save(user);
+        auditService.record(user.getTenantId(), "admin", "user.attributes_changed", "user_account", user.getId(),
+                user.getEmail() + ": " + String.join(", ", new java.util.TreeSet<>(given.keySet())), true);
+        return profileAttributes(id);
+    }
+
+    private String principalOf(UserAccount user) {
+        String slug = tenantRepository.findById(user.getTenantId()).map(t -> t.getSlug()).orElse("?");
+        return slug + ":" + user.getEmail();
+    }
+
+    /**
+     * A user who is no longer active: their grants and browser sessions end (no refresh, no new codes) and the
+     * applications get a back-channel logout. {@code email} is the address they were signed in with.
+     */
+    private void endAccess(UserAccount user, String email) {
+        var termination = accessTermination != null ? accessTermination.getIfAvailable() : null;
+        if (termination == null) {
+            signOutOfApplications(user);
+            return;
+        }
+        termination.endEverywhere(user, email);
+    }
+
+    /**
+     * What a deleted account leaves outside its own row: OAuth grants and consents, browser sessions, and its
+     * memberships, roles and groups in every application's schema. Applications get a back-channel logout.
+     */
+    private void eraseEverywhere(UserAccount user) {
+        String slug = tenantRepository.findById(user.getTenantId()).map(t -> t.getSlug()).orElse(null);
+        if (slug == null || jdbc == null) {
+            signOutOfApplications(user);
+            return;
+        }
+        String principal = slug + ":" + user.getEmail();
+        var logout = backchannelLogout != null ? backchannelLogout.getIfAvailable() : null;
+        java.util.List<com.secureone.auth.oauth.OAuthClient> toNotify =
+                logout != null ? logout.clientsToNotify(principal) : java.util.List.of();
+        jdbc.update("DELETE FROM platform.oauth2_authorization WHERE principal_name = ?", principal);
+        jdbc.update("DELETE FROM platform.oauth2_authorization_consent WHERE principal_name = ?", principal);
+        for (String schema : jdbc.queryForList(
+                "SELECT schema_name FROM platform.application WHERE schema_name IS NOT NULL", String.class)) {
+            if (!schema.matches("[a-z][a-z0-9_]{0,62}")) {
+                continue;
+            }
+            for (String table : java.util.List.of("user_role", "user_application", "rbac_group_member")) {
+                jdbc.update("DELETE FROM \"" + schema + "\"." + table + " WHERE user_id = ?", user.getId());
+            }
+        }
+        if (sessions != null) {
+            sessions.ifAvailable(s -> s.endAllQuietly(principal));
+        }
+        if (!toNotify.isEmpty()) {
+            logout.signedOutFrom(principal, user.getId(), toNotify);
+        }
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.account.AccountSessionService> sessions;
 
     /** Back-channel logout: applications end the sessions of a user who is suspended or deleted. */
     private void signOutOfApplications(UserAccount user) {
@@ -717,21 +902,91 @@ public class UserAdminService {
         com.secureone.auth.application.ApplicationSchemaContext.setApplicationId(applicationId);
     }
 
+    /**
+     * Gives one of the application's roles to the user, for good ({@code expiresAt} null) or until then; on a role
+     * they already have, changes its end. Runs in the application's schema (the request's).
+     */
+    public java.util.Map<String, Object> grantApplicationRole(UUID userId, UUID applicationId, UUID roleId, Instant expiresAt) {
+        UserAccount user = require(userId);
+        Role role = roleRepository.findById(roleId)
+                .filter(r -> applicationId.equals(r.getApplicationId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found in this application: " + roleId));
+        if (expiresAt != null && !expiresAt.isAfter(Instant.now().plusSeconds(60))) {
+            throw new IllegalArgumentException("The end must be in the future.");
+        }
+        UserRole grant = userRoleRepository.findByUserId(userId).stream()
+                .filter(g -> roleId.equals(g.getRoleId()))
+                .findFirst()
+                .orElseGet(() -> {
+                    UserRole created = new UserRole();
+                    created.setUserId(userId);
+                    created.setRoleId(roleId);
+                    return created;
+                });
+        grant.setExpiresAt(expiresAt);
+        userRoleRepository.save(grant);
+        auditService.record(user.getTenantId(), applicationId, "admin", "user.role_granted", "user_account", userId,
+                user.getEmail() + ": " + role.getName() + (expiresAt != null ? " until " + expiresAt : ""), true);
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("roleId", roleId);
+        out.put("roleName", role.getName());
+        out.put("expiresAt", expiresAt);
+        return out;
+    }
+
+    public void revokeApplicationRole(UUID userId, UUID applicationId, UUID roleId) {
+        UserAccount user = require(userId);
+        Role role = roleRepository.findById(roleId)
+                .filter(r -> applicationId.equals(r.getApplicationId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found in this application: " + roleId));
+        userRoleRepository.findByUserId(userId).stream()
+                .filter(g -> roleId.equals(g.getRoleId()))
+                .forEach(userRoleRepository::delete);
+        auditService.record(user.getTenantId(), applicationId, "admin", "user.role_revoked", "user_account", userId,
+                user.getEmail() + ": " + role.getName(), true);
+    }
+
+    /** The user's roles in the application with their end dates (none: for good). */
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> applicationRoleAssignments(UUID userId, UUID applicationId) {
+        List<java.util.Map<String, Object>> out = new java.util.ArrayList<>();
+        for (UserRole grant : userRoleRepository.findByUserId(userId)) {
+            roleRepository.findById(grant.getRoleId())
+                    .filter(r -> applicationId.equals(r.getApplicationId()))
+                    .ifPresent(r -> {
+                        java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+                        row.put("roleId", r.getId());
+                        row.put("roleName", r.getName());
+                        row.put("grantedAt", grant.getGrantedAt());
+                        row.put("expiresAt", grant.getExpiresAt());
+                        out.add(row);
+                    });
+        }
+        return out;
+    }
+
     private void syncUserRoles(UUID userId, List<UUID> roleIds) {
         // Editing a user inside one application replaces only that application's roles; apps that
         // share the platform tables would otherwise lose each other's assignments.
         UUID applicationId = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
         auditService.record(null, applicationId, "admin", "user.roles_changed", "user_account", userId,
                 (roleIds == null ? 0 : roleIds.size()) + " role(s)", true);
+        LinkedHashSet<UUID> unique = new LinkedHashSet<>(roleIds == null ? List.of() : roleIds);
         if (applicationId != null) {
-            userRoleRepository.deleteByUserIdAndApplicationId(userId, applicationId);
+            // Roles that stay keep their assignment, with its end date when it has one.
+            for (UserRole grant : userRoleRepository.findByUserId(userId)) {
+                boolean ofApp = roleRepository.findById(grant.getRoleId())
+                        .map(r -> applicationId.equals(r.getApplicationId())).orElse(false);
+                if (!ofApp) {
+                    continue;
+                }
+                if (!unique.remove(grant.getRoleId())) {
+                    userRoleRepository.delete(grant);
+                }
+            }
         } else {
             userRoleRepository.deleteByUserId(userId);
         }
-        if (roleIds == null || roleIds.isEmpty()) {
-            return;
-        }
-        LinkedHashSet<UUID> unique = new LinkedHashSet<>(roleIds);
         for (UUID roleId : unique) {
             Role role = roleRepository
                     .findById(roleId)

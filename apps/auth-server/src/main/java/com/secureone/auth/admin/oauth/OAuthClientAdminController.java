@@ -109,10 +109,12 @@ public class OAuthClientAdminController {
             jakarta.servlet.http.HttpServletRequest stepUpRequest,
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAs,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            /* The old secret keeps working this many hours (0 to 168; 0 for a leaked secret). */
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int keepOldHours) {
         stepUp.require(stepUpRequest); // a recent second step from the admin
         access.requireClientManagement(authentication, actAs, service.get(id).applicationId());
-        return service.rotateClientSecret(id);
+        return service.rotateClientSecret(id, keepOldHours);
     }
 
     /**

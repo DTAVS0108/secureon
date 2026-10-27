@@ -35,6 +35,13 @@ public class OAuthClient {
     @Column(name = "client_secret")
     private String clientSecret;
 
+    /** After a rotation with an overlap: the old secret's hash, accepted until {@link #previousSecretExpiresAt}. */
+    @Column(name = "previous_client_secret")
+    private String previousClientSecret;
+
+    @Column(name = "previous_secret_expires_at")
+    private java.time.Instant previousSecretExpiresAt;
+
     @Column(name = "client_name", nullable = false)
     private String clientName;
 

@@ -43,6 +43,37 @@ public class ApplicationMembershipService {
         return memberships.existsByUserIdAndApplicationId(userId, applicationId);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** Removed by an administrator: self-registration does not make them a member again. */
+    public boolean wasRemoved(UUID applicationId, UUID userId) {
+        if (jdbc == null) {
+            return false;
+        }
+        Integer n = com.secureone.auth.tenant.RlsScope.asPlatform(() -> jdbc.queryForObject(
+                "SELECT count(*) FROM platform.application_access_removal WHERE application_id = ? AND user_id = ?",
+                Integer.class, applicationId, userId));
+        return n != null && n > 0;
+    }
+
+    public void recordRemoval(UUID applicationId, UUID userId, UUID tenantId) {
+        if (jdbc != null) {
+            com.secureone.auth.tenant.RlsScope.runAsPlatform(() -> jdbc.update("""
+                    INSERT INTO platform.application_access_removal (application_id, user_id, tenant_id)
+                    VALUES (?, ?, ?) ON CONFLICT (application_id, user_id) DO UPDATE SET removed_at = now()
+                    """, applicationId, userId, tenantId));
+        }
+    }
+
+    public void clearRemoval(UUID applicationId, UUID userId) {
+        if (jdbc != null) {
+            com.secureone.auth.tenant.RlsScope.runAsPlatform(() -> jdbc.update(
+                    "DELETE FROM platform.application_access_removal WHERE application_id = ? AND user_id = ?",
+                    applicationId, userId));
+        }
+    }
+
     private void assignDefaultRole(UUID applicationId, UUID userId) {
         Role role = roles.findByApplicationIdOrderByNameAsc(applicationId).stream()
                 .filter(Role::isDefaultRole)

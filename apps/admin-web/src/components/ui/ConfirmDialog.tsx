@@ -103,6 +103,8 @@ export function ConfirmDialog({
                 }}
               >
                 <input type="hidden" name="id" value={id} />
+                {/* What was typed, for APIs that check the confirmation themselves. */}
+                {confirmText && <input type="hidden" name="confirm" value={typed.trim()} />}
                 <ConfirmButton label={confirmLabel} disabled={!confirmed} />
               </form>
             </div>

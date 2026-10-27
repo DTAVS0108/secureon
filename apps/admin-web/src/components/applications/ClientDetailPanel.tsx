@@ -38,9 +38,19 @@ export function ClientDetailPanel({
   const discoveryUrl = `${publicAuthServerUrl()}/.well-known/openid-configuration`;
 
   async function rotateSecret() {
+    const hours = window.prompt(
+      "New client secret. How many hours should the old secret keep working while you update the app? (0 to 168; 0 if it leaked)",
+      "24",
+    );
+    if (hours === null) return;
+    const keep = Number(hours);
+    if (!Number.isInteger(keep) || keep < 0 || keep > 168) {
+      toast("Enter a whole number of hours from 0 to 168.", "error");
+      return;
+    }
     setRotating(true);
     try {
-      const secret = await rotateOAuthClientSecretApi(client.id);
+      const secret = await rotateOAuthClientSecretApi(client.id, keep);
       setRevealedSecret(secret);
       toast("New client secret generated — copy it now; it will not be shown again.", "success");
       router.refresh();

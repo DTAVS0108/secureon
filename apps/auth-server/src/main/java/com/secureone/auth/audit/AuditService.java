@@ -63,7 +63,7 @@ public class AuditService {
         AuditLog log = new AuditLog();
         log.setTenantId(tenantId);
         log.setApplicationId(applicationId);
-        log.setActorType("ADMIN");
+        log.setActorType(actorType(currentPrincipal()));
         log.setAction(action);
         log.setTargetType(targetType);
         log.setTargetId(targetId);
@@ -113,6 +113,24 @@ public class AuditService {
                 new org.springframework.transaction.support.TransactionTemplate(transactions);
         t.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         return t;
+    }
+
+    /**
+     * Who acted: ADMIN for the console and admin API, USER for a person acting on their own account (hosted pages,
+     * account API, sign-in), SYSTEM for jobs and anything without a signed-in principal.
+     */
+    static String actorType(String principal) {
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        String path = attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
+                ? servlet.getRequest().getRequestURI()
+                : null;
+        if (path == null) {
+            return "SYSTEM";
+        }
+        if (path.startsWith("/api/admin/") || path.startsWith("/admin/")) {
+            return "ADMIN";
+        }
+        return principal != null ? "USER" : "SYSTEM";
     }
 
     /** Callers pass "admin" as a placeholder; record the operator who is actually signed in. */

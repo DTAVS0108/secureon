@@ -17,6 +17,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/platform-operators`](#1121-list-platform-operators) — List platform operators
   - [POST `/api/admin/v1/platform-operators`](#1122-create-platform-operator) — Create platform operator
   - [DELETE `/api/admin/v1/platform-operators/{userId}`](#1123-delete-platform-operator) — Delete platform operator
+  - [PUT `/api/admin/v1/platform-operators/{userId}/role`](#1124-update-role) — Update role
 - [11.3 Access review](#113-access-review)
   - [GET `/api/admin/v1/access-review`](#1131-get-access-review) — Get access review
   - [POST `/api/admin/v1/access-review/complete`](#1132-record-a-completed-access-review-platform) — Record a completed access review (platform)
@@ -59,6 +60,9 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [PUT `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1175-update-webhook) — Update webhook
   - [DELETE `/api/admin/v1/tenants/{tenantId}/webhooks/{id}`](#1176-remove-webhook) — Remove webhook
   - [GET `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries`](#1177-list-deliveries) — List deliveries
+  - [POST `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries/{deliveryId}/redeliver`](#1178-redeliver) — Redeliver
+  - [POST `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/rotate-secret`](#1179-rotate-webhook-secret) — Rotate webhook secret
+  - [POST `/api/admin/v1/tenants/{tenantId}/webhooks/{id}/test`](#11710-test-webhook) — Test webhook
 - [11.8 Audit](#118-audit)
   - [GET `/api/admin/v1/audit`](#1181-search-the-audit-log) — Search the audit log
   - [GET `/api/admin/v1/audit/export`](#1182-export-the-audit-log-as-csv) — Export the audit log as CSV
@@ -143,6 +147,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/platform-operators" \
 | `email` | string | no |  |
 | `firstName` | string | no |  |
 | `lastName` | string | no |  |
+| `role` | string | no |  |
 
 **Responses**
 
@@ -157,7 +162,8 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/platform-operators" \
   --data '{
   "email": "user@example.com",
   "firstName": "Jane",
-  "lastName": "Doe"
+  "lastName": "Doe",
+  "role": "role"
 }'
 ```
 
@@ -182,6 +188,39 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/platform-operators" \
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/platform-operators/{userId}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.2.4 Update role
+
+`PUT /api/admin/v1/platform-operators/{userId}/role`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `userId` | path | string (uuid) | yes | User ID (UUID) |
+
+**Request body** (`application/json`, [RoleRequest](13-data-models.md#rolerequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `role` | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [Row](13-data-models.md#row) |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/platform-operators/{userId}/role" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "role": "role"
+}'
 ```
 
 ## 11.3 Access review
@@ -1170,6 +1209,80 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}"
 
 ```bash
 curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.7.8 Redeliver
+
+`POST /api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries/{deliveryId}/redeliver`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `deliveryId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}/deliveries/{deliveryId}/redeliver" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.7.9 Rotate webhook secret
+
+`POST /api/admin/v1/tenants/{tenantId}/webhooks/{id}/rotate-secret`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `keepOldHours` | query | integer (int32) | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}/rotate-secret" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 11.7.10 Test webhook
+
+`POST /api/admin/v1/tenants/{tenantId}/webhooks/{id}/test`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/webhooks/{id}/test" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 

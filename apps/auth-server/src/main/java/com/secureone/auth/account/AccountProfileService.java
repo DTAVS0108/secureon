@@ -72,8 +72,31 @@ public class AccountProfileService {
     }
 
     public void changePassword(Jwt jwt, String currentPassword, String newPassword, UUID applicationId) {
-        UserAccount user = resolveUser(jwt);
+        changePassword(resolveUser(jwt), currentPassword, newPassword, applicationId);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.audit.AuditService> audit;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.notify.EmailNotificationService> email;
+
+    /**
+     * The user changes their own password (an app with their access token, or the Account security page): audited,
+     * and the "password changed" security notice is emailed, as for a reset.
+     */
+    public void changePassword(UserAccount user, String currentPassword, String newPassword, UUID applicationId) {
         passwords.changePassword(user.getId(), currentPassword, newPassword, applicationId);
+        if (audit != null) audit.ifAvailable(a -> a.recordIndependently(
+                user.getTenantId(), null, user.getEmail(), "user.password_changed", "user_account", user.getId(),
+                user.getEmail(), true));
+        if (email != null) email.ifAvailable(e -> {
+            try {
+                e.sendPasswordChanged(applicationId, user);
+            } catch (RuntimeException ignored) {
+                // The notice never undoes the change.
+            }
+        });
     }
 
     /** The user an access token belongs to. */

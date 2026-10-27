@@ -58,10 +58,55 @@ public class PlatformOperators {
         return n != null && n > 0;
     }
 
+    /** Full access: changes anything on the platform. */
+    public static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
+    /** Sees everything a super admin sees (audit, settings, tenants) but changes nothing: auditors, support. */
+    public static final String ROLE_READ_ONLY = "READ_ONLY";
+
+    /** Whether this platform operator account may only look (same lookup rules as {@link #isOperatorEmail}). */
+    public boolean isReadOnlyEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+        Boolean readOnly = RlsScope.asPlatform(() -> platformLookup.execute(status -> {
+            Integer n = jdbc.queryForObject(
+                    """
+                    SELECT count(*) FROM platform.platform_operator p
+                    JOIN platform.user_account u ON u.id = p.user_id
+                    JOIN platform.tenant t ON t.id = u.tenant_id
+                    WHERE t.slug = ? AND u.email = ? AND p.role = ?
+                    """,
+                    Integer.class, PLATFORM_TENANT_SLUG, email, ROLE_READ_ONLY);
+            return n != null && n > 0;
+        }));
+        return Boolean.TRUE.equals(readOnly);
+    }
+
     public void grant(UUID userId, String grantedBy) {
+        grant(userId, grantedBy, ROLE_SUPER_ADMIN);
+    }
+
+    public void grant(UUID userId, String grantedBy, String role) {
         jdbc.update(
-                "INSERT INTO platform.platform_operator (user_id, granted_by) VALUES (?, ?) ON CONFLICT (user_id) DO NOTHING",
-                userId, grantedBy);
+                "INSERT INTO platform.platform_operator (user_id, granted_by, role) VALUES (?, ?, ?) ON CONFLICT (user_id) DO NOTHING",
+                userId, grantedBy, role);
+    }
+
+    public boolean setRole(UUID userId, String role) {
+        return jdbc.update("UPDATE platform.platform_operator SET role = ? WHERE user_id = ?", role, userId) > 0;
+    }
+
+    /** Operators with full access (at least one must remain). */
+    public int countSuperAdmins() {
+        Integer n = jdbc.queryForObject(
+                "SELECT count(*) FROM platform.platform_operator WHERE role = ?", Integer.class, ROLE_SUPER_ADMIN);
+        return n == null ? 0 : n;
+    }
+
+    public String roleOf(UUID userId) {
+        List<String> roles = jdbc.queryForList(
+                "SELECT role FROM platform.platform_operator WHERE user_id = ?", String.class, userId);
+        return roles.isEmpty() ? null : roles.get(0);
     }
 
     public boolean revoke(UUID userId) {
@@ -69,12 +114,12 @@ public class PlatformOperators {
     }
 
     public record Row(UUID userId, String email, String displayName, String status, String grantedBy,
-                      Instant grantedAt, Instant lastLoginAt) {}
+                      Instant grantedAt, Instant lastLoginAt, String role) {}
 
     public List<Row> list() {
         return jdbc.query(
                 """
-                SELECT u.id, u.email, u.display_name, u.status, p.granted_by, p.granted_at, u.last_login_at
+                SELECT u.id, u.email, u.display_name, u.status, p.granted_by, p.granted_at, u.last_login_at, p.role
                 FROM platform.platform_operator p JOIN platform.user_account u ON u.id = p.user_id
                 ORDER BY u.email
                 """,
@@ -85,6 +130,7 @@ public class PlatformOperators {
                         rs.getString(4),
                         rs.getString(5),
                         rs.getTimestamp(6).toInstant(),
-                        rs.getTimestamp(7) == null ? null : rs.getTimestamp(7).toInstant()));
+                        rs.getTimestamp(7) == null ? null : rs.getTimestamp(7).toInstant(),
+                        rs.getString(8)));
     }
 }

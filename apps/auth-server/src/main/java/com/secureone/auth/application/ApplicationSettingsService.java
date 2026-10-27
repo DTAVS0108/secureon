@@ -267,6 +267,30 @@ public class ApplicationSettingsService {
         return getTokenClaims(applicationId);
     }
 
+    /** Authentication › Sign-up: allowed and blocked email domains, extra sign-up fields. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getSignupPolicy(UUID applicationId) {
+        requireApplication(applicationId);
+        return resolveSignupPolicy(applicationId).toMap();
+    }
+
+    public Map<String, Object> saveSignupPolicy(UUID applicationId, Map<String, Object> body) {
+        requireApplication(applicationId);
+        SignupPolicy policy = SignupPolicy.sanitize(body);
+        if (policy.isEmpty()) {
+            appSettings.findByApplicationIdAndKey(applicationId, SignupPolicy.SETTING_KEY).ifPresent(appSettings::delete);
+        } else {
+            saveAppRaw(applicationId, SignupPolicy.SETTING_KEY, policy.toMap());
+        }
+        return getSignupPolicy(applicationId);
+    }
+
+    /** For sign-up and just-in-time accounts (no admin checks). */
+    @Transactional(readOnly = true)
+    public SignupPolicy resolveSignupPolicy(UUID applicationId) {
+        return SignupPolicy.parse(getAppRaw(applicationId, SignupPolicy.SETTING_KEY));
+    }
+
     /** For token issuance (no admin checks). */
     @Transactional(readOnly = true)
     public List<TokenClaimMappings.Claim> resolveTokenClaims(UUID applicationId) {

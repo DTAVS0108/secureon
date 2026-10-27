@@ -33,6 +33,12 @@ public class TenantAdminService {
     private final TenantUserRosterRepository tenantUserRoster;
     private final TenantRbacBootstrapService tenantRbacBootstrap;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSchemaProvisioner> schemaProvisioner;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.platform.SettingsExposureService> exposure;
+
     public TenantAdminService(
             TenantRepository tenantRepository,
             UserAccountRepository userAccountRepository,
@@ -100,10 +106,37 @@ public class TenantAdminService {
         return toResponse(tenant);
     }
 
+    @Transactional(readOnly = true)
+    public void assertDeletable(UUID id) {
+        if (isSystemTenant(require(id))) {
+            throw new ConflictException("The reserved platform tenant cannot be deleted.");
+        }
+    }
+
+    /** One audit entry for signing out a whole tenant (suspended or deleted). */
+    public void recordAccessEnded(UUID id, String name, int users, String why) {
+        auditService.record(id, "admin", "tenant.access_ended", "tenant", id,
+                name + " " + why + ": " + users + " user(s) signed out", true);
+    }
+
     public void delete(UUID id) {
         Tenant tenant = require(id);
         if (isSystemTenant(tenant)) {
             throw new ConflictException("The reserved platform tenant cannot be deleted.");
+        }
+        // Each application keeps its users' data in a schema of its own: drop those too (the rows below go with
+        // the tenant by cascade, the schemas would not), and its settings exceptions.
+        for (var app : applicationRepository.findByTenantIdOrderByCreatedAtDesc(id)) {
+            if (schemaProvisioner != null) {
+                schemaProvisioner.ifAvailable(p -> p.drop(app.getSchemaName()));
+            }
+            if (exposure != null) {
+                exposure.ifAvailable(e -> {
+                    if (e.getOverrides().containsKey(app.getId().toString())) {
+                        e.saveOverrides(app.getId(), Map.of());
+                    }
+                });
+            }
         }
         tenantRepository.delete(tenant);
         auditService.record(tenant.getId(), "admin", "tenant.deleted", "tenant", id, tenant.getName(), true);

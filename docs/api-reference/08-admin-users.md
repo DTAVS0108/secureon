@@ -18,22 +18,28 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/users/{id}`](#815-get-user) — Get user
   - [PUT `/api/admin/v1/users/{id}`](#816-update-user) — Update user
   - [DELETE `/api/admin/v1/users/{id}`](#817-delete-user) — Delete user
-  - [PATCH `/api/admin/v1/users/{id}/email-verification`](#818-update-email-verification) — Update email verification
-  - [POST `/api/admin/v1/users/{id}/email/resend-verification`](#819-resend-email-verification) — Resend email verification
-  - [POST `/api/admin/v1/users/{id}/email/verify`](#8110-verify-email) — Verify email
-  - [POST `/api/admin/v1/users/{id}/impersonate`](#8111-impersonate-a-user-support) — Impersonate a user (support)
-  - [POST `/api/admin/v1/users/{id}/mfa/reset`](#8112-reset-mfa) — Reset MFA
-  - [POST `/api/admin/v1/users/{id}/password/remove`](#8113-remove-password) — Remove password
-  - [POST `/api/admin/v1/users/{id}/password/reset-email`](#8114-reset-password-email) — Reset password email
-  - [POST `/api/admin/v1/users/{id}/password/set`](#8115-set-password) — Set password
-  - [POST `/api/admin/v1/users/{id}/password/set-password-email`](#8116-set-password-email) — Set password email
-  - [PATCH `/api/admin/v1/users/{id}/status`](#8117-update-status) — Update status
-  - [GET `/api/admin/v1/users/{id}/two-step`](#8118-two-step-status-of-a-user-options-without-secrets-deadline-exemption) — Two-step status of a user (options without secrets, deadline, exemption)
-  - [POST `/api/admin/v1/users/{id}/two-step/exempt`](#8119-exempt-a-user-from-two-step-verification-until-a-date-reason-required) — Exempt a user from two-step verification until a date (reason required)
-  - [DELETE `/api/admin/v1/users/{id}/two-step/exempt`](#8120-end-a-users-exemption-in-one-application-or-the-one-for-every-application) — End a user's exemption (in one application, or the one for every application)
-  - [POST `/api/admin/v1/users/{id}/two-step/extend`](#8121-give-a-user-more-time-to-set-up-two-step-verification) — Give a user more time to set up two-step verification
-  - [POST `/api/admin/v1/users/{id}/two-step/reset`](#8122-reset-a-users-two-step-verification-one-option-or-all-ends-their-sessions) — Reset a user's two-step verification (one option or all); ends their sessions
-  - [POST `/api/admin/v1/users/{id}/unlock`](#8123-unlock-user) — Unlock user
+  - [GET `/api/admin/v1/users/{id}/attributes`](#818-the-users-profile-attributes) — The user's profile attributes
+  - [PUT `/api/admin/v1/users/{id}/attributes`](#819-replace-the-users-profile-attributes) — Replace the user's profile attributes
+  - [PATCH `/api/admin/v1/users/{id}/email-verification`](#8110-update-email-verification) — Update email verification
+  - [POST `/api/admin/v1/users/{id}/email/resend-verification`](#8111-resend-email-verification) — Resend email verification
+  - [POST `/api/admin/v1/users/{id}/email/verify`](#8112-verify-email) — Verify email
+  - [GET `/api/admin/v1/users/{id}/identities`](#8113-the-users-linked-sign-in-accounts-google-saml) — The user's linked sign-in accounts (Google, SAML…)
+  - [DELETE `/api/admin/v1/users/{id}/identities/{identityId}`](#8114-unlink-a-sign-in-account) — Unlink a sign-in account
+  - [POST `/api/admin/v1/users/{id}/impersonate`](#8115-impersonate-a-user-support) — Impersonate a user (support)
+  - [POST `/api/admin/v1/users/{id}/mfa/reset`](#8116-reset-mfa) — Reset MFA
+  - [POST `/api/admin/v1/users/{id}/password/remove`](#8117-remove-password) — Remove password
+  - [POST `/api/admin/v1/users/{id}/password/reset-email`](#8118-reset-password-email) — Reset password email
+  - [POST `/api/admin/v1/users/{id}/password/set`](#8119-set-password) — Set password
+  - [POST `/api/admin/v1/users/{id}/password/set-password-email`](#8120-set-password-email) — Set password email
+  - [GET `/api/admin/v1/users/{id}/sessions`](#8121-where-the-user-is-signed-in) — Where the user is signed in
+  - [POST `/api/admin/v1/users/{id}/sign-out`](#8122-sign-the-user-out-everywhere) — Sign the user out everywhere
+  - [PATCH `/api/admin/v1/users/{id}/status`](#8123-update-status) — Update status
+  - [GET `/api/admin/v1/users/{id}/two-step`](#8124-two-step-status-of-a-user-options-without-secrets-deadline-exemption) — Two-step status of a user (options without secrets, deadline, exemption)
+  - [POST `/api/admin/v1/users/{id}/two-step/exempt`](#8125-exempt-a-user-from-two-step-verification-until-a-date-reason-required) — Exempt a user from two-step verification until a date (reason required)
+  - [DELETE `/api/admin/v1/users/{id}/two-step/exempt`](#8126-end-a-users-exemption-in-one-application-or-the-one-for-every-application) — End a user's exemption (in one application, or the one for every application)
+  - [POST `/api/admin/v1/users/{id}/two-step/extend`](#8127-give-a-user-more-time-to-set-up-two-step-verification) — Give a user more time to set up two-step verification
+  - [POST `/api/admin/v1/users/{id}/two-step/reset`](#8128-reset-a-users-two-step-verification-one-option-or-all-ends-their-sessions) — Reset a user's two-step verification (one option or all); ends their sessions
+  - [POST `/api/admin/v1/users/{id}/unlock`](#8129-unlock-user) — Unlock user
 
 ## 8.1 Users
 
@@ -112,6 +118,9 @@ curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/users/{userId}
 | `applicationId` | query | string (uuid) | no | Application ID (UUID) |
 | `adminOnly` | query | boolean | no |  |
 | `search` | query | string | no | Text to search for |
+| `status` | query | string | no | Filter by status |
+| `page` | query | integer (int32) | no | Page number, from 0 |
+| `size` | query | integer (int32) | no | Items per page |
 
 **Responses**
 
@@ -260,7 +269,59 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/users/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.8 Update email verification
+### 8.1.8 The user's profile attributes
+
+`GET /api/admin/v1/users/{id}/attributes`
+
+Sign-up fields, imported values and attributes set by an administrator.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/users/{id}/attributes" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.9 Replace the user's profile attributes
+
+`PUT /api/admin/v1/users/{id}/attributes`
+
+Body: {"attributes": {"key": value}}. An empty value removes the attribute.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/users/{id}/attributes" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.10 Update email verification
 
 `PATCH /api/admin/v1/users/{id}/email-verification`
 
@@ -285,7 +346,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/admin/v1/users/{id}/email-verification" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.9 Resend email verification
+### 8.1.11 Resend email verification
 
 `POST /api/admin/v1/users/{id}/email/resend-verification`
 
@@ -308,7 +369,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/email/resend-verificatio
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.10 Verify email
+### 8.1.12 Verify email
 
 `POST /api/admin/v1/users/{id}/email/verify`
 
@@ -331,7 +392,56 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/email/verify" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.11 Impersonate a user (support)
+### 8.1.13 The user's linked sign-in accounts (Google, SAML…)
+
+`GET /api/admin/v1/users/{id}/identities`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/users/{id}/identities" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.14 Unlink a sign-in account
+
+`DELETE /api/admin/v1/users/{id}/identities/{identityId}`
+
+Refused (409) when it is the user's only way to sign in.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+| `identityId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/users/{id}/identities/{identityId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.15 Impersonate a user (support)
 
 `POST /api/admin/v1/users/{id}/impersonate`
 
@@ -356,7 +466,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/impersonate" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.12 Reset MFA
+### 8.1.16 Reset MFA
 
 `POST /api/admin/v1/users/{id}/mfa/reset`
 
@@ -379,7 +489,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/mfa/reset" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.13 Remove password
+### 8.1.17 Remove password
 
 `POST /api/admin/v1/users/{id}/password/remove`
 
@@ -402,7 +512,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/password/remove" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.14 Reset password email
+### 8.1.18 Reset password email
 
 `POST /api/admin/v1/users/{id}/password/reset-email`
 
@@ -425,7 +535,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/password/reset-email" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.15 Set password
+### 8.1.19 Set password
 
 `POST /api/admin/v1/users/{id}/password/set`
 
@@ -442,6 +552,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/password/reset-email" \
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `password` | string | yes |  |
+| `temporary` | boolean | no |  |
 
 **Responses**
 
@@ -454,11 +565,12 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/password/set" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "password": "Choose-a-Strong-Pass-1!"
+  "password": "Choose-a-Strong-Pass-1!",
+  "temporary": true
 }'
 ```
 
-### 8.1.16 Set password email
+### 8.1.20 Set password email
 
 `POST /api/admin/v1/users/{id}/password/set-password-email`
 
@@ -481,7 +593,57 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/password/set-password-em
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.17 Update status
+### 8.1.21 Where the user is signed in
+
+`GET /api/admin/v1/users/{id}/sessions`
+
+Browser sessions at SecureOne and the applications holding a grant (no token values).
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/users/{id}/sessions" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.22 Sign the user out everywhere
+
+`POST /api/admin/v1/users/{id}/sign-out`
+
+Ends their browser sessions and every application's grants (refresh tokens), with a back-channel logout to the applications. The account stays active.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `id` | path | string (uuid) | yes | ID of the item (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/sign-out" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 8.1.23 Update status
 
 `PATCH /api/admin/v1/users/{id}/status`
 
@@ -506,7 +668,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/admin/v1/users/{id}/status" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.18 Two-step status of a user (options without secrets, deadline, exemption)
+### 8.1.24 Two-step status of a user (options without secrets, deadline, exemption)
 
 `GET /api/admin/v1/users/{id}/two-step`
 
@@ -530,7 +692,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/users/{id}/two-step" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.19 Exempt a user from two-step verification until a date (reason required)
+### 8.1.25 Exempt a user from two-step verification until a date (reason required)
 
 `POST /api/admin/v1/users/{id}/two-step/exempt`
 
@@ -567,7 +729,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/exempt" \
 }'
 ```
 
-### 8.1.20 End a user's exemption (in one application, or the one for every application)
+### 8.1.26 End a user's exemption (in one application, or the one for every application)
 
 `DELETE /api/admin/v1/users/{id}/two-step/exempt`
 
@@ -591,7 +753,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/exempt" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 8.1.21 Give a user more time to set up two-step verification
+### 8.1.27 Give a user more time to set up two-step verification
 
 `POST /api/admin/v1/users/{id}/two-step/extend`
 
@@ -626,7 +788,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/extend" \
 }'
 ```
 
-### 8.1.22 Reset a user's two-step verification (one option or all); ends their sessions
+### 8.1.28 Reset a user's two-step verification (one option or all); ends their sessions
 
 `POST /api/admin/v1/users/{id}/two-step/reset`
 
@@ -661,7 +823,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users/{id}/two-step/reset" \
 }'
 ```
 
-### 8.1.23 Unlock user
+### 8.1.29 Unlock user
 
 `POST /api/admin/v1/users/{id}/unlock`
 

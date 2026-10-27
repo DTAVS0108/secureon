@@ -11,7 +11,9 @@ public interface EmailTokenRepository extends JpaRepository<EmailToken, UUID> {
 
     Optional<EmailToken> findByTokenHashAndTypeAndConsumedAtIsNull(String tokenHash, EmailTokenType type);
 
-    @Modifying(clearAutomatically = true)
+    // Flush first: clearing the persistence context would otherwise drop the caller's unsaved changes (an audit
+    // entry, a webhook delivery) made earlier in the same transaction.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM EmailToken t WHERE t.userId = :userId AND t.type = :type AND t.consumedAt IS NULL")
     void deleteActiveByUserIdAndType(@Param("userId") UUID userId, @Param("type") EmailTokenType type);
 }

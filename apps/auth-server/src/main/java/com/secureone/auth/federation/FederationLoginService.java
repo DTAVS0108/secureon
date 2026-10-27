@@ -174,6 +174,9 @@ public class FederationLoginService {
         return ResponseEntity.status(302).header("Location", "/login.html?signedIn=1").build();
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.application.ApplicationSettingsService signupSettings;
+
     private UserAccount resolveOrCreateUser(
             IdentityProvider provider, FederationStateStore.PendingState pending, FederationUserProfile profile) {
         return identities
@@ -198,6 +201,19 @@ public class FederationLoginService {
         }
         if (!bool(provider.getConfig().get("jitProvisioning"))) {
             throw new IllegalStateException("No matching account. Just-in-time provisioning is disabled.");
+        }
+        // The application's sign-up domain rules apply to accounts made here too.
+        if (pending.applicationId() != null && signupSettings != null) {
+            UUID previous = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
+            com.secureone.auth.application.ApplicationSchemaContext.setApplicationId(pending.applicationId());
+            try {
+                String refused = signupSettings.resolveSignupPolicy(pending.applicationId()).domainRefusal(email);
+                if (refused != null) {
+                    throw new IllegalStateException(refused);
+                }
+            } finally {
+                com.secureone.auth.application.ApplicationSchemaContext.setApplicationId(previous);
+            }
         }
         UserAccount created = new UserAccount();
         created.setTenantId(pending.tenantId());

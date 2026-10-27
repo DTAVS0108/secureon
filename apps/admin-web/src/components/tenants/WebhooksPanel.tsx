@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -15,12 +15,24 @@ import {
   listWebhookDeliveries,
   listWebhookEvents,
   listWebhooks,
+  redeliverWebhook,
+  rotateWebhookSecret,
+  testWebhook,
   type WebhookDelivery,
   type WebhookEndpoint,
   type WebhookEventInfo,
+  type WebhookScope,
 } from "@/lib/api/webhooks";
 
-export function WebhooksPanel({ tenantId }: { tenantId: string }) {
+/**
+ * A tenant's webhooks (every application's events), or with `applicationId` one application's own (its events
+ * only, managed by its administrators).
+ */
+export function WebhooksPanel({ tenantId, applicationId }: { tenantId?: string; applicationId?: string }) {
+  const scope: WebhookScope = useMemo(
+    () => (applicationId ? { applicationId } : (tenantId ?? "")),
+    [tenantId, applicationId],
+  );
   const { toast } = useToast();
   const [rows, setRows] = useState<WebhookEndpoint[]>([]);
   const [catalog, setCatalog] = useState<WebhookEventInfo[]>([]);
@@ -36,7 +48,7 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
-      const [hooks, events] = await Promise.all([listWebhooks(tenantId), listWebhookEvents(tenantId).catch(() => [])]);
+      const [hooks, events] = await Promise.all([listWebhooks(scope), listWebhookEvents(scope).catch(() => [])]);
       setRows(hooks);
       setCatalog(events);
     } catch (e) {
@@ -44,7 +56,7 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
     } finally {
       setLoaded(true);
     }
-  }, [tenantId, toast]);
+  }, [scope, toast]);
 
   useDeferredEffect(() => {
     reload();
@@ -58,7 +70,7 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
     }
     setCreating(true);
     try {
-      const created = await createWebhook(tenantId, {
+      const created = await createWebhook(scope, {
         url: url.trim(),
         events: allEvents ? ["*"] : chosen,
         enabled: true,
@@ -82,10 +94,58 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
       return;
     }
     setOpenId(id);
+    await loadDeliveries(id);
+  }
+
+  async function loadDeliveries(id: string) {
     try {
-      setDeliveries((await listWebhookDeliveries(tenantId, id)).slice(0, 10));
+      setDeliveries((await listWebhookDeliveries(scope, id)).slice(0, 20));
     } catch {
       setDeliveries([]);
+    }
+  }
+
+  async function handleTest(id: string) {
+    try {
+      const r = await testWebhook(scope, id);
+      toast(
+        r.ok ? `Test delivered (${r.responseCode})` : `Test not accepted: ${r.error ?? "no answer"}`,
+        r.ok ? "success" : "error",
+      );
+      if (openId === id) await loadDeliveries(id);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Test failed", "error");
+    }
+  }
+
+  async function handleRotate(id: string) {
+    const hours = window.prompt(
+      "New signing secret. For how many hours should the old secret keep signing too, so your receiver can switch over? (0 to 168)",
+      "24",
+    );
+    if (hours === null) return;
+    const keep = Number(hours);
+    if (!Number.isInteger(keep) || keep < 0 || keep > 168) {
+      toast("Enter a whole number of hours from 0 to 168.", "error");
+      return;
+    }
+    try {
+      const rotated = await rotateWebhookSecret(scope, id, keep);
+      setNewSecret(rotated.secret);
+      toast("Signing secret rotated", "success");
+      await reload();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Rotation failed", "error");
+    }
+  }
+
+  async function handleRedeliver(id: string, deliveryId: string) {
+    try {
+      await redeliverWebhook(scope, id, deliveryId);
+      toast("Queued to send again", "success");
+      await loadDeliveries(id);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not send again", "error");
     }
   }
 
@@ -93,7 +153,12 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
     <Card padded={false} className={!loaded ? "pointer-events-none opacity-60" : ""}>
       <CardHeader
         title="Webhooks"
-        description="HTTPS notifications when users, roles and sign-ins change (signed with HMAC-SHA256)."
+        description={
+          (applicationId
+            ? "HTTPS notifications when this application's users, roles and sign-ins change (the tenant's webhooks also receive them). "
+            : "HTTPS notifications when users, roles and sign-ins change in any of the tenant's applications. ") +
+          "Signed with HMAC-SHA256 and a timestamp (X-SecureOne-Signature-256); a delivery that is not accepted is retried for about two days."
+        }
       />
       <div className="space-y-4 px-5 pb-5">
         <FieldRow label="Endpoint URL">
@@ -161,12 +226,37 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
                     <Badge tone={row.enabled ? "success" : "neutral"} className="mt-1">
                       {row.enabled ? "enabled" : "disabled"}
                     </Badge>
+                    {!applicationId && row.applicationId && (
+                      <Badge tone="info" className="ml-1 mt-1">
+                        one application&apos;s events
+                      </Badge>
+                    )}
+                    {row.previousSecretValidUntil && (
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        The old secret also signs until <LocalTime value={row.previousSecretValidUntil} format="datetime" />.
+                      </p>
+                    )}
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => void handleTest(row.id)}>
+                      Send test
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => void handleRotate(row.id)}>
+                      Rotate secret
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => void toggleDeliveries(row.id)}>
                       {openId === row.id ? "Hide deliveries" : "Deliveries"}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => void deleteWebhook(tenantId, row.id).then(reload)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (!window.confirm(`Delete the webhook to ${row.url}? It stops receiving events.`)) return;
+                        void deleteWebhook(scope, row.id)
+                          .then(reload)
+                          .catch((e) => toast(e instanceof Error ? e.message : "Delete failed", "error"));
+                      }}
+                    >
                       Delete
                     </Button>
                   </div>
@@ -175,16 +265,30 @@ export function WebhooksPanel({ tenantId }: { tenantId: string }) {
                   <ul className="mt-3 space-y-1 text-xs">
                     {deliveries.length === 0 && <li className="text-muted">No deliveries yet.</li>}
                     {deliveries.map((d) => (
-                      <li key={d.id} className="flex flex-wrap justify-between gap-2">
+                      <li key={d.id} className="flex flex-wrap items-center justify-between gap-2">
                         <span>
                           <code className="font-mono">{d.eventType}</code> ·{" "}
                           <span className={d.status === "DELIVERED" ? "text-emerald-600" : "text-amber-600"}>
                             {d.status}
                             {d.responseCode ? ` (${d.responseCode})` : ""}
                           </span>
+                          {(d.attempts ?? 0) > 1 && <span className="text-muted"> · {d.attempts} tries</span>}
+                          {d.lastError && d.status !== "DELIVERED" && (
+                            <span className="block text-muted">{d.lastError}</span>
+                          )}
+                          {d.status === "RETRYING" && d.nextAttemptAt && (
+                            <span className="block text-muted">
+                              Next try <LocalTime value={d.nextAttemptAt} format="datetime" />
+                            </span>
+                          )}
                         </span>
-                        <span className="text-faint">
+                        <span className="flex items-center gap-2 text-faint">
                           <LocalTime value={d.createdAt} format="datetime" />
+                          {d.status === "FAILED" && (
+                            <Button variant="ghost" size="sm" onClick={() => void handleRedeliver(row.id, d.id)}>
+                              Send again
+                            </Button>
+                          )}
                         </span>
                       </li>
                     ))}

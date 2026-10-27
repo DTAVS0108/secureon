@@ -43,6 +43,19 @@ public class WebhookDelivery {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Tries so far (a failed try is retried with backoff until {@link WebhookDeliveryService#MAX_ATTEMPTS}). */
+    @Column(name = "attempts", nullable = false)
+    private int attempts;
+
+    @Column(name = "next_attempt_at")
+    private Instant nextAttemptAt;
+
+    @Column(name = "last_error")
+    private String lastError;
+
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
     @PrePersist
     void onCreate() {
         if (id == null) {
@@ -50,6 +63,9 @@ public class WebhookDelivery {
         }
         if (createdAt == null) {
             createdAt = Instant.now();
+        }
+        if (nextAttemptAt == null && "PENDING".equals(status)) {
+            nextAttemptAt = createdAt;
         }
     }
 }

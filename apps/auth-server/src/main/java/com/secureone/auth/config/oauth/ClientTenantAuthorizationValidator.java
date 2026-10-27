@@ -89,6 +89,14 @@ public class ClientTenantAuthorizationValidator
                     tenant.get().getSlug());
             return Optional.of("This account cannot sign in to this application.");
         }
+        if (!"ACTIVE".equalsIgnoreCase(user.get().getStatus())) {
+            // Suspended, disabled or deletion requested after the browser signed in: its session gives no codes.
+            log.info("Denied authorization for client {}: user {} is {}", clientId, user.get().getId(), user.get().getStatus());
+            return Optional.of("This account is not active.");
+        }
+        if (!"ACTIVE".equalsIgnoreCase(tenant.get().getStatus())) {
+            return Optional.of("This organization is suspended.");
+        }
         if (!access.admit(app.get().getId(), user.get().getId())) {
             log.info("Denied authorization for client {}: user {} is not a member of the application", clientId, user.get().getId());
             return Optional.of("This account has not been granted access to this application.");

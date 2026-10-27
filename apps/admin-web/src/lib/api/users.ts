@@ -226,17 +226,54 @@ export async function unlockUserApi(id: string): Promise<User> {
   return mapUser(dto);
 }
 
+export type UserBrowserSession = { id: string; createdAt: string; lastAccessedAt: string };
+export type UserApplicationGrant = {
+  id: string;
+  clientId: string;
+  name: string | null;
+  applicationId: string | null;
+  scopes: string | null;
+  lastTokenAt: string | null;
+  accessTokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
+};
+export type UserActiveSessions = { browserSessions: UserBrowserSession[]; applicationGrants: UserApplicationGrant[] };
+
+/**
+ * Where the user is signed in. With `applicationId`: that application's grants only (browser sessions are shared
+ * by all the user's applications and are not shown).
+ */
+export async function fetchUserSessions(id: string, applicationId?: string): Promise<UserActiveSessions> {
+  return apiFetch<UserActiveSessions>(
+    applicationId ? `/api/admin/v1/applications/${applicationId}/users/${id}/sessions` : `/api/admin/v1/users/${id}/sessions`,
+    { headers: applicationId ? appScopeHeaders(applicationId) : undefined },
+  );
+}
+
+/** Signs the user out everywhere, or with `applicationId` of that application only. The account stays active. */
+export async function signOutUserApi(
+  id: string,
+  applicationId?: string,
+): Promise<{ browserSessionsEnded: number; applicationGrantsEnded: number }> {
+  return apiFetch(
+    applicationId ? `/api/admin/v1/applications/${applicationId}/users/${id}/sign-out` : `/api/admin/v1/users/${id}/sign-out`,
+    { method: "POST", headers: applicationId ? appScopeHeaders(applicationId) : undefined },
+  );
+}
+
+/** {@code temporary}: the user must choose their own password the first time they sign in with this one. */
 export async function adminSetUserPasswordApi(
   id: string,
   password: string,
   applicationId?: string,
+  temporary = false,
 ): Promise<void> {
   if (applicationId) {
     await apiFetch<void>(
       `/api/admin/v1/applications/${applicationId}/users/${id}/password/set`,
       {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, temporary }),
         headers: { "X-Application-Id": applicationId },
       },
     );
@@ -244,7 +281,7 @@ export async function adminSetUserPasswordApi(
   }
   await apiFetch<void>(`/api/admin/v1/users/${id}/password/set`, {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ password, temporary }),
   });
 }
 

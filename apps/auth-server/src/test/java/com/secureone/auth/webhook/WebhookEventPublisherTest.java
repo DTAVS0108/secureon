@@ -50,7 +50,6 @@ class WebhookEventPublisherTest {
         publisher.publish(tenantId, applicationId, "user.login.succeeded", Map.of("userId", "abc"));
 
         verify(deliveryService).enqueue(eq(endpoint.getId()), eq("user.login.succeeded"), any());
-        verify(deliveryService).deliverAsync(endpoint, delivery);
     }
 
     @Test

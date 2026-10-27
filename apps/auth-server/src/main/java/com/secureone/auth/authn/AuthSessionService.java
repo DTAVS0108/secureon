@@ -52,6 +52,13 @@ public class AuthSessionService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password));
             return mfaLogin.completePasswordLogin(authentication, applicationId, request, response);
+        } catch (com.secureone.auth.account.PasswordChangeRequiredException ex) {
+            // A temporary password: the app shows its own "choose a new password" step, then calls
+            // POST /api/v1/account/password/reset with this token and the new password.
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+            problem.setProperty("passwordChangeRequired", true);
+            problem.setProperty("changeToken", ex.changeToken());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
         } catch (AuthenticationException ex) {
             // Counts towards "CAPTCHA after failures" (Attack protection), as the hosted form does.
             if (attackProtection != null) {

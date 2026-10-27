@@ -1,6 +1,7 @@
 package com.secureone.auth.account;
 
 import com.secureone.auth.notify.ApplicationEmailContextFactory;
+import com.secureone.auth.notify.EmailTokenType;
 import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import com.secureone.auth.user.UserCredential;
@@ -28,6 +29,9 @@ public class PasswordExpiryService {
     private final AccountNotificationService notifications;
     private final ApplicationEmailContextFactory emailContext;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private EmailTokenService tokens;
+
     public PasswordExpiryService(
             UserCredentialRepository credentials,
             UserAccountRepository users,
@@ -41,7 +45,13 @@ public class PasswordExpiryService {
         this.emailContext = emailContext;
     }
 
+    /** The change token (and an expired-password notice) are kept although the sign-in is refused. */
+    @Transactional(noRollbackFor = org.springframework.security.core.AuthenticationException.class)
     public void enforceLoginAllowed(UserAccount user, UserCredential credential, UUID applicationId) {
+        if (credential != null && credential.isMustChange() && tokens != null) {
+            // Called only after the password was checked: the user proved they hold the temporary password.
+            throw new PasswordChangeRequiredException(tokens.issue(user, EmailTokenType.RESET_PASSWORD).rawToken());
+        }
         if (credential == null || credential.getExpiresAt() == null) {
             return;
         }

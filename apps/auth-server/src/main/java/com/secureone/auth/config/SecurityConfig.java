@@ -77,6 +77,8 @@ public class SecurityConfig {
     @org.springframework.beans.factory.annotation.Autowired
     private com.secureone.auth.oauth.BackchannelLogoutService backchannelLogout;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.account.UserAccessTermination userAccessTermination;
 
     @Bean
     OAuthAwareLoginEntryPoint oauthAwareLoginEntryPoint(
@@ -100,8 +102,28 @@ public class SecurityConfig {
             OAuth2AuthorizationService authorizationService,
             org.springframework.data.redis.core.StringRedisTemplate redis,
             SamlLogoutService samlLogout,
-            SecureOneEnvironmentProperties environment)
+            SecureOneEnvironmentProperties environment,
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder)
             throws Exception {
+        // Client secrets are hashed by SecureOne (bcrypt; two during a rotation's overlap) and the client store is
+        // read-only: the authorization server must not try to re-hash and save them after a successful check.
+        org.springframework.security.crypto.password.PasswordEncoder clientSecrets =
+                new org.springframework.security.crypto.password.PasswordEncoder() {
+                    @Override
+                    public String encode(CharSequence raw) {
+                        return passwordEncoder.encode(raw);
+                    }
+
+                    @Override
+                    public boolean matches(CharSequence raw, String encoded) {
+                        return passwordEncoder.matches(raw, encoded);
+                    }
+
+                    @Override
+                    public boolean upgradeEncoding(String encoded) {
+                        return false;
+                    }
+                };
         OAuth2AuthorizationServerConfigurer authorizationServer =
                 new OAuth2AuthorizationServerConfigurer();
         RequestMatcher endpointsMatcher = authorizationServer.getEndpointsMatcher();
@@ -122,6 +144,11 @@ public class SecurityConfig {
                                 .authenticationConverter(new PublicClientRefreshAuthentication.Converter())
                                 .authenticationConverter(new PublicClientDeviceAuthentication.Converter())
                                 .authenticationProviders(providers -> {
+                                    providers.forEach(p -> {
+                                        if (p instanceof org.springframework.security.oauth2.server.authorization.authentication.ClientSecretAuthenticationProvider secret) {
+                                            secret.setPasswordEncoder(clientSecrets);
+                                        }
+                                    });
                                     providers.add(0, new PublicClientRefreshAuthentication.Provider(registeredClients));
                                     providers.add(0, new PublicClientDeviceAuthentication.Provider(registeredClients));
                                 }))
@@ -173,7 +200,8 @@ public class SecurityConfig {
                                 // Sessions from a SAML IdP are also signed out there (single logout).
                                 .logoutEndpoint(logout -> logout.logoutResponseHandler(
                                         new com.secureone.auth.oauth.BackchannelNotifyingLogoutHandler(
-                                                new SamlAwareOidcLogoutHandler(samlLogout), backchannelLogout)))
+                                                new SamlAwareOidcLogoutHandler(samlLogout), backchannelLogout,
+                                                userAccessTermination)))
                                 // OIDC Back-Channel Logout 1.0: clients may register a URL for logout tokens.
                                 .providerConfigurationEndpoint(config -> config.providerConfigurationCustomizer(c -> c
                                         .claim("backchannel_logout_supported", true)
@@ -360,6 +388,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/mfa/**",
                                 "/api/v1/auth/federation/**",
                                 "/api/v1/auth/impersonation/consume",
+                                "/api/v1/auth/impersonation/status",
                                 "/api/v1/auth/device/**",
                                 "/.well-known/oauth-protected-resource",
                                 "/api/v1/auth/passkey/**",

@@ -78,6 +78,3 @@ export async function updateTenantApi(
   return mapTenant(dto);
 }
 
-export async function deleteTenantApi(id: string): Promise<void> {
-  await apiFetch<void>(`/api/admin/v1/tenants/${id}`, { method: "DELETE" });
-}

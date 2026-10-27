@@ -978,14 +978,14 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       group: "Profile",
       method: "POST",
       path: `${base}/api/v1/account/privacy/delete-request`,
-      description: "Request account deletion — disables the account and records an audit event (admin may complete removal).",
+      description: "Request account deletion: disables the account now; it is removed within 30 days (an administrator can do it sooner, or cancel).",
       authUiMode: "both",
       auth: "Authorization: Bearer {access_token}",
       responses: [
         {
           status: 200,
           description: "Deletion requested",
-          example: json({ message: "Account deletion requested. Your account has been disabled; an administrator may complete removal." }),
+          example: json({ message: "Account deletion requested. Your account has been disabled and will be removed within 30 days." }),
         },
       ],
     },

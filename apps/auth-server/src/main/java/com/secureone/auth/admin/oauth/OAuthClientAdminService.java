@@ -171,11 +171,29 @@ public class OAuthClientAdminService {
     }
 
     public OAuthClientSecretResponse rotateClientSecret(UUID id) {
+        return rotateClientSecret(id, 0);
+    }
+
+    /**
+     * New secret, shown once. {@code keepOldHours} (0 to 168): the old secret keeps working that long, so the app
+     * can be updated without an outage (0: it stops at once, for a leaked secret).
+     */
+    public OAuthClientSecretResponse rotateClientSecret(UUID id, int keepOldHours) {
+        if (keepOldHours < 0 || keepOldHours > 168) {
+            throw new IllegalArgumentException("Keep the old secret for 0 to 168 hours.");
+        }
         OAuthClient client = require(id);
         if (!isConfidential(client.getType())) {
             throw new IllegalArgumentException("Public clients (SPA/native) do not use a client secret.");
         }
         String plainSecret = generateClientSecret();
+        if (keepOldHours > 0 && client.getClientSecret() != null && !client.getClientSecret().isBlank()) {
+            client.setPreviousClientSecret(client.getClientSecret());
+            client.setPreviousSecretExpiresAt(java.time.Instant.now().plus(java.time.Duration.ofHours(keepOldHours)));
+        } else {
+            client.setPreviousClientSecret(null);
+            client.setPreviousSecretExpiresAt(null);
+        }
         client.setClientSecret(ClientSecrets.hash(plainSecret));
         Application app = requireApplication(client.getApplicationId());
         auditService.record(
@@ -184,7 +202,7 @@ public class OAuthClientAdminService {
                 "oauth_client.secret_rotated",
                 "oauth_client",
                 client.getId(),
-                client.getClientId(),
+                client.getClientId() + (keepOldHours > 0 ? " (old secret valid " + keepOldHours + " h)" : " (old secret revoked)"),
                 true);
         return new OAuthClientSecretResponse(plainSecret);
     }

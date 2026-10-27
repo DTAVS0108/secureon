@@ -90,23 +90,44 @@ public class ScimUserController {
     @PutMapping("/{id}")
     public Map<String, Object> replace(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         UserAccount user = requireUser(request, id);
+        String status = user.getStatus();
+        String email = user.getEmail();
         applyUserFields(user, body);
-        return toScimUser(users.save(user));
+        UserAccount saved = users.save(user);
+        endAccessIfDeactivated(saved, status, email);
+        return toScimUser(saved);
     }
 
     @PatchMapping("/{id}")
     public Map<String, Object> patch(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         UserAccount user = requireUser(request, id);
+        String status = user.getStatus();
+        String email = user.getEmail();
         applyPatchOperations(user, body);
-        return toScimUser(users.save(user));
+        UserAccount saved = users.save(user);
+        endAccessIfDeactivated(saved, status, email);
+        return toScimUser(saved);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(HttpServletRequest request, @PathVariable UUID id) {
         UserAccount user = requireUser(request, id);
+        String status = user.getStatus();
         user.setStatus("DISABLED");
         users.save(user);
+        endAccessIfDeactivated(user, status, user.getEmail());
         return ResponseEntity.noContent().build();
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.account.UserAccessTermination> accessTermination;
+
+    /** Deprovisioned by the IdP: the user's refresh tokens, browser sessions and app sessions end too. */
+    private void endAccessIfDeactivated(UserAccount user, String previousStatus, String previousEmail) {
+        if ("ACTIVE".equalsIgnoreCase(previousStatus) && !"ACTIVE".equalsIgnoreCase(user.getStatus())
+                && accessTermination != null) {
+            accessTermination.ifAvailable(t -> t.endEverywhere(user, previousEmail));
+        }
     }
 
     /** A user of the token's tenant; others are reported as not found. */

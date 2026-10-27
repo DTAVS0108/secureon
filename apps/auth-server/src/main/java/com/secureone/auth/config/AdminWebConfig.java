@@ -22,5 +22,14 @@ public class AdminWebConfig implements WebMvcConfigurer {
         // Scope first, so the access checks below already run inside the operator's tenant.
         registry.addInterceptor(operatorTenantScope).addPathPatterns("/**");
         registry.addInterceptor(adminAccessInterceptor).addPathPatterns("/api/admin/v1/**");
+        registry.addInterceptor(settingsAudit).addPathPatterns("/api/admin/v1/settings/**",
+                "/api/admin/v1/applications/*/settings/**");
+        registry.addInterceptor(impersonationGuard).addPathPatterns("/api/v1/account/**");
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.authn.ImpersonationGuard impersonationGuard;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.audit.SettingsChangeAudit.Recorder settingsAudit;
 }

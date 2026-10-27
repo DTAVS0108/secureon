@@ -131,14 +131,44 @@ public class BackchannelLogoutService {
         }
     }
 
-    private void notifyClients(String principalName, Optional<UUID> userId, String sessionId) {
-        List<String> clientIds = jdbc.queryForList(
-                "SELECT DISTINCT registered_client_id FROM platform.oauth2_authorization WHERE principal_name = ?",
-                String.class, principalName);
-        if (clientIds.isEmpty()) {
-            return;
+    /**
+     * Same, for applications found before the user's grants were removed (a suspended or deleted tenant: the
+     * grants are deleted right away, so the lookup cannot wait for this to run).
+     */
+    @Async
+    public void signedOutFrom(String principalName, UUID userId, List<OAuthClient> toNotify) {
+        try {
+            toNotify.forEach(c -> send(c, subjectFor(c, principalName, Optional.ofNullable(userId)), null));
+        } catch (RuntimeException e) {
+            log.warn("Back-channel logout for {} not sent: {}", principalName, e.getMessage());
         }
-        for (String registeredId : clientIds) {
+    }
+
+    /**
+     * Same, for one browser session that logged out ({@code sid}, or null when no single session ended), to
+     * applications found before the grants were removed.
+     */
+    @Async
+    public void sessionSignedOut(String principalName, String sessionId, List<OAuthClient> toNotify) {
+        try {
+            RlsScope.runAsPlatform(() -> {
+                Optional<UUID> userId = SubjectClaims.resolve(principalName, users).map(UserAccount::getId);
+                toNotify.forEach(c -> send(c, subjectFor(c, principalName, userId), sessionId));
+            });
+        } catch (RuntimeException e) {
+            log.warn("Back-channel logout for {} not sent: {}", principalName, e.getMessage());
+        }
+    }
+
+    /**
+     * The applications to tell when this principal signs out: those holding grants for it, with a back-channel
+     * logout URL. Loaded now, so the notice can go out after the grants (or the clients) are deleted.
+     */
+    public List<OAuthClient> clientsToNotify(String principalName) {
+        List<OAuthClient> out = new java.util.ArrayList<>();
+        for (String registeredId : jdbc.queryForList(
+                "SELECT DISTINCT registered_client_id FROM platform.oauth2_authorization WHERE principal_name = ?",
+                String.class, principalName)) {
             UUID id;
             try {
                 id = UUID.fromString(registeredId);
@@ -148,8 +178,13 @@ public class BackchannelLogoutService {
             clients.findById(id)
                     .filter(c -> c.getBackchannelLogoutUri() != null && !c.getBackchannelLogoutUri().isBlank())
                     .filter(c -> !"DISABLED".equalsIgnoreCase(c.getStatus()))
-                    .ifPresent(c -> send(c, subjectFor(c, principalName, userId), sessionId));
+                    .ifPresent(out::add);
         }
+        return out;
+    }
+
+    private void notifyClients(String principalName, Optional<UUID> userId, String sessionId) {
+        clientsToNotify(principalName).forEach(c -> send(c, subjectFor(c, principalName, userId), sessionId));
     }
 
     /** The {@code sub} this client sees in its ID tokens (see SubjectClaims). */

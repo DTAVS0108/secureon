@@ -98,6 +98,14 @@ public class AdminAccessInterceptor implements HandlerInterceptor {
             throw new org.springframework.security.access.AccessDeniedException(
                     "X-Act-As-Email is only available to platform super admins");
         }
+        // Read-only platform operators look but never change (their own profile, 2FA and sign-in excepted).
+        if (!"GET".equals(request.getMethod()) && !"HEAD".equals(request.getMethod())
+                && !"OPTIONS".equals(request.getMethod())
+                && !path.startsWith("/api/admin/v1/me") && !path.startsWith("/api/admin/v1/auth")
+                && access.isReadOnlyPlatformOperator(auth)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Your platform role is read-only: you can view but not change.");
+        }
         if (path.startsWith("/api/admin/v1/context")
                 || path.startsWith("/api/admin/v1/me")
                 || path.startsWith("/api/admin/v1/tenant-workspace")) {

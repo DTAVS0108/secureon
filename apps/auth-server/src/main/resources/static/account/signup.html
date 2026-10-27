@@ -76,6 +76,7 @@
       <input id="first" autocomplete="given-name" />
       <label for="last">Last name</label>
       <input id="last" autocomplete="family-name" />
+      <div id="extra-fields"></div>
       <label for="password">Password</label>
       <input id="password" type="password" required autocomplete="new-password" />
       <div id="checklist"></div>
@@ -117,6 +118,56 @@
         }
       }
 
+      // The application's own sign-up fields (text, a list, or a checkbox), saved as the user's attributes.
+      let extraFields = [];
+      function renderExtraFields(fields) {
+        extraFields = fields;
+        const box = document.getElementById("extra-fields");
+        box.replaceChildren();
+        fields.forEach((f) => {
+          const id = "field-" + f.key;
+          let input;
+          if (f.type === "select") {
+            input = document.createElement("select");
+            const empty = document.createElement("option");
+            empty.value = "";
+            empty.textContent = f.required ? "Choose…" : "(none)";
+            input.append(empty);
+            (f.options || []).forEach((o) => {
+              const opt = document.createElement("option");
+              opt.value = o;
+              opt.textContent = o;
+              input.append(opt);
+            });
+          } else {
+            input = document.createElement("input");
+            input.type = f.type === "checkbox" ? "checkbox" : "text";
+            if (f.type !== "checkbox" && f.maxLength) input.maxLength = f.maxLength;
+          }
+          input.id = id;
+          input.required = Boolean(f.required);
+          const label = document.createElement("label");
+          label.htmlFor = id;
+          label.textContent = f.label + (f.required ? "" : " (optional)");
+          if (f.type === "checkbox") {
+            input.style.width = "auto";
+            label.prepend(input, " ");
+            box.append(label);
+          } else {
+            box.append(label, input);
+          }
+        });
+      }
+      function extraValues() {
+        const out = {};
+        extraFields.forEach((f) => {
+          const el = document.getElementById("field-" + f.key);
+          if (!el) return;
+          out[f.key] = f.type === "checkbox" ? el.checked : el.value.trim();
+        });
+        return out;
+      }
+
       if (!applicationId) {
         intro.textContent = "Missing applicationId in the URL.";
       } else {
@@ -144,6 +195,7 @@
               document.getElementById("phone-optional").hidden = phoneRequired;
               phoneInput.required = phoneRequired;
             }
+            renderExtraFields(opts.fields || []);
             form.hidden = false;
           })
           .catch(() => {
@@ -166,6 +218,7 @@
           lastName: document.getElementById("last").value,
         };
         if (phoneInput.value.trim()) payload.phone = phoneInput.value.trim();
+        if (extraFields.length) payload.attributes = extraValues();
         const res = await fetch("/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

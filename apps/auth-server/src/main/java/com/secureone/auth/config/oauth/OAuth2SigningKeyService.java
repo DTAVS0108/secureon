@@ -35,7 +35,6 @@ public class OAuth2SigningKeyService {
     private final SecureOneEnvironmentProperties environment;
     private final String envPrivateKeyPem;
     private final String envPreviousPrivateKeyPem;
-    private volatile RSAKey cachedKey;
 
     public OAuth2SigningKeyService(
             PlatformSettingsService platformSettings,
@@ -53,13 +52,19 @@ public class OAuth2SigningKeyService {
     }
 
     /**
-     * Keys published in JWKS and accepted when verifying: the signing key plus, during a rotation, the
-     * previous key's public part ({@code SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM}, same kid as when it was
-     * current), so tokens signed before the switch stay valid until they expire.
+     * Keys published in JWKS and accepted when verifying: the signing key; the next key (published ahead, so
+     * apps already have it when a rotation makes it the signing key); the previous key after a rotation (so
+     * tokens signed before it stay valid until retired); and {@code SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM}.
      */
     public java.util.List<RSAKey> verificationKeys() {
         java.util.List<RSAKey> keys = new java.util.ArrayList<>();
-        keys.add(loadOrCreateSigningKey());
+        Snapshot snap = snapshot();
+        keys.add(snap.current());
+        for (RSAKey extra : new RSAKey[] {snap.next(), snap.previous()}) {
+            if (extra != null && keys.stream().noneMatch(k -> k.getKeyID().equals(extra.getKeyID()))) {
+                keys.add(extra.toPublicJWK());
+            }
+        }
         if (!envPreviousPrivateKeyPem.isBlank()) {
             RSAKey previous = parsePrivateKeyPem(envPreviousPrivateKeyPem, stableKidFromPem(envPreviousPrivateKeyPem));
             // Rotating away from a key SecureOne generated: it was published under the kid stored with it.
@@ -78,22 +83,182 @@ public class OAuth2SigningKeyService {
         return a.getModulus().equals(b.getModulus()) && a.getPublicExponent().equals(b.getPublicExponent());
     }
 
-    /** Only the current key: what tokens are signed with (an encoder must see exactly one RS256 key). */
+    /**
+     * Only the current key: what tokens are signed with (an encoder must see exactly one RS256 key). Read on
+     * each use, so a rotation (here or on another server) takes effect without a restart.
+     */
     public com.nimbusds.jose.jwk.source.JWKSource<com.nimbusds.jose.proc.SecurityContext> signingJwkSource() {
-        return new com.nimbusds.jose.jwk.source.ImmutableJWKSet<>(new com.nimbusds.jose.jwk.JWKSet(loadOrCreateSigningKey()));
+        return (selector, context) -> selector.select(new com.nimbusds.jose.jwk.JWKSet(loadOrCreateSigningKey()));
     }
 
     public RSAKey loadOrCreateSigningKey() {
-        RSAKey key = cachedKey;
-        if (key != null) {
-            return key;
+        return snapshot().current();
+    }
+
+    /** The keys in use, re-read every {@link #REFRESH} (every server sees a rotation within that time). */
+    record Snapshot(RSAKey current, RSAKey next, RSAKey previous, Instant previousRetiredAt, Instant loadedAt) {}
+
+    static final java.time.Duration REFRESH = java.time.Duration.ofSeconds(30);
+    private volatile Snapshot snapshot;
+
+    private Snapshot snapshot() {
+        Snapshot s = snapshot;
+        boolean fixed = !envPrivateKeyPem.isBlank();
+        if (s != null && (fixed || s.loadedAt().plus(REFRESH).isAfter(Instant.now()))) {
+            return s;
         }
         synchronized (this) {
-            if (cachedKey != null) {
-                return cachedKey;
+            s = snapshot;
+            if (s != null && (fixed || s.loadedAt().plus(REFRESH).isAfter(Instant.now()))) {
+                return s;
             }
-            cachedKey = resolveSigningKey();
-            return cachedKey;
+            snapshot = load();
+            return snapshot;
+        }
+    }
+
+    private Snapshot load() {
+        RSAKey current = resolveSigningKey();
+        if (!envPrivateKeyPem.isBlank()) {
+            return new Snapshot(current, null, null, null, Instant.now());
+        }
+        Map<String, Object> stored = platformSettings.get(SETTING_KEY);
+        RSAKey next = readEntryPrivate(stored.get(NEXT_FIELD));
+        if (next == null) {
+            next = ensureNextKey();
+        }
+        RSAKey previous = null;
+        Instant retiredAt = null;
+        if (stored.get(PREVIOUS_FIELD) instanceof Map<?, ?> prev) {
+            previous = parsePublicPem(stringValue(prev.get(PUBLIC_PEM_FIELD)), stringValue(prev.get(KEY_ID_FIELD)));
+            retiredAt = parseInstant(prev.get("retiredAt"));
+        }
+        return new Snapshot(current, next, previous, retiredAt, Instant.now());
+    }
+
+    private static final String NEXT_FIELD = "next";
+    private static final String PREVIOUS_FIELD = "previous";
+
+    /** Publishes the next key ahead of time (once; a later rotation makes it the signing key). */
+    private RSAKey ensureNextKey() {
+        try {
+            RSAKey next = generateRsaKey();
+            Map<String, Object> stored = new LinkedHashMap<>(platformSettings.get(SETTING_KEY));
+            if (stored.get(NEXT_FIELD) != null) {
+                return readEntryPrivate(stored.get(NEXT_FIELD)); // another server just did it
+            }
+            stored.put(NEXT_FIELD, privateEntry(next));
+            platformSettings.saveMap(SETTING_KEY, stored);
+            return next;
+        } catch (RuntimeException e) {
+            return null; // not fatal: the next key is published on a later load
+        }
+    }
+
+    /**
+     * Rotation: the next key (already published) starts signing; the current one stays published as the previous
+     * key, so tokens it signed still verify until it is retired; a new next key is published. Keys from
+     * {@code SECUREONE_JWK_PRIVATE_KEY_PEM} are rotated in the environment instead.
+     */
+    public synchronized Map<String, Object> rotate() {
+        if (!envPrivateKeyPem.isBlank()) {
+            throw new IllegalArgumentException("The signing key comes from SECUREONE_JWK_PRIVATE_KEY_PEM: rotate it there"
+                    + " (set the new key, and the old one as SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM).");
+        }
+        RSAKey current = readStored();
+        Map<String, Object> stored = new LinkedHashMap<>(platformSettings.get(SETTING_KEY));
+        RSAKey promoted = readEntryPrivate(stored.get(NEXT_FIELD));
+        if (promoted == null) {
+            promoted = generateRsaKey();
+        }
+        try {
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put(KEY_ID_FIELD, promoted.getKeyID());
+            out.put(PRIVATE_ENCRYPTED_FIELD, secrets.encrypt(toPem(promoted.toRSAPrivateKey().getEncoded(), "PRIVATE KEY")));
+            out.put(PUBLIC_PEM_FIELD, toPem(promoted.toRSAPublicKey().getEncoded(), "PUBLIC KEY"));
+            out.put("createdAt", Instant.now().toString());
+            if (current != null) {
+                Map<String, Object> previous = new LinkedHashMap<>();
+                previous.put(KEY_ID_FIELD, current.getKeyID());
+                previous.put(PUBLIC_PEM_FIELD, toPem(current.toRSAPublicKey().getEncoded(), "PUBLIC KEY"));
+                previous.put("retiredAt", Instant.now().toString());
+                out.put(PREVIOUS_FIELD, previous);
+            }
+            out.put(NEXT_FIELD, privateEntry(generateRsaKey()));
+            platformSettings.saveMap(SETTING_KEY, out);
+        } catch (JOSEException ex) {
+            throw new IllegalStateException("Failed to rotate the signing key", ex);
+        }
+        snapshot = null;
+        return status();
+    }
+
+    /** Stops accepting tokens signed with the previous key (once they have all expired). */
+    public synchronized Map<String, Object> retirePrevious() {
+        Map<String, Object> stored = new LinkedHashMap<>(platformSettings.get(SETTING_KEY));
+        if (stored.remove(PREVIOUS_FIELD) == null) {
+            throw new IllegalArgumentException("There is no previous signing key to retire.");
+        }
+        platformSettings.saveMap(SETTING_KEY, stored);
+        snapshot = null;
+        return status();
+    }
+
+    /** For the console: key IDs and dates (never key material). */
+    public Map<String, Object> status() {
+        Snapshot snap = snapshot();
+        Map<String, Object> stored = envPrivateKeyPem.isBlank() ? platformSettings.get(SETTING_KEY) : Map.of();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("source", envPrivateKeyPem.isBlank() ? "stored" : "environment");
+        out.put("currentKid", snap.current().getKeyID());
+        out.put("currentSince", stringValue(stored.get("createdAt")));
+        out.put("nextKid", snap.next() != null ? snap.next().getKeyID() : null);
+        out.put("previousKid", snap.previous() != null ? snap.previous().getKeyID() : null);
+        out.put("previousRetiredAt", snap.previousRetiredAt() != null ? snap.previousRetiredAt().toString() : null);
+        return out;
+    }
+
+    private Map<String, Object> privateEntry(RSAKey key) {
+        try {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put(KEY_ID_FIELD, key.getKeyID());
+            entry.put(PRIVATE_ENCRYPTED_FIELD, secrets.encrypt(toPem(key.toRSAPrivateKey().getEncoded(), "PRIVATE KEY")));
+            entry.put("createdAt", Instant.now().toString());
+            return entry;
+        } catch (JOSEException ex) {
+            throw new IllegalStateException("Failed to store a signing key", ex);
+        }
+    }
+
+    private RSAKey readEntryPrivate(Object raw) {
+        if (!(raw instanceof Map<?, ?> entry)) {
+            return null;
+        }
+        String pem = secrets.decrypt(stringValue(entry.get(PRIVATE_ENCRYPTED_FIELD)));
+        return pem.isBlank() ? null : parsePrivateKeyPem(pem, stringValue(entry.get(KEY_ID_FIELD)));
+    }
+
+    private static RSAKey parsePublicPem(String pem, String kid) {
+        if (pem.isBlank() || kid.isBlank()) {
+            return null;
+        }
+        try {
+            byte[] bytes = Base64.getDecoder().decode(normalizePem(pem)
+                    .replace("-----BEGIN PUBLIC KEY-----", "").replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s", ""));
+            RSAPublicKey key = (RSAPublicKey) KeyFactory.getInstance("RSA")
+                    .generatePublic(new java.security.spec.X509EncodedKeySpec(bytes));
+            return new RSAKey.Builder(key).keyID(kid).build();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static Instant parseInstant(Object raw) {
+        try {
+            return raw == null ? null : Instant.parse(raw.toString());
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 

@@ -52,6 +52,22 @@ public class PlatformOperatorController {
         return service.add(body, authentication.getName());
     }
 
+    public record RoleRequest(String role) {}
+
+    /** Full access (SUPER_ADMIN) or look-only (READ_ONLY). */
+    @org.springframework.web.bind.annotation.PutMapping("/{userId}/role")
+    public PlatformOperators.Row changeRole(
+            jakarta.servlet.http.HttpServletRequest stepUpRequest,
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID userId,
+            @RequestBody RoleRequest body) {
+        stepUp.require(stepUpRequest);
+        access.requirePlatformSettingsAccess(authentication, actAsEmail);
+        return service.changeRole(userId, body != null ? body.role() : null, authentication.getName(),
+                access.resolveOperatorEmail(authentication, null));
+    }
+
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(

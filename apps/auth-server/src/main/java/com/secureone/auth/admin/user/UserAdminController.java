@@ -61,36 +61,60 @@ public class UserAdminController {
         this.impersonation = impersonation;
     }
 
+    /**
+     * Users, optionally of one application, searched (email, username, name) and filtered by status (active,
+     * invited, suspended, disabled) on the server. With {@code page} (from 0) the list is one page of {@code size}
+     * (default 50, at most 500); {@code X-Total-Count} always gives the number of matching users.
+     */
     @GetMapping
-    public List<UserResponse> list(
+    public org.springframework.http.ResponseEntity<List<UserResponse>> list(
             Authentication authentication,
             @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
             @RequestParam(required = false) UUID tenantId,
             @RequestParam(required = false) UUID applicationId,
             @RequestParam(required = false) Boolean adminOnly,
-            @RequestParam(required = false) String search) {
-        List<UserResponse> users = listScoped(authentication, actAsEmail, tenantId, applicationId, adminOnly);
-        if (search == null || search.isBlank()) {
-            return users;
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        int pageSize = size == null ? 50 : Math.max(1, Math.min(500, size));
+        if (applicationId != null) {
+            // Filtered and paged before the (costlier) full responses are built.
+            access.requireApplicationAccess(authentication, actAsEmail, applicationId);
+            List<com.secureone.auth.user.UserAccount> matching = applicationUsers.memberAccounts(applicationId).stream()
+                    .filter(u -> ApplicationUserAdminService.matches(u, search, status))
+                    .filter(u -> listVisibility.canViewUserInOperatorList(authentication, actAsEmail, u.getId()))
+                    .toList();
+            return withTotal(applicationUsers.toResponses(slice(matching, page, pageSize), applicationId), matching.size());
         }
-        // Case-insensitive match on email, username, first/last name.
-        String needle = search.trim().toLowerCase(java.util.Locale.ROOT);
-        return users.stream()
-                .filter(u -> java.util.stream.Stream.of(u.email(), u.username(), u.firstName(), u.lastName())
+        List<UserResponse> users = listScoped(authentication, actAsEmail, tenantId, adminOnly);
+        String needle = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        List<UserResponse> matching = users.stream()
+                .filter(u -> needle.isEmpty() || java.util.stream.Stream.of(u.email(), u.username(), u.firstName(), u.lastName())
                         .anyMatch(v -> v != null && v.toLowerCase(java.util.Locale.ROOT).contains(needle)))
+                .filter(u -> status == null || status.isBlank() || status.equalsIgnoreCase(
+                        "pending".equalsIgnoreCase(u.status()) ? "invited" : u.status()))
                 .toList();
+        return withTotal(slice(matching, page, pageSize), matching.size());
+    }
+
+    private static <T> List<T> slice(List<T> rows, Integer page, int size) {
+        if (page == null) {
+            return rows;
+        }
+        int from = (int) Math.min((long) Math.max(0, page) * size, rows.size());
+        return rows.subList(from, Math.min(from + size, rows.size()));
+    }
+
+    private static org.springframework.http.ResponseEntity<List<UserResponse>> withTotal(List<UserResponse> rows, int total) {
+        return org.springframework.http.ResponseEntity.ok()
+                .header("X-Total-Count", Integer.toString(total))
+                .body(rows);
     }
 
     private List<UserResponse> listScoped(
-            Authentication authentication, String actAsEmail, UUID tenantId, UUID applicationId, Boolean adminOnly) {
+            Authentication authentication, String actAsEmail, UUID tenantId, Boolean adminOnly) {
         boolean platform = access.canAccessPlatformSettings(authentication, actAsEmail);
-        if (applicationId != null) {
-            access.requireApplicationAccess(authentication, actAsEmail, applicationId);
-            return applicationUsers.listUsers(applicationId).stream()
-                    .filter(u -> listVisibility.canViewUserInOperatorList(
-                            authentication, actAsEmail, u.id()))
-                    .toList();
-        }
         if (!platform) {
             UUID operatorTenantId = operators.requireOperatorTenant(authentication, actAsEmail).getId();
             if (tenantId != null && !tenantId.equals(operatorTenantId)) {
@@ -227,6 +251,92 @@ public class UserAdminController {
         service.resetMfa(id);
     }
 
+    @io.swagger.v3.oas.annotations.Operation(summary = "Where the user is signed in",
+            description = "Browser sessions at SecureOne and the applications holding a grant (no token values).")
+    @GetMapping("/{id}/sessions")
+    public Map<String, Object> sessions(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id) {
+        UserResponse user = service.get(id);
+        if (!access.canAccessPlatformSettings(authentication, actAsEmail)) {
+            operators.requireTenantAccess(authentication, actAsEmail, user.tenantId());
+        }
+        return service.activeSessions(id, null);
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Sign the user out everywhere",
+            description = "Ends their browser sessions and every application's grants (refresh tokens), with a "
+                    + "back-channel logout to the applications. The account stays active.")
+    @PostMapping("/{id}/sign-out")
+    public Map<String, Object> signOutEverywhere(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id) {
+        UserResponse existing = service.get(id);
+        requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
+        return service.signOutEverywhere(id, null);
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "The user's profile attributes",
+            description = "Sign-up fields, imported values and attributes set by an administrator.")
+    @GetMapping("/{id}/attributes")
+    public Map<String, Object> attributes(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id) {
+        UserResponse user = service.get(id);
+        if (!access.canAccessPlatformSettings(authentication, actAsEmail)) {
+            operators.requireTenantAccess(authentication, actAsEmail, user.tenantId());
+        }
+        return Map.of("attributes", service.profileAttributes(id));
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Replace the user's profile attributes",
+            description = "Body: {\"attributes\": {\"key\": value}}. An empty value removes the attribute.")
+    @PutMapping("/{id}/attributes")
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> saveAttributes(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body) {
+        UserResponse existing = service.get(id);
+        requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
+        Object raw = body != null ? body.get("attributes") : null;
+        return Map.of("attributes", service.saveProfileAttributes(id, raw instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of()));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.federation.LinkedIdentityService linkedIdentities;
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "The user's linked sign-in accounts (Google, SAML…)")
+    @GetMapping("/{id}/identities")
+    public List<Map<String, Object>> identities(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id) {
+        UserResponse user = service.get(id);
+        if (!access.canAccessPlatformSettings(authentication, actAsEmail)) {
+            operators.requireTenantAccess(authentication, actAsEmail, user.tenantId());
+        }
+        return linkedIdentities.list(id);
+    }
+
+    @io.swagger.v3.oas.annotations.Operation(summary = "Unlink a sign-in account",
+            description = "Refused (409) when it is the user's only way to sign in.")
+    @DeleteMapping("/{id}/identities/{identityId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unlinkIdentity(
+            Authentication authentication,
+            @RequestHeader(value = "X-Act-As-Email", required = false) String actAsEmail,
+            @PathVariable UUID id,
+            @PathVariable UUID identityId) {
+        UserResponse existing = service.get(id);
+        requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
+        linkedIdentities.unlink(id, identityId, "admin");
+    }
+
     @PostMapping("/{id}/unlock")
     public UserResponse unlock(
             Authentication authentication,
@@ -246,7 +356,7 @@ public class UserAdminController {
             @Valid @RequestBody UserAdminDtos.AdminSetPasswordRequest request) {
         UserResponse existing = service.get(id);
         requirePlatformOrTenantWrite(authentication, actAsEmail, existing.tenantId());
-        service.adminSetPassword(id, request.password());
+        service.adminSetPassword(id, request.password(), null, Boolean.TRUE.equals(request.temporary()));
     }
 
     @PostMapping("/{id}/password/remove")

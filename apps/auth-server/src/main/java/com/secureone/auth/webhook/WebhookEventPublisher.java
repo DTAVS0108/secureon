@@ -32,8 +32,8 @@ public class WebhookEventPublisher {
             if (!subscribesTo(endpoint.getEvents(), eventType)) {
                 continue;
             }
-            WebhookDelivery delivery = deliveryService.enqueue(endpoint.getId(), eventType, eventPayload);
-            deliveryService.deliverAsync(endpoint, delivery);
+            // Stored now, sent after this transaction commits (and retried until the receiver accepts it).
+            deliveryService.enqueue(endpoint.getId(), eventType, eventPayload);
         }
     }
 

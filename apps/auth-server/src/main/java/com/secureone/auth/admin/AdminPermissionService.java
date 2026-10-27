@@ -35,6 +35,7 @@ public class AdminPermissionService {
                     JOIN user_account u ON u.id = ur.user_id
                     JOIN role r ON r.id = ur.role_id
                     WHERE LOWER(u.email) = LOWER(?) AND r.application_id = ?
+                      AND (ur.expires_at IS NULL OR ur.expires_at > now())
                     UNION
                     SELECT gr.role_id
                     FROM rbac_group_member gm

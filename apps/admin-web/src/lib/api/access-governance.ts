@@ -8,7 +8,19 @@ export type PlatformOperator = {
   grantedBy: string | null;
   grantedAt: string;
   lastLoginAt: string | null;
+  /** SUPER_ADMIN: full access. READ_ONLY: sees everything, changes nothing (auditors, support). */
+  role: PlatformRole;
 };
+
+export type PlatformRole = "SUPER_ADMIN" | "READ_ONLY";
+
+export function changePlatformOperatorRole(userId: string, role: PlatformRole): Promise<PlatformOperator> {
+  return apiFetch<PlatformOperator>(`/api/admin/v1/platform-operators/${userId}/role`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+}
 
 export type AccessReviewFlag = "ACCOUNT_NOT_ACTIVE" | "NEVER_SIGNED_IN" | "UNUSED_90_DAYS" | "NO_MFA";
 
@@ -40,6 +52,7 @@ export function addPlatformOperator(body: {
   email: string;
   firstName?: string;
   lastName?: string;
+  role?: PlatformRole;
 }): Promise<PlatformOperator> {
   return apiFetch<PlatformOperator>("/api/admin/v1/platform-operators", {
     method: "POST",

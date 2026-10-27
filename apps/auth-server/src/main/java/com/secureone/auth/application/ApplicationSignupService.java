@@ -89,6 +89,9 @@ public class ApplicationSignupService {
         out.put("loginEmailHint", "your@email.com");
         out.put("account", ApplicationAccountEndpoints.manifestBlock(applicationId));
         out.put("verification", accountVerification.verificationOptions(applicationId));
+        // The extra fields the page asks for (domain rules stay on the server: they are not shown).
+        out.put("fields", settings.resolveSignupPolicy(applicationId).fields().stream()
+                .map(SignupPolicy.Field::toMap).toList());
         return out;
     }
 
@@ -98,6 +101,13 @@ public class ApplicationSignupService {
 
         String email = ApplicationConsumerAuth.normalizeEmail(request.email());
         // Input checks come first so a taken email or phone gets the same 400s as a new one.
+        SignupPolicy policy = settings.resolveSignupPolicy(applicationId);
+        String refused = policy.domainRefusal(email);
+        if (refused != null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, refused);
+        }
+        Map<String, Object> extra = policy.attributesFrom(request.attributes());
         passwordPolicy.validate(request.password(), applicationId);
         String phone = null;
         if (request.phone() != null && !request.phone().isBlank()) {
@@ -133,6 +143,11 @@ public class ApplicationSignupService {
         user.setPhoneVerified(false);
         if (phone != null) {
             user.setPhone(phone);
+        }
+        if (!extra.isEmpty()) {
+            Map<String, Object> attributes = new LinkedHashMap<>(user.getAttributes() != null ? user.getAttributes() : Map.of());
+            attributes.putAll(extra);
+            user.setAttributes(attributes);
         }
         user.setStatus("ACTIVE");
         user.setType("USER");

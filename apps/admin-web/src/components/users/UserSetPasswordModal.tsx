@@ -29,7 +29,7 @@ export function UserSetPasswordModal({
       triggerVariant="secondary"
       triggerSize="sm"
       title="Set password"
-      description="Sets a new password immediately (policy rules apply). User should change it after sign-in."
+      description="Sets a new password now (policy rules apply). Give it to the user by a separate, secure channel."
     >
       {(close) => (
         <SetPasswordForm
@@ -95,6 +95,13 @@ function SetPasswordForm({
           />
         </FieldRow>
         {policy && <PasswordPolicyChecklist policy={policy} password={password} className="mt-2" />}
+        <label className="mt-3 flex items-start gap-2 text-sm text-ui">
+          <input type="checkbox" name="temporary" defaultChecked className="mt-0.5 rounded border-ui" />
+          <span>
+            Temporary: the user must choose their own password the first time they sign in
+            <span className="block text-xs text-muted">Recommended. Only the user then knows their password.</span>
+          </span>
+        </label>
       </FormSection>
       <FormActions pending={pending} close={close} submitLabel="Set password" sticky />
     </form>

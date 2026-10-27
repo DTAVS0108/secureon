@@ -33,6 +33,11 @@ public class OAuth2TokenCustomizerConfig {
             requireActiveUser(context, users);
             addProfileClaims(context, users);
             SubjectClaims.apply(context, users);
+            // An administrator signed in as this user: the app sees who is really acting (RFC 8693 "act").
+            String impersonator = AuthContextAttributes.impersonatedBy(context.getPrincipal());
+            if (impersonator != null) {
+                context.getClaims().claims(map -> map.putIfAbsent("act", java.util.Map.of("sub", impersonator)));
+            }
             List<String> amr = AuthContextAttributes.amrFromCurrentRequest();
             String acr = AuthContextAttributes.acrFromCurrentRequest();
             if (!amr.isEmpty()) {
@@ -163,7 +168,7 @@ public class OAuth2TokenCustomizerConfig {
         }
         String status;
         try {
-            status = users.resolveAccount(name.substring(0, sep), name.substring(sep + 1)).getStatus();
+            status = users.tokenStatus(name.substring(0, sep), name.substring(sep + 1));
         } catch (UsernameNotFoundException deleted) {
             status = "DELETED";
         }
