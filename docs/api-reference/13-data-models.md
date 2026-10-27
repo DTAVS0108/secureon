@@ -475,6 +475,8 @@
 | `clientId` | string | no |  |
 | `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
+| `jwks` | object | no |  |
+| `jwksUri` | string | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
 | `redirectUris` | string[] | no |  |
@@ -507,6 +509,8 @@
 | `createdAt` | string (date-time) | no |  |
 | `grantTypes` | string[] | no |  |
 | `id` | string (uuid) | no |  |
+| `jwks` | object | no |  |
+| `jwksUri` | string | no |  |
 | `oAuthEndpoints` | [OAuthEndpoints](13-data-models.md#oauthendpoints) | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
@@ -533,6 +537,8 @@
 | `backchannelLogoutUri` | string | no |  |
 | `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
+| `jwks` | object | no |  |
+| `jwksUri` | string | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
 | `redirectUris` | string[] | no |  |
@@ -1188,11 +1194,27 @@
 |---|---|---|---|
 | `features` | string[] | no |  |
 
+## UpdateNamesRequest
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `displayName` | string | no |  |
+| `familyName` | string | no |  |
+| `givenName` | string | no |  |
+
 ## UpdateOverridesRequest
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `overrides` | [FeatureOverride](13-data-models.md#featureoverride)[] | no |  |
+
+## UpdateProfileRequest
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `displayName` | string | no |  |
+| `familyName` | string | no |  |
+| `givenName` | string | no |  |
 
 ## UserAuthMethodsUpdateRequest
 

@@ -42,6 +42,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [4.2 Account profile](#42-account-profile)
   - [POST `/api/v1/account/password/change`](#421-change-password) — Change password
   - [GET `/api/v1/account/profile`](#422-get-profile) — Get profile
+  - [PATCH `/api/v1/account/profile`](#423-update-profile) — Update profile
 - [4.3 Account MFA](#43-account-mfa)
   - [GET `/api/v1/account/mfa/factors`](#431-list-enrolled-mfa-factors) — List enrolled MFA factors
   - [POST `/api/v1/account/mfa/passkey/register/options`](#432-begin-passkey-registration) — Begin passkey registration
@@ -69,6 +70,8 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [DELETE `/api/v1/account/consents/{registeredClientId}`](#482-delete-consent) — Delete consent
 - [4.9 Account password change](#49-account-password-change)
   - [POST `/api/v1/account/password/change/session`](#491-change-password-hosted-account-security-page-browser-session) — Change password (hosted Account security page, browser session)
+  - [GET `/api/v1/account/profile/session`](#492-your-names-hosted-account-security-page-browser-session) — Your names (hosted Account security page, browser session)
+  - [PATCH `/api/v1/account/profile/session`](#493-change-your-names-hosted-account-security-page-browser-session) — Change your names (hosted Account security page, browser session)
 - [4.10 Account linked sign-in](#410-account-linked-sign-in)
   - [GET `/api/v1/account/identities`](#4101-my-linked-sign-in-accounts) — My linked sign-in accounts
   - [DELETE `/api/v1/account/identities/{identityId}`](#4102-unlink-one) — Unlink one
@@ -843,6 +846,37 @@ curl -s "$SECUREONE_URL/api/v1/account/profile" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
+### 4.2.3 Update profile
+
+`PATCH /api/v1/account/profile`
+
+**Authentication:** Access token (`Authorization: Bearer …`) from the token endpoint
+
+**Request body** (`application/json`, [UpdateProfileRequest](13-data-models.md#updateprofilerequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `displayName` | string | no |  |
+| `familyName` | string | no |  |
+| `givenName` | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "displayName": "Acme Shop",
+  "familyName": "familyName",
+  "givenName": "givenName"
+}'
+```
+
 ## 4.3 Account MFA
 
 Self-service TOTP enrollment (session-authenticated)
@@ -1344,6 +1378,54 @@ curl -s -X POST "$SECUREONE_URL/api/v1/account/password/change/session" \
   --data '{
   "currentPassword": "Choose-a-Strong-Pass-1!",
   "newPassword": "Choose-a-Strong-Pass-1!"
+}'
+```
+
+### 4.9.2 Your names (hosted Account security page, browser session)
+
+`GET /api/v1/account/profile/session`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/account/profile/session"
+```
+
+### 4.9.3 Change your names (hosted Account security page, browser session)
+
+`PATCH /api/v1/account/profile/session`
+
+null keeps a name, an empty string clears it. Apps see the new names in the next tokens they get.
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`, [UpdateNamesRequest](13-data-models.md#updatenamesrequest))
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `displayName` | string | no |  |
+| `familyName` | string | no |  |
+| `givenName` | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile/session" \
+  -H "Content-Type: application/json" \
+  --data '{
+  "displayName": "Acme Shop",
+  "familyName": "familyName",
+  "givenName": "givenName"
 }'
 ```
 

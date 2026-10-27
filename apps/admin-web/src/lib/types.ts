@@ -59,6 +59,10 @@ export type OAuthClient = {
   backchannelLogoutUri: string | null;
   /** Third-party client: users approve its access on a consent screen. */
   consentRequired: boolean;
+  /** private_key_jwt: the client's JWKS URL. */
+  jwksUri?: string | null;
+  /** private_key_jwt: the client's public keys (JWK set). */
+  jwks?: Record<string, unknown> | null;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;

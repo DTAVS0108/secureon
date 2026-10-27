@@ -172,7 +172,27 @@ public class SamlLoginService {
         String email = email(provider, nameId, attributes);
         Object trust = provider.getConfig().get("trustEmail");
         boolean verified = email != null && !Boolean.FALSE.equals(trust) && !"false".equalsIgnoreCase(String.valueOf(trust));
-        return new IdentityProviderService.FederationUserProfile(nameId.trim(), email, String.valueOf(attributes), verified);
+        return new IdentityProviderService.FederationUserProfile(nameId.trim(), email, String.valueOf(attributes), verified,
+                first(attributes, GIVEN_NAME), first(attributes, FAMILY_NAME), first(attributes, DISPLAY_NAME));
+    }
+
+    /** Attribute names identity providers commonly send the user's names in (LDAP/X.500 OIDs, Entra/ADFS claims). */
+    private static final List<String> GIVEN_NAME = List.of("urn:oid:2.5.4.42", "givenName", "given_name", "firstName",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname");
+    private static final List<String> FAMILY_NAME = List.of("urn:oid:2.5.4.4", "sn", "surname", "family_name", "lastName",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname");
+    private static final List<String> DISPLAY_NAME = List.of("urn:oid:2.16.840.1.113730.3.1.241", "displayName", "name",
+            "http://schemas.microsoft.com/identity/claims/displayname",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+
+    private static String first(Map<String, List<Object>> attributes, List<String> names) {
+        for (String name : names) {
+            List<Object> values = attributes.get(name);
+            if (values != null && !values.isEmpty() && values.get(0) != null && !String.valueOf(values.get(0)).isBlank()) {
+                return String.valueOf(values.get(0)).trim();
+            }
+        }
+        return null;
     }
 
     private static String email(IdentityProvider provider, String nameId, Map<String, List<Object>> attributes) {

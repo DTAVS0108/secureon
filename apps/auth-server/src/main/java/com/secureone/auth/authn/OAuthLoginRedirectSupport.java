@@ -17,13 +17,17 @@ public final class OAuthLoginRedirectSupport {
 
     private OAuthLoginRedirectSupport() {}
 
-    /** The current request as a relative URL (path + query), so it always passes {@link #isSafeContinue}. */
+    /**
+     * The current request as a relative URL (path + query), so it always passes {@link #isSafeContinue}. A request
+     * to a tenant issuer keeps its {@code /t/<slug>} prefix, so the user comes back to the same issuer.
+     */
     public static String buildAuthorizeUrl(HttpServletRequest request) {
+        String path = com.secureone.auth.tenant.TenantIssuers.prefix(request) + request.getRequestURI();
         String query = request.getQueryString();
         if (query == null || query.isBlank()) {
-            return request.getRequestURI();
+            return path;
         }
-        return request.getRequestURI() + "?" + query;
+        return path + "?" + query;
     }
 
     /** Whether the request's {@code prompt} asks for {@code login} (OIDC: sign in again). */
@@ -55,7 +59,8 @@ public final class OAuthLoginRedirectSupport {
                         .append(URLEncoder.encode(v, StandardCharsets.UTF_8));
             }
         }
-        return request.getRequestURI() + (query.isEmpty() ? "" : "?" + query);
+        return com.secureone.auth.tenant.TenantIssuers.prefix(request) + request.getRequestURI()
+                + (query.isEmpty() ? "" : "?" + query);
     }
 
     /** The request as the sign-in page should return to it: prompt=login removed, everything else as sent. */
@@ -111,9 +116,9 @@ public final class OAuthLoginRedirectSupport {
                 + URLEncoder.encode(authorizeUrl, StandardCharsets.UTF_8);
     }
 
-    /** OAuth endpoints a browser may be sent back to after signing in. */
+    /** Endpoints a browser may be sent back to after signing in (OAuth, and the SAML identity provider's resume). */
     private static final java.util.List<String> CONTINUE_PATHS =
-            java.util.List.of("/oauth2/authorize", "/oauth2/device_verification");
+            java.util.List.of("/oauth2/authorize", "/oauth2/device_verification", "/saml2/idp/resume");
 
     public static boolean isAuthorizeUrl(String url) {
         if (url == null || url.isBlank()) {
@@ -121,6 +126,11 @@ public final class OAuthLoginRedirectSupport {
         }
         try {
             String path = URI.create(url.trim()).getPath();
+            if (path != null && com.secureone.auth.tenant.TenantIssuers.hasTenantPrefix(path)) {
+                // A tenant issuer's endpoint: /t/<slug>/oauth2/authorize.
+                int rest = path.indexOf('/', 3);
+                path = rest < 0 ? "" : path.substring(rest);
+            }
             return path != null && CONTINUE_PATHS.stream().anyMatch(path::equals);
         } catch (IllegalArgumentException ex) {
             return false;

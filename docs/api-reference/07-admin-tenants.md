@@ -72,6 +72,12 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/api/admin/v1/tenants/{tenantId}/deletion-requests`](#7101-list-deletion-requests) — List deletion requests
   - [POST `/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/cancel`](#7102-cancel) — Cancel
   - [POST `/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/complete`](#7103-complete-deletion-request) — Complete deletion request
+- [7.11 Tenant issuer and domains](#711-tenant-issuer-and-domains)
+  - [GET `/api/admin/v1/tenants/{tenantId}/issuer`](#7111-the-tenants-issuers-issuer-mode-and-custom-domains) — The tenant's issuers, issuer mode and custom domains
+  - [PUT `/api/admin/v1/tenants/{tenantId}/issuer`](#7112-issuer-mode-shared-the-shared-issuer-and-the-tenants-own-or-tenant-its-own-issuers-only) — Issuer mode: 'shared' (the shared issuer and the tenant's own) or 'tenant' (its own issuers only)
+  - [POST `/api/admin/v1/tenants/{tenantId}/issuer/domains`](#7113-register-a-custom-domain-pending-until-verified) — Register a custom domain (pending until verified)
+  - [DELETE `/api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}`](#7114-remove-a-custom-domain-it-stops-being-served-at-once) — Remove a custom domain (it stops being served at once)
+  - [POST `/api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}/verify`](#7115-check-a-custom-domain) — Check a custom domain
 
 ## 7.1 Tenants
 
@@ -1485,5 +1491,134 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/deletion-request
 
 ```bash
 curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/deletion-requests/{userId}/complete" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 7.11 Tenant issuer and domains
+
+Issuer per tenant and custom domains
+
+### 7.11.1 The tenant's issuers, issuer mode and custom domains
+
+`GET /api/admin/v1/tenants/{tenantId}/issuer`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/issuer" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.11.2 Issuer mode: 'shared' (the shared issuer and the tenant's own) or 'tenant' (its own issuers only)
+
+`PUT /api/admin/v1/tenants/{tenantId}/issuer`
+
+With 'tenant', the tenant's apps must use their tenant issuer: sign-ins and tokens on the shared issuer are refused.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/issuer" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.11.3 Register a custom domain (pending until verified)
+
+`POST /api/admin/v1/tenants/{tenantId}/issuer/domains`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `201` | Created | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/issuer/domains" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.11.4 Remove a custom domain (it stops being served at once)
+
+`DELETE /api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `domainId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 7.11.5 Check a custom domain
+
+`POST /api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}/verify`
+
+Verified when the TXT record _secureone-challenge.<domain> holds the token, or the domain already points at SecureOne. Otherwise lastError says what is missing.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `tenantId` | path | string (uuid) | yes | Tenant ID (UUID) |
+| `domainId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/issuer/domains/{domainId}/verify" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

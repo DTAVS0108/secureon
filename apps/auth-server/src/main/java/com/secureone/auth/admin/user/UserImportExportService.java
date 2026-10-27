@@ -210,8 +210,8 @@ public class UserImportExportService {
         String h = header.trim().toLowerCase(Locale.ROOT).replace(" ", "");
         return switch (h) {
             case "e-mail", "mail" -> "email";
-            case "firstname", "givenname" -> "firstName";
-            case "lastname", "surname", "sn" -> "lastName";
+            case "firstname", "givenname", "given_name", "first_name" -> "firstName";
+            case "lastname", "surname", "sn", "familyname", "family_name", "last_name" -> "lastName";
             case "user", "login" -> "username";
             default -> header.trim().isEmpty() ? "" : header.trim().substring(0, 1).toLowerCase(Locale.ROOT)
                     + header.trim().substring(1).replace(" ", "");
@@ -219,7 +219,9 @@ public class UserImportExportService {
     }
 
     private static String toCsvRow(UserAccount u) {
-        NameParts parts = splitDisplayName(u.getDisplayName());
+        NameParts parts = u.getGivenName() != null || u.getFamilyName() != null
+                ? new NameParts(u.getGivenName() != null ? u.getGivenName() : "", u.getFamilyName() != null ? u.getFamilyName() : "")
+                : splitDisplayName(u.getDisplayName());
         return String.join(
                 ",",
                 escape(u.getEmail()),

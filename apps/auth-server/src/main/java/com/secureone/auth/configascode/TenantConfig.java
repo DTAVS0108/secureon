@@ -53,7 +53,8 @@ public record TenantConfig(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonPropertyOrder({"clientId", "type", "status", "grantTypes", "scopes", "redirectUris", "postLogoutRedirectUris",
-            "pkceRequired", "tokenEndpointAuthMethod", "subjectType", "backchannelLogoutUri", "consentRequired", "clientSecretEnv"})
+            "pkceRequired", "tokenEndpointAuthMethod", "subjectType", "backchannelLogoutUri", "consentRequired", "clientSecretEnv",
+            "jwksUri", "jwks"})
     public record Client(
             String clientId,
             String type,
@@ -70,7 +71,11 @@ public record TenantConfig(
             /** Third-party client: users see a consent screen (optional, default false). */
             Boolean consentRequired,
             /** Name of an environment variable on the server that holds this confidential client's secret. */
-            String clientSecretEnv) {}
+            String clientSecretEnv,
+            /** private_key_jwt: where the client serves its public keys. */
+            String jwksUri,
+            /** private_key_jwt: the client's public keys (JWK set), when it has no jwksUri. */
+            Map<String, Object> jwks) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonPropertyOrder({"key", "description"})

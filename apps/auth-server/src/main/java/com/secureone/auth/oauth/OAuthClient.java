@@ -67,6 +67,17 @@ public class OAuthClient {
     @Column(name = "token_endpoint_auth_method", nullable = false)
     private String tokenEndpointAuthMethod = "client_secret_basic";
 
+    public static final String AUTH_PRIVATE_KEY_JWT = "private_key_jwt";
+
+    /** private_key_jwt: where the client serves its public keys (null: {@link #jwks} holds them). */
+    @Column(name = "jwks_uri")
+    private String jwksUri;
+
+    /** private_key_jwt: the client's public keys as a JWKS document (JSON), when it has no {@link #jwksUri}. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "jwks", columnDefinition = "jsonb")
+    private String jwks;
+
     @Column(name = "require_pkce", nullable = false)
     private boolean requirePkce = true;
 

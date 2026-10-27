@@ -9,6 +9,7 @@ import com.secureone.auth.user.UserAccount;
 import com.secureone.auth.user.UserAccountRepository;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,9 @@ public class ClientTenantAuthorizationValidator
     private final UserAccountRepository users;
     private final ApplicationAccessService access;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.tenant.TenantIssuers issuers;
+
     public ClientTenantAuthorizationValidator(
             ApplicationOAuthClientResolver applications,
             TenantRepository tenants,
@@ -56,6 +60,18 @@ public class ClientTenantAuthorizationValidator
         defaults.accept(context);
 
         OAuth2AuthorizationCodeRequestAuthenticationToken request = context.getAuthentication();
+        if (issuers != null
+                && org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+                        instanceof org.springframework.web.context.request.ServletRequestAttributes attributes) {
+            // A tenant issuer serves its own tenant's clients only (and a tenant may refuse the shared issuer).
+            UUID clientTenant = applications.findActiveByOAuthClientId(context.getRegisteredClient().getClientId())
+                    .map(Application::getTenantId).orElse(null);
+            Optional<String> refusal = issuers.refusal(attributes.getRequest(), clientTenant);
+            if (refusal.isPresent()) {
+                throw new OAuth2AuthorizationCodeRequestAuthenticationException(
+                        new OAuth2Error(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT, refusal.get(), null), request);
+            }
+        }
         if (!(request.getPrincipal() instanceof Authentication principal) || !isSignedIn(principal)) {
             // Not signed in yet: the provider sends the user to the login page.
             return;

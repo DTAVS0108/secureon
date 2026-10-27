@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -34,6 +35,15 @@ public class AccountProfileController {
     @GetMapping("/profile")
     public Map<String, Object> profile(@AuthenticationPrincipal Jwt jwt) {
         return profiles.profile(jwt);
+    }
+
+    /** null keeps a name, "" clears it. */
+    public record UpdateProfileRequest(
+            @Size(max = 150) String givenName, @Size(max = 150) String familyName, @Size(max = 150) String displayName) {}
+
+    @PatchMapping("/profile")
+    public Map<String, Object> updateProfile(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateProfileRequest request) {
+        return profiles.updateNames(profiles.userFor(jwt), request.givenName(), request.familyName(), request.displayName());
     }
 
     @PostMapping("/password/change")

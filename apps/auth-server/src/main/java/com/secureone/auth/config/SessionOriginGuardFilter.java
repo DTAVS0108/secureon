@@ -38,7 +38,7 @@ public class SessionOriginGuardFilter extends OncePerRequestFilter {
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
 
     /** Endpoints that legitimately receive cross-origin POSTs or never use cookies. */
-    private static final List<String> EXEMPT_PREFIXES = List.of("/api/v1/auth/federation/", "/scim/v2/");
+    private static final List<String> EXEMPT_PREFIXES = List.of("/api/v1/auth/federation/", "/scim/v2/", "/saml2/idp/");
 
     private final CorsConfigurationSource cors;
     private final String publicOrigin;

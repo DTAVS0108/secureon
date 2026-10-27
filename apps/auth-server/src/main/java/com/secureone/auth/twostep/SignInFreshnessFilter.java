@@ -83,7 +83,8 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
             return;
         }
         if (authorize) {
-            String here = request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : "");
+            // Prefix kept: a tenant issuer's request (/t/<slug>/oauth2/authorize) comes back to that issuer.
+            String here = com.secureone.auth.authn.OAuthLoginRedirectSupport.buildAuthorizeUrl(request);
             if (prompt.contains("login") && !prompt.contains("none")) {
                 // prompt=login: sign in again; the request continues without "login" so it does not loop (the
                 // sign-in page for a signed-out user gets it without "login" too: OAuthAwareLoginEntryPoint).

@@ -195,10 +195,13 @@ public class BackchannelLogoutService {
         return principalName;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.tenant.TenantIssuers tenantIssuers;
+
     String logoutToken(OAuthClient client, String subject, String sessionId) {
         Instant now = Instant.now();
         JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
-                .issuer(issuer)
+                .issuer(tenantIssuers != null ? tenantIssuers.preferredIssuerOfApplication(client.getApplicationId()) : issuer)
                 .audience(List.of(client.getClientId()))
                 .subject(subject)
                 .issuedAt(now)

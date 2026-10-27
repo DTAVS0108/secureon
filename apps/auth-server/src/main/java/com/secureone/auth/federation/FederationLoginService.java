@@ -220,7 +220,11 @@ public class FederationLoginService {
         created.setEmail(email);
         created.setEmailVerified(profile.emailVerified());
         created.setUsername(email);
-        created.setDisplayName(email);
+        created.setNames(profile.givenName(), profile.familyName());
+        String joined = ((profile.givenName() != null ? profile.givenName() : "") + " "
+                + (profile.familyName() != null ? profile.familyName() : "")).trim();
+        created.setDisplayName(profile.name() != null && !profile.name().isBlank() ? profile.name().trim()
+                : joined.isEmpty() ? email : joined);
         created.setStatus("ACTIVE");
         created.setType("USER");
         return users.save(created);

@@ -25,7 +25,8 @@ SECTIONS = [
      "The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device "
      "flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library "
      "calls them for you.",
-     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — extensions", "consent-page-controller"]),
+     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — extensions", "consent-page-controller", "SAML identity provider",
+      "Custom domains"]),
     ("02-public-and-setup.md", "Public endpoints and first-run setup",
      "Server information, the sign-in method catalog, documentation discovery and the one-time setup of a new "
      "installation. No authentication.",
@@ -54,7 +55,8 @@ SECTIONS = [
      "console roles and access, access requests and the tenant's SCIM token.",
      ["Admin — tenants", "Admin — tenant workspace", "Admin — tenant RBAC", "Admin — tenant console roles",
       "Admin — console access", "Admin — console capabilities",
-      "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM", "Admin — deletion requests"]),
+      "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM", "Admin — deletion requests",
+      "Admin — tenant issuer and domains"]),
     ("08-admin-users.md", "Admin API: users",
      "User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, "
      "unlock and impersonation.",
@@ -67,7 +69,7 @@ SECTIONS = [
      "Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, "
      "permissions, groups, settings and logs.",
      ["Admin — application scope", "Admin — application RBAC", "Admin — application logs",
-      "Admin — application webhooks", "Admin — application APIs"]),
+      "Admin — application webhooks", "Admin — application APIs", "Admin — application SAML apps"]),
     ("11-admin-security-and-governance.md", "Admin API: security and governance",
      "Platform operators, access review, platform roles, sign-in federation providers, service accounts, "
      "webhooks, the audit log (search and CSV export), sessions and the console overview.",

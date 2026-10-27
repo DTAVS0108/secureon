@@ -77,6 +77,12 @@ public class OidcUserInfoConfig {
                 } else if (user.getUsername() != null) {
                     builder.preferredUsername(user.getUsername());
                 }
+                if (user.getGivenName() != null) {
+                    builder.givenName(user.getGivenName());
+                }
+                if (user.getFamilyName() != null) {
+                    builder.familyName(user.getFamilyName());
+                }
             }
             tenants.findById(user.getTenantId()).ifPresent(tenant -> {
                 builder.claim("tenant_id", tenant.getId().toString());

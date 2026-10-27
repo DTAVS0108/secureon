@@ -5,8 +5,8 @@ import java.util.Map;
 
 /**
  * What discovery (OpenID Provider metadata and RFC 8414 server metadata) advertises, limited to what a SecureOne
- * client can actually be set up for. Spring lists every method it could support (client_secret_jwt,
- * private_key_jwt, mTLS); SecureOne clients use a client secret (basic or post) or none (public clients), so
+ * client can actually be set up for. Spring lists every method it could support (client_secret_jwt, mTLS);
+ * SecureOne clients use a client secret (basic or post), a private key JWT, or none (public clients), so
  * advertising more would send integrations down a path that fails.
  */
 final class DiscoveryMetadata {
@@ -15,12 +15,13 @@ final class DiscoveryMetadata {
 
     static final List<String> CLAIMS = List.of(
             "sub", "iss", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "sid", "azp",
-            "email", "email_verified", "name", "preferred_username",
+            "email", "email_verified", "name", "given_name", "family_name", "preferred_username",
             "user_id", "tenant_id", "roles", "permissions");
 
-    static final List<String> CLIENT_AUTH = List.of("client_secret_basic", "client_secret_post", "none");
+    static final List<String> CLIENT_AUTH = List.of("client_secret_basic", "client_secret_post", "private_key_jwt", "none");
 
-    static final List<String> SECRET_AUTH = List.of("client_secret_basic", "client_secret_post");
+    /** Revocation and introspection: confidential clients only. */
+    static final List<String> SECRET_AUTH = List.of("client_secret_basic", "client_secret_post", "private_key_jwt");
 
     private DiscoveryMetadata() {}
 
@@ -30,6 +31,10 @@ final class DiscoveryMetadata {
         claims.put("token_endpoint_auth_methods_supported", CLIENT_AUTH);
         claims.put("revocation_endpoint_auth_methods_supported", SECRET_AUTH);
         claims.put("introspection_endpoint_auth_methods_supported", SECRET_AUTH);
+        List<String> algorithms = com.secureone.auth.config.oauth.ClientAssertionDecoderFactory.ALGORITHM_NAMES;
+        claims.put("token_endpoint_auth_signing_alg_values_supported", algorithms);
+        claims.put("revocation_endpoint_auth_signing_alg_values_supported", algorithms);
+        claims.put("introspection_endpoint_auth_signing_alg_values_supported", algorithms);
         // Certificate-bound tokens need mTLS client authentication, which clients cannot be set to.
         claims.remove("tls_client_certificate_bound_access_tokens");
     }

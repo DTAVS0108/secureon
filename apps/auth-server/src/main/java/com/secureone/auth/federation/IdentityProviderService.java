@@ -263,7 +263,8 @@ public class IdentityProviderService {
                 // A username is not a verified email address.
                 email = text(node, "preferred_username", null);
             }
-            return new FederationUserProfile(subject, email, json, emailVerified);
+            return new FederationUserProfile(subject, email, json, emailVerified,
+                    text(node, "given_name", null), text(node, "family_name", null), text(node, "name", null));
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to parse user profile from IdP.", ex);
         }
@@ -287,7 +288,7 @@ public class IdentityProviderService {
             String subject = user.path("id").isNumber() ? user.path("id").asText() : text(user, "id", null);
             String email = resolveGitHubEmail(emailJson);
             // resolveGitHubEmail only returns addresses GitHub marks verified.
-            return new FederationUserProfile(subject, email, userJson, email != null);
+            return new FederationUserProfile(subject, email, userJson, email != null, null, null, text(user, "name", null));
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to parse GitHub profile.", ex);
         }
@@ -491,5 +492,13 @@ public class IdentityProviderService {
     }
 
     /** {@code emailVerified}: the IdP vouches for the email (OIDC email_verified / GitHub verified address). */
-    public record FederationUserProfile(String subject, String email, String rawProfileJson, boolean emailVerified) {}
+    /** The user the identity provider signed in; the names are null when it sent none. */
+    public record FederationUserProfile(
+            String subject, String email, String rawProfileJson, boolean emailVerified,
+            String givenName, String familyName, String name) {
+
+        public FederationUserProfile(String subject, String email, String rawProfileJson, boolean emailVerified) {
+            this(subject, email, rawProfileJson, emailVerified, null, null, null);
+        }
+    }
 }

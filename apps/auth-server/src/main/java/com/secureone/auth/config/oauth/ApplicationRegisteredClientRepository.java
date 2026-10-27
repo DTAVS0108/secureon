@@ -95,6 +95,7 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
                 ? client.getTokenEndpointAuthMethod()
                 : defaultAuthMethod(type);
         boolean publicClient = "none".equalsIgnoreCase(authMethod);
+        boolean privateKeyJwt = OAuthClient.AUTH_PRIVATE_KEY_JWT.equalsIgnoreCase(authMethod);
 
         RegisteredClient.Builder builder = RegisteredClient.withId(client.getId().toString())
                 .clientId(client.getClientId())
@@ -129,6 +130,9 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
 
         if (publicClient) {
             builder.clientAuthenticationMethod(ClientAuthenticationMethod.NONE);
+        } else if (privateKeyJwt) {
+            // Only a signed assertion: a secret the client may still have stored is not accepted.
+            builder.clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT);
         } else {
             builder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
             builder.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST);
@@ -146,12 +150,20 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
             }
         }
 
-        builder.clientSettings(ClientSettings.builder()
+        ClientSettings.Builder clientSettings = ClientSettings.builder()
                 // Third-party clients ask the user first (consent screen at /oauth2/consent).
                 .requireAuthorizationConsent(client.isConsentRequired())
                 .requireProofKey(pkceRequired)
-                .setting(SubjectClaims.SETTING, client.getSubjectType() != null ? client.getSubjectType() : OAuthClient.SUBJECT_LEGACY)
-                .build());
+                .setting(SubjectClaims.SETTING, client.getSubjectType() != null ? client.getSubjectType() : OAuthClient.SUBJECT_LEGACY);
+        if (privateKeyJwt) {
+            // Read by ClientAssertionDecoderFactory: the stored JWKS, else the client's JWKS URL.
+            if (client.getJwks() != null && !client.getJwks().isBlank()) {
+                clientSettings.setting(ClientAssertionDecoderFactory.JWKS_SETTING, client.getJwks());
+            } else if (client.getJwksUri() != null && !client.getJwksUri().isBlank()) {
+                clientSettings.jwkSetUrl(client.getJwksUri());
+            }
+        }
+        builder.clientSettings(clientSettings.build());
         TokenSettings tokenSettings = TokenSettingsMapper.toTokenSettings(
                 applicationSettings.resolveTokenPolicy(client.getApplicationId()));
         builder.tokenSettings(tokenSettings);

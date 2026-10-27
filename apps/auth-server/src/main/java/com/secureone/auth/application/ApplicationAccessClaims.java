@@ -51,6 +51,11 @@ public class ApplicationAccessClaims {
         });
     }
 
+    /** The user's effective roles and permissions in the application (SAML assertions use these). */
+    public Access forApplication(Application app, UUID userId) {
+        return RlsScope.asPlatform(() -> forUser(app, userId));
+    }
+
     private Access forUser(Application app, UUID userId) {
         String s = schema(app);
         String effectiveRoles = """

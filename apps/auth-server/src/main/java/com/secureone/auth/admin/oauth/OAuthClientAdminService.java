@@ -109,11 +109,14 @@ public class OAuthClientAdminService {
         client.setSetupFramework(setupFramework(request.setupFramework()));
         client.setBackchannelLogoutUri(com.secureone.auth.oauth.BackchannelLogoutService.validateUri(request.backchannelLogoutUri()));
         client.setConsentRequired(Boolean.TRUE.equals(request.consentRequired()));
-        client.setTokenEndpointAuthMethod(
+        client.setTokenEndpointAuthMethod(authMethod(type,
                 request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()
                         ? request.tokenEndpointAuthMethod()
-                        : defaultAuthMethod(type));
-        if (isConfidential(type)) {
+                        : defaultAuthMethod(type)));
+        client.setJwksUri(jwksUri(request.jwksUri()));
+        client.setJwks(jwks(request.jwks()));
+        requireKeysForPrivateKeyJwt(client);
+        if (isConfidential(type) && !usesPrivateKeyJwt(client)) {
             plainSecret = generateClientSecret();
             client.setClientSecret(ClientSecrets.hash(plainSecret));
         }
@@ -155,8 +158,20 @@ public class OAuthClientAdminService {
         if (request.backchannelLogoutUri() != null) {
             client.setBackchannelLogoutUri(com.secureone.auth.oauth.BackchannelLogoutService.validateUri(request.backchannelLogoutUri()));
         }
-        if (request.tokenEndpointAuthMethod() != null) {
-            client.setTokenEndpointAuthMethod(request.tokenEndpointAuthMethod());
+        if (request.tokenEndpointAuthMethod() != null && !request.tokenEndpointAuthMethod().isBlank()) {
+            client.setTokenEndpointAuthMethod(authMethod(type, request.tokenEndpointAuthMethod()));
+        } else if (request.type() != null && isConfidential(type) == "none".equals(client.getTokenEndpointAuthMethod())) {
+            // The type changed between public and confidential: its usual method.
+            client.setTokenEndpointAuthMethod(defaultAuthMethod(type));
+        }
+        if (request.jwksUri() != null) client.setJwksUri(jwksUri(request.jwksUri()));
+        if (request.jwks() != null) client.setJwks(jwks(request.jwks()));
+        requireKeysForPrivateKeyJwt(client);
+        if (usesPrivateKeyJwt(client) && client.getClientSecret() != null) {
+            // Signed assertions replace the secret: it no longer works, so it is not kept.
+            client.setClientSecret(null);
+            client.setPreviousClientSecret(null);
+            client.setPreviousSecretExpiresAt(null);
         }
         client.setClientName(app.getName());
         auditService.record(
@@ -186,6 +201,10 @@ public class OAuthClientAdminService {
         OAuthClient client = require(id);
         if (!isConfidential(client.getType())) {
             throw new IllegalArgumentException("Public clients (SPA/native) do not use a client secret.");
+        }
+        if (usesPrivateKeyJwt(client)) {
+            throw new IllegalArgumentException(
+                    "This client signs in with private_key_jwt and has no secret. Change its token endpoint authentication first.");
         }
         String plainSecret = generateClientSecret();
         if (keepOldHours > 0 && client.getClientSecret() != null && !client.getClientSecret().isBlank()) {
@@ -309,11 +328,86 @@ public class OAuthClientAdminService {
                 confidential && client.getClientSecret() != null && !client.getClientSecret().isBlank(),
                 client.getCreatedAt(),
                 client.getUpdatedAt(),
-                oAuthEndpoints(),
+                oAuthEndpoints(app.getTenantId()),
                 client.getSubjectType(),
                 client.getSetupFramework(),
                 client.getBackchannelLogoutUri(),
-                client.isConsentRequired());
+                client.isConsentRequired(),
+                client.getJwksUri(),
+                jwksMap(client.getJwks()));
+    }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    static final List<String> AUTH_METHODS =
+            List.of("client_secret_basic", "client_secret_post", OAuthClient.AUTH_PRIVATE_KEY_JWT, "none");
+
+    /** A token endpoint authentication method the client type can use: none for SPAs and native apps only. */
+    static String authMethod(String type, String raw) {
+        String method = raw.trim().toLowerCase(Locale.ROOT);
+        if (!AUTH_METHODS.contains(method)) {
+            throw new IllegalArgumentException("tokenEndpointAuthMethod must be one of " + String.join(", ", AUTH_METHODS) + ".");
+        }
+        if (isConfidential(type) == "none".equals(method)) {
+            throw new IllegalArgumentException(isConfidential(type)
+                    ? "A " + type + " client authenticates itself: use client_secret_basic, client_secret_post or private_key_jwt."
+                    : "SPAs and native apps cannot keep a secret or a private key: their method is none (with PKCE).");
+        }
+        return method;
+    }
+
+    private static boolean usesPrivateKeyJwt(OAuthClient client) {
+        return OAuthClient.AUTH_PRIVATE_KEY_JWT.equals(client.getTokenEndpointAuthMethod());
+    }
+
+    private static void requireKeysForPrivateKeyJwt(OAuthClient client) {
+        if (usesPrivateKeyJwt(client) && client.getJwks() == null && client.getJwksUri() == null) {
+            throw new IllegalArgumentException("private_key_jwt needs the client's public keys: a jwksUri or a jwks.");
+        }
+    }
+
+    /** "" or null: none. https only (http for localhost), the client serves its public keys there. */
+    static String jwksUri(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        java.net.URI uri;
+        try {
+            uri = new java.net.URI(raw.trim());
+        } catch (java.net.URISyntaxException e) {
+            throw new IllegalArgumentException("jwksUri is not a valid address.");
+        }
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        boolean local = host.equals("localhost") || host.equals("127.0.0.1") || host.equals("[::1]");
+        if (!("https".equals(scheme) || ("http".equals(scheme) && local)) || host.isEmpty() || uri.getFragment() != null) {
+            throw new IllegalArgumentException("jwksUri must be an https:// address (http:// only for localhost), without #.");
+        }
+        return uri.toString();
+    }
+
+    /** null or {}: none. Otherwise a JWK set of public signing keys, stored as JSON. */
+    static String jwks(java.util.Map<String, Object> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return com.secureone.auth.config.oauth.ClientAssertionDecoderFactory.validateJwks(JSON.writeValueAsString(raw));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("jwks must be a JWK set: {\"keys\": [...]}.");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<String, Object> jwksMap(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return JSON.readValue(json, java.util.Map.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return null;
+        }
     }
 
     /** A framework id such as "electron" or "python-bff"; blank clears it. */
@@ -336,12 +430,20 @@ public class OAuthClientAdminService {
         return value;
     }
 
-    private OAuthEndpoints oAuthEndpoints() {
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.tenant.TenantIssuers tenantIssuers;
+
+    /** The issuer the tenant's apps should use: the shared one, or its own when it uses its own issuers only. */
+    private OAuthEndpoints oAuthEndpoints(UUID tenantId) {
+        String issuer = issuerBaseUrl;
+        if (tenantIssuers != null && com.secureone.auth.tenant.TenantIssuers.MODE_TENANT.equals(tenantIssuers.issuerMode(tenantId))) {
+            issuer = tenantIssuers.issuersOf(tenantId).get(0);
+        }
         return new OAuthEndpoints(
-                issuerBaseUrl,
-                issuerBaseUrl + "/oauth2/authorize",
-                issuerBaseUrl + "/oauth2/token",
-                issuerBaseUrl + "/oauth2/jwks");
+                issuer,
+                issuer + "/oauth2/authorize",
+                issuer + "/oauth2/token",
+                issuer + "/oauth2/jwks");
     }
 
     private static String resolveClientId(String requested, Application app) {

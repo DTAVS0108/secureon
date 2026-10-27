@@ -14,6 +14,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,5 +58,33 @@ public class AccountPasswordSessionController {
         return Map.of(
                 "message", ended > 0 ? "Password updated. Your other devices were signed out." : "Password updated.",
                 "otherSessionsEnded", ended);
+    }
+
+    public record UpdateNamesRequest(
+            @Size(max = 150) String givenName, @Size(max = 150) String familyName, @Size(max = 150) String displayName) {}
+
+    @Operation(summary = "Your names (hosted Account security page, browser session)")
+    @GetMapping("/api/v1/account/profile/session")
+    public Map<String, Object> names(Authentication authentication) {
+        UserAccount user = sessionUsers.requireTenantUser(authentication);
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("email", user.getEmail());
+        out.put("givenName", user.getGivenName());
+        out.put("familyName", user.getFamilyName());
+        out.put("displayName", user.getDisplayName());
+        return out;
+    }
+
+    @Operation(
+            summary = "Change your names (hosted Account security page, browser session)",
+            description = "null keeps a name, an empty string clears it. Apps see the new names in the next tokens they get.")
+    @PatchMapping("/api/v1/account/profile/session")
+    public Map<String, Object> updateNames(Authentication authentication, @Valid @RequestBody UpdateNamesRequest body) {
+        UserAccount user = sessionUsers.requireTenantUser(authentication);
+        try {
+            return RlsScope.asPlatform(() -> profiles.updateNames(user, body.givenName(), body.familyName(), body.displayName()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 }

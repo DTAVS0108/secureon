@@ -133,6 +133,11 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/applications/{applicationId}/settings/apis`](#1052-add-an-api-name-identifier-scopes) — Add an API (name, identifier, scopes)
   - [PUT `/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`](#1053-change-an-api) — Change an API
   - [DELETE `/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`](#1054-remove-an-api-new-tokens-stop-naming-it-tokens-already-issued-keep-it-until-they-expire) — Remove an API (new tokens stop naming it; tokens already issued keep it until they expire)
+- [10.6 Application SAML apps](#106-application-saml-apps)
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/saml-apps`](#1061-the-saml-apps-and-the-identity-provider-they-use-entity-id-sso-url-metadata-certificate) — The SAML apps and the identity provider they use (entity ID, SSO URL, metadata, certificate)
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/saml-apps`](#1062-add-a-saml-app-name-entityid-acsurl-optional-slourl-nameidformat-attributes-spcertificate) — Add a SAML app (name, entityId, acsUrl; optional sloUrl, nameIdFormat, attributes, spCertificate)
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`](#1063-change-a-saml-app-fields-left-out-keep-their-values) — Change a SAML app (fields left out keep their values)
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`](#1064-remove-a-saml-app-it-can-no-longer-sign-users-in) — Remove a SAML app (it can no longer sign users in)
 
 ## 10.1 Application scope
 
@@ -3190,5 +3195,107 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 10.6 Application SAML apps
+
+SAML service providers signing in through SecureOne
+
+### 10.6.1 The SAML apps and the identity provider they use (entity ID, SSO URL, metadata, certificate)
+
+`GET /api/admin/v1/applications/{applicationId}/settings/saml-apps`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/saml-apps" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.6.2 Add a SAML app (name, entityId, acsUrl; optional sloUrl, nameIdFormat, attributes, spCertificate)
+
+`POST /api/admin/v1/applications/{applicationId}/settings/saml-apps`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `201` | Created | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/saml-apps" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.6.3 Change a SAML app (fields left out keep their values)
+
+`PUT /api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `spId` | path | string (uuid) | yes |  |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.6.4 Remove a SAML app (it can no longer sign users in)
+
+`DELETE /api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `spId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

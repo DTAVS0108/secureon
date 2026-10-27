@@ -48,6 +48,20 @@
     </section>
 
     <section>
+      <h2>Your name</h2>
+      <p class="muted">Apps you sign in to see these names.</p>
+      <form id="names-form">
+        <label for="given-name">First name</label>
+        <input id="given-name" type="text" autocomplete="given-name" maxlength="150" />
+        <label for="family-name">Last name</label>
+        <input id="family-name" type="text" autocomplete="family-name" maxlength="150" />
+        <label for="display-name">Name shown to others (leave empty to use first and last name)</label>
+        <input id="display-name" type="text" autocomplete="name" maxlength="150" />
+        <button type="submit">Save name</button>
+      </form>
+    </section>
+
+    <section>
       <h2>Sign-in email</h2>
       <p class="muted">We send a link to the new address. Your email changes only when you open it.</p>
       <form id="email-form">
@@ -215,6 +229,29 @@
         } catch (e) { showBanner(e.message, false); }
       };
 
+      async function loadNames() {
+        const data = await api("/api/v1/account/profile/session");
+        document.getElementById("given-name").value = data.givenName || "";
+        document.getElementById("family-name").value = data.familyName || "";
+        document.getElementById("display-name").value = data.displayName || "";
+      }
+
+      document.getElementById("names-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try {
+          const data = await api("/api/v1/account/profile/session", {
+            method: "PATCH",
+            body: JSON.stringify({
+              givenName: document.getElementById("given-name").value,
+              familyName: document.getElementById("family-name").value,
+              displayName: document.getElementById("display-name").value,
+            }),
+          });
+          document.getElementById("display-name").value = data.displayName || "";
+          showBanner("Your name was saved.", true);
+        } catch (err) { showBanner(err.message, false); }
+      });
+
       document.getElementById("email-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         try {
@@ -259,6 +296,7 @@
       loadSessions().catch((e) => showBanner(e.message, false));
       loadConsents().catch(() => undefined);
       loadIdentities().catch(() => undefined);
+      loadNames().catch(() => undefined);
     </script>
   </body>
 </html>

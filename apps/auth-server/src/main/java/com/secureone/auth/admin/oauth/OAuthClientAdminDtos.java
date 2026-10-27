@@ -40,7 +40,11 @@ public final class OAuthClientAdminDtos {
             /** OIDC Back-Channel Logout URL; null when not set. */
             String backchannelLogoutUri,
             /** Third-party client: users see a consent screen. */
-            boolean consentRequired) {}
+            boolean consentRequired,
+            /** private_key_jwt: the client's JWKS URL; null when not set. */
+            String jwksUri,
+            /** private_key_jwt: the client's public keys; null when not set. */
+            java.util.Map<String, Object> jwks) {}
 
     public record OAuthClientCreateRequest(
             UUID applicationId,
@@ -58,7 +62,23 @@ public final class OAuthClientAdminDtos {
             String subjectType,
             @Size(max = 64) String setupFramework,
             @Size(max = 1024) String backchannelLogoutUri,
-            Boolean consentRequired) {}
+            Boolean consentRequired,
+            /** private_key_jwt: the client's JWKS URL (https). */
+            @Size(max = 1024) String jwksUri,
+            /** private_key_jwt: the client's public keys, a JWK set, when it serves none at a URL. */
+            java.util.Map<String, Object> jwks) {
+
+        /** The request without private_key_jwt keys (callers that predate them). */
+        public OAuthClientCreateRequest(
+                UUID applicationId, String applicationName, UUID tenantId, String clientId, String type, String status,
+                List<String> grantTypes, List<String> scopes, List<String> redirectUris, List<String> postLogoutRedirectUris,
+                Boolean pkceRequired, String tokenEndpointAuthMethod, String subjectType, String setupFramework,
+                String backchannelLogoutUri, Boolean consentRequired) {
+            this(applicationId, applicationName, tenantId, clientId, type, status, grantTypes, scopes, redirectUris,
+                    postLogoutRedirectUris, pkceRequired, tokenEndpointAuthMethod, subjectType, setupFramework,
+                    backchannelLogoutUri, consentRequired, null, null);
+        }
+    }
 
     public record OAuthClientUpdateRequest(
             @Size(max = 32) String type,
@@ -75,7 +95,21 @@ public final class OAuthClientAdminDtos {
             /** null keeps the current value; "" clears it. */
             @Size(max = 1024) String backchannelLogoutUri,
             /** null keeps the current value. */
-            Boolean consentRequired) {}
+            Boolean consentRequired,
+            /** null keeps the current value; "" clears it. */
+            @Size(max = 1024) String jwksUri,
+            /** null keeps the current value; {} clears it. */
+            java.util.Map<String, Object> jwks) {
+
+        /** The request without private_key_jwt keys (callers that predate them). */
+        public OAuthClientUpdateRequest(
+                String type, String status, List<String> grantTypes, List<String> scopes, List<String> redirectUris,
+                List<String> postLogoutRedirectUris, Boolean pkceRequired, String tokenEndpointAuthMethod,
+                String subjectType, String setupFramework, String backchannelLogoutUri, Boolean consentRequired) {
+            this(type, status, grantTypes, scopes, redirectUris, postLogoutRedirectUris, pkceRequired,
+                    tokenEndpointAuthMethod, subjectType, setupFramework, backchannelLogoutUri, consentRequired, null, null);
+        }
+    }
 
     public record OAuthClientCreateResult(OAuthClientResponse client, String clientSecret) {}
 

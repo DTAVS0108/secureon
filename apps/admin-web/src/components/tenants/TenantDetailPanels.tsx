@@ -8,6 +8,7 @@ import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
 import { DeletionRequestsPanel } from "@/components/tenants/DeletionRequestsPanel";
 import { TenantWorkspacePanel } from "@/components/tenant/TenantWorkspacePanel";
 import { AdminConsoleAccessPanel } from "@/components/tenants/AdminConsoleAccessPanel";
+import { TenantIssuerPanel } from "@/components/tenants/TenantIssuerPanel";
 import type { ConsoleAccessAssignment } from "@/lib/api/admin-console-access";
 import {
   fetchTenantWorkspace,
@@ -86,6 +87,7 @@ export function TenantDetailPanels({
         onMutated={refreshAll}
       />
       <FederationProvidersPanel tenantId={tenant.id} />
+      <TenantIssuerPanel tenantId={tenant.id} />
       <AccessRequestsPanel tenantId={tenant.id} users={workspace.users} applications={applications} />
       <ServiceAccountsPanel tenantId={tenant.id} />
       <WebhooksPanel tenantId={tenant.id} />

@@ -45,6 +45,8 @@ public class AccountProfileService {
         out.put("emailVerified", user.isEmailVerified());
         out.put("username", user.getUsername());
         out.put("displayName", user.getDisplayName());
+        out.put("givenName", user.getGivenName());
+        out.put("familyName", user.getFamilyName());
         out.put("status", user.getStatus());
         out.put("type", user.getType());
         out.put("hasPassword", passwords.hasPassword(user.getId()));
@@ -97,6 +99,41 @@ public class AccountProfileService {
                 // The notice never undoes the change.
             }
         });
+    }
+
+    /** Longest name a user may set (the columns hold 150 characters). */
+    static final int MAX_NAME = 150;
+
+    /**
+     * The user sets their own names; a null field keeps its value, blank clears it. A display name left out follows
+     * the given and family name when they change. Audited as user.profile_updated.
+     */
+    public Map<String, Object> updateNames(UserAccount user, String givenName, String familyName, String displayName) {
+        for (String value : new String[] {givenName, familyName, displayName}) {
+            if (value != null && (value.length() > MAX_NAME || value.chars().anyMatch(Character::isISOControl))) {
+                throw new IllegalArgumentException("Names are at most " + MAX_NAME + " characters, without control characters.");
+            }
+        }
+        UserAccount stored = users.findById(user.getId()).orElseThrow(() -> new BadCredentialsException("User not found."));
+        String given = givenName != null ? givenName : stored.getGivenName();
+        String family = familyName != null ? familyName : stored.getFamilyName();
+        stored.setNames(given, family);
+        if (displayName != null && !displayName.isBlank()) {
+            stored.setDisplayName(displayName.trim());
+        } else if (givenName != null || familyName != null) {
+            String joined = ((stored.getGivenName() != null ? stored.getGivenName() : "") + " "
+                    + (stored.getFamilyName() != null ? stored.getFamilyName() : "")).trim();
+            stored.setDisplayName(joined.isEmpty() ? stored.getEmail() : joined);
+        }
+        users.save(stored);
+        if (audit != null) audit.ifAvailable(a -> a.recordIndependently(
+                stored.getTenantId(), null, stored.getEmail(), "user.profile_updated", "user_account", stored.getId(),
+                stored.getEmail(), true));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("givenName", stored.getGivenName());
+        out.put("familyName", stored.getFamilyName());
+        out.put("displayName", stored.getDisplayName());
+        return out;
     }
 
     /** The user an access token belongs to. */

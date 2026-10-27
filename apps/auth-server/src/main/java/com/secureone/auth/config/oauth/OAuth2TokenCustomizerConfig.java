@@ -29,8 +29,11 @@ public class OAuth2TokenCustomizerConfig {
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> settings,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis) {
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationRepository> applications,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantIssuers> issuers) {
         return context -> {
+            requireIssuerOfClientTenant(context, clients, applications, issuers);
             requireActiveUser(context, users);
             addProfileClaims(context, users);
             SubjectClaims.apply(context, users);
@@ -61,6 +64,38 @@ public class OAuth2TokenCustomizerConfig {
             addApiAudiences(context, clients, apis);
             addApplicationClaims(context, users, clients, settings, tenants);
         };
+    }
+
+    /**
+     * A tenant issuer (/t/slug, custom domain) issues tokens to its own tenant's clients only, and a tenant that
+     * uses its own issuers only gets none from the shared one: {@code unauthorized_client} otherwise.
+     */
+    private static void requireIssuerOfClientTenant(
+            JwtEncodingContext context,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationRepository> applications,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantIssuers> issuers) {
+        com.secureone.auth.tenant.TenantIssuers tenantIssuers = issuers.getIfAvailable();
+        if (tenantIssuers == null || context.getRegisteredClient() == null
+                || !(org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+                        instanceof org.springframework.web.context.request.ServletRequestAttributes attributes)) {
+            return;
+        }
+        java.util.UUID clientRowId;
+        try {
+            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        java.util.UUID tenantId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
+                .findById(clientRowId)
+                .flatMap(c -> applications.getObject().findById(c.getApplicationId()))
+                .map(com.secureone.auth.application.Application::getTenantId)
+                .orElse(null));
+        tenantIssuers.refusal(attributes.getRequest(), tenantId).ifPresent(reason -> {
+            throw new org.springframework.security.oauth2.core.OAuth2AuthenticationException(
+                    new org.springframework.security.oauth2.core.OAuth2Error("unauthorized_client", reason, null));
+        });
     }
 
     /**
@@ -224,6 +259,12 @@ public class OAuth2TokenCustomizerConfig {
             }
             if (user.getUsername() != null && !user.getUsername().isBlank()) {
                 context.getClaims().claim("preferred_username", user.getUsername());
+            }
+            if (user.getGivenName() != null) {
+                context.getClaims().claim("given_name", user.getGivenName());
+            }
+            if (user.getFamilyName() != null) {
+                context.getClaims().claim("family_name", user.getFamilyName());
             }
         }
     }

@@ -23,6 +23,17 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [GET `/userinfo`](#1110-oidc-userinfo) — OIDC UserInfo
 - [1.2 Consent-page-controller](#12-consent-page-controller)
   - [GET `/oauth2/consent`](#121-consent-screen-hosted-page-third-party-clients) — Consent screen (hosted page, third-party clients)
+- [1.3 SAML identity provider](#13-saml-identity-provider)
+  - [GET `/saml2/idp/resume`](#131-after-sign-in-the-response-for-the-waiting-sso-posted-to-the-sp) — After sign-in: the Response for the waiting SSO (POSTed to the SP)
+  - [GET `/saml2/idp/{slug}/init`](#132-idp-initiated-sign-in-to-a-service-provider) — IdP-initiated sign-in to a service provider
+  - [GET `/saml2/idp/{slug}/metadata`](#133-the-tenant-idps-saml-metadata-entity-id-sso-and-slo-endpoints-signing-certificate) — The tenant IdP's SAML metadata (entity ID, SSO and SLO endpoints, signing certificate)
+  - [GET `/saml2/idp/{slug}/slo`](#134-single-logout-an-sps-logoutrequest-http-redirect-or-http-post) — Single logout: an SP's LogoutRequest (HTTP-Redirect or HTTP-POST)
+  - [POST `/saml2/idp/{slug}/slo`](#135-single-logout-an-sps-logoutrequest-http-redirect-or-http-post) — Single logout: an SP's LogoutRequest (HTTP-Redirect or HTTP-POST)
+  - [GET `/saml2/idp/{slug}/sso`](#136-single-sign-on-an-sps-authnrequest-http-redirect-get-http-post-form-post) — Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
+  - [POST `/saml2/idp/{slug}/sso`](#137-single-sign-on-an-sps-authnrequest-http-redirect-get-http-post-form-post) — Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
+- [1.4 Custom domains](#14-custom-domains)
+  - [GET `/.well-known/secureone-domain-verification`](#141-on-a-registered-domain-its-verification-token-shows-the-domain-points-at-secureone) — On a registered domain: its verification token (shows the domain points at SecureOne)
+  - [GET `/api/v1/domains/check`](#142-whether-a-domain-is-a-verified-custom-domain-200-or-not-404) — Whether a domain is a verified custom domain (200) or not (404)
 
 ## 1.1 OAuth 2.1 / OIDC
 
@@ -303,4 +314,228 @@ curl -s "$SECUREONE_URL/userinfo" \
 
 ```bash
 curl -s "$SECUREONE_URL/oauth2/consent?client_id={client_id}&scope={scope}&state={state}"
+```
+
+## 1.3 SAML identity provider
+
+SecureOne as a SAML 2.0 IdP for service providers
+
+### 1.3.1 After sign-in: the Response for the waiting SSO (POSTed to the SP)
+
+`GET /saml2/idp/resume`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `ref` | query | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/saml2/idp/resume?ref={ref}"
+```
+
+### 1.3.2 IdP-initiated sign-in to a service provider
+
+`GET /saml2/idp/{slug}/init`
+
+sp: the SP's entity ID (or its id). The user signs in if needed; the Response has no InResponseTo.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+| `sp` | query | string | yes |  |
+| `RelayState` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/saml2/idp/{slug}/init?sp={sp}"
+```
+
+### 1.3.3 The tenant IdP's SAML metadata (entity ID, SSO and SLO endpoints, signing certificate)
+
+`GET /saml2/idp/{slug}/metadata`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | string |
+
+```bash
+curl -s "$SECUREONE_URL/saml2/idp/{slug}/metadata"
+```
+
+### 1.3.4 Single logout: an SP's LogoutRequest (HTTP-Redirect or HTTP-POST)
+
+`GET /saml2/idp/{slug}/slo`
+
+Signs this browser out of SecureOne (apps with back-channel logout are told) and POSTs a signed LogoutResponse to the SP's SLO URL.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+| `SAMLRequest` | query | string | no |  |
+| `SAMLResponse` | query | string | no |  |
+| `RelayState` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/saml2/idp/{slug}/slo"
+```
+
+### 1.3.5 Single logout: an SP's LogoutRequest (HTTP-Redirect or HTTP-POST)
+
+`POST /saml2/idp/{slug}/slo`
+
+Signs this browser out of SecureOne (apps with back-channel logout are told) and POSTs a signed LogoutResponse to the SP's SLO URL.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+| `SAMLRequest` | query | string | no |  |
+| `SAMLResponse` | query | string | no |  |
+| `RelayState` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/saml2/idp/{slug}/slo"
+```
+
+### 1.3.6 Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
+
+`GET /saml2/idp/{slug}/sso`
+
+The user signs in if needed; the signed Response is POSTed to the SP's registered ACS URL.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+| `SAMLRequest` | query | string | no |  |
+| `RelayState` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/saml2/idp/{slug}/sso"
+```
+
+### 1.3.7 Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
+
+`POST /saml2/idp/{slug}/sso`
+
+The user signs in if needed; the signed Response is POSTed to the SP's registered ACS URL.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `slug` | path | string | yes |  |
+| `SAMLRequest` | query | string | no |  |
+| `RelayState` | query | string | no |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/saml2/idp/{slug}/sso"
+```
+
+## 1.4 Custom domains
+
+Domain verification and the on-demand TLS check
+
+### 1.4.1 On a registered domain: its verification token (shows the domain points at SecureOne)
+
+`GET /.well-known/secureone-domain-verification`
+
+**Authentication:** None (public)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | string |
+
+```bash
+curl -s "$SECUREONE_URL/.well-known/secureone-domain-verification"
+```
+
+### 1.4.2 Whether a domain is a verified custom domain (200) or not (404)
+
+`GET /api/v1/domains/check`
+
+For a reverse proxy that issues certificates on demand (Caddy on_demand_tls ask): it gets a certificate only for verified domains.
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `domain` | query | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s "$SECUREONE_URL/api/v1/domains/check?domain={domain}"
 ```

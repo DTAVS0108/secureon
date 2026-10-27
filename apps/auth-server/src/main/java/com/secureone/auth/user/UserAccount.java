@@ -45,6 +45,23 @@ public class UserAccount {
     @Column(name = "display_name")
     private String displayName;
 
+    /** OIDC given_name; null when never entered (older accounts: only display_name). */
+    @Column(name = "given_name")
+    private String givenName;
+
+    @Column(name = "family_name")
+    private String familyName;
+
+    /** Sets given and family name, trimmed (blank: none). The display name is set separately. */
+    public void setNames(String given, String family) {
+        givenName = blankToNull(given);
+        familyName = blankToNull(family);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     @Column(name = "status", nullable = false)
     private String status = "PENDING";
 

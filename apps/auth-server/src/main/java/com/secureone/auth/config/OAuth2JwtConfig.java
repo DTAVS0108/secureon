@@ -4,7 +4,6 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.secureone.auth.config.oauth.OAuth2SigningKeyService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -38,13 +37,32 @@ public class OAuth2JwtConfig {
 
     @Bean
     @Primary
-    JwtDecoder jwtDecoder(
-            JWKSource<SecurityContext> jwkSource,
-            @Value("${spring.security.oauth2.authorizationserver.issuer}") String issuer) {
+    JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource, com.secureone.auth.tenant.TenantIssuers issuers) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSource(jwkSource).build();
         OAuth2TokenValidator<Jwt> validator =
-                new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer));
+                new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), jwt -> issuerCheck(issuers, jwt));
         decoder.setJwtValidator(validator);
         return decoder;
+    }
+
+    /**
+     * "iss" is one of SecureOne's issuers (shared, a tenant's, a verified domain's); on a tenant issuer's own
+     * endpoints (its userinfo) it must be that issuer, so one tenant's tokens are not accepted at another's.
+     */
+    static org.springframework.security.oauth2.core.OAuth2TokenValidatorResult issuerCheck(
+            com.secureone.auth.tenant.TenantIssuers issuers, Jwt jwt) {
+        String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : jwt.getClaimAsString("iss");
+        boolean ok = issuers.isOwnIssuer(issuer);
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (ok && attributes != null && attributes.getAttribute(com.secureone.auth.tenant.TenantIssuers.ATTRIBUTE,
+                org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST)
+                instanceof com.secureone.auth.tenant.TenantIssuers.Target target) {
+            ok = target.issuer().equals(issuer);
+        }
+        return ok
+                ? org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success()
+                : org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
+                        new org.springframework.security.oauth2.core.OAuth2Error(
+                                "invalid_token", "The token was issued by another issuer.", null));
     }
 }

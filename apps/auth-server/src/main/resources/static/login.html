@@ -92,8 +92,10 @@
           if (!value) return false;
           try {
             const u = new URL(value, location.origin);
+            // A tenant issuer's authorize (/t/<slug>/oauth2/authorize) and the SAML identity provider's resume step too.
+            const path = u.pathname.replace(/^\/t\/[a-z0-9][a-z0-9-]{0,62}(?=\/)/, "");
             return u.origin === location.origin &&
-              (u.pathname === "/oauth2/authorize" || u.pathname === "/oauth2/device_verification");
+              (path === "/oauth2/authorize" || path === "/oauth2/device_verification" || u.pathname === "/saml2/idp/resume");
           } catch (_) {
             return false;
           }

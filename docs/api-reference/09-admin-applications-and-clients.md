@@ -272,6 +272,8 @@ curl -s "$SECUREONE_URL/api/admin/v1/oauth-clients" \
 | `clientId` | string | no |  |
 | `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
+| `jwks` | object | no |  |
+| `jwksUri` | string | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
 | `redirectUris` | string[] | no |  |
@@ -303,6 +305,8 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients" \
     "authorization_code",
     "refresh_token"
   ],
+  "jwks": {},
+  "jwksUri": "https://app.example.com",
   "pkceRequired": true,
   "postLogoutRedirectUris": [
     "http://localhost:5173/"
@@ -366,6 +370,8 @@ curl -s "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}" \
 | `backchannelLogoutUri` | string | no |  |
 | `consentRequired` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
+| `jwks` | object | no |  |
+| `jwksUri` | string | no |  |
 | `pkceRequired` | boolean | no |  |
 | `postLogoutRedirectUris` | string[] | no |  |
 | `redirectUris` | string[] | no |  |
@@ -393,6 +399,8 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}" \
     "authorization_code",
     "refresh_token"
   ],
+  "jwks": {},
+  "jwksUri": "https://app.example.com",
   "pkceRequired": true,
   "postLogoutRedirectUris": [
     "http://localhost:5173/"

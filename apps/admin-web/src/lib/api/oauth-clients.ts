@@ -27,6 +27,8 @@ type OAuthClientDto = {
   postLogoutRedirectUris?: string[];
   backchannelLogoutUri?: string | null;
   consentRequired?: boolean;
+  jwksUri?: string | null;
+  jwks?: Record<string, unknown> | null;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
@@ -54,6 +56,8 @@ function mapClient(dto: OAuthClientDto): OAuthClient {
     postLogoutRedirectUris: dto.postLogoutRedirectUris ?? [],
     backchannelLogoutUri: dto.backchannelLogoutUri ?? null,
     consentRequired: dto.consentRequired ?? false,
+    jwksUri: dto.jwksUri ?? null,
+    jwks: dto.jwks ?? null,
     confidential: dto.confidential ?? (type === "web" || type === "m2m"),
     pkceRequired: dto.pkceRequired ?? type !== "m2m",
     tokenEndpointAuthMethod:
@@ -104,6 +108,10 @@ export type OAuthClientWriteInput = {
   consentRequired?: boolean;
   /** Framework chosen in Connect an app (setup code on the client page). */
   setupFramework?: string;
+  /** private_key_jwt: JWKS URL; "" clears it. */
+  jwksUri?: string;
+  /** private_key_jwt: public keys; {} clears them. */
+  jwks?: Record<string, unknown>;
 };
 
 export async function createOAuthClientApi(

@@ -100,12 +100,14 @@ export function ClientDetailPanel({
             <Field
               label="Client authentication"
               value={
-                client.confidential
-                  ? `${client.tokenEndpointAuthMethod} · secret ${client.clientSecretConfigured ? "configured" : "missing"}`
-                  : "Public client (no secret)"
+                !client.confidential
+                  ? "Public client (no secret)"
+                  : client.tokenEndpointAuthMethod === "private_key_jwt"
+                    ? `private_key_jwt · keys ${client.jwksUri ? `at ${client.jwksUri}` : client.jwks ? "registered" : "missing"}`
+                    : `${client.tokenEndpointAuthMethod} · secret ${client.clientSecretConfigured ? "configured" : "missing"}`
               }
             />
-            {client.confidential && (
+            {client.confidential && client.tokenEndpointAuthMethod !== "private_key_jwt" && (
               <div>
                 <Button variant="secondary" size="sm" onClick={rotateSecret} disabled={rotating}>
                   {rotating ? "Rotating…" : "Rotate client secret"}

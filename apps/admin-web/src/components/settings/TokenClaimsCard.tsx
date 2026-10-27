@@ -19,6 +19,8 @@ const SOURCES: { value: string; label: string; needsValue?: string }[] = [
   { value: "phone", label: "Phone number" },
   { value: "phone_verified", label: "Phone verified" },
   { value: "display_name", label: "Display name" },
+  { value: "given_name", label: "First name" },
+  { value: "family_name", label: "Last name" },
   { value: "username", label: "Username" },
   { value: "tenant_slug", label: "Tenant slug" },
 ];

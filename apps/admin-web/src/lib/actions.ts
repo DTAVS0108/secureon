@@ -257,7 +257,21 @@ function oauthClientWritePayload(fd: FormData) {
     // "" clears it on update.
     backchannelLogoutUri: str(fd, "backchannelLogoutUri"),
     consentRequired: fd.get("consentRequired") === "on",
+    // Only sent when the form shows them (private_key_jwt); "" / {} clear them.
+    ...(fd.has("jwksUri") ? { jwksUri: str(fd, "jwksUri") } : {}),
+    ...(fd.has("jwks") ? { jwks: jwksField(str(fd, "jwks")) } : {}),
   };
+}
+
+function jwksField(text: string): Record<string, unknown> {
+  if (!text.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+  } catch {
+    // reported below
+  }
+  throw new Error('Public keys must be a JWK set in JSON: {"keys": [...]}.');
 }
 
 export async function oauthClientCreateAction(_prev: FormState, fd: FormData): Promise<FormState> {

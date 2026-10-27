@@ -297,11 +297,45 @@ function OAuthClientForm({
             sub changes) and is signed out of it. Switch to User ID unless the app depends on tenant:email.
           </p>
         )}
-        <span className="text-xs text-muted">
-          Auth at token endpoint:{" "}
-          <strong>{confidential ? authMethod : "none (public client)"}</strong>
-        </span>
+        {!confidential && (
+          <span className="text-xs text-muted">
+            Auth at token endpoint: <strong>none (public client)</strong>
+          </span>
+        )}
       </div>
+      {confidential && (
+        <FieldRow
+          label="Token endpoint authentication"
+          hint="Private key JWT: the app signs a short-lived assertion with its own key instead of sending a secret (RFC 7523)."
+        >
+          <Select value={authMethod} onChange={(e) => setAuthMethod(e.target.value)}>
+            <option value="client_secret_basic">Client secret (HTTP Basic)</option>
+            <option value="client_secret_post">Client secret (form body)</option>
+            <option value="private_key_jwt">Private key JWT (no secret)</option>
+          </Select>
+        </FieldRow>
+      )}
+      {confidential && authMethod === "private_key_jwt" && (
+        <>
+          <FieldRow label="JWKS URL" hint="Where the app serves its public keys (https). Keys can rotate there. Leave empty to paste the keys below.">
+            <Input name="jwksUri" type="url" defaultValue={client?.jwksUri ?? ""} placeholder="https://app.example.com/.well-known/jwks.json" />
+          </FieldRow>
+          <FieldRow label="Public keys (JWKS)" hint='Only when there is no JWKS URL: {"keys": [...]}, public keys only.'>
+            <Textarea
+              name="jwks"
+              rows={5}
+              className="font-mono text-xs"
+              defaultValue={client?.jwks ? JSON.stringify(client.jwks, null, 2) : ""}
+              placeholder='{"keys": [{"kty": "RSA", "n": "...", "e": "AQAB", "kid": "app-1"}]}'
+            />
+          </FieldRow>
+          {client?.clientSecretConfigured && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              Saving removes this client&apos;s secret: it signs in with its key from then on.
+            </p>
+          )}
+        </>
+      )}
       <FormActions
         pending={pending}
         close={close}

@@ -23,7 +23,7 @@ public final class TokenClaimMappings {
     /** Where a claim's value comes from. */
     public static final Set<String> SOURCES = Set.of(
             "attribute", "static", "email", "email_verified", "phone", "phone_verified", "display_name", "username",
-            "tenant_slug");
+            "given_name", "family_name", "tenant_slug");
 
     /**
      * User attributes SecureOne keeps for itself (a pending email change, a pending invite, sign-in method choices):
@@ -31,6 +31,11 @@ public final class TokenClaimMappings {
      */
     static final Set<String> INTERNAL_ATTRIBUTES = Set.of(
             "pendingEmail", "pendingEmailApplicationId", "pendingInviteApplicationId", "authMethods");
+
+    /** Whether SecureOne keeps this user attribute for itself (never sent to apps). */
+    public static boolean isInternalAttribute(String name) {
+        return INTERNAL_ATTRIBUTES.contains(name);
+    }
 
     /** Claims SecureOne or the standards already set. */
     static final Set<String> RESERVED = Set.of(
@@ -129,6 +134,8 @@ public final class TokenClaimMappings {
             case "phone" -> user.getPhone();
             case "phone_verified" -> user.isPhoneVerified();
             case "display_name" -> user.getDisplayName();
+            case "given_name" -> user.getGivenName();
+            case "family_name" -> user.getFamilyName();
             case "username" -> user.getUsername();
             case "tenant_slug" -> tenantSlug;
             default -> null;

@@ -139,6 +139,7 @@ public class ApplicationSignupService {
         user.setEmail(email);
         user.setUsername(resolveUsername(email));
         user.setDisplayName(resolveDisplayName(request.firstName(), request.lastName(), request.displayName(), email));
+        user.setNames(request.firstName(), request.lastName());
         user.setEmailVerified(false);
         user.setPhoneVerified(false);
         if (phone != null) {

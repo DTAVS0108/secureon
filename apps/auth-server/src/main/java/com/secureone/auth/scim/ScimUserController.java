@@ -79,7 +79,8 @@ public class ScimUserController {
         user.setEmail(email);
         user.setEmailVerified(true);
         user.setUsername(email);
-        user.setDisplayName(string(body.get("displayName"), email));
+        applyName(user, body.get("name"));
+        user.setDisplayName(string(body.get("displayName"), formattedName(user, email)));
         user.setStatus(Boolean.FALSE.equals(body.get("active")) ? "DISABLED" : "ACTIVE");
         user.setType("USER");
         user = users.save(user);
@@ -159,7 +160,30 @@ public class ScimUserController {
         };
     }
 
+    /** SCIM "name": {"givenName", "familyName"}; a member left out keeps its value. */
+    private static void applyName(UserAccount user, Object name) {
+        if (name instanceof Map<?, ?> map) {
+            String given = map.containsKey("givenName") ? stringOrNull(map.get("givenName")) : user.getGivenName();
+            String family = map.containsKey("familyName") ? stringOrNull(map.get("familyName")) : user.getFamilyName();
+            user.setNames(given, family);
+        }
+    }
+
+    private static String stringOrNull(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    /** "Given Family" from the stored names, or the fallback when there are none. */
+    private static String formattedName(UserAccount user, String fallback) {
+        String joined = ((user.getGivenName() != null ? user.getGivenName() : "") + " "
+                + (user.getFamilyName() != null ? user.getFamilyName() : "")).trim();
+        return joined.isEmpty() ? fallback : joined;
+    }
+
     private void applyUserFields(UserAccount user, Map<String, Object> body) {
+        if (body.containsKey("name")) {
+            applyName(user, body.get("name"));
+        }
         if (body.containsKey("displayName")) {
             user.setDisplayName(string(body.get("displayName"), user.getDisplayName()));
         }
@@ -212,6 +236,12 @@ public class ScimUserController {
                 user.setStatus(active ? "ACTIVE" : "DISABLED");
             } else if ("displayName".equalsIgnoreCase(path)) {
                 user.setDisplayName(string(value, user.getDisplayName()));
+            } else if ("name".equalsIgnoreCase(path)) {
+                applyName(user, value);
+            } else if ("name.givenName".equalsIgnoreCase(path)) {
+                user.setNames(stringOrNull(value), user.getFamilyName());
+            } else if ("name.familyName".equalsIgnoreCase(path)) {
+                user.setNames(user.getGivenName(), stringOrNull(value));
             } else if (path != null && path.toLowerCase(Locale.ROOT).startsWith("emails")) {
                 if (value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Map<?, ?> first) {
                     String email = String.valueOf(first.get("value")).trim().toLowerCase(Locale.ROOT);
@@ -244,6 +274,13 @@ public class ScimUserController {
         out.put("id", user.getId().toString());
         out.put("userName", user.getEmail());
         out.put("displayName", user.getDisplayName());
+        if (user.getGivenName() != null || user.getFamilyName() != null) {
+            Map<String, Object> name = new LinkedHashMap<>();
+            if (user.getGivenName() != null) name.put("givenName", user.getGivenName());
+            if (user.getFamilyName() != null) name.put("familyName", user.getFamilyName());
+            name.put("formatted", formattedName(user, ""));
+            out.put("name", name);
+        }
         out.put("active", "ACTIVE".equalsIgnoreCase(user.getStatus()));
         out.put("emails", List.of(Map.of("value", user.getEmail(), "primary", true)));
         out.put("meta", Map.of("resourceType", "User"));

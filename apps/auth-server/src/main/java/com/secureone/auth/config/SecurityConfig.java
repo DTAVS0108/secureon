@@ -149,6 +149,10 @@ public class SecurityConfig {
                                         if (p instanceof org.springframework.security.oauth2.server.authorization.authentication.ClientSecretAuthenticationProvider secret) {
                                             secret.setPasswordEncoder(clientSecrets);
                                         }
+                                        // private_key_jwt: the client's registered keys, short-lived single-use assertions.
+                                        if (p instanceof org.springframework.security.oauth2.server.authorization.authentication.JwtClientAssertionAuthenticationProvider assertion) {
+                                            assertion.setJwtDecoderFactory(new com.secureone.auth.config.oauth.ClientAssertionDecoderFactory(redis));
+                                        }
                                     });
                                     providers.add(0, new PublicClientRefreshAuthentication.Provider(registeredClients));
                                     providers.add(0, new PublicClientDeviceAuthentication.Provider(registeredClients));
@@ -220,6 +224,9 @@ public class SecurityConfig {
                                         .claim("backchannel_logout_session_supported", true)
                                         .claims(DiscoveryMetadata::applyOidc)))))
                 .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
+                // A request to a tenant issuer (/t/<slug>/..., custom domain) is served with that issuer.
+                .addFilterBefore(new com.secureone.auth.config.oauth.TenantIssuerContextFilter(),
+                        org.springframework.security.web.csrf.CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
@@ -404,6 +411,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/impersonation/status",
                                 "/api/v1/auth/device/**",
                                 "/.well-known/oauth-protected-resource",
+                                "/.well-known/secureone-domain-verification",
+                                "/api/v1/domains/check",
+                                // SAML identity provider: the controller checks the browser session itself.
+                                "/saml2/idp/**",
                                 "/api/v1/auth/passkey/**",
                                 "/scim/v2/**",
                                 "/api/v1/applications/**",
@@ -430,6 +441,8 @@ public class SecurityConfig {
                         "/api/v1/auth/passkey/**",
                         "/scim/v2/**",
                         "/api/v1/applications/**",
+                        // SAML HTTP-POST binding: service providers post AuthnRequests and LogoutRequests here.
+                        "/saml2/idp/**",
                         "/login"))
                 .httpBasic(Customizer.withDefaults())
                 .addFilterBefore(adminCredentialAuthenticationFilter, BasicAuthenticationFilter.class)

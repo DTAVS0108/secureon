@@ -249,6 +249,7 @@ public class UserAdminService {
         user.setEmail(email);
         user.setUsername(resolveUsername(request.username(), email));
         user.setDisplayName(displayName(request.firstName(), request.lastName()));
+        user.setNames(request.firstName(), request.lastName());
         String status = normalizeStatus(request.status(), "PENDING");
         user.setStatus(status);
         user.setEmailVerified("ACTIVE".equalsIgnoreCase(status));
@@ -458,6 +459,7 @@ public class UserAdminService {
         user.setEmail(email);
         user.setUsername(resolveUsername(request.username(), email));
         user.setDisplayName(displayName(request.firstName(), request.lastName()));
+        user.setNames(request.firstName(), request.lastName());
         String previousStatus = user.getStatus();
         String nextStatus = normalizeStatus(request.status(), user.getStatus());
         user.setStatus(nextStatus);
@@ -790,7 +792,7 @@ public class UserAdminService {
 
     private UserResponse toResponse(
             UserAccount user, Map<String, Boolean> allowedAuthMethods, UUID applicationId) {
-        NameParts parts = splitDisplayName(user.getDisplayName());
+        NameParts parts = nameParts(user);
         RoleGrantSummary roleGrants = resolveRoleGrants(user.getId(), applicationId);
         List<MfaFactorResponse> factors = mfaFactors.findByUserIdOrderByCreatedAtAsc(user.getId()).stream()
                 .map(f -> new MfaFactorResponse(
@@ -1048,6 +1050,16 @@ public class UserAdminService {
         String f = firstName != null ? firstName.trim() : "";
         String l = lastName != null ? lastName.trim() : "";
         return (f + " " + l).trim();
+    }
+
+    /** The stored given and family name; for an older account with neither, its display name split at the first space. */
+    private static NameParts nameParts(UserAccount user) {
+        if (user.getGivenName() != null || user.getFamilyName() != null) {
+            return new NameParts(
+                    user.getGivenName() != null ? user.getGivenName() : "",
+                    user.getFamilyName() != null ? user.getFamilyName() : "");
+        }
+        return splitDisplayName(user.getDisplayName());
     }
 
     private static NameParts splitDisplayName(String displayName) {
