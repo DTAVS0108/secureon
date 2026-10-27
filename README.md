@@ -14,7 +14,7 @@ SecureOne ships as **one Docker image**: the authorization server (Spring Boot +
 - **Multi-tenant**: tenants → applications, each application with its own database schema and PostgreSQL row-level security
 - **Standards**: OAuth 2.1 and OpenID Connect, PKCE, PAR, token exchange, device sign-in for TVs and CLIs (RFC 8628), discovery metadata (RFC 8414 / RFC 9728)
 - **Sign-in**: hosted sign-in pages or your own screens; passwords, email/SMS one-time codes, magic links, passkeys
-- **MFA**: passkeys (WebAuthn/FIDO2), authenticator apps (TOTP), email/SMS codes, recovery codes; required for console operators
+- **MFA**: passkeys (WebAuthn/FIDO2), authenticator apps (TOTP), email/SMS codes, recovery codes; can be required for console operators (`SECUREONE_ADMIN_MFA_REQUIRED=true`)
 - **Single sign-on**: Google, GitHub, any OIDC provider and SAML 2.0 identity providers, with single logout
 - **Authorization**: roles, permissions and groups per application, included in tokens
 - **Directory and automation**: SCIM 2.0, webhooks, service accounts with API keys
@@ -65,7 +65,7 @@ docker run -d --name secureone --network secureone-net --restart unless-stopped 
   dmtavs0108/secureone:latest
 ```
 
-After about 30 seconds (`docker logs secureone` shows *First platform operator created*), open **http://localhost:9000/admin**, choose **Platform operator** and sign in as `owner@example.com`. The first sign-in sets up an authenticator app.
+After about 30 seconds (`docker logs secureone` shows *First platform operator created*), open **http://localhost:9000/admin**, choose **Platform operator** and sign in as `owner@example.com`.
 
 This is development mode (plain http, example passwords). For production see the settings below.
 

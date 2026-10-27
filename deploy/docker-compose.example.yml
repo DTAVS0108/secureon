@@ -5,7 +5,7 @@
 #   2. Optional: tenant configuration files in ./tenants/ (docs/26).
 #   3. ADMIN_EMAIL=owner@example.com PUBLIC_URL=https://id.example.com docker compose -f docker-compose.example.yml up -d
 #   4. Sign in at $PUBLIC_URL/admin (Platform operator tab) with the password in secrets/admin_password;
-#      the first sign-in sets up an authenticator app. Then you may delete secrets/admin_password.
+#      then you may delete secrets/admin_password.
 #
 # Production mode (the default) needs https: put a TLS reverse proxy or load balancer in front of port 9000.
 # To try it locally over http:  SECUREONE_ENV=development PUBLIC_URL=http://localhost:9000 docker compose ... up -d

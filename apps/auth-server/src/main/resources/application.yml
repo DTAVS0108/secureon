@@ -106,8 +106,8 @@ secureone:
   break-glass:
     enabled: ${SECUREONE_BREAK_GLASS_ENABLED:false}
   admin:
-    # Console sign-in requires an authenticator-app code (TOTP) or a recovery code.
-    mfa-required: ${SECUREONE_ADMIN_MFA_REQUIRED:true}
+    # true: console sign-in requires an authenticator-app code (TOTP) or a recovery code. Off by default.
+    mfa-required: ${SECUREONE_ADMIN_MFA_REQUIRED:false}
     # Console sessions end after this much inactivity, and at the absolute lifetime regardless.
     session-idle-timeout: ${SECUREONE_ADMIN_SESSION_IDLE:30m}
     session-max-lifetime: ${SECUREONE_ADMIN_SESSION_MAX:8h}

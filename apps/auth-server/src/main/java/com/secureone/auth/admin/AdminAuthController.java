@@ -74,7 +74,7 @@ public class AdminAuthController {
             AuditService audit,
             EmailNotificationService mail,
             AccountLockoutService lockout,
-            @Value("${secureone.admin.mfa-required:true}") boolean mfaRequired,
+            @Value("${secureone.admin.mfa-required:false}") boolean mfaRequired,
             AdminStepUpService stepUp,
             com.secureone.auth.mfa.passkey.PasskeyAuthenticationService passkeys,
             com.secureone.auth.mfa.MfaPolicyService mfaPolicy,

@@ -141,7 +141,7 @@ public class SetupService {
             }
             String banner = "=".repeat(78);
             log.warn("\n{}\n First platform operator created: {} (from SECUREONE_BOOTSTRAP_ADMIN_*).\n Sign in at {}/login"
-                            + " (Platform operator tab); the first sign-in sets up an authenticator app.\n"
+                            + " (Platform operator tab).\n"
                             + " Remove SECUREONE_BOOTSTRAP_ADMIN_PASSWORD from the configuration now; it is not used again.\n{}",
                     banner, email, adminWebUrl, banner);
         });

@@ -56,7 +56,7 @@ public class AdminOperatorMfaController {
             MfaFactorRepository factors,
             MfaRecoveryCodeService recoveryCodes,
             com.secureone.auth.mfa.MfaPolicyService mfaPolicy,
-            @org.springframework.beans.factory.annotation.Value("${secureone.admin.mfa-required:true}") boolean mfaRequired) {
+            @org.springframework.beans.factory.annotation.Value("${secureone.admin.mfa-required:false}") boolean mfaRequired) {
         this.operators = operators;
         this.totp = totp;
         this.passkeys = passkeys;

@@ -3,8 +3,8 @@
 #   docker compose -f deploy/docker-compose.quickstart.yml up --build
 #
 # Then open http://localhost:9000/admin and sign in on the Platform operator tab as admin@example.com with
-# the password below (QUICKSTART_ADMIN_PASSWORD to choose another); the first sign-in sets up an
-# authenticator app. The emergency account admin / admin also works (development mode).
+# the password below (QUICKSTART_ADMIN_PASSWORD to choose another).
+# The emergency account admin / admin also works (development mode).
 # Outgoing email lands in MailHog: http://localhost:8025.
 # Ports in use? QUICKSTART_PORT=9300 MAILHOG_PORT=8125 docker compose -f deploy/docker-compose.quickstart.yml up --build
 #
