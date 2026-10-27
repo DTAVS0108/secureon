@@ -1,16 +1,13 @@
 package com.secureone.auth.authn;
 
 import com.secureone.auth.logging.AuthRequestContext;
-import com.secureone.auth.session.LoginHistoryService;
 import com.secureone.auth.tenant.TenantRepository;
-import com.secureone.auth.user.UserAccount;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,28 +22,23 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
     private static final Logger log = LoggerFactory.getLogger(FormLoginFailureHandler.class);
 
     private final RequestCache requestCache;
-    private final TenantUserDetailsService userDetailsService;
-    private final LoginHistoryService loginHistory;
     private final TenantRepository tenants;
     private final SignInApplicationResolver signInApplication;
 
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.protection.AttackProtectionService> attackProtection;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.webhook.WebhookEventPublisher> webhooks;
+    private final SignInFailureRecorder failures;
 
     public FormLoginFailureHandler(
             RequestCache requestCache,
-            TenantUserDetailsService userDetailsService,
-            LoginHistoryService loginHistory,
             TenantRepository tenants,
-            SignInApplicationResolver signInApplication) {
+            SignInApplicationResolver signInApplication,
+            SignInFailureRecorder failures) {
         this.signInApplication = signInApplication;
         this.requestCache = requestCache;
-        this.userDetailsService = userDetailsService;
-        this.loginHistory = loginHistory;
         this.tenants = tenants;
+        this.failures = failures;
         setDefaultFailureUrl("/login.html?error");
     }
 
@@ -102,39 +94,8 @@ public class FormLoginFailureHandler extends SimpleUrlAuthenticationFailureHandl
             String reasonCode,
             AuthenticationException exception,
             Map<String, Object> diagnostics) {
-        String username = snapshot.usernameField();
-        if (username == null || !username.contains(":")) {
-            return;
-        }
-        try {
-            int sep = username.indexOf(':');
-            UserAccount account = userDetailsService.resolveAccount(
-                    username.substring(0, sep).trim().toLowerCase(Locale.ROOT),
-                    username.substring(sep + 1).trim().toLowerCase(Locale.ROOT));
-            if (webhooks != null) webhooks.ifAvailable(p -> {
-                java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
-                payload.put("userId", account.getId().toString());
-                payload.put("email", account.getEmail());
-                payload.put("reason", reasonCode);
-                payload.put("ipAddress", com.secureone.auth.logging.ClientIpResolver.resolve(request));
-                try {
-                    p.publish(account.getTenantId(), signInApplication.current(), "user.login.failed", payload);
-                } catch (RuntimeException ignored) {
-                    // A webhook never changes the sign-in result.
-                }
-            });
-            loginHistory.recordFailure(
-                    account,
-                    // The app being signed in to, so the failure shows in that app's Sessions list.
-                    signInApplication.current(),
-                    request.getRemoteAddr(),
-                    request.getHeader("User-Agent"),
-                    AuthRequestContext.resolveSessionId(request),
-                    reasonCode,
-                    exception.getMessage(),
-                    diagnostics);
-        } catch (RuntimeException ignored) {
-            // Unknown tenant/user — still logged at WARN above with full request diagnostics.
-        }
+        // History row, audit entry and webhook; the app being signed in to, so it shows in that app's lists.
+        failures.record(request, snapshot.usernameField(), signInApplication.current(),
+                reasonCode, exception.getMessage(), diagnostics);
     }
 }

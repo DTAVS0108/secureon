@@ -28,6 +28,8 @@ API for your own screens: `GET /api/v1/applications/{id}/branding` (public).
 - **Audit log** (platform: every tenant; application: that application) with filters (tenant, dates, action, actor, result) and **CSV export** (up to 100,000 rows; the export itself is audited).
 - **Logs & streaming**: keep the audit log and sign-in history 30–3650 days (default 365; purged nightly in batches of 5,000); stream every audit entry to up to five HTTPS endpoints (JSON, or Splunk HTTP Event Collector), with a header for the API key (stored encrypted) and a test button. Entries are sent in batches every 2 seconds (up to 500 per POST: a JSON array, or concatenated Splunk events). A batch a stream refuses is retried on the next two rounds, then dropped. Up to 10,000 entries wait while a stream is down, after which the oldest are dropped and a warning is logged.
 
+- **Sign-ins**: every failed sign-in (hosted page or sign-in API) is a FAILURE row in the user's sign-in history and `user.login.failed` in the audit log (with a reason: `bad_credentials`, `locked`, `password_expired`, `unknown_or_inactive`; also for an unknown email of a known tenant), and sends the `user.login.failed` webhook. A lockout is audited as `user.locked` (security events on the home page, the `user.locked` webhook). Sign-in history rows name the application signed in to.
+
 - **Audit log integrity**: entries cannot be changed, and are removed only by retention after at least 30 days (enforced in the database). Every change to platform or application settings is recorded as `settings.<section>_changed`, with the values saved (secrets masked). `actor_type` is ADMIN (console and admin API), USER (a person's own account) or SYSTEM (jobs).
 
 ## Webhooks (tenant)
@@ -98,6 +100,25 @@ A key set with `SECUREONE_JWK_PRIVATE_KEY_PEM` is rotated in the environment ins
 - **Rotate secret** (confidential clients): the new secret is shown once. The old one keeps working for 0–168 hours (the console asks; 0 when it leaked), so the app can be updated without an outage.
 - **Token subject**: User ID (stable, the default) or legacy `tenant:email`. With the legacy subject, a user who changes their email looks like a new user to the app; the client form warns about this.
 - **Third-party app: ask users for consent**: users see what the app asks for and allow or cancel (`/oauth2/consent`); the choice is remembered and can be withdrawn under Connected apps.
+
+- **Redirect URIs**: https, plain http only on `localhost`, `*.localhost`, `127.0.0.1` or `[::1]` (RFC 8252), or a reverse-domain app scheme. No wildcards or fragments. An http URI a client already had stays when the client is saved.
+- **Introspection** (`/oauth2/introspect`): answers for tokens of the calling client's own application (the client it was issued to, or another client of that application). For any other client the token is `active: false`.
+
+## OpenID Connect behaviour
+
+- **`prompt=none`**: when the user is not signed in, or the sign-in is older than `max_age` or the application's "sign in again after", the app gets `error=login_required` at its registered redirect URI (with `state`) instead of the sign-in page, so silent sign-in in SPAs fails fast.
+- **`prompt=login`**: a signed-in user signs in again before the app gets a code.
+- **Userinfo** follows the granted scopes (OIDC Core 5.4): `email` and `email_verified` only with the `email` scope, `name` and `preferred_username` only with `profile`. `sub`, `user_id`, the tenant, `roles` and `permissions` are always there. Apps that read the email from userinfo must ask for `email`.
+- **Tokens**: ID and access tokens carry `amr` (`pwd`, `otp`, `hwk`, `fed`, `mfa`…) and `acr` from how the user signed in; access tokens carry `client_id` (RFC 9068).
+- **Discovery** lists `scopes_supported` (openid, profile, email, offline_access), `claims_supported`, `backchannel_logout_session_supported: true`, and only the client authentication methods a client can be set to (`client_secret_basic`, `client_secret_post`, `none`). JWKS keys carry `"use": "sig"` and `"alg": "RS256"`.
+
+## APIs (application)
+
+**Settings → Integration → APIs**: the backends the application's access tokens are for. An API has a name, an identifier (an `https://` URL or a `urn:`, unique across the platform) and its scopes (not the OpenID ones).
+- An access token granted one of an API's scopes has the API's identifier in `aud`, next to the client's ID, so the API checks `aud` before it accepts a token. Give the client the scopes under its OAuth client settings.
+- A client can name one API with the RFC 8707 `resource` parameter (authorization or token request): the token then names only that API. A `resource` that is not one of the application's APIs is refused with `invalid_target`.
+- Removing an API: new tokens stop naming it; tokens already issued keep it until they expire.
+- API: `/api/admin/v1/applications/{id}/settings/apis` (audited as `api.created`, `api.updated`, `api.deleted`).
 
 ## Token claims (application)
 

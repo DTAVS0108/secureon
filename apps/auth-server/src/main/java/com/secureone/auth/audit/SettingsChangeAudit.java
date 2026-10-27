@@ -35,7 +35,7 @@ public final class SettingsChangeAudit {
             Pattern.compile("^/api/admin/v1/applications/([0-9a-fA-F-]{36})/settings/([a-z0-9-]+)(/.*)?$");
     /** Recorded in more detail where they are saved. */
     private static final Set<String> OWN_AUDIT =
-            Set.of("feature-flags", "attack-protection", "log-streams", "signing-keys", "webhooks");
+            Set.of("feature-flags", "attack-protection", "log-streams", "signing-keys", "webhooks", "apis");
     private static final Pattern SECRET = Pattern.compile("(?i).*(password|secret|token|apikey|api_key|credential|privatekey|private_key|pepper).*");
     private static final int MAX_LABEL = 1000;
 

@@ -26,6 +26,84 @@ public final class OAuthLoginRedirectSupport {
         return request.getRequestURI() + "?" + query;
     }
 
+    /** Whether the request's {@code prompt} asks for {@code login} (OIDC: sign in again). */
+    public static boolean asksPromptLogin(HttpServletRequest request) {
+        String prompt = request.getParameter("prompt");
+        return prompt != null && java.util.Arrays.asList(prompt.trim().split("\\s+")).contains("login");
+    }
+
+    /**
+     * The request's URL with {@code login} taken out of {@code prompt} (and {@code prompt} dropped when nothing is
+     * left): where the sign-in page sends the user back to after the sign-in prompt=login asked for, so that it
+     * does not ask again.
+     */
+    public static String withoutPromptLogin(HttpServletRequest request) {
+        StringBuilder query = new StringBuilder();
+        for (var entry : request.getParameterMap().entrySet()) {
+            for (String value : entry.getValue()) {
+                String v = value;
+                if ("prompt".equals(entry.getKey())) {
+                    v = String.join(" ", java.util.Arrays.stream(value.trim().split("\\s+"))
+                            .filter(p -> !"login".equals(p)).toList());
+                    if (v.isBlank()) {
+                        continue;
+                    }
+                }
+                query.append(query.isEmpty() ? "" : "&")
+                        .append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
+                        .append('=')
+                        .append(URLEncoder.encode(v, StandardCharsets.UTF_8));
+            }
+        }
+        return request.getRequestURI() + (query.isEmpty() ? "" : "?" + query);
+    }
+
+    /** The request as the sign-in page should return to it: prompt=login removed, everything else as sent. */
+    public static HttpServletRequest withoutPromptLoginRequest(HttpServletRequest request) {
+        if (!asksPromptLogin(request)) {
+            return request;
+        }
+        String url = withoutPromptLogin(request);
+        int q = url.indexOf('?');
+        String query = q < 0 ? null : url.substring(q + 1);
+        java.util.Map<String, String[]> params = new java.util.LinkedHashMap<>(request.getParameterMap());
+        String[] prompt = params.get("prompt");
+        String kept = prompt == null ? "" : String.join(" ", java.util.Arrays.stream(String.join(" ", prompt).trim().split("\\s+"))
+                .filter(p -> !"login".equals(p)).toList());
+        if (kept.isBlank()) {
+            params.remove("prompt");
+        } else {
+            params.put("prompt", new String[] {kept});
+        }
+        return new jakarta.servlet.http.HttpServletRequestWrapper(request) {
+            @Override
+            public String getQueryString() {
+                return query;
+            }
+
+            @Override
+            public String getParameter(String name) {
+                String[] values = params.get(name);
+                return values == null || values.length == 0 ? null : values[0];
+            }
+
+            @Override
+            public java.util.Map<String, String[]> getParameterMap() {
+                return java.util.Collections.unmodifiableMap(params);
+            }
+
+            @Override
+            public java.util.Enumeration<String> getParameterNames() {
+                return java.util.Collections.enumeration(params.keySet());
+            }
+
+            @Override
+            public String[] getParameterValues(String name) {
+                return params.get(name);
+            }
+        };
+    }
+
     public static String loginPageWithContinue(String authorizeUrl) {
         return "/login.html?"
                 + CONTINUE_PARAM

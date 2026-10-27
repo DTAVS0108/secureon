@@ -140,7 +140,7 @@ public class MfaLoginService {
         TwoStepService.Decision decision = twoStep.decide(user, applicationId, firstFactor(authentication), request);
         if (decision instanceof TwoStepService.SignedIn) {
             establishSession(authentication, request, response);
-            loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+            loginSuccessHandler.recordSuccessfulLogin(request, authentication, applicationId);
             return ResponseEntity.noContent().build();
         }
         MfaPendingChallenge pending = issue(user, authentication, applicationId, decision);
@@ -163,7 +163,7 @@ public class MfaLoginService {
         TwoStepService.Decision decision = twoStep.decide(user, applicationId, firstFactor(authentication), request);
         if (decision instanceof TwoStepService.SignedIn) {
             establishSession(authentication, request, response);
-            loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+            loginSuccessHandler.recordSuccessfulLogin(request, authentication, applicationId);
             return null;
         }
         MfaPendingChallenge pending = issue(user, authentication, applicationId, decision);
@@ -350,7 +350,7 @@ public class MfaLoginService {
         endChallenge(challengeId);
         Authentication authentication = rebuildAuthentication(pending, false);
         establishSession(authentication, request, response);
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+        loginSuccessHandler.recordSuccessfulLogin(request, authentication, pending.applicationId());
         return ResponseEntity.noContent().build();
     }
 
@@ -476,7 +476,7 @@ public class MfaLoginService {
         // Setting up and confirming a method during sign-in proves it: the session counts as two steps.
         Authentication authentication = rebuildAuthentication(pending, true);
         establishSession(authentication, request, response);
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+        loginSuccessHandler.recordSuccessfulLogin(request, authentication, pending.applicationId());
         return ResponseEntity.ok(Map.of("signedIn", true, "recoveryCodes", codes != null ? codes : List.of()));
     }
 
@@ -566,7 +566,7 @@ public class MfaLoginService {
         if (remember && rememberDays > 0) {
             trustedDevices.issue(pending.userId(), pending.applicationId(), rememberDays, request, response);
         }
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+        loginSuccessHandler.recordSuccessfulLogin(request, authentication, pending.applicationId());
         return ResponseEntity.noContent().build();
     }
 

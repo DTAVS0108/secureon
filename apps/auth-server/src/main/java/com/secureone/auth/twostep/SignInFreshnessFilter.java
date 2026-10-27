@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,7 +66,13 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
         Authentication auth = session != null ? signedIn(session) : null;
+        boolean authorize = "GET".equals(request.getMethod()) && "/oauth2/authorize".equals(request.getRequestURI());
+        Set<String> prompt = authorize ? promptValues(request.getParameter("prompt")) : Set.of();
         if (auth == null) {
+            // prompt=none and nobody signed in: tell the app (silent sign-in), never show the sign-in page.
+            if (prompt.contains("none") && loginRequired(request, response)) {
+                return;
+            }
             chain.doFilter(request, response);
             return;
         }
@@ -75,12 +82,22 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        if ("GET".equals(request.getMethod()) && "/oauth2/authorize".equals(request.getRequestURI())) {
+        if (authorize) {
             String here = request.getRequestURI() + (request.getQueryString() != null ? "?" + request.getQueryString() : "");
+            if (prompt.contains("login") && !prompt.contains("none")) {
+                // prompt=login: sign in again; the request continues without "login" so it does not loop (the
+                // sign-in page for a signed-out user gets it without "login" too: OAuthAwareLoginEntryPoint).
+                session.invalidate();
+                response.sendRedirect("/login.html?continue=" + encode(withoutPromptLogin(request)));
+                return;
+            }
             String maxAge = request.getParameter("max_age");
             if (signedInAt != null && (maxAge != null && tooOld(signedInAt, maxAge)
                     || tooOld(signedInAt, String.valueOf(applicationMaxAge(request.getParameter("client_id")))))) {
                 session.invalidate();
+                if (prompt.contains("none") && loginRequired(request, response)) {
+                    return;
+                }
                 response.sendRedirect("/login.html?continue=" + encode(here));
                 return;
             }
@@ -117,6 +134,48 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
         } catch (RuntimeException e) {
             return -1;
         }
+    }
+
+    static Set<String> promptValues(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return Set.of();
+        }
+        return new java.util.HashSet<>(Arrays.asList(prompt.trim().split("\\s+")));
+    }
+
+    /**
+     * OIDC Core 3.1.2.6: {@code error=login_required} back to the app, only to a redirect URI registered for the
+     * client (exact match), with the state. False when the request cannot be answered that way (unknown client
+     * or redirect URI): the authorization server then explains the error itself.
+     */
+    private boolean loginRequired(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String clientId = request.getParameter("client_id");
+        String redirectUri = request.getParameter("redirect_uri");
+        if (clientId == null || redirectUri == null || redirectUri.isBlank()) {
+            return false;
+        }
+        boolean registered = Boolean.TRUE.equals(RlsScope.asPlatform(() -> clients.getObject().findByClientId(clientId)
+                .map(c -> c.getRedirectUris().stream().anyMatch(u -> u != null && u.trim().equals(redirectUri)))
+                .orElse(false)));
+        if (!registered) {
+            return false;
+        }
+        StringBuilder target = new StringBuilder(redirectUri)
+                .append(redirectUri.contains("?") ? '&' : '?')
+                .append("error=login_required&error_description=")
+                .append(encode("The user must sign in; prompt=none does not show the sign-in page."));
+        String state = request.getParameter("state");
+        if (state != null && !state.isEmpty()) {
+            target.append("&state=").append(encode(state));
+        }
+        response.setHeader("Cache-Control", "no-store");
+        response.sendRedirect(target.toString());
+        return true;
+    }
+
+    /** This authorize request with "login" taken out of prompt (and prompt dropped when nothing is left). */
+    static String withoutPromptLogin(HttpServletRequest request) {
+        return com.secureone.auth.authn.OAuthLoginRedirectSupport.withoutPromptLogin(request);
     }
 
     static boolean tooOld(Instant signedInAt, String maxAge) {

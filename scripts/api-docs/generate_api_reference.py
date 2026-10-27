@@ -67,7 +67,7 @@ SECTIONS = [
      "Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, "
      "permissions, groups, settings and logs.",
      ["Admin — application scope", "Admin — application RBAC", "Admin — application logs",
-      "Admin — application webhooks"]),
+      "Admin — application webhooks", "Admin — application APIs"]),
     ("11-admin-security-and-governance.md", "Admin API: security and governance",
      "Platform operators, access review, platform roles, sign-in federation providers, service accounts, "
      "webhooks, the audit log (search and CSV export), sessions and the console overview.",

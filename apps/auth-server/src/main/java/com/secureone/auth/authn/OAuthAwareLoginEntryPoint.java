@@ -29,9 +29,11 @@ public class OAuthAwareLoginEntryPoint implements AuthenticationEntryPoint {
     public void commence(
             HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException {
-        String authorizeUrl = OAuthLoginRedirectSupport.buildAuthorizeUrl(request);
+        // prompt=login is met by the sign-in this sends the user to: they come back without it (no second prompt).
+        HttpServletRequest returnTo = OAuthLoginRedirectSupport.withoutPromptLoginRequest(request);
+        String authorizeUrl = OAuthLoginRedirectSupport.buildAuthorizeUrl(returnTo);
         if (OAuthLoginRedirectSupport.isAuthorizeUrl(authorizeUrl)) {
-            requestCache.saveRequest(request, response);
+            requestCache.saveRequest(returnTo, response);
             String loginUrl = appendApplicationId(
                     OAuthLoginRedirectSupport.loginPageWithContinue(authorizeUrl), authorizeUrl);
             response.sendRedirect(loginUrl);

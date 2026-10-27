@@ -155,7 +155,7 @@ public class PasskeyAuthenticationService {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
-        loginSuccessHandler.recordSuccessfulLogin(request, authentication);
+        loginSuccessHandler.recordSuccessfulLogin(request, authentication, applicationId);
         return ResponseEntity.noContent().build();
     }
 

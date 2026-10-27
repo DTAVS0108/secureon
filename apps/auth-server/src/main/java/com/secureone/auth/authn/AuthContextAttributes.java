@@ -53,6 +53,25 @@ public final class AuthContextAttributes {
         if (session == null) {
             return;
         }
+        List<String> amr = amrOf(authentication);
+        boolean twoSteps = amr.contains("mfa");
+        session.setAttribute(SESSION_AMR, amr);
+        session.setAttribute(SESSION_ACR, twoSteps ? "2" : "1");
+        long now = System.currentTimeMillis();
+        session.setAttribute(SESSION_AUTH_TIME, now);
+        if (twoSteps) {
+            // A sign-in with two steps counts as a fresh "verify it's you" for sensitive account changes.
+            session.setAttribute(com.secureone.auth.twostep.FreshStep.SESSION_KEY, now);
+        } else {
+            session.removeAttribute(com.secureone.auth.twostep.FreshStep.SESSION_KEY);
+        }
+    }
+
+    /**
+     * amr of a sign-in from the factor authorities on its authentication (also at the token endpoint, where there
+     * is no browser session: the authorization keeps the principal). Never empty for a signed-in principal.
+     */
+    public static List<String> amrOf(org.springframework.security.core.Authentication authentication) {
         Set<String> amr = new LinkedHashSet<>();
         boolean twoSteps = false;
         if (authentication != null) {
@@ -83,16 +102,14 @@ public final class AuthContextAttributes {
         if (twoSteps) {
             amr.add("mfa");
         }
-        session.setAttribute(SESSION_AMR, List.copyOf(amr));
-        session.setAttribute(SESSION_ACR, twoSteps ? "2" : "1");
-        long now = System.currentTimeMillis();
-        session.setAttribute(SESSION_AUTH_TIME, now);
-        if (twoSteps) {
-            // A sign-in with two steps counts as a fresh "verify it's you" for sensitive account changes.
-            session.setAttribute(com.secureone.auth.twostep.FreshStep.SESSION_KEY, now);
-        } else {
-            session.removeAttribute(com.secureone.auth.twostep.FreshStep.SESSION_KEY);
-        }
+        // A plain ArrayList: token claims are stored with the authorization, whose JSON reader allows only
+        // well-known collection types (not List.copyOf's).
+        return new ArrayList<>(amr);
+    }
+
+    /** acr of a sign-in from its factor authorities: "2" for two steps or a passkey, else "1". */
+    public static String acrOf(org.springframework.security.core.Authentication authentication) {
+        return amrOf(authentication).contains("mfa") ? "2" : "1";
     }
 
     public static void recordMfaAuth(HttpServletRequest request, String method) {

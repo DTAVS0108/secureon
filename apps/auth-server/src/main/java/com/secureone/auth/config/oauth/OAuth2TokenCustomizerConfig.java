@@ -28,7 +28,8 @@ public class OAuth2TokenCustomizerConfig {
             TenantUserDetailsService users,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> settings,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants) {
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis) {
         return context -> {
             requireActiveUser(context, users);
             addProfileClaims(context, users);
@@ -40,6 +41,15 @@ public class OAuth2TokenCustomizerConfig {
             }
             List<String> amr = AuthContextAttributes.amrFromCurrentRequest();
             String acr = AuthContextAttributes.acrFromCurrentRequest();
+            if (amr.isEmpty() && isUserToken(context)) {
+                // Token endpoint (no browser session): how the user signed in, from the stored principal.
+                amr = AuthContextAttributes.amrOf(context.getPrincipal());
+                acr = AuthContextAttributes.acrOf(context.getPrincipal());
+            }
+            if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType()) && context.getRegisteredClient() != null) {
+                // RFC 9068: JWT access tokens name the client they were issued to.
+                context.getClaims().claim("client_id", context.getRegisteredClient().getClientId());
+            }
             if (!amr.isEmpty()) {
                 context.getClaims().claim("amr", amr);
             }
@@ -48,8 +58,71 @@ public class OAuth2TokenCustomizerConfig {
             }
             applyPolicyLifetime(context);
             addApplicationAccess(context, accessClaims);
+            addApiAudiences(context, clients, apis);
             addApplicationClaims(context, users, clients, settings, tenants);
         };
+    }
+
+    /**
+     * Access tokens name the application's APIs they are for in {@code aud}, next to the client: every API one of
+     * whose scopes was granted, or only the API the client named with RFC 8707 {@code resource} (on the
+     * authorization request or the token request). A {@code resource} that is not one of the application's APIs
+     * is refused with {@code invalid_target}.
+     */
+    private static void addApiAudiences(
+            JwtEncodingContext context,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis) {
+        if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType()) || context.getRegisteredClient() == null) {
+            return;
+        }
+        java.util.UUID clientRowId;
+        try {
+            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        java.util.UUID applicationId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
+                .findById(clientRowId).map(com.secureone.auth.oauth.OAuthClient::getApplicationId).orElse(null));
+        if (applicationId == null) {
+            return;
+        }
+        String resource = requestedResource(context);
+        java.util.Optional<List<String>> audiences =
+                apis.getObject().audiences(applicationId, context.getAuthorizedScopes(), resource);
+        if (audiences.isEmpty()) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("invalid_target",
+                    "resource '" + resource + "' is not one of this application's APIs.",
+                    "https://datatracker.ietf.org/doc/html/rfc8707#section-2"));
+        }
+        if (audiences.get().isEmpty()) {
+            return;
+        }
+        java.util.LinkedHashSet<String> aud = new java.util.LinkedHashSet<>(audiences.get());
+        aud.add(context.getRegisteredClient().getClientId());
+        // ArrayList, not List.copyOf: the claims are stored with the authorization (see AuthContextAttributes.amrOf).
+        context.getClaims().audience(new java.util.ArrayList<>(aud));
+    }
+
+    /** RFC 8707 resource: from the token request, else from the authorization request this token comes from. */
+    private static String requestedResource(JwtEncodingContext context) {
+        var attrs = (org.springframework.web.context.request.ServletRequestAttributes)
+                org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        String fromRequest = attrs != null ? attrs.getRequest().getParameter("resource") : null;
+        if (fromRequest != null && !fromRequest.isBlank()) {
+            return fromRequest.trim();
+        }
+        if (context.getAuthorization() != null) {
+            org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest authorizationRequest =
+                    context.getAuthorization().getAttribute(
+                            org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest.class.getName());
+            if (authorizationRequest != null
+                    && authorizationRequest.getAdditionalParameters().get("resource") instanceof String r
+                    && !r.isBlank()) {
+                return r.trim();
+            }
+        }
+        return null;
     }
 
     /** The application's own claims (Integration › Token claims), added last so they never replace ours. */
@@ -153,6 +226,16 @@ public class OAuth2TokenCustomizerConfig {
                 context.getClaims().claim("preferred_username", user.getUsername());
             }
         }
+    }
+
+    /** A token for a signed-in user ("tenant-slug:email" principal), not a client-credentials token. */
+    private static boolean isUserToken(JwtEncodingContext context) {
+        if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())
+                || context.getPrincipal() == null) {
+            return false;
+        }
+        String name = context.getPrincipal().getName();
+        return name != null && name.indexOf(':') > 0 && name.contains("@");
     }
 
     private static void requireActiveUser(JwtEncodingContext context, TenantUserDetailsService users) {

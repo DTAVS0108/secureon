@@ -23,8 +23,17 @@ public class OAuth2JwtConfig {
     JWKSource<SecurityContext> jwkSource(OAuth2SigningKeyService signingKeys) {
         // Published in JWKS and used for verification: the current key, the next one (published ahead of a
         // rotation) and the previous one (until retired). Read on each use, so a rotation shows up everywhere.
-        return (selector, context) -> selector.select(
-                new JWKSet(java.util.List.<com.nimbusds.jose.jwk.JWK>copyOf(signingKeys.verificationKeys())));
+        return (selector, context) -> selector.select(new JWKSet(signingKeys.verificationKeys().stream()
+                .<com.nimbusds.jose.jwk.JWK>map(OAuth2JwtConfig::forSignatures)
+                .toList()));
+    }
+
+    /** Every key says it is for signatures with RS256 ("use" and "alg"), which some JWT libraries require. */
+    static com.nimbusds.jose.jwk.RSAKey forSignatures(com.nimbusds.jose.jwk.RSAKey key) {
+        return new com.nimbusds.jose.jwk.RSAKey.Builder(key)
+                .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE)
+                .algorithm(com.nimbusds.jose.JWSAlgorithm.RS256)
+                .build();
     }
 
     @Bean

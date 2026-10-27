@@ -141,11 +141,12 @@ public class OAuthClientAdminService {
         if (request.grantTypes() != null) client.setGrantTypes(grantTypes(request.grantTypes()));
         if (request.scopes() != null) client.setScopes(request.scopes());
         if (request.redirectUris() != null) {
-            client.setRedirectUris(RedirectUriValidator.validate(request.redirectUris(), "redirectUri"));
+            client.setRedirectUris(RedirectUriValidator.validate(
+                    request.redirectUris(), "redirectUri", client.getRedirectUris()));
         }
         if (request.postLogoutRedirectUris() != null) {
-            client.setPostLogoutRedirectUris(
-                    RedirectUriValidator.validate(request.postLogoutRedirectUris(), "postLogoutRedirectUri"));
+            client.setPostLogoutRedirectUris(RedirectUriValidator.validate(
+                    request.postLogoutRedirectUris(), "postLogoutRedirectUri", client.getPostLogoutRedirectUris()));
         }
         if (request.pkceRequired() != null) client.setRequirePkce(request.pkceRequired());
         if (request.subjectType() != null) client.setSubjectType(subjectType(request.subjectType()));

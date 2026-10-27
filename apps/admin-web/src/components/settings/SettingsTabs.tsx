@@ -19,6 +19,7 @@ import { SettingsScopeBanner } from "@/components/settings/SettingsScopeBanner";
 import { TokenClaimsCard } from "@/components/settings/TokenClaimsCard";
 import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
 import { SignupPolicyCard } from "@/components/settings/SignupPolicyCard";
+import { ApplicationApisCard } from "@/components/settings/ApplicationApisCard";
 import { SigningKeysCard } from "@/components/settings/SigningKeysCard";
 import { TokenPolicySettings } from "@/components/settings/TokenPolicySettings";
 import { VerificationSettingsPanel } from "@/components/settings/VerificationSettingsPanel";
@@ -436,6 +437,7 @@ export function SettingsTabs({
         <>
           <ApplicationIntegrationSettings applicationId={applicationId} onOpenTab={openTab} />
           <TokenClaimsCard applicationId={applicationId} />
+          <ApplicationApisCard applicationId={applicationId} />
           <WebhooksPanel applicationId={applicationId} />
         </>
       )}

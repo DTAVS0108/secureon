@@ -103,7 +103,8 @@ public class SecurityConfig {
             org.springframework.data.redis.core.StringRedisTemplate redis,
             SamlLogoutService samlLogout,
             SecureOneEnvironmentProperties environment,
-            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder)
+            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
+            ApplicationOAuthClientResolver applications)
             throws Exception {
         // Client secrets are hashed by SecureOne (bcrypt; two during a rotation's overlap) and the client store is
         // read-only: the authorization server must not try to re-hash and save them after a successful check.
@@ -182,6 +183,15 @@ public class SecurityConfig {
                                         response.sendRedirect(DEVICE_PAGE + "?status=approved"))
                                 .errorResponseHandler((request, response, exception) ->
                                         response.sendRedirect(DEVICE_PAGE + "?status=" + deviceErrorStatus(exception))))
+                        // Introspection answers only for the token's own application (others get active=false).
+                        .tokenIntrospectionEndpoint(introspection -> introspection
+                                .authenticationProviders(providers -> providers.replaceAll(provider ->
+                                        provider instanceof org.springframework.security.oauth2.server.authorization.authentication.OAuth2TokenIntrospectionAuthenticationProvider
+                                                ? new com.secureone.auth.config.oauth.IntrospectionOwnerGuard(provider, applications)
+                                                : provider)))
+                        // RFC 8414 metadata says what clients can really use (see DiscoveryMetadata).
+                        .authorizationServerMetadataEndpoint(metadata -> metadata
+                                .authorizationServerMetadataCustomizer(m -> m.claims(DiscoveryMetadata::apply)))
                         .authorizationEndpoint(endpoint -> endpoint
                                 // Third-party clients (consent required): the user approves the access first.
                                 .consentPage(com.secureone.auth.oauth.ConsentPageController.PATH)
@@ -203,9 +213,12 @@ public class SecurityConfig {
                                                 new SamlAwareOidcLogoutHandler(samlLogout), backchannelLogout,
                                                 userAccessTermination)))
                                 // OIDC Back-Channel Logout 1.0: clients may register a URL for logout tokens.
+                                // Logout tokens carry the session's sid (session supported); scopes, claims and
+                                // client authentication methods as SecureOne really offers them.
                                 .providerConfigurationEndpoint(config -> config.providerConfigurationCustomizer(c -> c
                                         .claim("backchannel_logout_supported", true)
-                                        .claim("backchannel_logout_session_supported", false)))))
+                                        .claim("backchannel_logout_session_supported", true)
+                                        .claims(DiscoveryMetadata::applyOidc)))))
                 .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**")

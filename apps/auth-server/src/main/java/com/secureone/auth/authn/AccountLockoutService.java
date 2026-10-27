@@ -35,6 +35,9 @@ public class AccountLockoutService {
     private final ObjectProvider<EmailNotificationService> mail;
     private final String publicBaseUrl;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<com.secureone.auth.audit.AuditService> audit;
+
     public AccountLockoutService(
             UserAccountRepository users,
             AuthSettingsService authSettings,
@@ -96,6 +99,12 @@ public class AccountLockoutService {
         account.setFailedLoginCount(0); // the attempts after this lock expires start from zero
         account.setLockedUntil(now.plusSeconds(lockMinutes * 60L));
         users.save(account);
+        // In the audit log (security events on the home page, the user.locked webhook, log streams).
+        if (audit != null) {
+            audit.ifAvailable(a -> a.recordIndependently(account.getTenantId(), applicationId, account.getEmail(),
+                    "user.locked", "user", account.getId(),
+                    account.getEmail() + " (" + lockMinutes + " min, lockout " + level + ")", true));
+        }
         // Often the first sign of someone guessing the password or codes; tell the owner every time.
         try {
             String reset = publicBaseUrl + "/account/forgot-password.html"

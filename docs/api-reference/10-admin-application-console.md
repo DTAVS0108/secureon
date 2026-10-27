@@ -128,6 +128,11 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/deliveries/{deliveryId}/redeliver`](#1047-redeliver) — Redeliver
   - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/rotate-secret`](#1048-rotate-webhook-secret) — Rotate webhook secret
   - [POST `/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/test`](#1049-test-webhook) — Test webhook
+- [10.5 Application APIs](#105-application-apis)
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/apis`](#1051-the-applications-apis) — The application's APIs
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/apis`](#1052-add-an-api-name-identifier-scopes) — Add an API (name, identifier, scopes)
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`](#1053-change-an-api) — Change an API
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`](#1054-remove-an-api-new-tokens-stop-naming-it-tokens-already-issued-keep-it-until-they-expire) — Remove an API (new tokens stop naming it; tokens already issued keep it until they expire)
 
 ## 10.1 Application scope
 
@@ -3083,5 +3088,107 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settin
 
 ```bash
 curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/webhooks/{id}/test" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 10.5 Application APIs
+
+APIs (resource servers) an application's access tokens are for
+
+### 10.5.1 The application's APIs
+
+`GET /api/admin/v1/applications/{applicationId}/settings/apis`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/apis" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.5.2 Add an API (name, identifier, scopes)
+
+`POST /api/admin/v1/applications/{applicationId}/settings/apis`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `201` | Created | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/apis" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.5.3 Change an API
+
+`PUT /api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `apiId` | path | string (uuid) | yes |  |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.5.4 Remove an API (new tokens stop naming it; tokens already issued keep it until they expire)
+
+`DELETE /api/admin/v1/applications/{applicationId}/settings/apis/{apiId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `apiId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/apis/{apiId}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

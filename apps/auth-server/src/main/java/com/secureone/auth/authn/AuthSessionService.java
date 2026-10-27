@@ -28,6 +28,9 @@ public class AuthSessionService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.protection.AttackProtectionService> attackProtection;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<SignInFailureRecorder> failures;
+
     public AuthSessionService(AuthenticationManager authenticationManager, MfaLoginService mfaLogin) {
         this.authenticationManager = authenticationManager;
         this.mfaLogin = mfaLogin;
@@ -63,6 +66,10 @@ public class AuthSessionService {
             // Counts towards "CAPTCHA after failures" (Attack protection), as the hosted form does.
             if (attackProtection != null) {
                 attackProtection.ifAvailable(p -> p.recordSignInFailure(com.secureone.auth.logging.ClientIpResolver.resolve(request)));
+            }
+            if (failures != null) {
+                failures.ifAvailable(f -> f.record(request, username, applicationId,
+                        SignInFailureRecorder.reasonOf(ex), ex.getMessage(), null));
             }
             ProblemDetail problem =
                     ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, loginFailureMessage(ex));

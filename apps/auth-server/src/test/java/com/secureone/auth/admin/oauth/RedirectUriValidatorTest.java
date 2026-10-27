@@ -40,6 +40,21 @@ class RedirectUriValidatorTest {
     }
 
     @Test
+    void plainHttpOnlyOnLoopbackButExistingUrisAreKept() {
+        for (String ok : List.of("http://localhost/cb", "http://app.localhost:3000/cb", "http://[::1]:8080/cb")) {
+            assertNull(RedirectUriValidator.problem(ok), ok);
+        }
+        assertEquals(RedirectUriValidator.PLAIN_HTTP, RedirectUriValidator.problem("http://shop.example.com/cb"));
+        assertThrows(IllegalArgumentException.class,
+                () -> RedirectUriValidator.validate(List.of("http://shop.example.com/cb"), "redirectUri"));
+        // An update keeps a plain-http URI the client already had, but refuses a new one.
+        List<String> existing = List.of("http://legacy.example.com/cb");
+        assertEquals(existing, RedirectUriValidator.validate(existing, "redirectUri", existing));
+        assertThrows(IllegalArgumentException.class, () -> RedirectUriValidator.validate(
+                List.of("http://legacy.example.com/cb", "http://new.example.com/cb"), "redirectUri", existing));
+    }
+
+    @Test
     void validateTrimsDeduplicatesAndNamesTheBadUri() {
         assertEquals(
                 List.of("https://a.example/cb"),

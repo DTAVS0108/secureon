@@ -102,7 +102,18 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
         getRedirectStrategy().sendRedirect(request, response, signedInUrl);
     }
 
+    /** Request attribute: the application a sign-in names outside the form field (sign-in API, second step). */
+    static final String SIGN_IN_APPLICATION_ATTRIBUTE = LoginSuccessHandler.class.getName() + ".applicationId";
+
     public void recordSuccessfulLogin(HttpServletRequest request, Authentication authentication) {
+        recordSuccessfulLogin(request, authentication, null);
+    }
+
+    /** {@code applicationId}: the app the sign-in API or second step named (JSON body, pending challenge). */
+    public void recordSuccessfulLogin(HttpServletRequest request, Authentication authentication, UUID signInApplicationId) {
+        if (signInApplicationId != null) {
+            request.setAttribute(SIGN_IN_APPLICATION_ATTRIBUTE, signInApplicationId);
+        }
         String username = authentication.getName();
         AuthRequestContext.enrichForLogin(request, username, tenants, signInApplication.current());
         if (username == null || !username.contains(":")) {
@@ -178,6 +189,9 @@ public class LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
             } catch (IllegalArgumentException ignored) {
                 // fall through
             }
+        }
+        if (requested == null && request.getAttribute(SIGN_IN_APPLICATION_ATTRIBUTE) instanceof UUID named) {
+            requested = named;
         }
         if (requested == null) {
             requested = ApplicationSchemaContext.getApplicationId();
