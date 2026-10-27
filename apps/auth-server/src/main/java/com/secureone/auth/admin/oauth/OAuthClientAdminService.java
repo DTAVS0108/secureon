@@ -334,7 +334,8 @@ public class OAuthClientAdminService {
                 client.getBackchannelLogoutUri(),
                 client.isConsentRequired(),
                 client.getJwksUri(),
-                jwksMap(client.getJwks()));
+                jwksMap(client.getJwks()),
+                client.isDynamicallyRegistered());
     }
 
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();

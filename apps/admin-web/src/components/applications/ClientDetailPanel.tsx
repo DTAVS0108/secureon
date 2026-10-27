@@ -99,7 +99,15 @@ export function ClientDetailPanel({
               </div>
             </Field>
             <Field label="Application" value={applicationName} />
-            <Field label="Client type" value={<Badge tone="indigo">{TYPE_LABEL[client.type]}</Badge>} />
+            <Field
+              label="Client type"
+              value={
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge tone="indigo">{TYPE_LABEL[client.type]}</Badge>
+                  {client.dynamicallyRegistered && <Badge tone="neutral">Registered by the app itself</Badge>}
+                </span>
+              }
+            />
             <Field
               label="Client authentication"
               value={

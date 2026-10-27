@@ -78,6 +78,19 @@ public class OAuthClient {
     @Column(name = "jwks", columnDefinition = "jsonb")
     private String jwks;
 
+    /** Registered by the client itself (RFC 7591), not by an administrator. */
+    @Column(name = "dynamically_registered", nullable = false)
+    private boolean dynamicallyRegistered;
+
+    /** RFC 7592: SHA-256 of the client's current registration access token (null: not managed that way). */
+    @Column(name = "registration_token_hash")
+    private String registrationTokenHash;
+
+    /** The metadata the client registered with (RFC 7591), returned when it reads its registration. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "registration_metadata", columnDefinition = "jsonb")
+    private String registrationMetadata;
+
     @Column(name = "require_pkce", nullable = false)
     private boolean requirePkce = true;
 

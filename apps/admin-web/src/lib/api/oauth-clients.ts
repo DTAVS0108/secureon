@@ -29,6 +29,7 @@ type OAuthClientDto = {
   consentRequired?: boolean;
   jwksUri?: string | null;
   jwks?: Record<string, unknown> | null;
+  dynamicallyRegistered?: boolean;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;
@@ -58,6 +59,7 @@ function mapClient(dto: OAuthClientDto): OAuthClient {
     consentRequired: dto.consentRequired ?? false,
     jwksUri: dto.jwksUri ?? null,
     jwks: dto.jwks ?? null,
+    dynamicallyRegistered: dto.dynamicallyRegistered ?? false,
     confidential: dto.confidential ?? (type === "web" || type === "m2m"),
     pkceRequired: dto.pkceRequired ?? type !== "m2m",
     tokenEndpointAuthMethod:

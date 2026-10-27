@@ -39,6 +39,27 @@ final class DiscoveryMetadata {
         claims.remove("tls_client_certificate_bound_access_tokens");
     }
 
+    /**
+     * registration_endpoint, when this issuer takes registrations: a tenant issuer when one of the tenant's
+     * applications does, the shared issuer when any application does (with an initial access token).
+     */
+    static void applyRegistration(Map<String, Object> claims, com.secureone.auth.oauth.registration.ClientRegistrationService registrations) {
+        var context = org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContextHolder.getContext();
+        if (registrations == null || context == null) {
+            return;
+        }
+        java.util.UUID tenant = null;
+        if (org.springframework.web.context.request.RequestContextHolder.getRequestAttributes() instanceof
+                org.springframework.web.context.request.ServletRequestAttributes attributes
+                && attributes.getRequest().getAttribute(com.secureone.auth.tenant.TenantIssuers.ATTRIBUTE)
+                        instanceof com.secureone.auth.tenant.TenantIssuers.Target target) {
+            tenant = target.tenantId();
+        }
+        if (registrations.anyEnabled(tenant)) {
+            claims.put("registration_endpoint", context.getIssuer() + "/oauth2/register");
+        }
+    }
+
     /** OpenID Provider metadata: the same, plus the claims tokens and userinfo can carry. */
     static void applyOidc(Map<String, Object> claims) {
         apply(claims);

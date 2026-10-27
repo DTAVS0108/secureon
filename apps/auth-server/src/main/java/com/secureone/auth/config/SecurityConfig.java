@@ -104,7 +104,8 @@ public class SecurityConfig {
             SamlLogoutService samlLogout,
             SecureOneEnvironmentProperties environment,
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
-            ApplicationOAuthClientResolver applications)
+            ApplicationOAuthClientResolver applications,
+            ObjectProvider<com.secureone.auth.oauth.registration.ClientRegistrationService> clientRegistrations)
             throws Exception {
         // Client secrets are hashed by SecureOne (bcrypt; two during a rotation's overlap) and the client store is
         // read-only: the authorization server must not try to re-hash and save them after a successful check.
@@ -195,7 +196,10 @@ public class SecurityConfig {
                                                 : provider)))
                         // RFC 8414 metadata says what clients can really use (see DiscoveryMetadata).
                         .authorizationServerMetadataEndpoint(metadata -> metadata
-                                .authorizationServerMetadataCustomizer(m -> m.claims(DiscoveryMetadata::apply)))
+                                .authorizationServerMetadataCustomizer(m -> m.claims(c -> {
+                                    DiscoveryMetadata.apply(c);
+                                    DiscoveryMetadata.applyRegistration(c, clientRegistrations.getIfAvailable());
+                                })))
                         .authorizationEndpoint(endpoint -> endpoint
                                 // Third-party clients (consent required): the user approves the access first.
                                 .consentPage(com.secureone.auth.oauth.ConsentPageController.PATH)
@@ -222,7 +226,10 @@ public class SecurityConfig {
                                 .providerConfigurationEndpoint(config -> config.providerConfigurationCustomizer(c -> c
                                         .claim("backchannel_logout_supported", true)
                                         .claim("backchannel_logout_session_supported", true)
-                                        .claims(DiscoveryMetadata::applyOidc)))))
+                                        .claims(c2 -> {
+                                            DiscoveryMetadata.applyOidc(c2);
+                                            DiscoveryMetadata.applyRegistration(c2, clientRegistrations.getIfAvailable());
+                                        })))))
                 .addFilterBefore(tokenExchangeFilter, UsernamePasswordAuthenticationFilter.class)
                 // A request to a tenant issuer (/t/<slug>/..., custom domain) is served with that issuer.
                 .addFilterBefore(new com.secureone.auth.config.oauth.TenantIssuerContextFilter(),
@@ -415,6 +422,10 @@ public class SecurityConfig {
                                 "/api/v1/domains/check",
                                 // SAML identity provider: the controller checks the browser session itself.
                                 "/saml2/idp/**",
+                                // Dynamic client registration: the initial / registration access token is checked there.
+                                "/oauth2/register",
+                                "/oauth2/register/**",
+                                "/connect/register",
                                 "/api/v1/auth/passkey/**",
                                 "/scim/v2/**",
                                 "/api/v1/applications/**",
@@ -443,6 +454,9 @@ public class SecurityConfig {
                         "/api/v1/applications/**",
                         // SAML HTTP-POST binding: service providers post AuthnRequests and LogoutRequests here.
                         "/saml2/idp/**",
+                        "/oauth2/register",
+                        "/oauth2/register/**",
+                        "/connect/register",
                         "/login"))
                 .httpBasic(Customizer.withDefaults())
                 .addFilterBefore(adminCredentialAuthenticationFilter, BasicAuthenticationFilter.class)

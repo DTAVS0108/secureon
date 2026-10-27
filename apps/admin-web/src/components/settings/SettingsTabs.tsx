@@ -21,6 +21,7 @@ import { WebhooksPanel } from "@/components/tenants/WebhooksPanel";
 import { SignupPolicyCard } from "@/components/settings/SignupPolicyCard";
 import { ApplicationApisCard } from "@/components/settings/ApplicationApisCard";
 import { SamlAppsCard } from "@/components/settings/SamlAppsCard";
+import { ClientRegistrationCard } from "@/components/settings/ClientRegistrationCard";
 import { SigningKeysCard } from "@/components/settings/SigningKeysCard";
 import { TokenPolicySettings } from "@/components/settings/TokenPolicySettings";
 import { VerificationSettingsPanel } from "@/components/settings/VerificationSettingsPanel";
@@ -440,6 +441,7 @@ export function SettingsTabs({
           <TokenClaimsCard applicationId={applicationId} />
           <ApplicationApisCard applicationId={applicationId} />
           <SamlAppsCard applicationId={applicationId} />
+          <ClientRegistrationCard applicationId={applicationId} />
           <WebhooksPanel applicationId={applicationId} />
         </>
       )}

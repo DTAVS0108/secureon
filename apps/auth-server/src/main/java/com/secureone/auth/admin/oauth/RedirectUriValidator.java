@@ -13,7 +13,7 @@ import java.util.Set;
  * no fragment, no wildcards; https with a host (plain http only on the loopback interface, RFC 8252 7.3), or a
  * reverse-domain private-use scheme for native apps (for example {@code com.example.app:/callback}).
  */
-final class RedirectUriValidator {
+public final class RedirectUriValidator {
 
     private static final Set<String> FORBIDDEN_SCHEMES =
             Set.of("javascript", "data", "vbscript", "file", "about", "blob", "filesystem");
@@ -59,7 +59,7 @@ final class RedirectUriValidator {
         return new ArrayList<>(out);
     }
 
-    static String problem(String uri) {
+    public static String problem(String uri) {
         if (uri.contains("*")) {
             return "wildcards are not supported; register each URI exactly.";
         }

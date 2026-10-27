@@ -44,7 +44,9 @@ public final class OAuthClientAdminDtos {
             /** private_key_jwt: the client's JWKS URL; null when not set. */
             String jwksUri,
             /** private_key_jwt: the client's public keys; null when not set. */
-            java.util.Map<String, Object> jwks) {}
+            java.util.Map<String, Object> jwks,
+            /** Registered by the app itself (dynamic client registration), not by an administrator. */
+            boolean dynamicallyRegistered) {}
 
     public record OAuthClientCreateRequest(
             UUID applicationId,

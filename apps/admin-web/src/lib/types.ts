@@ -63,6 +63,8 @@ export type OAuthClient = {
   jwksUri?: string | null;
   /** private_key_jwt: the client's public keys (JWK set). */
   jwks?: Record<string, unknown> | null;
+  /** Registered by the app itself (dynamic client registration). */
+  dynamicallyRegistered?: boolean;
   confidential: boolean;
   pkceRequired: boolean;
   tokenEndpointAuthMethod: string;

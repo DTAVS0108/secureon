@@ -425,6 +425,18 @@
 | `expiresInSeconds` | integer (int32) | no |  |
 | `token` | string | no |  |
 
+## InitialToken
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `createdAt` | string (date-time) | no |  |
+| `expiresAt` | string (date-time) | no |  |
+| `id` | string (uuid) | no |  |
+| `label` | string | no |  |
+| `maxUses` | integer (int32) | no |  |
+| `revokedAt` | string (date-time) | no |  |
+| `uses` | integer (int32) | no |  |
+
 ## LoginEventResponse
 
 | Field | Type | Required | Description |
@@ -507,6 +519,7 @@
 | `confidential` | boolean | no |  |
 | `consentRequired` | boolean | no |  |
 | `createdAt` | string (date-time) | no |  |
+| `dynamicallyRegistered` | boolean | no |  |
 | `grantTypes` | string[] | no |  |
 | `id` | string (uuid) | no |  |
 | `jwks` | object | no |  |

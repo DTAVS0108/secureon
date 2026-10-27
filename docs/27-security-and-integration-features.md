@@ -131,6 +131,15 @@ A key set with `SECUREONE_JWK_PRIVATE_KEY_PEM` is rotated in the environment ins
 - Removing an API: new tokens stop naming it; tokens already issued keep it until they expire.
 - API: `/api/admin/v1/applications/{id}/settings/apis` (audited as `api.created`, `api.updated`, `api.deleted`).
 
+## Client registration (application)
+
+**Settings → Integration → Client registration**: apps register themselves as OAuth clients of the application (RFC 7591 at `/oauth2/register`, OIDC Dynamic Client Registration 1.0 at `/connect/register`), for partner tools, AI assistants (MCP clients) or CLIs. Discovery lists `registration_endpoint` when an application takes registrations.
+- **Who may register**: nobody (the default); apps with an **initial access token** (`Authorization: Bearer …`) created here with a number of registrations and an expiry, shown once; or **anyone** (open, 10 registrations a minute per address, one application per tenant, on the tenant's own issuer `<issuer>/t/<slug>/oauth2/register` since it names the tenant).
+- **Policies**: allowed scopes (a client asking for others is refused; none asked: all allowed ones), allowed grant types (authorization code, refresh tokens, client credentials; never client credentials when open), trusted hosts for redirect URIs (`*.example.com`; empty: any https host), at most N registered clients, and removal of clients never used after N days (0: keep). Redirect URIs follow the same rules as for clients made in the console.
+- Registered clients always show the consent screen, get the stable user ID as `sub`, and can be public (PKCE), use a secret, or `private_key_jwt` (`jwks_uri` or `jwks`). The console marks them "Registered by the app itself".
+- **Self-management (RFC 7592)**: the response carries `registration_access_token` and `registration_client_uri`; with that token the app reads (`GET`), replaces (`PUT`) or deletes (`DELETE`) its registration. Each read or change returns a new token; the old one stops working.
+- Audited as `oauth_client.registered`, `oauth_client.registration_updated`, `oauth_client.registration_deleted` and `client_registration.*`; webhooks `client.registered` and `client.registration_removed`. API: `/api/admin/v1/applications/{id}/settings/client-registration` (and `/tokens`).
+
 ## SAML apps (application)
 
 **Settings → Integration → SAML apps**: applications that only speak SAML 2.0 sign users in through SecureOne as their identity provider. Each tenant has its IdP, entity ID `<base>/saml2/idp/<slug>`, with metadata at `…/metadata` (SSO and single logout over HTTP-Redirect and HTTP-POST, the signing certificate) and its own RSA key.

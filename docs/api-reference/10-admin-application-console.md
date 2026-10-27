@@ -138,6 +138,12 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/api/admin/v1/applications/{applicationId}/settings/saml-apps`](#1062-add-a-saml-app-name-entityid-acsurl-optional-slourl-nameidformat-attributes-spcertificate) — Add a SAML app (name, entityId, acsUrl; optional sloUrl, nameIdFormat, attributes, spCertificate)
   - [PUT `/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`](#1063-change-a-saml-app-fields-left-out-keep-their-values) — Change a SAML app (fields left out keep their values)
   - [DELETE `/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}`](#1064-remove-a-saml-app-it-can-no-longer-sign-users-in) — Remove a SAML app (it can no longer sign users in)
+- [10.7 Application client registration](#107-application-client-registration)
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/client-registration`](#1071-mode-off-token-open-policies-endpoints-and-the-number-of-registered-clients) — Mode (off, token, open), policies, endpoints and the number of registered clients
+  - [PUT `/api/admin/v1/applications/{applicationId}/settings/client-registration`](#1072-save-the-mode-and-policies) — Save the mode and policies
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens`](#1073-initial-access-tokens-values-are-shown-only-when-created) — Initial access tokens (values are shown only when created)
+  - [POST `/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens`](#1074-create-an-initial-access-token-label-maxuses-1-1000-expiresinhours-1-8760-the-value-is-shown-once) — Create an initial access token: label, maxUses (1-1000), expiresInHours (1-8760); the value is shown once
+  - [DELETE `/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens/{tokenId}`](#1075-revoke-an-initial-access-token-clients-it-registered-stay) — Revoke an initial access token (clients it registered stay)
 
 ## 10.1 Application scope
 
@@ -3297,5 +3303,131 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/saml-apps/{spId}" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+## 10.7 Application client registration
+
+Dynamic client registration settings and initial access tokens
+
+### 10.7.1 Mode (off, token, open), policies, endpoints and the number of registered clients
+
+`GET /api/admin/v1/applications/{applicationId}/settings/client-registration`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/client-registration" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.7.2 Save the mode and policies
+
+`PUT /api/admin/v1/applications/{applicationId}/settings/client-registration`
+
+mode: off | token (an initial access token is needed) | open (no token; the tenant issuer's endpoint, one application per tenant). allowedScopes, allowedGrantTypes (authorization_code, refresh_token, client_credentials; not with open), trustedHosts (redirect URI hosts, *.example.com allowed; empty: any), maxClients, unusedDays (0: keep unused clients).
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/client-registration" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.7.3 Initial access tokens (values are shown only when created)
+
+`GET /api/admin/v1/applications/{applicationId}/settings/client-registration/tokens`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [InitialToken](13-data-models.md#initialtoken)[] |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.7.4 Create an initial access token: label, maxUses (1-1000), expiresInHours (1-8760); the value is shown once
+
+`POST /api/admin/v1/applications/{applicationId}/settings/client-registration/tokens`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `201` | Created | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 10.7.5 Revoke an initial access token (clients it registered stay)
+
+`DELETE /api/admin/v1/applications/{applicationId}/settings/client-registration/tokens/{tokenId}`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+| `tokenId` | path | string (uuid) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `204` | No Content | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/client-registration/tokens/{tokenId}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```

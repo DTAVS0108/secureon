@@ -31,9 +31,15 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
   - [POST `/saml2/idp/{slug}/slo`](#135-single-logout-an-sps-logoutrequest-http-redirect-or-http-post) — Single logout: an SP's LogoutRequest (HTTP-Redirect or HTTP-POST)
   - [GET `/saml2/idp/{slug}/sso`](#136-single-sign-on-an-sps-authnrequest-http-redirect-get-http-post-form-post) — Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
   - [POST `/saml2/idp/{slug}/sso`](#137-single-sign-on-an-sps-authnrequest-http-redirect-get-http-post-form-post) — Single sign-on: an SP's AuthnRequest (HTTP-Redirect: GET, HTTP-POST: form POST)
-- [1.4 Custom domains](#14-custom-domains)
-  - [GET `/.well-known/secureone-domain-verification`](#141-on-a-registered-domain-its-verification-token-shows-the-domain-points-at-secureone) — On a registered domain: its verification token (shows the domain points at SecureOne)
-  - [GET `/api/v1/domains/check`](#142-whether-a-domain-is-a-verified-custom-domain-200-or-not-404) — Whether a domain is a verified custom domain (200) or not (404)
+- [1.4 Client registration](#14-client-registration)
+  - [POST `/connect/register`](#141-register-a-client-rfc-7591) — Register a client (RFC 7591)
+  - [POST `/oauth2/register`](#142-register-a-client-rfc-7591) — Register a client (RFC 7591)
+  - [GET `/oauth2/register/{clientId}`](#143-read-a-registration-rfc-7592-the-registration-access-token-is-replaced) — Read a registration (RFC 7592; the registration access token is replaced)
+  - [PUT `/oauth2/register/{clientId}`](#144-replace-a-registrations-metadata-rfc-7592-the-registration-access-token-is-replaced) — Replace a registration's metadata (RFC 7592; the registration access token is replaced)
+  - [DELETE `/oauth2/register/{clientId}`](#145-delete-a-registration-rfc-7592-the-client-stops-working) — Delete a registration (RFC 7592): the client stops working
+- [1.5 Custom domains](#15-custom-domains)
+  - [GET `/.well-known/secureone-domain-verification`](#151-on-a-registered-domain-its-verification-token-shows-the-domain-points-at-secureone) — On a registered domain: its verification token (shows the domain points at SecureOne)
+  - [GET `/api/v1/domains/check`](#152-whether-a-domain-is-a-verified-custom-domain-200-or-not-404) — Whether a domain is a verified custom domain (200) or not (404)
 
 ## 1.1 OAuth 2.1 / OIDC
 
@@ -496,11 +502,123 @@ The user signs in if needed; the signed Response is POSTed to the SP's registere
 curl -s -X POST "$SECUREONE_URL/saml2/idp/{slug}/sso"
 ```
 
-## 1.4 Custom domains
+## 1.4 Client registration
+
+Apps register themselves as OAuth clients (RFC 7591, RFC 7592)
+
+### 1.4.1 Register a client (RFC 7591)
+
+`POST /connect/register`
+
+Authorization: Bearer <initial access token>, unless the organization takes open registrations (then on its own issuer only). The application's policies decide what may be asked for; the response has client_id, client_secret (confidential clients), registration_access_token and registration_client_uri.
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/connect/register"
+```
+
+### 1.4.2 Register a client (RFC 7591)
+
+`POST /oauth2/register`
+
+Authorization: Bearer <initial access token>, unless the organization takes open registrations (then on its own issuer only). The application's policies decide what may be asked for; the response has client_id, client_secret (confidential clients), registration_access_token and registration_client_uri.
+
+**Authentication:** None (public)
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/oauth2/register"
+```
+
+### 1.4.3 Read a registration (RFC 7592; the registration access token is replaced)
+
+`GET /oauth2/register/{clientId}`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `clientId` | path | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/oauth2/register/{clientId}"
+```
+
+### 1.4.4 Replace a registration's metadata (RFC 7592; the registration access token is replaced)
+
+`PUT /oauth2/register/{clientId}`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `clientId` | path | string | yes |  |
+
+**Request body** (`application/json`): object
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/oauth2/register/{clientId}"
+```
+
+### 1.4.5 Delete a registration (RFC 7592): the client stops working
+
+`DELETE /oauth2/register/{clientId}`
+
+**Authentication:** None (public)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `clientId` | path | string | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | — |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/oauth2/register/{clientId}"
+```
+
+## 1.5 Custom domains
 
 Domain verification and the on-demand TLS check
 
-### 1.4.1 On a registered domain: its verification token (shows the domain points at SecureOne)
+### 1.5.1 On a registered domain: its verification token (shows the domain points at SecureOne)
 
 `GET /.well-known/secureone-domain-verification`
 
@@ -516,7 +634,7 @@ Domain verification and the on-demand TLS check
 curl -s "$SECUREONE_URL/.well-known/secureone-domain-verification"
 ```
 
-### 1.4.2 Whether a domain is a verified custom domain (200) or not (404)
+### 1.5.2 Whether a domain is a verified custom domain (200) or not (404)
 
 `GET /api/v1/domains/check`
 

@@ -15,7 +15,7 @@ Every SecureOne HTTP endpoint, section by section, each with a ready-to-run **cu
 <!-- sections:start -->
 | # | Section | Endpoints | What it covers |
 |---|---|---|---|
-| 1 | [OAuth 2.1 and OpenID Connect](01-oauth-oidc.md) | 20 | The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device flow and OAuth extensions. |
+| 1 | [OAuth 2.1 and OpenID Connect](01-oauth-oidc.md) | 25 | The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device flow and OAuth extensions. |
 | 2 | [Public endpoints and first-run setup](02-public-and-setup.md) | 5 | Server information, the sign-in method catalog, documentation discovery and the one-time setup of a new installation. |
 | 3 | [Application sign-in and sign-up (native UI)](03-application-sign-in.md) | 44 | For apps that draw their own sign-in screens instead of redirecting to the hosted page: application manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in. |
 | 4 | [Account self-service](04-account.md) | 55 | What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions, email change, connected apps and privacy (export, delete request). |
@@ -24,10 +24,10 @@ Every SecureOne HTTP endpoint, section by section, each with a ready-to-run **cu
 | 7 | [Admin API: tenants](07-admin-tenants.md) | 57 | Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, access requests and the tenant's SCIM token. |
 | 8 | [Admin API: users](08-admin-users.md) | 29 | User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, unlock and impersonation. |
 | 9 | [Admin API: applications, OAuth clients and change approvals](09-admin-applications-and-clients.md) | 21 | Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth client returns 202 with a change request; another admin approves it). |
-| 10 | [Admin API: application console](10-admin-application-console.md) | 122 | Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, permissions, groups, settings and logs. |
+| 10 | [Admin API: application console](10-admin-application-console.md) | 127 | Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, permissions, groups, settings and logs. |
 | 11 | [Admin API: security and governance](11-admin-security-and-governance.md) | 49 | Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log (search and CSV export), sessions and the console overview. |
 | 12 | [Admin API: platform settings and configuration as code](12-admin-platform-settings.md) | 41 | Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply). |
-| 13 | [Data models](13-data-models.md) | 133 | Every request and response type with its fields. |
+| 13 | [Data models](13-data-models.md) | 134 | Every request and response type with its fields. |
 <!-- sections:end -->
 
 ## How each endpoint is described

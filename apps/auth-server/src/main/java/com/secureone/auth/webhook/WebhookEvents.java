@@ -45,6 +45,8 @@ public final class WebhookEvents {
         c.put("access_request.created", "Someone asked for access");
         c.put("access_request.approved", "An access request was approved");
         c.put("access_request.denied", "An access request was denied");
+        c.put("client.registered", "An app registered itself as an OAuth client (dynamic client registration)");
+        c.put("client.registration_removed", "A self-registered client removed its registration, or was removed as never used");
         CATALOG = java.util.Collections.unmodifiableMap(c);
 
         Map<String, String> a = new LinkedHashMap<>();
@@ -90,6 +92,8 @@ public final class WebhookEvents {
         a.put("group.updated", "group.changed");
         a.put("group.deleted", "group.changed");
         a.put("account.deletion_requested", "account.deletion_requested");
+        a.put("oauth_client.registered", "client.registered");
+        a.put("oauth_client.registration_deleted", "client.registration_removed");
         FROM_AUDIT = java.util.Collections.unmodifiableMap(a);
     }
 
