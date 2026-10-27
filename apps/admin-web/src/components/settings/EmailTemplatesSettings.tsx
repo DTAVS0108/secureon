@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -79,6 +80,7 @@ export function EmailTemplatesSettings({
   const [saving, setSaving] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const dialog = useDialog();
   const [message, setMessage] = useState<string | null>(null);
   const [newTemplateKey, setNewTemplateKey] = useState("");
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -113,8 +115,11 @@ export function EmailTemplatesSettings({
     return null;
   }
 
-  function selectKey(key: string) {
-    if (dirty && !window.confirm("Discard unsaved changes for this template?")) {
+  async function selectKey(key: string) {
+    if (
+      dirty &&
+      !(await dialog.confirm({ title: "Discard unsaved changes?", message: "Your edits to this template are lost.", confirmLabel: "Discard" }))
+    ) {
       return;
     }
     setSelectedKey(key);
@@ -142,7 +147,13 @@ export function EmailTemplatesSettings({
   }
 
   async function resetToPlatformDefault() {
-    if (!window.confirm(`Reset "${selectedKey}" to the platform default? This cannot be undone.`)) {
+    if (
+      !(await dialog.confirm({
+        title: `Reset "${selectedKey}" to the platform default?`,
+        message: "This cannot be undone.",
+        confirmLabel: "Reset template",
+      }))
+    ) {
       return;
     }
     setResetting(true);

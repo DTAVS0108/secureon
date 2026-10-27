@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { Button } from "@/components/ui/Button";
 import { LocalTime } from "@/components/ui/LocalTime";
 import { ActionNotice } from "@/components/users/SecuritySection";
@@ -13,6 +14,7 @@ import { fetchUserSessions, signOutUserApi, type UserActiveSessions } from "@/li
  */
 export function UserSessionsCard({ userId, applicationId }: { userId: string; applicationId?: string }) {
   const [data, setData] = useState<UserActiveSessions | null>(null);
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
@@ -30,7 +32,14 @@ export function UserSessionsCard({ userId, applicationId }: { userId: string; ap
 
   async function signOut() {
     const where = applicationId ? "out of this application" : "out everywhere (every device and application)";
-    if (!window.confirm(`Sign this user ${where}? Their account stays active; they can sign in again.`)) return;
+    if (
+      !(await dialog.confirm({
+        title: `Sign this user ${where}?`,
+        message: "Their account stays active; they can sign in again.",
+        confirmLabel: "Sign out",
+      }))
+    )
+      return;
     setBusy(true);
     setNotice(null);
     try {

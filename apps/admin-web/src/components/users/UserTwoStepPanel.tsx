@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -45,6 +46,7 @@ const METHOD_LABEL: Record<TwoStepMethodId, string> = {
 export function UserTwoStepPanel({ userId, applicationId }: { userId: string; applicationId?: string }) {
   const { toast } = useToast();
   const [view, setView] = useState<TwoStepUserView | null>(null);
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
   const [days, setDays] = useState(7);
   const [exemptUntil, setExemptUntil] = useState("");
@@ -119,8 +121,15 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
               size="sm"
               disabled={busy}
               data-testid="reset-all-two-step"
-              onClick={() => {
-                if (!confirm(`Remove every option and backup code, and sign the user out everywhere?\n\n${everywhereNote}`)) return;
+              onClick={async () => {
+                if (
+                  !(await dialog.confirm({
+                    title: "Reset two-step verification?",
+                    message: `Every option and backup code is removed and the user is signed out everywhere. ${everywhereNote}`,
+                    confirmLabel: "Reset all",
+                  }))
+                )
+                  return;
                 void run(() => resetUserTwoStep(userId, null, applicationId), "Two-step verification reset");
               }}
             >
@@ -151,8 +160,15 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
                   variant="ghost"
                   size="sm"
                   disabled={busy}
-                  onClick={() => {
-                    if (!confirm(`Remove ${METHOD_LABEL[m.type]}? The user is signed out everywhere.\n\n${everywhereNote}`)) return;
+                  onClick={async () => {
+                    if (
+                      !(await dialog.confirm({
+                        title: `Remove ${METHOD_LABEL[m.type]}?`,
+                        message: `The user is signed out everywhere. ${everywhereNote}`,
+                        confirmLabel: "Remove",
+                      }))
+                    )
+                      return;
                     void run(() => resetUserTwoStep(userId, m.type, applicationId), `${METHOD_LABEL[m.type]} removed`);
                   }}
                 >

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -35,6 +36,7 @@ export function PolicySourceBar({
   const { toast } = useToast();
   const [sources, setSources] = useState<Partial<Record<SettingsExposureKey, PolicySource>> | null>(null);
   const [pending, setPending] = useState(false);
+  const dialog = useDialog();
   const keysId = exposureKeys.join(",");
 
   const load = useCallback(async () => {
@@ -65,9 +67,11 @@ export function PolicySourceBar({
 
   async function reset() {
     if (
-      !window.confirm(
-        `Reset ${label} to the platform settings? This application's own values are removed and platform changes apply here again.`,
-      )
+      !(await dialog.confirm({
+        title: `Reset ${label} to the platform settings?`,
+        message: "This application's own values are removed and platform changes apply here again.",
+        confirmLabel: "Reset",
+      }))
     ) {
       return;
     }

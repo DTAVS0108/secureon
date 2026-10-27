@@ -418,5 +418,65 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
 
-  window.SecureOneHosted = { translate: tr, language: function () { return lang; } };
+  /**
+   * Asks before something that cannot be undone (in place of window.confirm): a dialog in the page's branding.
+   * options: { title, message, confirmLabel, danger }. Resolves true when confirmed, false when cancelled.
+   */
+  function confirmDialog(options) {
+    return new Promise(function (resolve) {
+      var dialog = document.createElement("dialog");
+      dialog.setAttribute("role", "alertdialog");
+      dialog.setAttribute("aria-labelledby", "so-confirm-title");
+      dialog.style.cssText = "max-width:26rem;width:calc(100% - 2rem);padding:1.25rem 1.5rem;border:1px solid rgba(0,0,0,.12);" +
+        "border-radius:var(--so-radius,12px);background:var(--so-surface,#fff);color:var(--so-text,#171717);" +
+        "box-shadow:0 20px 50px rgba(0,0,0,.25);font:inherit";
+      var title = document.createElement("h2");
+      title.id = "so-confirm-title";
+      title.style.cssText = "font-size:1.05rem;margin:0 0 .5rem";
+      title.textContent = tr(options.title || "Are you sure?");
+      dialog.appendChild(title);
+      if (options.message) {
+        var message = document.createElement("p");
+        message.style.cssText = "margin:0 0 1rem;font-size:.9rem;opacity:.8";
+        message.textContent = tr(options.message);
+        dialog.appendChild(message);
+      }
+      var actions = document.createElement("div");
+      actions.style.cssText = "display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem";
+      var cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = tr("Cancel");
+      // Secondary look whatever the page's button style (hosted pages paint every button in the brand colour).
+      cancel.style.cssText = "background:transparent;color:inherit;border:1px solid rgba(127,127,127,.45)";
+      var ok = document.createElement("button");
+      ok.type = "button";
+      ok.textContent = tr(options.confirmLabel || "Confirm");
+      ok.style.cssText = options.danger === false
+        ? "background:var(--so-primary,#4f46e5);color:var(--so-button-text,#fff);border-color:transparent"
+        : "background:#dc2626;color:#fff;border-color:transparent";
+      actions.appendChild(cancel);
+      actions.appendChild(ok);
+      dialog.appendChild(actions);
+      function finish(result) {
+        if (dialog.open) dialog.close();
+        dialog.remove();
+        resolve(result);
+      }
+      cancel.addEventListener("click", function () { finish(false); });
+      ok.addEventListener("click", function () { finish(true); });
+      // Escape closes the dialog: that is a cancel.
+      dialog.addEventListener("cancel", function (e) { e.preventDefault(); finish(false); });
+      if (!document.getElementById("so-confirm-style")) {
+        var style = document.createElement("style");
+        style.id = "so-confirm-style";
+        style.textContent = "dialog[aria-labelledby=so-confirm-title]::backdrop{background:rgba(0,0,0,.4)}";
+        document.head.appendChild(style);
+      }
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      cancel.focus();
+    });
+  }
+
+  window.SecureOneHosted = { translate: tr, language: function () { return lang; }, confirm: confirmDialog };
 })();

@@ -500,9 +500,11 @@
               call("POST", base + "/methods/" + m.id + "/default").then(load);
             } }),
             el("button", { type: "button", class: "ts-link", "data-testid": "remove-" + m.type, text: "Remove", onclick: function () {
-              if (!confirm("Remove " + m.label + "?")) return;
-              sensitive(function () { return call("DELETE", base + "/methods/" + m.id + app); }).then(function (r) {
-                if (!r.ok) message(msg, errorText(r)); else load();
+              window.SecureOneHosted.confirm({ title: "Remove " + m.label + "?", message: "You can set it up again later.", confirmLabel: "Remove" }).then(function (ok) {
+                if (!ok) return;
+                sensitive(function () { return call("DELETE", base + "/methods/" + m.id + app); }).then(function (r) {
+                  if (!r.ok) message(msg, errorText(r)); else load();
+                });
               });
             } }),
           ]),
@@ -560,8 +562,10 @@
       if (st.mode !== "required" && (st.methods || []).length) {
         container.appendChild(el("h3", { text: "Turn off" }));
         container.appendChild(el("button", { type: "button", "data-testid": "turn-off", text: "Turn off two-step verification", onclick: function () {
-          if (!confirm("Turn off two-step verification? Your options and backup codes are removed.")) return;
-          sensitive(function () { return call("POST", base + "/off" + app); }).then(function (r) { if (!r.ok) message(msg, errorText(r)); else load(); });
+          window.SecureOneHosted.confirm({ title: "Turn off two-step verification?", message: "Your options and backup codes are removed.", confirmLabel: "Turn off" }).then(function (ok) {
+            if (!ok) return;
+            sensitive(function () { return call("POST", base + "/off" + app); }).then(function (r) { if (!r.ok) message(msg, errorText(r)); else load(); });
+          });
         } }));
       }
 

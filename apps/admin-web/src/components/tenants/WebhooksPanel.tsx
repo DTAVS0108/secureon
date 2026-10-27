@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +36,7 @@ export function WebhooksPanel({ tenantId, applicationId }: { tenantId?: string; 
   );
   const { toast } = useToast();
   const [rows, setRows] = useState<WebhookEndpoint[]>([]);
+  const dialog = useDialog();
   const [catalog, setCatalog] = useState<WebhookEventInfo[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [url, setUrl] = useState("");
@@ -119,16 +121,17 @@ export function WebhooksPanel({ tenantId, applicationId }: { tenantId?: string; 
   }
 
   async function handleRotate(id: string) {
-    const hours = window.prompt(
-      "New signing secret. For how many hours should the old secret keep signing too, so your receiver can switch over? (0 to 168)",
-      "24",
-    );
+    const hours = await dialog.prompt({
+      title: "Rotate the signing secret?",
+      message: "A new secret is shown once. The old one can keep signing too while your receiver switches over.",
+      label: "Hours the old secret keeps signing (0 to 168)",
+      defaultValue: "24",
+      inputType: "number",
+      confirmLabel: "Rotate secret",
+      validate: (v) => (/^\d+$/.test(v.trim()) && Number(v) <= 168 ? null : "Enter a whole number of hours from 0 to 168."),
+    });
     if (hours === null) return;
     const keep = Number(hours);
-    if (!Number.isInteger(keep) || keep < 0 || keep > 168) {
-      toast("Enter a whole number of hours from 0 to 168.", "error");
-      return;
-    }
     try {
       const rotated = await rotateWebhookSecret(scope, id, keep);
       setNewSecret(rotated.secret);
@@ -250,8 +253,15 @@ export function WebhooksPanel({ tenantId, applicationId }: { tenantId?: string; 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        if (!window.confirm(`Delete the webhook to ${row.url}? It stops receiving events.`)) return;
+                      onClick={async () => {
+                        if (
+                          !(await dialog.confirm({
+                            title: "Delete this webhook?",
+                            message: `${row.url} stops receiving events.`,
+                            confirmLabel: "Delete webhook",
+                          }))
+                        )
+                          return;
                         void deleteWebhook(scope, row.id)
                           .then(reload)
                           .catch((e) => toast(e instanceof Error ? e.message : "Delete failed", "error"));

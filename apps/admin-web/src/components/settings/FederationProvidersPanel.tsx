@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppFlags } from "@/hooks/useAppFlags";
+import { useDialog } from "@/components/ui/Dialogs";
 import { APP_FLAG } from "@/lib/app-feature-flags";
 import { useCallback, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
@@ -79,6 +80,7 @@ export function FederationProvidersPanel({
   const canAdd = !applicationId || flags.on(APP_FLAG.federationAddProvider);
   const { toast } = useToast();
   const [providers, setProviders] = useState<FederationProvider[]>([]);
+  const dialog = useDialog();
   const [loaded, setLoaded] = useState(false);
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(tenantId ?? null);
   const [creating, setCreating] = useState(false);
@@ -154,7 +156,14 @@ export function FederationProvidersPanel({
   }
 
   async function removeProvider(provider: FederationProvider) {
-    if (!confirm(`Remove federation provider "${provider.alias}"?`)) return;
+    if (
+      !(await dialog.confirm({
+        title: `Remove the "${provider.alias}" sign-in provider?`,
+        message: "Users can no longer sign in with it.",
+        confirmLabel: "Remove provider",
+      }))
+    )
+      return;
     try {
       if (applicationId) {
         await deleteApplicationFederationProvider(applicationId, provider.id);

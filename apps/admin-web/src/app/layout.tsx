@@ -10,6 +10,7 @@ import { loadAdminContextSafe } from "@/lib/api/app-workspace";
 import { fetchAdminContext, type AdminContext } from "@/lib/api/context";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
+import { DialogProvider } from "@/components/ui/Dialogs";
 import { getServerThemeBootstrap } from "@/lib/theme/server";
 import { serverPublicConfig } from "@/lib/config";
 import { RuntimeConfigProvider } from "@/components/RuntimeConfigProvider";
@@ -82,9 +83,11 @@ export default async function RootLayout({
         {/* Runtime settings for browser code (lib/config.ts): read per request, never baked into the build. */}
         <RuntimeConfigProvider config={serverPublicConfig()}>
         <ToastProvider>
-          <ConsoleProviders adminContext={ctx}>
-            <ThemeProvider platformSettingsAccess={ctx.platformSuperAdmin}>{children}</ThemeProvider>
-          </ConsoleProviders>
+          <DialogProvider>
+            <ConsoleProviders adminContext={ctx}>
+              <ThemeProvider platformSettingsAccess={ctx.platformSuperAdmin}>{children}</ThemeProvider>
+            </ConsoleProviders>
+          </DialogProvider>
         </ToastProvider>
         </RuntimeConfigProvider>
       </body>

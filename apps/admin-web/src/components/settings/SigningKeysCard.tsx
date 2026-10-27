@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -23,6 +24,7 @@ const PATH = "/api/admin/v1/settings/signing-keys";
 export function SigningKeysCard() {
   const { toast } = useToast();
   const [keys, setKeys] = useState<SigningKeys | null>(null);
+  const dialog = useDialog();
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -37,8 +39,8 @@ export function SigningKeysCard() {
     load();
   }, [load]);
 
-  async function run(action: "rotate" | "retire-previous", confirmText: string, done: string) {
-    if (!window.confirm(confirmText)) return;
+  async function run(action: "rotate" | "retire-previous", title: string, message: string, done: string) {
+    if (!(await dialog.confirm({ title, message, confirmLabel: action === "rotate" ? "Rotate key" : "Retire key" }))) return;
     setBusy(true);
     try {
       setKeys(await apiFetch<SigningKeys>(`${PATH}/${action}`, { method: "POST" }));
@@ -95,7 +97,8 @@ export function SigningKeysCard() {
               onClick={() =>
                 void run(
                   "rotate",
-                  "Rotate the signing key? New tokens are signed with the next key at once. Tokens already issued keep working until you retire the previous key.",
+                  "Rotate the signing key?",
+                  "New tokens are signed with the next key at once. Tokens already issued keep working until you retire the previous key.",
                   "Signing key rotated",
                 )
               }
@@ -109,7 +112,8 @@ export function SigningKeysCard() {
                 onClick={() =>
                   void run(
                     "retire-previous",
-                    "Retire the previous key? Tokens it signed stop working. Do this once they have expired (after the longest token lifetime).",
+                    "Retire the previous key?",
+                    "Tokens it signed stop working. Do this once they have expired (after the longest token lifetime).",
                     "Previous key retired",
                   )
                 }

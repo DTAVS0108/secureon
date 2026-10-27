@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,6 +41,7 @@ const parseLines = (text: string) =>
 export function AttackProtectionSettings() {
   const { toast } = useToast();
   const [config, setConfig] = useState<AttackProtection | null>(null);
+  const dialog = useDialog();
   const [secret, setSecret] = useState("");
   const [hostnames, setHostnames] = useState("");
   const [blocked, setBlocked] = useState("");
@@ -73,9 +75,11 @@ export function AttackProtectionSettings() {
     const allowed = parseLines(consoleAllowed);
     if (
       allowed.length > 0 &&
-      !window.confirm(
-        "Only the listed addresses will reach the admin console. Make sure your own address is on the list, or you will lock yourself out. Save?",
-      )
+      !(await dialog.confirm({
+        title: "Limit the admin console to these addresses?",
+        message: "Only the listed addresses will reach the admin console. Make sure your own address is on the list, or you will lock yourself out.",
+        confirmLabel: "Save",
+      }))
     ) {
       return;
     }

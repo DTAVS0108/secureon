@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { LocalTime } from "@/components/ui/LocalTime";
@@ -108,6 +109,7 @@ export function UserAttributesCard({ userId, applicationId }: { userId: string; 
 /** The Google, SAML… accounts linked to this user; an administrator can unlink them. */
 export function UserIdentitiesCard({ userId, applicationId }: { userId: string; applicationId?: string }) {
   const [rows, setRows] = useState<LinkedIdentity[] | null>(null);
+  const dialog = useDialog();
   const [notice, setNotice] = useState<Notice>(null);
 
   const load = useCallback(async () => {
@@ -124,7 +126,14 @@ export function UserIdentitiesCard({ userId, applicationId }: { userId: string; 
   }, [load]);
 
   async function unlink(row: LinkedIdentity) {
-    if (!window.confirm(`Unlink ${row.provider} (${row.email ?? "no email"})? The user can no longer sign in with it.`)) return;
+    if (
+      !(await dialog.confirm({
+        title: `Unlink ${row.provider}?`,
+        message: `${row.email ?? "No email"}: the user can no longer sign in with it.`,
+        confirmLabel: "Unlink",
+      }))
+    )
+      return;
     try {
       await unlinkUserIdentity(userId, row.id, applicationId);
       setNotice({ text: `${row.provider} unlinked.`, tone: "success" });

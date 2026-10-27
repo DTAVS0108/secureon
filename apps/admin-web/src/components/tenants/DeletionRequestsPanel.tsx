@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -23,6 +24,7 @@ type DeletionRequest = {
 export function DeletionRequestsPanel({ tenantId }: { tenantId: string }) {
   const { toast } = useToast();
   const [rows, setRows] = useState<DeletionRequest[]>([]);
+  const dialog = useDialog();
   const [busy, setBusy] = useState<string | null>(null);
   const base = `/api/admin/v1/tenants/${tenantId}/deletion-requests`;
 
@@ -41,7 +43,11 @@ export function DeletionRequestsPanel({ tenantId }: { tenantId: string }) {
   async function act(userId: string, action: "complete" | "cancel", email: string) {
     if (
       action === "complete" &&
-      !window.confirm(`Delete ${email} now? Their account, app access, roles and sessions are removed for good.`)
+      !(await dialog.confirm({
+        title: `Delete ${email} now?`,
+        message: "Their account, app access, roles and sessions are removed for good.",
+        confirmLabel: "Delete account",
+      }))
     ) {
       return;
     }

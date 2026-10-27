@@ -182,7 +182,7 @@
           const btn = document.createElement("button");
           btn.textContent = "Remove";
           btn.onclick = async () => {
-            if (!confirm("Remove " + c.name + "?")) return;
+            if (!(await window.SecureOneHosted.confirm({ title: "Remove " + c.name + "?", message: "It loses access to your account until you allow it again.", confirmLabel: "Remove" }))) return;
             await api(`/api/v1/account/consents/${encodeURIComponent(c.id)}`, { method: "DELETE" });
             await loadConsents();
           };
@@ -209,7 +209,7 @@
           const btn = document.createElement("button");
           btn.textContent = "Unlink";
           btn.onclick = async () => {
-            if (!confirm("Unlink " + row.provider + "? You will no longer sign in with it.")) return;
+            if (!(await window.SecureOneHosted.confirm({ title: "Unlink " + row.provider + "?", message: "You will no longer sign in with it.", confirmLabel: "Unlink" }))) return;
             try {
               await api(`/api/v1/account/identities/${encodeURIComponent(row.id)}`, { method: "DELETE" });
               showBanner(row.provider + " unlinked.", true);

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useDialog } from "@/components/ui/Dialogs";
+import { useToast } from "@/components/ui/Toast";
 import { UserTwoStepPanel } from "@/components/users/UserTwoStepPanel";
 import { fetchUserTwoStep } from "@/lib/api/mfa-policy";
 import { useState, type ReactNode } from "react";
@@ -55,6 +57,8 @@ export function UserDetailPanel({
 }) {
   const [user, setUser] = useState<User>(userSummary);
   const [actionBusy, setActionBusy] = useState(false);
+  const dialog = useDialog();
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("overview");
   const [logins, setLogins] = useState<LoginEvent[]>([]);
   const [authMethods, setAuthMethods] = useState<AuthMethod[]>([]);
@@ -325,7 +329,13 @@ export function UserDetailPanel({
                   size="sm"
                   disabled={actionBusy}
                   onClick={async () => {
-                    const reason = window.prompt("Reason for impersonation (audited):");
+                    const reason = await dialog.prompt({
+                      title: "Sign in as this user?",
+                      message: "A new tab opens signed in as them. The reason is recorded in the audit log.",
+                      label: "Reason",
+                      confirmLabel: "Impersonate",
+                      validate: (v) => (v.trim() ? null : "Enter the reason."),
+                    });
                     if (!reason?.trim()) return;
                     setActionBusy(true);
                     try {
@@ -338,7 +348,7 @@ export function UserDetailPanel({
                         : `${publicAuthServerUrl()}${res.consumeUrl}`;
                       window.open(url, "_blank", "noopener,noreferrer");
                     } catch (e) {
-                      window.alert(e instanceof Error ? e.message : "Impersonation failed");
+                      toast(e instanceof Error ? e.message : "Impersonation failed", "error");
                     } finally {
                       setActionBusy(false);
                     }

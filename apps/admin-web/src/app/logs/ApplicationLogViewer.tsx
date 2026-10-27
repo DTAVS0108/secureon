@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useMemo, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -80,6 +81,7 @@ function shortId(value: string | null, size = 8) {
 
 export function ApplicationLogViewer({ applicationId, tenantId, initialSessionId, initialRequestId }: Props) {
   const [logs, setLogs] = useState<ApplicationLogEntry[]>([]);
+  const dialog = useDialog();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState(initialSessionId ?? "");
@@ -169,9 +171,11 @@ export function ApplicationLogViewer({ applicationId, tenantId, initialSessionId
         ? " Only logs matching the current session/request/level/search filters will be removed."
         : "";
       if (
-        !window.confirm(
-          `Delete application logs for ${label}?${filterNote} This cannot be undone.`,
-        )
+        !(await dialog.confirm({
+          title: `Delete application logs for ${label}?`,
+          message: `${filterNote.trim()} This cannot be undone.`.trim(),
+          confirmLabel: "Delete logs",
+        }))
       ) {
         return;
       }
@@ -197,7 +201,7 @@ export function ApplicationLogViewer({ applicationId, tenantId, initialSessionId
         setDeleting(false);
       }
     },
-    [applyDeleteFilters, buildDeleteParams, load],
+    [applyDeleteFilters, buildDeleteParams, dialog, load],
   );
 
   const levelTabs: LevelFilter[] = ["ALL", "ERROR", "WARN", "INFO", "DEBUG"];

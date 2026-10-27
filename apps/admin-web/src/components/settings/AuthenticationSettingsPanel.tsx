@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useCallback, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { ComingSoonBadge } from "@/components/ui/Badge";
@@ -280,6 +281,7 @@ function FeatureFlagsPanel({
 }) {
   const { toast } = useToast();
   const [tabTogglePending, setTabTogglePending] = useState(false);
+  const dialog = useDialog();
   // Turning Two Factor Authentication off waits for another admin; this is that request while it waits.
   const [offRequest, setOffRequest] = useState<ChangeRequest | null>(null);
 
@@ -327,7 +329,11 @@ function FeatureFlagsPanel({
     if (!applicationId) return;
     if (
       !enabled &&
-      !window.confirm("Use the platform's token policy? This application's own token lifetimes are removed.")
+      !(await dialog.confirm({
+        title: "Use the platform's token policy?",
+        message: "This application's own token lifetimes are removed.",
+        confirmLabel: "Use platform policy",
+      }))
     ) {
       return;
     }

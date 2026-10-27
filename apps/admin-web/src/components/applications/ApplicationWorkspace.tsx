@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useCallback, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
@@ -123,6 +124,7 @@ export function UsersPanel({
   const tenant = { name: tenantName } as Tenant;
   const { toast } = useToast();
   const [members, setMembers] = useState<User[]>([]);
+  const dialog = useDialog();
   const [tenantUsers, setTenantUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -152,9 +154,12 @@ export function UsersPanel({
 
   async function removeUser(userId: string) {
     if (
-      !window.confirm(
-        "Remove this user from the application? Their roles and groups here are removed, they are signed out of it, and sign-up does not add them back. Their account and other applications are not affected.",
-      )
+      !(await dialog.confirm({
+        title: "Remove this user from the application?",
+        message:
+          "Their roles and groups here are removed, they are signed out of it, and sign-up does not add them back. Their account and other applications are not affected.",
+        confirmLabel: "Remove user",
+      }))
     )
       return;
     try {

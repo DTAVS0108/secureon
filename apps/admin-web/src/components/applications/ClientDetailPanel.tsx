@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OAuthClientFormModal } from "@/components/forms/OAuthClientFormModal";
@@ -33,21 +34,23 @@ export function ClientDetailPanel({
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  const dialog = useDialog();
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [rotating, setRotating] = useState(false);
   const discoveryUrl = `${publicAuthServerUrl()}/.well-known/openid-configuration`;
 
   async function rotateSecret() {
-    const hours = window.prompt(
-      "New client secret. How many hours should the old secret keep working while you update the app? (0 to 168; 0 if it leaked)",
-      "24",
-    );
+    const hours = await dialog.prompt({
+      title: "Rotate the client secret?",
+      message: "A new secret is shown once. The old one can keep working while you update the app; enter 0 if it leaked.",
+      label: "Hours the old secret keeps working (0 to 168)",
+      defaultValue: "24",
+      inputType: "number",
+      confirmLabel: "Rotate secret",
+      validate: (v) => (/^\d+$/.test(v.trim()) && Number(v) <= 168 ? null : "Enter a whole number of hours from 0 to 168."),
+    });
     if (hours === null) return;
     const keep = Number(hours);
-    if (!Number.isInteger(keep) || keep < 0 || keep > 168) {
-      toast("Enter a whole number of hours from 0 to 168.", "error");
-      return;
-    }
     setRotating(true);
     try {
       const secret = await rotateOAuthClientSecretApi(client.id, keep);

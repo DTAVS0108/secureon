@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useDialog } from "@/components/ui/Dialogs";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -144,6 +145,7 @@ export function TenantRolesWorkspace({
   const [editPermissionIds, setEditPermissionIds] = useState<string[]>([]);
   const [editApplicationIds, setEditApplicationIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const dialog = useDialog();
   const [createRoleOpen, setCreateRoleOpen] = useState(false);
   const [permKey, setPermKey] = useState("");
   const [permDescription, setPermDescription] = useState("");
@@ -298,7 +300,7 @@ export function TenantRolesWorkspace({
 
   async function removeCustomRole() {
     if (selected.kind !== "custom" || !customDetail) return;
-    if (!window.confirm(`Delete role "${customDetail.name}"?`)) return;
+    if (!(await dialog.confirm({ title: `Delete the role "${customDetail.name}"?`, message: "Users lose what it gave them.", confirmLabel: "Delete role" }))) return;
     setSaving(true);
     try {
       await deleteTenantRoleAction(tenantId, selected.roleId);
@@ -331,7 +333,7 @@ export function TenantRolesWorkspace({
   }
 
   async function removePermission(permission: TenantPermission) {
-    if (!window.confirm(`Delete permission "${permission.key}"?`)) return;
+    if (!(await dialog.confirm({ title: `Delete the permission "${permission.key}"?`, message: "Roles that include it lose it.", confirmLabel: "Delete permission" }))) return;
     setSaving(true);
     try {
       await deleteTenantPermissionAction(tenantId, permission.id);
