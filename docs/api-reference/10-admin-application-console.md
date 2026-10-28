@@ -6,6 +6,8 @@
 
 Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, permissions, groups, settings and logs.
 
+In Swagger UI (`/docs`), choose the definition **Admin — applications and clients** (`/v3/api-docs/admin-applications`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents

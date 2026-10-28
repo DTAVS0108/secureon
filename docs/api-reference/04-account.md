@@ -6,6 +6,8 @@
 
 What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions, email change, connected apps and privacy (export, delete request).
 
+In Swagger UI (`/docs`), choose the definition **Account** (`/v3/api-docs/account`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -78,7 +80,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 
 ## 4.1 Account
 
-Two-step verification for the signed-in user
+Password reset, email verification, magic link (public)
 
 ### 4.1.1 Two-step status: options, backup codes, remembered devices, requirement and deadline
 
@@ -879,7 +881,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile" \
 
 ## 4.3 Account MFA
 
-Self-service TOTP enrollment (session-authenticated)
+Self-service passkey enrollment (session-authenticated)
 
 ### 4.3.1 List enrolled MFA factors
 

@@ -207,22 +207,22 @@ export const DOCS_CATEGORIES: DocsCategory[] = [
         description: "Shell setup, credentials, admin session token, errors",
       },
       {
-        slug: "api-oauth-oidc",
-        title: "1. OAuth 2.1 and OpenID Connect",
-        file: "api-reference/01-oauth-oidc.md",
-        description: "Discovery, authorize, token, revoke, introspect, UserInfo",
-      },
-      {
         slug: "api-public-and-setup",
-        title: "2. Public endpoints and setup",
-        file: "api-reference/02-public-and-setup.md",
-        description: "Server info, sign-in methods, first-run setup",
+        title: "1. Public endpoints and setup",
+        file: "api-reference/01-public-and-setup.md",
+        description: "Server info, first-run setup, documentation, domain checks",
       },
       {
         slug: "api-application-sign-in",
-        title: "3. Application sign-in and sign-up",
-        file: "api-reference/03-application-sign-in.md",
+        title: "2. Application sign-in and sign-up",
+        file: "api-reference/02-application-sign-in.md",
         description: "Native UI: manifest, password, OTP, MFA, passkeys, federation",
+      },
+      {
+        slug: "api-oauth-oidc",
+        title: "3. OAuth 2.1, OpenID Connect and SAML",
+        file: "api-reference/03-oauth-oidc.md",
+        description: "Discovery, authorize, token, revoke, introspect, UserInfo, consent, SAML",
       },
       {
         slug: "api-account",

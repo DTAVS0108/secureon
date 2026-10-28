@@ -6,6 +6,8 @@
 
 Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).
 
+In Swagger UI (`/docs`), choose the definition **Admin — platform settings** (`/v3/api-docs/admin-settings`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -43,7 +45,6 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [12.2 Attack protection](#122-attack-protection)
   - [GET `/api/admin/v1/settings/attack-protection`](#1221-get-attack-protection) — Get attack protection
   - [PUT `/api/admin/v1/settings/attack-protection`](#1222-update-attack-protection) — Update attack protection
-  - [GET `/api/v1/attack-protection`](#1223-get-the-captcha-settings-for-hosted-pages-public) — Get the CAPTCHA settings for hosted pages (public)
 - [12.3 Log streams](#123-log-streams)
   - [GET `/api/admin/v1/settings/log-streams`](#1231-list-log-streams) — List log streams
   - [PUT `/api/admin/v1/settings/log-streams`](#1232-update-log-streams) — Update log streams
@@ -644,22 +645,6 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/attack-protection" \
 ```bash
 curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/attack-protection" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
-```
-
-### 12.2.3 Get the CAPTCHA settings for hosted pages (public)
-
-`GET /api/v1/attack-protection`
-
-**Authentication:** None (public)
-
-**Responses**
-
-| Status | Meaning | Body |
-|---|---|---|
-| `200` | OK | object |
-
-```bash
-curl -s "$SECUREONE_URL/api/v1/attack-protection"
 ```
 
 ## 12.3 Log streams

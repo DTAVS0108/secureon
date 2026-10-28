@@ -1,4 +1,4 @@
-# 3. Application sign-in and sign-up (native UI)
+# 2. Application sign-in and sign-up (native UI)
 
 [API reference](README.md) › Application sign-in and sign-up (native UI)
 
@@ -6,65 +6,67 @@
 
 For apps that draw their own sign-in screens instead of redirecting to the hosted page: application manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in.
 
+In Swagger UI (`/docs`), choose the definition **Authentication** (`/v3/api-docs/auth`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
 
-- [3.1 Application public API](#31-application-public-api)
-  - [GET `/api/v1/applications/resolve`](#311-find-an-application-by-client-id-or-host) — Find an application by client ID or host
-  - [GET `/api/v1/applications/{applicationId}`](#312-get-application) — Get application
-  - [POST `/api/v1/applications/{applicationId}/account/email/resend-verification`](#313-resend-email-verification) — Resend email verification
-  - [POST `/api/v1/applications/{applicationId}/account/magic-link/request`](#314-request-magic-link) — Request magic link
-  - [POST `/api/v1/applications/{applicationId}/account/password/forgot`](#315-forgot-password) — Forgot password
-  - [POST `/api/v1/applications/{applicationId}/account/password/reset/otp`](#316-reset-password-with-a-one-time-code) — Reset password with a one-time code
-  - [POST `/api/v1/applications/{applicationId}/account/verify/otp/confirm`](#317-confirm-otp) — Confirm OTP
-  - [POST `/api/v1/applications/{applicationId}/auth/otp/request`](#318-request-otp) — Request OTP
-  - [POST `/api/v1/applications/{applicationId}/auth/otp/verify`](#319-verify-otp) — Verify OTP
-  - [POST `/api/v1/applications/{applicationId}/auth/session/login`](#3110-login-session) — Login session
-  - [GET `/api/v1/applications/{applicationId}/branding`](#3111-get-the-applications-branding-public) — Get the application's branding (public)
-  - [GET `/api/v1/applications/{applicationId}/signup`](#3112-get-sign-up-options) — Get sign-up options
-  - [POST `/api/v1/applications/{applicationId}/signup`](#3113-signup) — Signup
-- [3.2 Public auth](#32-public-auth)
-  - [GET `/api/v1/auth/me`](#321-current-browser-session) — Current browser session
-  - [GET `/api/v1/auth/methods`](#322-list-methods) — List methods
-  - [GET `/api/v1/auth/mfa/challenge/{mfaChallengeId}`](#323-describe-a-pending-second-step-or-setup-options-deadline-whether-it-can-be-skipped) — Describe a pending second step or setup (options, deadline, whether it can be skipped)
-  - [POST `/api/v1/auth/mfa/code/verify`](#324-complete-login-with-the-code-sent-by-text-message-or-email) — Complete login with the code sent by text message or email
-  - [POST `/api/v1/auth/mfa/recovery/verify`](#325-complete-login-with-one-time-recovery-code) — Complete login with one-time recovery code
-  - [POST `/api/v1/auth/mfa/send`](#326-send-a-code-by-text-message-or-email-to-one-of-the-users-options) — Send a code by text message or email to one of the user's options
-  - [POST `/api/v1/auth/mfa/setup/code/confirm`](#327-setup-during-sign-in-confirm-the-code-signs-in-returns-backup-codes) — Setup during sign-in: confirm the code; signs in, returns backup codes
-  - [POST `/api/v1/auth/mfa/setup/code/send`](#328-setup-during-sign-in-send-a-code-by-text-message-phone-or-to-the-account-email) — Setup during sign-in: send a code by text message (phone) or to the account email
-  - [POST `/api/v1/auth/mfa/setup/totp/confirm`](#329-setup-during-sign-in-confirm-the-authenticator-app-code-signs-in-returns-backup-codes) — Setup during sign-in: confirm the authenticator app code; signs in, returns backup codes
-  - [POST `/api/v1/auth/mfa/setup/totp/start`](#3210-setup-during-sign-in-start-an-authenticator-app-qr-code) — Setup during sign-in: start an authenticator app (QR code)
-  - [POST `/api/v1/auth/mfa/setup/webauthn/options`](#3211-setup-during-sign-in-passkey-or-security-key-registration-options) — Setup during sign-in: passkey or security key registration options
-  - [POST `/api/v1/auth/mfa/setup/webauthn/verify`](#3212-setup-during-sign-in-register-the-passkey-or-security-key-signs-in-returns-backup-codes) — Setup during sign-in: register the passkey or security key; signs in, returns backup codes
-  - [POST `/api/v1/auth/mfa/skip`](#3213-set-up-later-sign-in-without-a-second-step-while-reminders-or-the-grace-period-allow) — Set up later: sign in without a second step while reminders or the grace period allow
-  - [POST `/api/v1/auth/mfa/totp/verify`](#3214-complete-login-with-totp-code) — Complete login with TOTP code
-  - [POST `/api/v1/auth/mfa/webauthn/options`](#3215-passkey-or-security-key-as-the-second-step-assertion-options) — Passkey or security key as the second step: assertion options
-  - [POST `/api/v1/auth/mfa/webauthn/verify`](#3216-complete-login-with-a-passkey-or-security-key) — Complete login with a passkey or security key
-  - [POST `/api/v1/auth/passkey/options`](#3217-begin-passkey-sign-in) — Begin passkey sign-in
-  - [POST `/api/v1/auth/passkey/verify`](#3218-complete-passkey-sign-in) — Complete passkey sign-in
-  - [POST `/api/v1/auth/session/login`](#3219-session-login-native-app-ui) — Session login (native app UI)
-- [3.3 Federation](#33-federation)
-  - [GET `/api/v1/auth/federation/providers`](#331-list-enabled-federation-providers-for-a-tenantapplication) — List enabled federation providers for a tenant/application
-  - [POST `/api/v1/auth/federation/saml/acs/{providerId}`](#332-saml-assertion-consumer-service-http-post-binding-from-the-idp) — SAML assertion consumer service (HTTP-POST binding from the IdP)
-  - [GET `/api/v1/auth/federation/saml/logout`](#333-sign-out-for-a-saml-session-also-at-the-idp-single-logout) — Sign out; for a SAML session also at the IdP (single logout)
-  - [GET `/api/v1/auth/federation/saml/slo/{providerId}`](#334-saml-single-logout-the-idps-logoutrequest-or-logoutresponse-redirect-or-post-binding) — SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
-  - [POST `/api/v1/auth/federation/saml/slo/{providerId}`](#335-saml-single-logout-the-idps-logoutrequest-or-logoutresponse-redirect-or-post-binding) — SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
-  - [GET `/api/v1/auth/federation/saml/{alias}/metadata`](#336-saml-service-provider-metadata-for-a-configured-provider-give-this-to-the-idp) — SAML service-provider metadata for a configured provider (give this to the IdP)
-  - [GET `/api/v1/auth/federation/saml/{alias}/start`](#337-saml-login-same-as-aliasstart-for-a-saml-provider) — SAML login (same as /{alias}/start for a SAML provider)
-  - [GET `/api/v1/auth/federation/{alias}/callback`](#338-oauthoidc-callback-from-external-idp) — OAuth/OIDC callback from external IdP
-  - [GET `/api/v1/auth/federation/{alias}/start`](#339-start-federation-login-redirects-to-the-external-idp-oauthoidc-or-saml) — Start federation login (redirects to the external IdP: OAuth/OIDC or SAML)
-- [3.4 Device sign-in](#34-device-sign-in)
-  - [POST `/api/v1/auth/device/lookup`](#341-look-up-a-device-user-code) — Look up a device user code
-- [3.5 Impersonation](#35-impersonation)
-  - [GET `/api/v1/auth/impersonation/consume`](#351-consume-impersonation-token-and-establish-a-user-session) — Consume impersonation token and establish a user session
-  - [GET `/api/v1/auth/impersonation/status`](#352-list-status) — List status
+- [2.1 Application public API](#21-application-public-api)
+  - [GET `/api/v1/applications/resolve`](#211-find-an-application-by-client-id-or-host) — Find an application by client ID or host
+  - [GET `/api/v1/applications/{applicationId}`](#212-get-application) — Get application
+  - [POST `/api/v1/applications/{applicationId}/account/email/resend-verification`](#213-resend-email-verification) — Resend email verification
+  - [POST `/api/v1/applications/{applicationId}/account/magic-link/request`](#214-request-magic-link) — Request magic link
+  - [POST `/api/v1/applications/{applicationId}/account/password/forgot`](#215-forgot-password) — Forgot password
+  - [POST `/api/v1/applications/{applicationId}/account/password/reset/otp`](#216-reset-password-with-a-one-time-code) — Reset password with a one-time code
+  - [POST `/api/v1/applications/{applicationId}/account/verify/otp/confirm`](#217-confirm-otp) — Confirm OTP
+  - [POST `/api/v1/applications/{applicationId}/auth/otp/request`](#218-request-otp) — Request OTP
+  - [POST `/api/v1/applications/{applicationId}/auth/otp/verify`](#219-verify-otp) — Verify OTP
+  - [POST `/api/v1/applications/{applicationId}/auth/session/login`](#2110-login-session) — Login session
+  - [GET `/api/v1/applications/{applicationId}/branding`](#2111-get-the-applications-branding-public) — Get the application's branding (public)
+  - [GET `/api/v1/applications/{applicationId}/signup`](#2112-get-sign-up-options) — Get sign-up options
+  - [POST `/api/v1/applications/{applicationId}/signup`](#2113-signup) — Signup
+- [2.2 Public auth](#22-public-auth)
+  - [GET `/api/v1/auth/me`](#221-current-browser-session) — Current browser session
+  - [GET `/api/v1/auth/methods`](#222-list-methods) — List methods
+  - [GET `/api/v1/auth/mfa/challenge/{mfaChallengeId}`](#223-describe-a-pending-second-step-or-setup-options-deadline-whether-it-can-be-skipped) — Describe a pending second step or setup (options, deadline, whether it can be skipped)
+  - [POST `/api/v1/auth/mfa/code/verify`](#224-complete-login-with-the-code-sent-by-text-message-or-email) — Complete login with the code sent by text message or email
+  - [POST `/api/v1/auth/mfa/recovery/verify`](#225-complete-login-with-one-time-recovery-code) — Complete login with one-time recovery code
+  - [POST `/api/v1/auth/mfa/send`](#226-send-a-code-by-text-message-or-email-to-one-of-the-users-options) — Send a code by text message or email to one of the user's options
+  - [POST `/api/v1/auth/mfa/setup/code/confirm`](#227-setup-during-sign-in-confirm-the-code-signs-in-returns-backup-codes) — Setup during sign-in: confirm the code; signs in, returns backup codes
+  - [POST `/api/v1/auth/mfa/setup/code/send`](#228-setup-during-sign-in-send-a-code-by-text-message-phone-or-to-the-account-email) — Setup during sign-in: send a code by text message (phone) or to the account email
+  - [POST `/api/v1/auth/mfa/setup/totp/confirm`](#229-setup-during-sign-in-confirm-the-authenticator-app-code-signs-in-returns-backup-codes) — Setup during sign-in: confirm the authenticator app code; signs in, returns backup codes
+  - [POST `/api/v1/auth/mfa/setup/totp/start`](#2210-setup-during-sign-in-start-an-authenticator-app-qr-code) — Setup during sign-in: start an authenticator app (QR code)
+  - [POST `/api/v1/auth/mfa/setup/webauthn/options`](#2211-setup-during-sign-in-passkey-or-security-key-registration-options) — Setup during sign-in: passkey or security key registration options
+  - [POST `/api/v1/auth/mfa/setup/webauthn/verify`](#2212-setup-during-sign-in-register-the-passkey-or-security-key-signs-in-returns-backup-codes) — Setup during sign-in: register the passkey or security key; signs in, returns backup codes
+  - [POST `/api/v1/auth/mfa/skip`](#2213-set-up-later-sign-in-without-a-second-step-while-reminders-or-the-grace-period-allow) — Set up later: sign in without a second step while reminders or the grace period allow
+  - [POST `/api/v1/auth/mfa/totp/verify`](#2214-complete-login-with-totp-code) — Complete login with TOTP code
+  - [POST `/api/v1/auth/mfa/webauthn/options`](#2215-passkey-or-security-key-as-the-second-step-assertion-options) — Passkey or security key as the second step: assertion options
+  - [POST `/api/v1/auth/mfa/webauthn/verify`](#2216-complete-login-with-a-passkey-or-security-key) — Complete login with a passkey or security key
+  - [POST `/api/v1/auth/passkey/options`](#2217-begin-passkey-sign-in) — Begin passkey sign-in
+  - [POST `/api/v1/auth/passkey/verify`](#2218-complete-passkey-sign-in) — Complete passkey sign-in
+  - [POST `/api/v1/auth/session/login`](#2219-session-login-native-app-ui) — Session login (native app UI)
+- [2.3 Federation](#23-federation)
+  - [GET `/api/v1/auth/federation/providers`](#231-list-enabled-federation-providers-for-a-tenantapplication) — List enabled federation providers for a tenant/application
+  - [POST `/api/v1/auth/federation/saml/acs/{providerId}`](#232-saml-assertion-consumer-service-http-post-binding-from-the-idp) — SAML assertion consumer service (HTTP-POST binding from the IdP)
+  - [GET `/api/v1/auth/federation/saml/logout`](#233-sign-out-for-a-saml-session-also-at-the-idp-single-logout) — Sign out; for a SAML session also at the IdP (single logout)
+  - [GET `/api/v1/auth/federation/saml/slo/{providerId}`](#234-saml-single-logout-the-idps-logoutrequest-or-logoutresponse-redirect-or-post-binding) — SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
+  - [POST `/api/v1/auth/federation/saml/slo/{providerId}`](#235-saml-single-logout-the-idps-logoutrequest-or-logoutresponse-redirect-or-post-binding) — SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
+  - [GET `/api/v1/auth/federation/saml/{alias}/metadata`](#236-saml-service-provider-metadata-for-a-configured-provider-give-this-to-the-idp) — SAML service-provider metadata for a configured provider (give this to the IdP)
+  - [GET `/api/v1/auth/federation/saml/{alias}/start`](#237-saml-login-same-as-aliasstart-for-a-saml-provider) — SAML login (same as /{alias}/start for a SAML provider)
+  - [GET `/api/v1/auth/federation/{alias}/callback`](#238-oauthoidc-callback-from-external-idp) — OAuth/OIDC callback from external IdP
+  - [GET `/api/v1/auth/federation/{alias}/start`](#239-start-federation-login-redirects-to-the-external-idp-oauthoidc-or-saml) — Start federation login (redirects to the external IdP: OAuth/OIDC or SAML)
+- [2.4 Device sign-in](#24-device-sign-in)
+  - [POST `/api/v1/auth/device/lookup`](#241-look-up-a-device-user-code) — Look up a device user code
+- [2.5 Impersonation](#25-impersonation)
+  - [GET `/api/v1/auth/impersonation/consume`](#251-consume-impersonation-token-and-establish-a-user-session) — Consume impersonation token and establish a user session
+  - [GET `/api/v1/auth/impersonation/status`](#252-list-status) — List status
 
-## 3.1 Application public API
+## 2.1 Application public API
 
 Manifest and self-service sign-up for integrated apps
 
-### 3.1.1 Find an application by client ID or host
+### 2.1.1 Find an application by client ID or host
 
 `GET /api/v1/applications/resolve`
 
@@ -86,7 +88,7 @@ Manifest and self-service sign-up for integrated apps
 curl -s "$SECUREONE_URL/api/v1/applications/resolve?clientId={clientId}"
 ```
 
-### 3.1.2 Get application
+### 2.1.2 Get application
 
 `GET /api/v1/applications/{applicationId}`
 
@@ -108,7 +110,7 @@ curl -s "$SECUREONE_URL/api/v1/applications/resolve?clientId={clientId}"
 curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}"
 ```
 
-### 3.1.3 Resend email verification
+### 2.1.3 Resend email verification
 
 `POST /api/v1/applications/{applicationId}/account/email/resend-verification`
 
@@ -140,7 +142,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/account/emai
 }'
 ```
 
-### 3.1.4 Request magic link
+### 2.1.4 Request magic link
 
 `POST /api/v1/applications/{applicationId}/account/magic-link/request`
 
@@ -172,7 +174,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/account/magi
 }'
 ```
 
-### 3.1.5 Forgot password
+### 2.1.5 Forgot password
 
 `POST /api/v1/applications/{applicationId}/account/password/forgot`
 
@@ -210,7 +212,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/account/pass
 }'
 ```
 
-### 3.1.6 Reset password with a one-time code
+### 2.1.6 Reset password with a one-time code
 
 `POST /api/v1/applications/{applicationId}/account/password/reset/otp`
 
@@ -246,7 +248,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/account/pass
 }'
 ```
 
-### 3.1.7 Confirm OTP
+### 2.1.7 Confirm OTP
 
 `POST /api/v1/applications/{applicationId}/account/verify/otp/confirm`
 
@@ -282,7 +284,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/account/veri
 }'
 ```
 
-### 3.1.8 Request OTP
+### 2.1.8 Request OTP
 
 `POST /api/v1/applications/{applicationId}/auth/otp/request`
 
@@ -316,7 +318,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/otp/req
 }'
 ```
 
-### 3.1.9 Verify OTP
+### 2.1.9 Verify OTP
 
 `POST /api/v1/applications/{applicationId}/auth/otp/verify`
 
@@ -352,7 +354,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/otp/ver
 }'
 ```
 
-### 3.1.10 Login session
+### 2.1.10 Login session
 
 `POST /api/v1/applications/{applicationId}/auth/session/login`
 
@@ -390,7 +392,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/session
 }'
 ```
 
-### 3.1.11 Get the application's branding (public)
+### 2.1.11 Get the application's branding (public)
 
 `GET /api/v1/applications/{applicationId}/branding`
 
@@ -412,7 +414,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/session
 curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/branding"
 ```
 
-### 3.1.12 Get sign-up options
+### 2.1.12 Get sign-up options
 
 `GET /api/v1/applications/{applicationId}/signup`
 
@@ -434,7 +436,7 @@ curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/branding"
 curl -s "$SECUREONE_URL/api/v1/applications/{applicationId}/signup"
 ```
 
-### 3.1.13 Signup
+### 2.1.13 Signup
 
 `POST /api/v1/applications/{applicationId}/signup`
 
@@ -482,11 +484,11 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/signup" \
 }'
 ```
 
-## 3.2 Public auth
+## 2.2 Public auth
 
-Authentication method catalog for login UIs
+Authentication method catalog and session login for native UIs
 
-### 3.2.1 Current browser session
+### 2.2.1 Current browser session
 
 `GET /api/v1/auth/me`
 
@@ -505,7 +507,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/me" \
   -b cookies.txt
 ```
 
-### 3.2.2 List methods
+### 2.2.2 List methods
 
 `GET /api/v1/auth/methods`
 
@@ -527,7 +529,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/me" \
 curl -s "$SECUREONE_URL/api/v1/auth/methods"
 ```
 
-### 3.2.3 Describe a pending second step or setup (options, deadline, whether it can be skipped)
+### 2.2.3 Describe a pending second step or setup (options, deadline, whether it can be skipped)
 
 `GET /api/v1/auth/mfa/challenge/{mfaChallengeId}`
 
@@ -549,7 +551,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/methods"
 curl -s "$SECUREONE_URL/api/v1/auth/mfa/challenge/{mfaChallengeId}"
 ```
 
-### 3.2.4 Complete login with the code sent by text message or email
+### 2.2.4 Complete login with the code sent by text message or email
 
 `POST /api/v1/auth/mfa/code/verify`
 
@@ -579,7 +581,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/code/verify" \
 }'
 ```
 
-### 3.2.5 Complete login with one-time recovery code
+### 2.2.5 Complete login with one-time recovery code
 
 `POST /api/v1/auth/mfa/recovery/verify`
 
@@ -607,7 +609,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/recovery/verify" \
 }'
 ```
 
-### 3.2.6 Send a code by text message or email to one of the user's options
+### 2.2.6 Send a code by text message or email to one of the user's options
 
 `POST /api/v1/auth/mfa/send`
 
@@ -635,7 +637,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/send" \
 }'
 ```
 
-### 3.2.7 Setup during sign-in: confirm the code; signs in, returns backup codes
+### 2.2.7 Setup during sign-in: confirm the code; signs in, returns backup codes
 
 `POST /api/v1/auth/mfa/setup/code/confirm`
 
@@ -663,7 +665,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/code/confirm" \
 }'
 ```
 
-### 3.2.8 Setup during sign-in: send a code by text message (phone) or to the account email
+### 2.2.8 Setup during sign-in: send a code by text message (phone) or to the account email
 
 `POST /api/v1/auth/mfa/setup/code/send`
 
@@ -693,7 +695,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/code/send" \
 }'
 ```
 
-### 3.2.9 Setup during sign-in: confirm the authenticator app code; signs in, returns backup codes
+### 2.2.9 Setup during sign-in: confirm the authenticator app code; signs in, returns backup codes
 
 `POST /api/v1/auth/mfa/setup/totp/confirm`
 
@@ -721,7 +723,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/totp/confirm" \
 }'
 ```
 
-### 3.2.10 Setup during sign-in: start an authenticator app (QR code)
+### 2.2.10 Setup during sign-in: start an authenticator app (QR code)
 
 `POST /api/v1/auth/mfa/setup/totp/start`
 
@@ -747,7 +749,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/totp/start" \
 }'
 ```
 
-### 3.2.11 Setup during sign-in: passkey or security key registration options
+### 2.2.11 Setup during sign-in: passkey or security key registration options
 
 `POST /api/v1/auth/mfa/setup/webauthn/options`
 
@@ -775,7 +777,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/webauthn/options" \
 }'
 ```
 
-### 3.2.12 Setup during sign-in: register the passkey or security key; signs in, returns backup codes
+### 2.2.12 Setup during sign-in: register the passkey or security key; signs in, returns backup codes
 
 `POST /api/v1/auth/mfa/setup/webauthn/verify`
 
@@ -807,7 +809,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/setup/webauthn/verify" \
 }'
 ```
 
-### 3.2.13 Set up later: sign in without a second step while reminders or the grace period allow
+### 2.2.13 Set up later: sign in without a second step while reminders or the grace period allow
 
 `POST /api/v1/auth/mfa/skip`
 
@@ -835,7 +837,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/skip" \
 }'
 ```
 
-### 3.2.14 Complete login with TOTP code
+### 2.2.14 Complete login with TOTP code
 
 `POST /api/v1/auth/mfa/totp/verify`
 
@@ -865,7 +867,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/totp/verify" \
 }'
 ```
 
-### 3.2.15 Passkey or security key as the second step: assertion options
+### 2.2.15 Passkey or security key as the second step: assertion options
 
 `POST /api/v1/auth/mfa/webauthn/options`
 
@@ -891,7 +893,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/webauthn/options" \
 }'
 ```
 
-### 3.2.16 Complete login with a passkey or security key
+### 2.2.16 Complete login with a passkey or security key
 
 `POST /api/v1/auth/mfa/webauthn/verify`
 
@@ -923,7 +925,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/mfa/webauthn/verify" \
 }'
 ```
 
-### 3.2.17 Begin passkey sign-in
+### 2.2.17 Begin passkey sign-in
 
 `POST /api/v1/auth/passkey/options`
 
@@ -953,7 +955,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/passkey/options" \
 }'
 ```
 
-### 3.2.18 Complete passkey sign-in
+### 2.2.18 Complete passkey sign-in
 
 `POST /api/v1/auth/passkey/verify`
 
@@ -979,7 +981,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/passkey/verify" \
 }'
 ```
 
-### 3.2.19 Session login (native app UI)
+### 2.2.19 Session login (native app UI)
 
 `POST /api/v1/auth/session/login`
 
@@ -1013,11 +1015,11 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/session/login" \
 }'
 ```
 
-## 3.3 Federation
+## 2.3 Federation
 
 Social / OIDC sign-in
 
-### 3.3.1 List enabled federation providers for a tenant/application
+### 2.3.1 List enabled federation providers for a tenant/application
 
 `GET /api/v1/auth/federation/providers`
 
@@ -1040,7 +1042,7 @@ Social / OIDC sign-in
 curl -s "$SECUREONE_URL/api/v1/auth/federation/providers"
 ```
 
-### 3.3.2 SAML assertion consumer service (HTTP-POST binding from the IdP)
+### 2.3.2 SAML assertion consumer service (HTTP-POST binding from the IdP)
 
 `POST /api/v1/auth/federation/saml/acs/{providerId}`
 
@@ -1069,7 +1071,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/federation/saml/acs/{providerId}" \
   --data-urlencode "RelayState={RelayState}"
 ```
 
-### 3.3.3 Sign out; for a SAML session also at the IdP (single logout)
+### 2.3.3 Sign out; for a SAML session also at the IdP (single logout)
 
 `GET /api/v1/auth/federation/saml/logout`
 
@@ -1085,7 +1087,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/federation/saml/acs/{providerId}" \
 curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/logout"
 ```
 
-### 3.3.4 SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
+### 2.3.4 SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
 
 `GET /api/v1/auth/federation/saml/slo/{providerId}`
 
@@ -1107,7 +1109,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/logout"
 curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/slo/{providerId}"
 ```
 
-### 3.3.5 SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
+### 2.3.5 SAML single logout: the IdP's LogoutRequest or LogoutResponse (Redirect or POST binding)
 
 `POST /api/v1/auth/federation/saml/slo/{providerId}`
 
@@ -1129,7 +1131,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/slo/{providerId}"
 curl -s -X POST "$SECUREONE_URL/api/v1/auth/federation/saml/slo/{providerId}"
 ```
 
-### 3.3.6 SAML service-provider metadata for a configured provider (give this to the IdP)
+### 2.3.6 SAML service-provider metadata for a configured provider (give this to the IdP)
 
 `GET /api/v1/auth/federation/saml/{alias}/metadata`
 
@@ -1153,7 +1155,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/federation/saml/slo/{providerId}"
 curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/{alias}/metadata"
 ```
 
-### 3.3.7 SAML login (same as /{alias}/start for a SAML provider)
+### 2.3.7 SAML login (same as /{alias}/start for a SAML provider)
 
 `GET /api/v1/auth/federation/saml/{alias}/start`
 
@@ -1178,7 +1180,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/{alias}/metadata"
 curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/{alias}/start"
 ```
 
-### 3.3.8 OAuth/OIDC callback from external IdP
+### 2.3.8 OAuth/OIDC callback from external IdP
 
 `GET /api/v1/auth/federation/{alias}/callback`
 
@@ -1203,7 +1205,7 @@ curl -s "$SECUREONE_URL/api/v1/auth/federation/saml/{alias}/start"
 curl -s "$SECUREONE_URL/api/v1/auth/federation/{alias}/callback"
 ```
 
-### 3.3.9 Start federation login (redirects to the external IdP: OAuth/OIDC or SAML)
+### 2.3.9 Start federation login (redirects to the external IdP: OAuth/OIDC or SAML)
 
 `GET /api/v1/auth/federation/{alias}/start`
 
@@ -1228,11 +1230,11 @@ curl -s "$SECUREONE_URL/api/v1/auth/federation/{alias}/callback"
 curl -s "$SECUREONE_URL/api/v1/auth/federation/{alias}/start"
 ```
 
-## 3.4 Device sign-in
+## 2.4 Device sign-in
 
 Device authorization grant (TVs, CLIs)
 
-### 3.4.1 Look up a device user code
+### 2.4.1 Look up a device user code
 
 `POST /api/v1/auth/device/lookup`
 
@@ -1252,11 +1254,11 @@ Returns the application a pending code belongs to.
 curl -s -X POST "$SECUREONE_URL/api/v1/auth/device/lookup"
 ```
 
-## 3.5 Impersonation
+## 2.5 Impersonation
 
 Consume admin impersonation tokens
 
-### 3.5.1 Consume impersonation token and establish a user session
+### 2.5.1 Consume impersonation token and establish a user session
 
 `GET /api/v1/auth/impersonation/consume`
 
@@ -1279,7 +1281,7 @@ Consume admin impersonation tokens
 curl -s "$SECUREONE_URL/api/v1/auth/impersonation/consume?token={token}"
 ```
 
-### 3.5.2 List status
+### 2.5.2 List status
 
 `GET /api/v1/auth/impersonation/status`
 

@@ -16,7 +16,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * profile, privacy, UserInfo): which authorization server issues tokens for them and how to present
  * them. The issuer is taken from the request, as the authorization server metadata does.
  */
-@Tag(name = "Discovery")
+@Tag(name = "OAuth 2.1 / OIDC")
 @RestController
 public class ProtectedResourceMetadataController {
 

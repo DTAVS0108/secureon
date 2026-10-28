@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Attack protection", description = "Bot protection (CAPTCHA) and IP rules")
 @RestController
 public class AttackProtectionController {
+
+    private static final String PUBLIC_TAG = "Bot protection";
+    private static final String ADMIN_TAG = "Admin — attack protection";
 
     private final AttackProtectionService protection;
     private final AuditService audit;
@@ -22,17 +24,20 @@ public class AttackProtectionController {
     }
 
     /** For the hosted pages: which CAPTCHA to show and where (no secret). */
+    @Tag(name = PUBLIC_TAG, description = "Which CAPTCHA the sign-in pages show, and where (no secrets)")
     @GetMapping("/api/v1/attack-protection")
     public Map<String, Object> publicConfig() {
         return protection.publicConfig();
     }
 
     /** Platform settings › Attack protection (platform super admins; checked by the admin interceptor). */
+    @Tag(name = ADMIN_TAG, description = "Bot protection (CAPTCHA) and IP rules")
     @GetMapping("/api/admin/v1/settings/attack-protection")
     public Map<String, Object> get() {
         return protection.getForAdmin();
     }
 
+    @Tag(name = ADMIN_TAG)
     @PutMapping("/api/admin/v1/settings/attack-protection")
     public Map<String, Object> save(@RequestBody Map<String, Object> body, Authentication authentication) {
         Map<String, Object> saved = protection.save(body);

@@ -1,6 +1,7 @@
 package com.secureone.auth.oauth;
 
 import com.secureone.auth.tenant.RlsScope;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import java.security.Principal;
 import java.util.LinkedHashSet;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * application is asking and what it will be able to read; the user allows or cancels. Approved access is
  * remembered per application and can be withdrawn under Account security › Connected apps.
  */
+@Tag(name = "OAuth 2.1 / OIDC — consent", description = "The consent screen shown to users for third-party clients")
 @RestController
 public class ConsentPageController {
 

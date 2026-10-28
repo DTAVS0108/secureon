@@ -13,10 +13,16 @@ import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springdoc.core.properties.AbstractSwaggerUiConfigProperties;
+import org.springdoc.core.properties.SpringDocConfigProperties;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +30,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
+
+    private static final String PACKAGE = "com.secureone.auth";
 
     @Bean
     OpenAPI secureOneOpenAPI(
@@ -72,83 +80,111 @@ public class OpenApiConfig {
                         .addResponses("ProblemConflict", problemResponse("Conflict", "409")));
     }
 
-    /** Default Swagger UI group — every REST controller plus OAuth/OIDC protocol paths. */
+    /**
+     * Default Swagger UI definition: every endpoint, its tags ordered by {@link ApiCategory} and grouped with the
+     * {@code x-tagGroups} extension (one group per category).
+     */
     @Bean
     GroupedOpenApi allApis() {
         return GroupedOpenApi.builder()
                 .group("all")
                 .displayName("All APIs")
                 .pathsToMatch("/**")
-                .packagesToScan("com.secureone.auth")
-                .addOpenApiCustomizer(oauthAndErrorsCustomizer())
-                .addOpenApiCustomizer(adminSecurityCustomizer())
+                .packagesToScan(PACKAGE)
+                .addOpenApiCustomizer(commonCustomizer())
+                .addOpenApiCustomizer(openApi -> ApiCategories.orderTags(openApi, null))
                 .build();
     }
+
+    // One Swagger UI definition per category (/v3/api-docs/{id}), in reading order.
 
     @Bean
     GroupedOpenApi publicApis() {
-        return GroupedOpenApi.builder()
-                .group("public")
-                .displayName("Public — auth & info")
-                .pathsToMatch("/api/info", "/api/v1/auth/**")
-                .build();
+        return category(ApiCategory.PUBLIC);
     }
 
     @Bean
-    GroupedOpenApi accountApis() {
-        return GroupedOpenApi.builder()
-                .group("account")
-                .displayName("Public — account flows")
-                .pathsToMatch("/api/v1/account/**")
-                .build();
-    }
-
-    @Bean
-    GroupedOpenApi applicationPublicApis() {
-        return GroupedOpenApi.builder()
-                .group("applications")
-                .displayName("Public — application manifest & signup")
-                .pathsToMatch("/api/v1/applications/**")
-                .build();
-    }
-
-    @Bean
-    GroupedOpenApi adminPlatformApis() {
-        return GroupedOpenApi.builder()
-                .group("admin-platform")
-                .displayName("Admin — platform")
-                // Every admin API except the per-application console (next group): tenants, users, OAuth
-                // clients, change approvals, access review, platform operators, settings, audit, sessions…
-                .pathsToMatch("/api/admin/v1/**")
-                .pathsToExclude("/api/admin/v1/applications/*/**")
-                .addOpenApiCustomizer(adminSecurityCustomizer())
-                .build();
-    }
-
-    @Bean
-    GroupedOpenApi adminApplicationApis() {
-        return GroupedOpenApi.builder()
-                .group("admin-applications")
-                .displayName("Admin — per application")
-                .pathsToMatch("/api/admin/v1/applications/{applicationId}/**", "/api/admin/v1/applications/**")
-                .addOpenApiCustomizer(adminSecurityCustomizer())
-                .build();
+    GroupedOpenApi authenticationApis() {
+        return category(ApiCategory.AUTHENTICATION);
     }
 
     @Bean
     GroupedOpenApi oauthOidcApis() {
+        return category(ApiCategory.OAUTH_OIDC);
+    }
+
+    @Bean
+    GroupedOpenApi accountApis() {
+        return category(ApiCategory.ACCOUNT);
+    }
+
+    @Bean
+    GroupedOpenApi machineApis() {
+        return category(ApiCategory.MACHINE);
+    }
+
+    @Bean
+    GroupedOpenApi adminSignInApis() {
+        return category(ApiCategory.ADMIN_SIGN_IN);
+    }
+
+    @Bean
+    GroupedOpenApi adminTenantApis() {
+        return category(ApiCategory.ADMIN_TENANTS);
+    }
+
+    @Bean
+    GroupedOpenApi adminApplicationApis() {
+        return category(ApiCategory.ADMIN_APPLICATIONS);
+    }
+
+    @Bean
+    GroupedOpenApi adminSecurityApis() {
+        return category(ApiCategory.ADMIN_SECURITY);
+    }
+
+    @Bean
+    GroupedOpenApi adminSettingsApis() {
+        return category(ApiCategory.ADMIN_SETTINGS);
+    }
+
+    /**
+     * Swagger UI's "Select a definition" list. springdoc 3 does not fill it from the GroupedOpenApi beans, and it
+     * always sorts it by display name, so the numbered names keep the reading order; "All APIs" is the default.
+     */
+    @Bean
+    SmartInitializingSingleton swaggerUiDefinitions(
+            ObjectProvider<SwaggerUiConfigProperties> swaggerUi,
+            ObjectProvider<SpringDocConfigProperties> springDoc,
+            List<GroupedOpenApi> groups) {
+        // Neither exists when the API docs are off (production default).
+        return () -> swaggerUi.ifAvailable(ui -> springDoc.ifAvailable(properties -> {
+            String docs = properties.getApiDocs().getPath();
+            Set<AbstractSwaggerUiConfigProperties.SwaggerUrl> urls = new LinkedHashSet<>();
+            groups.forEach(group -> urls.add(new AbstractSwaggerUiConfigProperties.SwaggerUrl(
+                    group.getGroup(), docs + "/" + group.getGroup(), group.getDisplayName())));
+            ui.setUrls(urls);
+        }));
+    }
+
+    private static GroupedOpenApi category(ApiCategory category) {
         return GroupedOpenApi.builder()
-                .group(OAuth2OpenApiDocumentation.GROUP)
-                .displayName("OAuth 2.1 / OIDC")
-                .pathsToMatch("/oauth2/**", "/.well-known/**", "/userinfo")
-                .addOpenApiCustomizer(openApi -> OAuth2OpenApiDocumentation.apply(openApi))
+                .group(category.id())
+                .displayName(String.format("%02d · %s", category.ordinal() + 1, category.title()))
+                .pathsToMatch("/**")
+                .packagesToScan(PACKAGE)
+                .addOpenApiCustomizer(commonCustomizer())
+                .addOpenApiCustomizer(openApi -> ApiCategories.keepOnly(openApi, category))
                 .build();
     }
 
-    private static OpenApiCustomizer oauthAndErrorsCustomizer() {
+    /** Protocol endpoints (not MVC controllers), shared error responses and the admin session requirement. */
+    private static OpenApiCustomizer commonCustomizer() {
+        OpenApiCustomizer adminSecurity = adminSecurityCustomizer();
         return openApi -> {
             OAuth2OpenApiDocumentation.apply(openApi);
             applyGlobalErrorResponses(openApi);
+            adminSecurity.customise(openApi);
         };
     }
 

@@ -17,7 +17,7 @@ export SECUREONE_URL=http://localhost:9000   # your server, without a trailing s
 # Only the ones you need:
 export CLIENT_ID=my-app                      # OAuth client ID (Platform admin › OAuth clients)
 export CLIENT_SECRET='…'                     # confidential clients only; shown once when created or rotated
-export ACCESS_TOKEN='…'                      # from the token endpoint (section 1)
+export ACCESS_TOKEN='…'                      # from the token endpoint (section 3)
 export ADMIN_TOKEN='…'                       # console session token (below)
 export API_KEY='sk_…'                        # service account API key
 export SCIM_TOKEN='…'                        # tenant SCIM token
@@ -32,11 +32,11 @@ Each endpoint states its **Authentication**. There are six kinds:
 | Kind | Header or option | Used by | How to get it |
 |------|------------------|---------|---------------|
 | None (public) | — | Discovery, sign-in and sign-up, password reset, manifests | — |
-| Access token | `-H "Authorization: Bearer $ACCESS_TOKEN"` | UserInfo, account profile and privacy, your own APIs | [Token endpoint](01-oauth-oidc.md) (authorization code, refresh, client credentials) |
+| Access token | `-H "Authorization: Bearer $ACCESS_TOKEN"` | UserInfo, account profile and privacy, your own APIs | [Token endpoint](03-oauth-oidc.md) (authorization code, refresh, client credentials) |
 | Client authentication | `-u "$CLIENT_ID:$CLIENT_SECRET"` | Token, revoke, introspect for confidential clients | The client secret from the OAuth client's page |
-| Session cookie | `-c cookies.txt` to save, `-b cookies.txt` to send | Native sign-in, then account MFA and sessions | A sign-in call in [section 3](03-application-sign-in.md) |
+| Session cookie | `-c cookies.txt` to save, `-b cookies.txt` to send | Native sign-in, then account MFA and sessions | A sign-in call in [section 2](02-application-sign-in.md) |
 | API key / SCIM token | `-H "Authorization: Bearer $API_KEY"` / `$SCIM_TOKEN` | Machine-to-machine and SCIM (section 5) | Tenant › Service accounts / SCIM in the console |
-| Console session token | `-H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"` | Every admin API (`/api/admin/v1/…`, sections 6 to 12) | Sign in with password **and** authenticator code (below) |
+| Console session token | `-H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"` | Every admin API (`/api/admin/v1/…`, sections 6 to 12) | Sign in with password (and authenticator code when required) (below) |
 
 ## Admin API: get a console session token
 
@@ -157,7 +157,7 @@ curl -s -X POST "$SECUREONE_URL/oauth2/introspect" -u "$CLIENT_ID:$CLIENT_SECRET
 # {"active":true,"sub":"billing-job","scope":"api.read","iss":"http://localhost:9000",…}
 ```
 
-User sign-in (authorization code + PKCE, refresh) is in [section 1, Token endpoint](01-oauth-oidc.md).
+User sign-in (authorization code + PKCE, refresh) is in [section 3, Token endpoint](03-oauth-oidc.md).
 
 ## Changes that need approval
 
@@ -201,7 +201,7 @@ The same API is described as OpenAPI 3 and can be tried in Swagger UI:
 |------|-------|
 | Swagger UI | `$SECUREONE_URL/swagger-ui/index.html` (or `$SECUREONE_URL/docs`) |
 | OpenAPI JSON, everything | `$SECUREONE_URL/v3/api-docs/all` |
-| OpenAPI JSON by area | `/v3/api-docs/public`, `/account`, `/applications`, `/admin-platform`, `/admin-applications`, `/oauth-oidc` |
+| OpenAPI JSON by category | `/v3/api-docs/public`, `/auth`, `/oauth-oidc`, `/account`, `/machine`, `/admin-sign-in`, `/admin-tenants`, `/admin-applications`, `/admin-security`, `/admin-settings` ([categories](../12-api-documentation.md#categories)) |
 
 They are **off in production** (the image's default `SECUREONE_ENV`) until you set `SECUREONE_SWAGGER_ENABLED=true`
 on the server, and on in development. They only describe the API; every call still needs its normal credential. In Swagger UI,

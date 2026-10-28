@@ -14,9 +14,9 @@ SecureOne documents its HTTP API three ways. They describe the same endpoints:
 | # | Section |
 |---|---------|
 | 0 | [Getting started](api-reference/00-getting-started.md): shell setup, credentials, **admin session token**, errors |
-| 1 | [OAuth 2.1 and OpenID Connect](api-reference/01-oauth-oidc.md) |
-| 2 | [Public endpoints and first-run setup](api-reference/02-public-and-setup.md) |
-| 3 | [Application sign-in and sign-up (native UI)](api-reference/03-application-sign-in.md) |
+| 1 | [Public endpoints and first-run setup](api-reference/01-public-and-setup.md) |
+| 2 | [Application sign-in and sign-up (native UI)](api-reference/02-application-sign-in.md) |
+| 3 | [OAuth 2.1 and OpenID Connect](api-reference/03-oauth-oidc.md) |
 | 4 | [Account self-service](api-reference/04-account.md) |
 | 5 | [Machine-to-machine and SCIM provisioning](api-reference/05-machine-and-scim.md) |
 | 6 | [Admin API: sign-in, context and operator profile](api-reference/06-admin-sign-in.md) |
@@ -55,11 +55,32 @@ Internet-facing production server you may prefer to leave them off and use this 
 |----------|------|
 | Swagger UI | `/swagger-ui/index.html`, or `/docs` (redirect) |
 | OpenAPI JSON, everything | `/v3/api-docs/all` |
-| OpenAPI JSON by area | `/v3/api-docs/public`, `/account`, `/applications`, `/admin-platform`, `/admin-applications`, `/oauth-oidc` |
+| OpenAPI JSON by category | `/v3/api-docs/{definition}`, see below |
 | Service discovery | `GET /api/info` → `openapi`, `swaggerUi`, `docs` |
 
-Swagger UI opens **All APIs**; the **Select a definition** list switches to one area. **Admin — platform** holds every
-admin API except the per-application console, which is in **Admin — per application**.
+### Categories
+
+Swagger UI opens **All APIs**; **Select a definition** (top right) switches to one category, numbered in reading
+order:
+
+| # | Definition (`/v3/api-docs/…`) | What it holds | Who calls it |
+|---|-------------------------------|---------------|--------------|
+| 1 | **Public** (`public`) | Server info, first-run setup, documentation discovery, domain checks, CAPTCHA settings | Anyone, no credential |
+| 2 | **Authentication** (`auth`) | Application manifest, sign-in, sign-up, one-time codes, MFA, passkeys, external providers, device sign-in | Apps with their own sign-in screens |
+| 3 | **OAuth 2.1 / OIDC and SAML** (`oauth-oidc`) | Discovery, authorize, token, revoke, introspect, JWKS, UserInfo, consent, dynamic client registration, SAML IdP | OIDC / SAML libraries |
+| 4 | **Account** (`account`) | Profile, password, email, MFA, sessions, connected apps, privacy | A signed-in user (access token) |
+| 5 | **Machine-to-machine and SCIM** (`machine`) | API keys for services, SCIM 2.0 provisioning | Other systems |
+| 6 | **Admin — sign-in and operator** (`admin-sign-in`) | Console sign-in, context, operator profile and MFA | Console / automation |
+| 7 | **Admin — tenants and users** (`admin-tenants`) | Tenants, console roles and access, SCIM, domains, users | Operators (session token) |
+| 8 | **Admin — applications and clients** (`admin-applications`) | Applications, OAuth clients, approvals, each application's console | Operators (session token) |
+| 9 | **Admin — security and governance** (`admin-security`) | Overview, platform operators, access review, identity providers, service accounts, webhooks, audit, sessions | Operators (session token) |
+| 10 | **Admin — platform settings** (`admin-settings`) | Platform settings, attack protection, log streaming, configuration as code, signing keys | Platform operators |
+
+**All APIs** (`all`, the default) holds everything, its sections in the same order. The categories are defined once,
+in `ApiCategory` (auth-server); a unit test fails when a controller uses a tag that no category lists.
+
+The [API reference](api-reference/README.md) follows the same order: sections 1-5 are categories 1-5, and the admin
+categories are split into sections 6-12.
 
 ## Authentication in Swagger UI
 
@@ -95,7 +116,8 @@ curl -s http://localhost:9000/v3/api-docs/all -o secureone-openapi.json
   (default from `SecureOneEnvironmentDefaults`: on unless `SECUREONE_ENV=production`)
 - The document's title, version (the build version, e.g. `0.1.0`) and link to SecureOne Documentation:
   `OpenApiConfig`
-- Java: `com.secureone.auth.config.openapi.OpenApiConfig` (groups, security schemes),
+- Java: `com.secureone.auth.config.openapi.ApiCategory` (the categories and their tags), `OpenApiConfig`
+  (definitions, security schemes),
   `OAuth2OpenApiDocumentation` (protocol endpoints), `SwaggerAccessFilter`
 - Endpoint texts: `@Tag`, `@Operation` and `@Parameter` on the controllers
 

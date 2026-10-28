@@ -22,8 +22,6 @@ import java.util.Map;
 /** Manual OpenAPI paths for Spring Authorization Server endpoints (not Spring MVC controllers). */
 public final class OAuth2OpenApiDocumentation {
 
-    public static final String GROUP = "oauth-oidc";
-
     private OAuth2OpenApiDocumentation() {}
 
     public static void apply(OpenAPI openApi) {

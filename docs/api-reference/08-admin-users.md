@@ -6,6 +6,8 @@
 
 User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, unlock and impersonation.
 
+In Swagger UI (`/docs`), choose the definition **Admin — tenants and users** (`/v3/api-docs/admin-tenants`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -43,7 +45,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 
 ## 8.1 Users
 
-Two-step verification of a user
+Platform-wide user directory
 
 ### 8.1.1 Two-step status of several of an application's users
 

@@ -21,21 +21,20 @@ from pathlib import Path
 
 # (file, title, intro, tags). An operation goes to the first section listing one of its tags.
 SECTIONS = [
-    ("01-oauth-oidc.md", "OAuth 2.1 and OpenID Connect",
-     "The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device "
-     "flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library "
-     "calls them for you.",
-     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — extensions", "consent-page-controller", "SAML identity provider", "Client registration",
-      "Custom domains"]),
-    ("02-public-and-setup.md", "Public endpoints and first-run setup",
-     "Server information, the sign-in method catalog, documentation discovery and the one-time setup of a new "
-     "installation. No authentication.",
-     ["System", "Documentation", "First-run setup"]),
-    ("03-application-sign-in.md", "Application sign-in and sign-up (native UI)",
+    ("01-public-and-setup.md", "Public endpoints and first-run setup",
+     "Server information, the one-time setup of a new installation, documentation discovery, custom-domain "
+     "checks and the CAPTCHA settings the sign-in pages use. No authentication.",
+     ["System", "First-run setup", "Documentation", "Custom domains", "Bot protection"]),
+    ("02-application-sign-in.md", "Application sign-in and sign-up (native UI)",
      "For apps that draw their own sign-in screens instead of redirecting to the hosted page: application "
      "manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in.",
      ["Application public API", "Public auth", "Public auth — federation", "Public auth — device sign-in",
       "Public auth — impersonation"]),
+    ("03-oauth-oidc.md", "OAuth 2.1 and OpenID Connect",
+     "The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device "
+     "flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library "
+     "calls them for you.",
+     ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — consent", "Client registration", "SAML identity provider"]),
     ("04-account.md", "Account self-service",
      "What a signed-in user can do for themselves: password reset and change, email verification, profile, "
      "MFA factors, sessions, email change, connected apps and privacy (export, delete request).",
@@ -79,7 +78,7 @@ SECTIONS = [
     ("12-admin-platform-settings.md", "Admin API: platform settings and configuration as code",
      "Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature "
      "flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).",
-     ["Admin — platform settings", "Attack protection", "Admin — log streams", "Admin — configuration as code",
+     ["Admin — platform settings", "Admin — attack protection", "Admin — log streams", "Admin — configuration as code",
       "Admin — signing keys"]),
 ]
 
@@ -508,6 +507,15 @@ def render_operation(spec: dict, number: str, method: str, path: str, op: dict) 
     return out
 
 
+def swagger_line(spec: dict, tags: list[str]) -> list[str]:
+    """Where a page's endpoints are in Swagger UI: the category definitions (x-tagGroups) holding its tags."""
+    groups = [g for g in spec.get("x-tagGroups", []) if g.get("x-id") and set(g.get("tags", [])) & set(tags)]
+    if not groups:
+        return []
+    names = ", ".join(f"**{g['name']}** (`/v3/api-docs/{g['x-id']}`)" for g in groups)
+    return [f"In Swagger UI (`/docs`), choose the definition {names}.", ""]
+
+
 def main(spec_path: str, out_dir: str) -> None:
     spec = json.loads(Path(spec_path).read_text(encoding="utf-8-sig"))
     out = Path(out_dir)
@@ -546,6 +554,7 @@ def main(spec_path: str, out_dir: str) -> None:
             "",
             intro,
             "",
+            *swagger_line(spec, tags),
             "Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token "
             "the endpoint needs). Replace `{placeholders}` with real values.",
             "",

@@ -201,17 +201,17 @@ springdoc:
   swagger-ui:
     enabled: ${secureone.swagger-enabled}
     path: /swagger-ui.html
-    # Required when disable-swagger-default-url is true — springdoc 3.x may omit urls[] from swagger-config.
-    url: /v3/api-docs/all
+    # The definitions list (urls[]) comes from the GroupedOpenApi beans: "All APIs", then one per ApiCategory.
+    # Setting swagger-ui.url here would replace that list with a single document.
     urls-primary-name: all
     disable-swagger-default-url: true
     operations-sorter: method
-    tags-sorter: alpha
+    # No tags-sorter: tags keep the reading order of ApiCategory (public, auth, OAuth, account, … admin).
     display-request-duration: true
     try-it-out-enabled: true
     persist-authorization: true
     doc-expansion: list
-    groups-order: ASC
+    # No groups-order: definitions stay in the order OpenApiConfig declares them (reading order), not alphabetical.
     config-url: /v3/api-docs/swagger-config
   show-actuator: false
   writer-with-order-by-keys: true

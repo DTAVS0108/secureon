@@ -6,6 +6,8 @@
 
 Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth client returns 202 with a change request; another admin approves it).
 
+In Swagger UI (`/docs`), choose the definition **Admin — applications and clients** (`/v3/api-docs/admin-applications`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -494,7 +496,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}/rotate-secret" \
 
 ## 9.3 Change approvals
 
-Two Factor Authentication review
+High-impact changes that wait for a second admin
 
 ### 9.3.1 List change requests (every tenant)
 

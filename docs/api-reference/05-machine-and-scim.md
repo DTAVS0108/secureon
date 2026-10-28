@@ -6,6 +6,8 @@
 
 Calls made by other systems: service accounts with API keys, and SCIM 2.0 user and group provisioning from an identity provider.
 
+In Swagger UI (`/docs`), choose the definition **Machine-to-machine and SCIM** (`/v3/api-docs/machine`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents

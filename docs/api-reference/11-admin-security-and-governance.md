@@ -6,6 +6,8 @@
 
 Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log (search and CSV export), sessions and the console overview.
 
+In Swagger UI (`/docs`), choose the definition **Admin — security and governance** (`/v3/api-docs/admin-security`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents

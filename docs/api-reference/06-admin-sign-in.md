@@ -6,6 +6,8 @@
 
 Getting a console session token (sign-in plus MFA), the admin context (who am I, what can I open) and the signed-in operator's own profile and authenticators.
 
+In Swagger UI (`/docs`), choose the definition **Admin — sign-in and operator** (`/v3/api-docs/admin-sign-in`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -252,7 +254,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/context/tenants?applicationId={applicationI
 
 ## 6.3 Operator profile
 
-Signed-in admin console user profile and password
+Signed-in operator: verify it's you again
 
 ### 6.3.1 Get the signed-in operator
 

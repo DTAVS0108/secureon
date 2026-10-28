@@ -6,6 +6,8 @@
 
 Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, access requests and the tenant's SCIM token.
 
+In Swagger UI (`/docs`), choose the definition **Admin — tenants and users** (`/v3/api-docs/admin-tenants`).
+
 Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token the endpoint needs). Replace `{placeholders}` with real values.
 
 ## Contents
@@ -81,7 +83,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 
 ## 7.1 Tenants
 
-Multi-tenant organizations
+Two-step verification defaults of a tenant
 
 ### 7.1.1 List tenants
 
