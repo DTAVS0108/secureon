@@ -1,7 +1,6 @@
 # Production profile — Swagger and dev auth off; fail-fast checks run at startup.
 secureone:
   environment: ${SECUREONE_ENV:production}
-  swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:false}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:false}
   # Database row-level security is enforced in production (see docs/26 and migrations V61-V64).
   rls:
@@ -15,13 +14,9 @@ secureone:
     otp-request-per-minute: 5
     admin-login-per-minute: 5
 
-# API docs (Swagger UI, /v3/api-docs) are off in production unless SECUREONE_SWAGGER_ENABLED=true.
-# They describe the API only (no data, no secrets); every call still needs its normal authentication.
-springdoc:
-  api-docs:
-    enabled: ${SECUREONE_SWAGGER_ENABLED:false}
-  swagger-ui:
-    enabled: ${SECUREONE_SWAGGER_ENABLED:false}
+# API docs (Swagger UI, /v3/api-docs) follow SECUREONE_ENV, not this profile: off when it is production
+# unless SECUREONE_SWAGGER_ENABLED=true (see application.yml). They describe the API only (no data, no
+# secrets); every call still needs its normal authentication.
 
 logging:
   level:

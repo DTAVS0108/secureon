@@ -99,15 +99,17 @@ secureone:
   config-import: ${SECUREONE_CONFIG_IMPORT:}
   # Reverse proxies / load balancers whose X-Forwarded-For is believed: addresses or IPv4 /8 /16 /24 /32 ranges.
   trusted-proxies: ${SECUREONE_TRUSTED_PROXIES:}
-  swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:true}
+  # API docs (Swagger UI, /v3/api-docs): off when SECUREONE_ENV=production, on otherwise (SecureOneEnvironmentDefaults).
+  swagger-enabled: ${SECUREONE_SWAGGER_ENABLED:${secureone.defaults.swagger-enabled:true}}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:true}
   # Emergency platform login with the configured account (spring.security.user.*). Always available
   # while dev auth is on; in production enable only during an incident. Every use is audited.
   break-glass:
     enabled: ${SECUREONE_BREAK_GLASS_ENABLED:false}
   admin:
-    # true: console sign-in requires an authenticator-app code (TOTP) or a recovery code. Off by default.
-    mfa-required: ${SECUREONE_ADMIN_MFA_REQUIRED:false}
+    # true: console sign-in requires an authenticator-app code (TOTP) or a recovery code.
+    # Default: on when SECUREONE_ENV=production, off otherwise (SecureOneEnvironmentDefaults).
+    mfa-required: ${SECUREONE_ADMIN_MFA_REQUIRED:${secureone.defaults.admin-mfa-required:false}}
     # Console sessions end after this much inactivity, and at the absolute lifetime regardless.
     session-idle-timeout: ${SECUREONE_ADMIN_SESSION_IDLE:30m}
     session-max-lifetime: ${SECUREONE_ADMIN_SESSION_MAX:8h}
@@ -183,10 +185,10 @@ info:
 
 springdoc:
   api-docs:
-    enabled: true
+    enabled: ${secureone.swagger-enabled}
     path: /v3/api-docs
   swagger-ui:
-    enabled: true
+    enabled: ${secureone.swagger-enabled}
     path: /swagger-ui.html
     # Required when disable-swagger-default-url is true — springdoc 3.x may omit urls[] from swagger-config.
     url: /v3/api-docs/all

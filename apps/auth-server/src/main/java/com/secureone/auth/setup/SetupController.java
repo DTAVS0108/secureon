@@ -7,6 +7,7 @@ import com.secureone.auth.tenant.RlsScope;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,20 +25,29 @@ public class SetupController {
 
     private final SetupService setup;
     private final ObjectProvider<DevAdminAuthenticationProvider> emergencyAccount;
+    private final boolean adminMfaRequired;
 
-    public SetupController(SetupService setup, ObjectProvider<DevAdminAuthenticationProvider> emergencyAccount) {
+    public SetupController(
+            SetupService setup,
+            ObjectProvider<DevAdminAuthenticationProvider> emergencyAccount,
+            @Value("${secureone.admin.mfa-required:false}") boolean adminMfaRequired) {
         this.setup = setup;
         this.emergencyAccount = emergencyAccount;
+        this.adminMfaRequired = adminMfaRequired;
     }
 
-    /** {@code emergencyAccess}: whether the console sign-in page offers the break-glass account. */
+    /**
+     * {@code emergencyAccess}: whether the console sign-in page offers the break-glass account.
+     * {@code adminMfaRequired}: whether console sign-in asks for an authenticator app.
+     */
     @GetMapping("/status")
     public Map<String, Object> status() {
         boolean required = setup.setupRequired();
         return Map.of(
                 "setupRequired", required,
                 "codeFromEnvironment", required && setup.codeFromEnvironment(),
-                "emergencyAccess", emergencyAccount.getIfAvailable() != null);
+                "emergencyAccess", emergencyAccount.getIfAvailable() != null,
+                "adminMfaRequired", adminMfaRequired);
     }
 
     public record VerifyRequest(String code) {}

@@ -16,6 +16,8 @@ type LoginResult = {
   secret?: string;
   otpauthUri?: string;
   qrCodeDataUrl?: string;
+  passwordChangeRequired?: boolean;
+  changeToken?: string;
 };
 
 export async function POST(request: Request) {
@@ -47,6 +49,10 @@ export async function POST(request: Request) {
   });
 
   const parsed = await readJson<LoginResult>(res);
+  // A temporary password (the bootstrap admin's, or one an administrator set): choose a new one first.
+  if (res.status === 403 && parsed.passwordChangeRequired && parsed.changeToken) {
+    return NextResponse.json({ step: "new-password", changeToken: parsed.changeToken });
+  }
   if (!res.ok) {
     return NextResponse.json({ detail: parsed.detail ?? "Invalid credentials." }, { status: res.status });
   }

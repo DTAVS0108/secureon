@@ -39,7 +39,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>For installs without a browser step (like Keycloak's {@code KC_BOOTSTRAP_ADMIN_*}),
  * {@code SECUREONE_BOOTSTRAP_ADMIN_EMAIL} and {@code SECUREONE_BOOTSTRAP_ADMIN_PASSWORD} create that first
- * operator when the server starts. They are used once: when an operator exists they are ignored.
+ * operator when the server starts. They are used once: when an operator exists they are ignored. That password
+ * is temporary: the operator chooses their own at the first sign-in, which is stored only in the database.
  */
 @Service
 public class SetupService {
@@ -131,7 +132,7 @@ public class SetupService {
             try {
                 email = transactions.execute(status -> createFirstOperator(
                         bootstrap.email(), bootstrap.firstName(), bootstrap.lastName(), bootstrap.password(),
-                        "SECUREONE_BOOTSTRAP_ADMIN_*"));
+                        "SECUREONE_BOOTSTRAP_ADMIN_*", true));
             } catch (SetupClosedException e) {
                 log.info("Another instance is creating the first platform operator; skipped here.");
                 return;
@@ -141,8 +142,8 @@ public class SetupService {
             }
             String banner = "=".repeat(78);
             log.warn("\n{}\n First platform operator created: {} (from SECUREONE_BOOTSTRAP_ADMIN_*).\n Sign in at {}/login"
-                            + " (Platform operator tab).\n"
-                            + " Remove SECUREONE_BOOTSTRAP_ADMIN_PASSWORD from the configuration now; it is not used again.\n{}",
+                            + " (Platform operator tab); the first sign-in asks for a new password.\n"
+                            + " SECUREONE_BOOTSTRAP_ADMIN_PASSWORD is not used again and can be removed.\n{}",
                     banner, email, adminWebUrl, banner);
         });
     }
@@ -231,11 +232,16 @@ public class SetupService {
     public String complete(CompleteRequest request, String clientAddress) {
         verify(request.code(), clientAddress);
         return createFirstOperator(request.email(), request.firstName(), request.lastName(), request.password(),
-                "first-run setup");
+                "first-run setup", false);
     }
 
-    /** The first operator, once: in the platform tenant, with the platform-admin role. In a transaction. */
-    private String createFirstOperator(String rawEmail, String firstName, String lastName, String password, String via) {
+    /**
+     * The first operator, once: in the platform tenant, with the platform-admin role. In a transaction.
+     * {@code temporary}: the password came from the configuration (bootstrap), so the operator replaces it at
+     * the first sign-in; from then on only the database holds their password.
+     */
+    private String createFirstOperator(
+            String rawEmail, String firstName, String lastName, String password, String via, boolean temporary) {
         if (rawEmail == null || !rawEmail.contains("@")) {
             throw new IllegalArgumentException("Enter a valid email address.");
         }
@@ -271,7 +277,7 @@ public class SetupService {
             }
             // Platform password policy applies; a rejected password rolls the whole setup back.
             if (!passwordAlreadySet) {
-                passwords.setPassword(user.getId(), password);
+                passwords.setPassword(user.getId(), password, null, temporary);
             }
             operators.grant(user.getId(), via);
             audit.record(platform.getId(), email, "platform.setup_completed", "user_account", user.getId(), via, true);

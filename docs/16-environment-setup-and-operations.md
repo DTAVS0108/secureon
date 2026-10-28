@@ -574,7 +574,10 @@ SECUREONE_DEV_PASSWORD=admin
 SECUREONE_BREAK_GLASS_ENABLED=false
 
 # Console sign-in and sessions
-SECUREONE_ADMIN_MFA_REQUIRED=false
+# Console MFA and API docs follow SECUREONE_ENV: production = MFA on, Swagger off; development = the opposite.
+# Set these only to override that default.
+# SECUREONE_ADMIN_MFA_REQUIRED=true
+# SECUREONE_SWAGGER_ENABLED=false
 SECUREONE_ADMIN_SESSION_IDLE=30m
 SECUREONE_ADMIN_SESSION_MAX=8h
 SECUREONE_BREAK_GLASS_SESSION_MAX=1h

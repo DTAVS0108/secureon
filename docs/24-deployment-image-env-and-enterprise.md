@@ -429,7 +429,8 @@ Two ways; pick one.
 - Used **once**: when an operator already exists they are ignored (the log says so), so leaving them in place never creates a second admin. Remove the password after the first start anyway.
 - If the values cannot be used (no `@` in the email, password against the policy), the server **does not start** and the log names the setting: an automated install never comes up without the admin it asked for.
 - Several instances starting together create the admin once.
-- Console MFA is off by default; with `SECUREONE_ADMIN_MFA_REQUIRED=true` the first sign-in (Platform operator tab) sets up an authenticator app.
+- The bootstrap password is temporary: the first sign-in (Platform operator tab) asks for a new password, which is stored only in the database; the environment value is never used again.
+- Console MFA follows `SECUREONE_ENV`: required in production (the first sign-in then also sets up an authenticator app), off in development. `SECUREONE_ADMIN_MFA_REQUIRED` overrides it. API docs (Swagger) likewise: off in production, on in development; `SECUREONE_SWAGGER_ENABLED` overrides it.
 
 **B. In the browser with a setup code.** On a new installation without A, the server says so in its log:
 
@@ -444,7 +445,7 @@ Two ways; pick one.
 1. Open `https://auth.econsumer.com/admin/setup` (the sign-in page also links there while setup is open).
 2. Enter the setup code. It proves you can read the server's log; 10 wrong codes from one address lock it for 15 minutes.
 3. Create the first platform operator: name, work email, password (platform password policy).
-4. Sign in under **Platform operator**. With `SECUREONE_ADMIN_MFA_REQUIRED=true` the first sign-in adds an authenticator app and shows recovery codes once.
+4. Sign in under **Platform operator**. In production the first sign-in also adds an authenticator app and shows recovery codes once.
 
 After that, setup is closed for good (`/admin/setup` redirects to sign-in; the API answers `410 Gone`). Add more operators from **Access review → Platform operators**. For automated installs, set `SECUREONE_SETUP_CODE` instead of reading the log.
 

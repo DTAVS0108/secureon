@@ -4,8 +4,8 @@
 #   1. sh generate-secrets.sh owner@example.com      (creates ./secrets/; keep a copy elsewhere)
 #   2. Optional: tenant configuration files in ./tenants/ (docs/26).
 #   3. ADMIN_EMAIL=owner@example.com PUBLIC_URL=https://id.example.com docker compose -f docker-compose.example.yml up -d
-#   4. Sign in at $PUBLIC_URL/admin (Platform operator tab) with the password in secrets/admin_password;
-#      then you may delete secrets/admin_password.
+#   4. Sign in at $PUBLIC_URL/admin (Platform operator tab) with the password in secrets/admin_password:
+#      you choose a new password and add an authenticator app. Then you may delete secrets/admin_password.
 #
 # Production mode (the default) needs https: put a TLS reverse proxy or load balancer in front of port 9000.
 # To try it locally over http:  SECUREONE_ENV=development PUBLIC_URL=http://localhost:9000 docker compose ... up -d
@@ -14,7 +14,7 @@ name: secureone
 
 services:
   secureone:
-    image: ${SECUREONE_IMAGE:-dmtavs0108/secureone:0.3.1}
+    image: ${SECUREONE_IMAGE:-dmtavs0108/secureone:0.3.37}
     restart: unless-stopped
     depends_on:
       postgres:

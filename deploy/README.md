@@ -184,7 +184,7 @@ The database password must be the same in `POSTGRES_PASSWORD` and `SECUREONE_DB_
 
 When `docker inspect secureone --format '{{.State.Health.Status}}'` says `healthy` (and `docker logs secureone`
 shows *First platform operator created*), open **http://localhost:9000/admin**, choose **Platform operator**,
-and sign in with the bootstrap email and password. With `SECUREONE_ADMIN_MFA_REQUIRED=true` the first sign-in sets up an
+and sign in with the bootstrap email and password. The first sign-in asks for a new password and, in production, sets up an
 authenticator app; keep the recovery codes it shows. The bootstrap admin is created once; later starts ignore those two variables.
 
 ---

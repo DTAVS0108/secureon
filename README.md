@@ -14,7 +14,7 @@ SecureOne ships as **one Docker image**: the authorization server (Spring Boot +
 - **Multi-tenant**: tenants → applications, each application with its own database schema and PostgreSQL row-level security
 - **Standards**: OAuth 2.1 and OpenID Connect, PKCE, PAR, token exchange, device sign-in for TVs and CLIs (RFC 8628), discovery metadata (RFC 8414 / RFC 9728)
 - **Sign-in**: hosted sign-in pages or your own screens; passwords, email/SMS one-time codes, magic links, passkeys
-- **MFA**: passkeys (WebAuthn/FIDO2), authenticator apps (TOTP), email/SMS codes, recovery codes; can be required for console operators (`SECUREONE_ADMIN_MFA_REQUIRED=true`)
+- **MFA**: passkeys (WebAuthn/FIDO2), authenticator apps (TOTP), email/SMS codes, recovery codes; required for console operators in production (`SECUREONE_ENV=production`), optional in development
 - **Single sign-on**: Google, GitHub, any OIDC provider and SAML 2.0 identity providers, with single logout
 - **Authorization**: roles, permissions and groups per application, included in tokens
 - **Directory and automation**: SCIM 2.0, webhooks, service accounts with API keys

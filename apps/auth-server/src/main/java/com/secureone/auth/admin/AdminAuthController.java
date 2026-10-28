@@ -131,6 +131,13 @@ public class AdminAuthController {
             // emergency access is off on this server (SECUREONE_BREAK_GLASS_ENABLED).
             return problem(HttpStatus.FORBIDDEN,
                     "Emergency access is turned off on this server. Sign in on the Platform operator or Organization tab.");
+        } catch (com.secureone.auth.account.PasswordChangeRequiredException ex) {
+            // A temporary password (the bootstrap admin's, or one an administrator set): the console asks for a
+            // new one and sets it with POST /api/v1/account/password/reset and this one-time token.
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "detail", "Choose a new password to continue.",
+                    "passwordChangeRequired", true,
+                    "changeToken", ex.changeToken()));
         } catch (AuthenticationException ex) {
             // Unknown account and wrong password look the same, so sign-in cannot be used to probe
             // which accounts exist. Locked and suspended keep their message so people know to wait

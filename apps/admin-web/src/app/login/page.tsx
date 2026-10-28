@@ -48,15 +48,21 @@ type MfaStep =
 const REASONS: Record<string, string> = {
   expired: "Your session ended (inactivity or maximum session length). Sign in again to continue.",
   "signed-out": "You signed out.",
-  "setup-done": "Your operator account is ready. Sign in under Platform operator; you will add an authenticator app next.",
+  "setup-done": "Your operator account is ready. Sign in under Platform operator.",
 };
 
+type SetupStatus = { setupRequired: boolean; emergencyAccess: boolean; adminMfaRequired: boolean };
+
 /**
- * Whether first-run setup is still open (no platform operator yet), and whether this server has the
- * emergency (break-glass) account turned on.
+ * Whether first-run setup is still open (no platform operator yet), whether this server has the
+ * emergency (break-glass) account turned on, and whether console sign-in asks for an authenticator app.
  */
-function useSetupStatus(): { setupRequired: boolean; emergencyAccess: boolean } {
-  const [status, setStatus] = useState({ setupRequired: false, emergencyAccess: false });
+function useSetupStatus(): SetupStatus {
+  const [status, setStatus] = useState<SetupStatus>({
+    setupRequired: false,
+    emergencyAccess: false,
+    adminMfaRequired: false,
+  });
   useEffect(() => {
     let cancelled = false;
     fetch(withBasePath("/api/setup/status"), { cache: "no-store" })
@@ -64,7 +70,11 @@ function useSetupStatus(): { setupRequired: boolean; emergencyAccess: boolean } 
       .then(
         (s) =>
           !cancelled &&
-          setStatus({ setupRequired: !!s?.setupRequired, emergencyAccess: !!s?.emergencyAccess }),
+          setStatus({
+            setupRequired: !!s?.setupRequired,
+            emergencyAccess: !!s?.emergencyAccess,
+            adminMfaRequired: !!s?.adminMfaRequired,
+          }),
       )
       .catch(() => undefined);
     return () => {
@@ -80,6 +90,8 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/";
   const reason = REASONS[searchParams.get("reason") ?? ""] ?? null;
   const [step, setStep] = useState<MfaStep | null>(null);
+  const [changeToken, setChangeToken] = useState<string | null>(null);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
   function finish() {
@@ -90,6 +102,18 @@ function LoginForm() {
   if (recoveryCodes) {
     return <RecoveryCodesNotice codes={recoveryCodes} onDone={finish} />;
   }
+  if (changeToken) {
+    return (
+      <NewPasswordForm
+        changeToken={changeToken}
+        onRestart={() => setChangeToken(null)}
+        onChanged={() => {
+          setChangeToken(null);
+          setPasswordChanged(true);
+        }}
+      />
+    );
+  }
   if (step) {
     return (
       <SecondFactorForm
@@ -99,7 +123,102 @@ function LoginForm() {
       />
     );
   }
-  return <PasswordForm reason={reason} onStep={setStep} onSignedIn={finish} />;
+  return (
+    <PasswordForm
+      reason={passwordChanged ? "Your new password is saved. Sign in with it to continue." : reason}
+      onStep={setStep}
+      onNewPassword={setChangeToken}
+      onSignedIn={finish}
+    />
+  );
+}
+
+/** A temporary password was accepted: the operator chooses their own before signing in. */
+function NewPasswordForm({
+  changeToken,
+  onRestart,
+  onChanged,
+}: {
+  changeToken: string;
+  onRestart: () => void;
+  onChanged: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (password !== confirm) {
+      setError("The two passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(withBasePath("/api/auth/login/new-password"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changeToken, password }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { detail?: string };
+        setError(body.detail ?? "Could not set the new password.");
+        return;
+      }
+      onChanged();
+    } catch {
+      setError("Could not reach the login service.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card subtitle="Your password is temporary. Choose your own to continue.">
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="newPassword" className="mb-1 block text-xs font-medium text-soft">
+            New password
+          </label>
+          <input
+            id="newPassword"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            className={INPUT_CLASS}
+          />
+        </div>
+        <div>
+          <label htmlFor="confirmPassword" className="mb-1 block text-xs font-medium text-soft">
+            Confirm new password
+          </label>
+          <input
+            id="confirmPassword"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
+            required
+            className={INPUT_CLASS}
+          />
+        </div>
+        <ErrorText error={error} />
+        <button type="submit" disabled={loading} className={BUTTON_CLASS}>
+          {loading ? "Saving…" : "Save password"}
+        </button>
+      </form>
+      <div className="mt-6 text-center text-xs text-faint">
+        <button type="button" className="underline-offset-2 hover:text-soft hover:underline" onClick={onRestart}>
+          Back to sign-in
+        </button>
+      </div>
+    </Card>
+  );
 }
 
 function Card({ subtitle, children }: { subtitle: string; children: ReactNode }) {
@@ -154,10 +273,12 @@ function ModeTabs({ mode, onChange }: { mode: LoginMode; onChange: (mode: LoginM
 function PasswordForm({
   reason,
   onStep,
+  onNewPassword,
   onSignedIn,
 }: {
   reason: string | null;
   onStep: (step: MfaStep) => void;
+  onNewPassword: (changeToken: string) => void;
   onSignedIn: () => void;
 }) {
   // Just finished first-run setup: the new account is a platform operator. Search params are the same
@@ -170,7 +291,7 @@ function PasswordForm({
         ? "organization"
         : (readRemembered().mode ?? "organization"),
   );
-  const { setupRequired, emergencyAccess } = useSetupStatus();
+  const { setupRequired, emergencyAccess, adminMfaRequired } = useSetupStatus();
   const [tenantSlug, setTenantSlug] = useState(() =>
     typeof window === "undefined" ? "" : (readRemembered().tenantSlug ?? ""),
   );
@@ -208,7 +329,8 @@ function PasswordForm({
       });
       const body = (await res.json().catch(() => ({}))) as {
         detail?: string;
-        step?: "mfa" | "enroll";
+        step?: "mfa" | "enroll" | "new-password";
+        changeToken?: string;
         mfaToken?: string;
         methods?: string[];
         tryAnotherWay?: boolean;
@@ -222,6 +344,11 @@ function PasswordForm({
       }
       if (mode !== "emergency") {
         remember({ mode, tenantSlug: mode === "organization" ? slug : undefined });
+      }
+      if (body.step === "new-password" && body.changeToken) {
+        setPassword("");
+        onNewPassword(body.changeToken);
+        return;
       }
       if (body.step === "mfa" && body.mfaToken) {
         onStep({
@@ -348,7 +475,7 @@ function PasswordForm({
       </form>
 
       <div className="mt-6 space-y-2 text-center text-xs text-faint">
-        {!emergency && <p>After your password you will enter a code from your authenticator app.</p>}
+        {!emergency && adminMfaRequired && <p>After your password you will enter a code from your authenticator app.</p>}
         {/* Offered only when this server has the break-glass account on (SECUREONE_BREAK_GLASS_ENABLED). */}
         {(emergency || emergencyAccess) && (
           <button
