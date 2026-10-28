@@ -159,7 +159,7 @@ export function ChangeRequestsPanel({ tenantId }: { tenantId?: string }) {
                             message={<>Nothing changes. {r.requestedBy} sees your reason.</>}
                             noteLabel="Reason"
                             noteRequired
-                            notePlaceholder="e.g. Still used by the mobile app"
+                            notePlaceholder="Reason"
                             confirmLabel="Reject"
                             onConfirm={(note) => run(() => rejectChangeRequest(r.id, note), "Request rejected")}
                           />

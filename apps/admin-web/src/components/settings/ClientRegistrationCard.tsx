@@ -175,10 +175,10 @@ export function ClientRegistrationCard({ applicationId }: { applicationId: strin
           <>
             <div className="grid gap-3 md:grid-cols-2">
               <FieldRow label="Allowed scopes" hint="A registered client may ask only for these (space separated).">
-                <Input value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder="openid profile email orders:read" />
+                <Input value={scopes} onChange={(e) => setScopes(e.target.value)} placeholder="Scopes, space-separated" />
               </FieldRow>
               <FieldRow label="Trusted hosts" hint="Redirect URIs only on these hosts (one per line, *.example.com allowed). Empty: any https host.">
-                <Textarea rows={3} value={hosts} onChange={(e) => setHosts(e.target.value)} placeholder="*.partner-tools.com" />
+                <Textarea rows={3} value={hosts} onChange={(e) => setHosts(e.target.value)} placeholder="Hosts, one per line" />
               </FieldRow>
             </div>
             <div className="flex flex-wrap gap-4 text-sm">
@@ -231,7 +231,7 @@ export function ClientRegistrationCard({ applicationId }: { applicationId: strin
             )}
             <div className="grid gap-3 md:grid-cols-4">
               <FieldRow label="Label">
-                <Input value={tokenLabel} onChange={(e) => setTokenLabel(e.target.value)} placeholder="InvoicePro" />
+                <Input value={tokenLabel} onChange={(e) => setTokenLabel(e.target.value)} placeholder="Label" />
               </FieldRow>
               <FieldRow label="Registrations">
                 <Input type="number" min={1} max={1000} value={tokenUses} onChange={(e) => setTokenUses(e.target.value)} />

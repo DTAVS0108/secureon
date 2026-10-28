@@ -126,9 +126,9 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "plan": "enterprise",
-  "slug": "acme",
+  "slug": "tenant-a",
   "status": "ACTIVE"
 }'
 ```
@@ -188,9 +188,9 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{id}" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "plan": "enterprise",
-  "slug": "acme",
+  "slug": "tenant-a",
   "status": "ACTIVE"
 }'
 ```
@@ -803,7 +803,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/tenant-rbac/role
     "{applicationId}"
   ],
   "description": "Short explanation",
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ]
@@ -871,7 +871,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/tenants/{tenantId}/tenant-rbac/roles
     "{applicationId}"
   ],
   "description": "Short explanation",
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ]

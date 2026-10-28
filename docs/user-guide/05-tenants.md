@@ -23,8 +23,8 @@ A **tenant** is an organization on the platform. Every tenant's users, applicati
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| **Name** | Yes | The organization's name, for example `Acme Corp`. |
-| **Slug** | Yes | Short lowercase identifier, for example `acme`. Operators of this tenant type it in **Tenant slug** on the sign-in page, and API calls use it. Choose carefully; it appears in URLs. |
+| **Name** | Yes | The organization's name, for example `Tenant A`. |
+| **Slug** | Yes | Short lowercase identifier, for example `tenant-a`. Operators of this tenant type it in **Tenant slug** on the sign-in page, and API calls use it. Choose carefully; it appears in URLs. |
 | **Plan** | Yes | **Free**, **Team** or **Enterprise**. A label for your records and reporting. |
 | **Status** | Yes | **Active**, or **Suspended** to block sign-in for everyone in the tenant. |
 

@@ -78,7 +78,7 @@ export function RecipientGroupsEditor({
               value={(emails ?? []).join(", ")}
               disabled={disabled}
               onChange={(e) => updateGroup(name, e.target.value)}
-              placeholder="ops@example.com, security@example.com"
+              placeholder="Email addresses, comma-separated"
             />
           </FieldRow>
         </div>

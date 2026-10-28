@@ -74,9 +74,9 @@ When no client exists at all, the page also shows **Register an OAuth client fir
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| **Display name** | Yes | The product name users see on the sign-in page, for example `Demo Store`. |
+| **Display name** | Yes | The product name users see on the sign-in page, for example `Example App`. |
 | **Tenant** | Yes | The organization that owns the product. Its users can sign in. Shows *No tenants available* until you [create a tenant](05-tenants.md). |
-| **Slug** | Yes | Short lowercase name, for example `demostore`. *Schema name + default client ID.* It becomes the database schema name, and the client ID when you leave **Client ID** empty. Cannot be changed later. |
+| **Slug** | Yes | Short lowercase name, for example `exampleapp`. *Schema name + default client ID.* It becomes the database schema name, and the client ID when you leave **Client ID** empty. Cannot be changed later. |
 | **Description** | No | Internal note, for example *Customer-facing product*. |
 | **Status** | Yes | **Active** (users can sign in), **Disabled** (switched off), **Suspended** (temporarily blocked). Normally Active. |
 
@@ -85,7 +85,7 @@ When no client exists at all, the page also shows **Register an OAuth client fir
 | Field | Required | What to enter |
 |-------|----------|---------------|
 | **Client template** | Yes | Picks safe defaults for the fields below (see [Client templates](#client-templates)). Choose the one matching your software. |
-| **Client ID** | No | The identifier your app sends, for example `demostore-web`. *Optional — defaults to application slug.* Use lowercase and dashes; it must be unique. |
+| **Client ID** | No | The identifier your app sends, for example `exampleapp-web`. *Optional — defaults to application slug.* Use lowercase and dashes; it must be unique. |
 | **Grant types** | Yes | How the client obtains tokens; tick one or more (see [Grant types](#grant-types)). Filled by the template. |
 | **Scopes** | Usually | *Comma-separated OIDC scopes*, for example `openid, profile, email`. Empty for machine-to-machine. |
 | **Redirect URIs** | For browser sign-in | *One per line.* Where SecureOne sends the user after sign-in, for example `https://app.example.com/callback`. Must match exactly what your app sends (scheme, host, port, path). Add every environment: local, staging, production. |
@@ -99,11 +99,11 @@ Press **Register application & client**. The result shows the client details and
 
 | Field | Value |
 |-------|-------|
-| Display name | Demo Store |
-| Tenant | Acme |
-| Slug | `demostore` |
+| Display name | Example App |
+| Tenant | Tenant A |
+| Slug | `exampleapp` |
 | Client template | Web app (confidential) |
-| Client ID | `demostore-web` |
+| Client ID | `exampleapp-web` |
 | Grant types | authorization_code, refresh_token |
 | Scopes | `openid, profile, email` |
 | Redirect URIs | `http://localhost:3000/api/auth/callback/secureone` and `https://shop.example.com/api/auth/callback/secureone` |
@@ -121,7 +121,7 @@ Press **Register application & client**. The result shows the client details and
 | **Application name** | When auto-creating | *Used for auto-created product and schema.* |
 | **Client template** | Yes | See [Client templates](#client-templates). |
 | **Status** | Yes | **Active**, **Disabled** or **Suspended**. A disabled or suspended client cannot obtain tokens. |
-| **Client ID** | No | *Optional — defaults to application slug.* Give extra clients distinct IDs, for example `demostore-mobile`. |
+| **Client ID** | No | *Optional — defaults to application slug.* Give extra clients distinct IDs, for example `exampleapp-mobile`. |
 | **Grant types**, **Scopes**, **Redirect URIs**, **Post-logout redirect URIs**, **Require PKCE** | | As in the form above. |
 | **Token subject (sub)** | Yes | What goes into the token's `sub` claim. **User ID (stable)** (recommended): the account ID, which never changes. **Legacy (tenant:email)**: changes if the user changes email; use only for apps built on the old format. |
 

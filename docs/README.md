@@ -11,35 +11,35 @@ Central index for **platform** documentation (operators) and **application integ
 | **App developer** — integrate your own frontend (signup, signin, APIs) | **[23 — Application integration guide](23-application-integration-guide.md)** |
 | **Console user** — what every page, button and field does | **[User guide](user-guide/README.md)** |
 
-Browse everything in **SecureOne Confluence**: http://localhost:9000/admin/confluence
+Browse everything in **SecureOne Documentation**: http://localhost:9000/admin/documentation
 
-## SecureOne Confluence (in-app UI)
+## SecureOne Documentation (in-app UI)
 
-Standalone documentation browser in **admin-web** — no admin console sidebar or topbar. Open from the admin sidebar: **Platform admin → SecureOne Confluence** (opens in a **new browser tab** with an external-link icon).
+Standalone documentation browser in **admin-web** — no admin console sidebar or topbar. Open from the admin sidebar: **Platform admin → SecureOne Documentation** (opens in a **new browser tab** with an external-link icon).
 
 | Access | URL (dev: console at **:9000/admin**) |
 |--------|-----------------------------------|
-| **UI** | http://localhost:9000/admin/confluence |
-| **Doc page** | http://localhost:9000/admin/confluence/{slug} (e.g. `/confluence/architecture`) |
-| **Catalog API** (session required) | `GET /api/confluence` |
-| **Page API** (session required) | `GET /api/confluence/{slug}` |
-| **Assets API** (session required) | `GET /api/confluence/assets/{path}` (download `.drawio` / images) |
-| **Public discovery** (auth-server) | `GET http://localhost:9000/api/v1/confluence` |
+| **UI** | http://localhost:9000/admin/documentation |
+| **Doc page** | http://localhost:9000/admin/documentation/{slug} (e.g. `/documentation/architecture`) |
+| **Catalog API** (session required) | `GET /api/documentation` |
+| **Page API** (session required) | `GET /api/documentation/{slug}` |
+| **Assets API** (session required) | `GET /api/documentation/assets/{path}` (download `.drawio` / images) |
+| **Public discovery** (auth-server) | `GET http://localhost:9000/api/v1/documentation` |
 
-Example: `GET /api/confluence/architecture` returns markdown JSON for the Architecture page.
+Example: `GET /api/documentation/architecture` returns markdown JSON for the Architecture page.
 
 **Sidebar categories:** Getting started · Platform — fundamentals · Platform — operations · Deployment · Platform — reference · Application integration (aligned with this hub below).
 
-**PDF export:** every page has a **Download PDF** button in the header (print-friendly view → browser "Save as PDF"), and **All docs PDF** exports the entire catalog as one document at `/confluence/print/all`.
+**PDF export:** every page has a **Download PDF** button in the header (print-friendly view → browser "Save as PDF"), and **All docs PDF** exports the entire catalog as one document at `/documentation/print/all`.
 
 ### Draw.io diagrams
 
 - **Inline on doc pages** — each “Editable source” `.drawio` link renders a view-only embed on the **same page** (e.g. Architecture → Logical architecture section).
-- **Diagrams index** — `/confluence/diagrams` table links jump to the parent doc that contains the embed.
+- **Diagrams index** — `/documentation/diagrams` table links jump to the parent doc that contains the embed.
 - **Internet required** — viewer uses `embed.diagrams.net`; download source via the link or assets API if offline.
-- **Legacy URLs** — `/confluence/diagram/diagrams/{file}.drawio` redirects to the parent doc page.
+- **Legacy URLs** — `/documentation/diagram/diagrams/{file}.drawio` redirects to the parent doc page.
 
-> Markdown source remains in this `docs/` folder; Confluence renders it at runtime from the monorepo.
+> Markdown source remains in this `docs/` folder; Documentation renders it at runtime from the monorepo.
 
 ---
 
@@ -65,8 +65,6 @@ Everything needed to **run, configure, and govern** the SecureOne deployment.
 | **Schemas, tables & connections** | **[17 — Database schemas & tables](17-database-schemas-and-tables.md)** |
 | **Flyway migration SQL** | **[18 — Flyway migration files](18-flyway-migration-files.md)** |
 | Security practices | [07 — Security](07-security.md) |
-| Delivery phases | [08 — Roadmap](08-roadmap.md) |
-| **Pending / backlog implementation** | **[21 — Pending implementation guide](21-pending-implementation-guide.md)** |
 | **Local install & smoke tests** | **[09 — Installation](09-installation.md)** |
 | **Image+env deploy & enterprise Helm** | **[24 — Deployment: image + env & enterprise](24-deployment-image-env-and-enterprise.md)** · [runbooks/deploy.md](runbooks/deploy.md) |
 | **Run stack, migrations & schedulers** | **[16 — Environment & operations](16-environment-setup-and-operations.md)** · **[17 — Schemas & tables](17-database-schemas-and-tables.md)** · **[18 — Flyway SQL](18-flyway-migration-files.md)** |
@@ -90,7 +88,6 @@ Ship SecureOne to a server or cluster and go live.
 | Short runbook (prereqs, images, Helm, post-deploy checks) | [runbooks/deploy.md](runbooks/deploy.md) |
 | Rollback procedure | [runbooks/rollback.md](runbooks/rollback.md) |
 | Env vars, profiles (dev/prod), schedulers | [16 — Environment & operations](16-environment-setup-and-operations.md) |
-| Production hardening backlog | [20 — Production completion master plan](20-production-completion-master-plan.md) |
 
 ### App READMEs (repo)
 
@@ -121,8 +118,6 @@ Everything needed to **integrate a product** (your app) with SecureOne: OAuth, l
 | **OTP signup/login, phone, verification policy** | **[19 — Verification & OTP](19-verification-and-otp.md)** |
 | Register product + OAuth client | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | OpenAPI (all endpoints) | [API reference](api-reference/README.md) · [12 — API documentation](12-api-documentation.md) + Swagger |
-| Sample apps (React SPA, Next.js, Express API, CLI) | [../samples/README.md](../samples/README.md) |
-| Demo storefront (Nook) | External repo `secureone-ecommerce` |
 
 ### In the admin console (per application)
 
@@ -136,7 +131,7 @@ When you open **Application console → Settings → Integration**, each applica
 | API health check | Probes public app-scoped endpoints |
 | Database schema | Isolated schema status / isolate (platform super-admin) |
 
-This is the closest thing to **per-application Confluence** today — it is **dynamic** (your IDs, your client) but lives inside the console, not as standalone wiki pages.
+This is the closest thing to **per-application Documentation** today — it is **dynamic** (your IDs, your client) but lives inside the console, not as standalone wiki pages.
 
 ### Application-scoped public APIs (no admin auth)
 
@@ -155,11 +150,11 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 
 ---
 
-## How this maps to “Confluence”
+## How this maps to “Documentation”
 
-| Confluence idea | SecureOne today | Planned |
+| Documentation idea | SecureOne today | Planned |
 |-----------------|-----------------|---------|
-| **Platform space** | `docs/` markdown + **SecureOne Confluence** in admin-web (standalone UI, session APIs) | Public `docs-site` portal |
+| **Platform space** | `docs/` markdown + **SecureOne Documentation** in admin-web (standalone UI, session APIs) | Public `docs-site` portal |
 | **Application space** | Settings → Integration + doc 13 + samples | Per-app docs export / developer portal |
 | **API catalog** | Swagger + in-console API reference | SDK + generated client docs |
 | **Search** | IDE / GitHub search | Docs site search |
@@ -179,27 +174,26 @@ Full catalog is built in `apps/admin-web/src/lib/integration-api-catalog.ts` and
 
 ### Application developer (integrating a new app)
 
-1. **[23 — Application integration guide](23-application-integration-guide.md)** — Demo Store example, public APIs, hosted vs native UI
+1. **[23 — Application integration guide](23-application-integration-guide.md)** — Example App example, public APIs, hosted vs native UI
 2. [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) — register product + client
 3. [13 — Auth UI integration](13-auth-ui-integration.md) — hosted vs native detail
 4. [19 — Verification & OTP](19-verification-and-otp.md) — signup/login OTP, phone, magic link session
 5. Admin → **your app → Settings → Integration** — checklist + API reference
-6. [samples/](../samples/README.md) — working React SPA, Next.js app, Express API and device-code CLI
-7. http://localhost:9000/docs — try OAuth and account APIs
+6. http://localhost:9000/docs — try OAuth and account APIs
 
 ### Architect / security review
 
-1. [03 — Architecture](03-architecture.md) (draw.io diagrams inline in Confluence)
+1. [03 — Architecture](03-architecture.md) (draw.io diagrams inline in Documentation)
 2. [06 — Database Strategy](06-database.md)
 3. [07 — Security](07-security.md)
 4. [decisions/](decisions/README.md)
-5. **SecureOne Confluence** — http://localhost:9000/admin/confluence
+5. **SecureOne Documentation** — http://localhost:9000/admin/documentation
 
 ---
 
 ## Contributing documentation
 
 - **Platform changes** → update the relevant `docs/NN-*.md` file and this hub.
-- **Draw.io diagrams** → edit files in `docs/diagrams/`; Confluence embeds them inline on the parent doc page automatically.
+- **Draw.io diagrams** → edit files in `docs/diagrams/`; Documentation embeds them inline on the parent doc page automatically.
 - **New integration endpoints** → update `integration-api-catalog.ts` and [13 — Auth UI integration](13-auth-ui-integration.md).
 - **Schema / migration changes** → [06 — Database](06-database.md), [15 — Applications](15-applications-and-oauth-clients.md), ADR in `decisions/`.

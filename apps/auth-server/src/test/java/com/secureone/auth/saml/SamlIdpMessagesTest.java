@@ -63,7 +63,7 @@ class SamlIdpMessagesTest {
         Map<String, List<String>> attributes = new LinkedHashMap<>();
         attributes.put("email", List.of("ann@example.com"));
         attributes.put("roles", List.of("admin", "viewer"));
-        return new SamlIdpMessages.Assertion("https://idp/saml2/idp/acme", "https://sp.example.com", "https://sp.example.com/acs",
+        return new SamlIdpMessages.Assertion("https://idp/saml2/idp/tenant-a", "https://sp.example.com", "https://sp.example.com/acs",
                 "_req1", "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress", "ann@example.com", Instant.now(),
                 "_s1", true, attributes, 300);
     }
@@ -94,7 +94,7 @@ class SamlIdpMessagesTest {
         SamlIdpCredentialService.Credential credential = credential();
         String xml = new String(Base64.getDecoder().decode(
                 SamlIdpMessages.successResponse(assertion(), credential, false, true)), StandardCharsets.UTF_8);
-        String forged = xml.replace("ann@example.com", "eve@example.com");
+        String forged = xml.replace("ann@example.com", "user-c@example.com");
         Response response = parse(Base64.getEncoder().encodeToString(forged.getBytes(StandardCharsets.UTF_8)));
         assertThrows(Exception.class, () -> SignatureValidator.validate(
                 response.getAssertions().get(0).getSignature(), new BasicX509Credential(credential.certificate())));

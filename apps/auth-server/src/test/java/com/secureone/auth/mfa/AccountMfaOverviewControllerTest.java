@@ -48,7 +48,7 @@ class AccountMfaOverviewControllerTest {
         when(factors.findByUserIdOrderByCreatedAtAsc(userId)).thenReturn(List.of(totp));
 
         List<Map<String, Object>> out = controller.listFactors(
-                new UsernamePasswordAuthenticationToken("acme:user@example.com", "n/a"));
+                new UsernamePasswordAuthenticationToken("tenant-a:user@example.com", "n/a"));
 
         assertEquals(1, out.size());
         assertEquals("totp", out.get(0).get("type"));

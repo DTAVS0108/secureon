@@ -521,7 +521,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/account/email/resend-verification" \
   --data '{
   "applicationId": "{applicationId}",
   "email": "user@example.com",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -591,7 +591,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/account/magic-link/request" \
   --data '{
   "applicationId": "{applicationId}",
   "email": "user@example.com",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -662,7 +662,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/account/password/forgot" \
   --data '{
   "applicationId": "{applicationId}",
   "email": "user@example.com",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -871,7 +871,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "displayName": "Acme Shop",
+  "displayName": "Tenant A Shop",
   "familyName": "familyName",
   "givenName": "givenName"
 }'
@@ -1423,7 +1423,7 @@ null keeps a name, an empty string clears it. Apps see the new names in the next
 curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile/session" \
   -H "Content-Type: application/json" \
   --data '{
-  "displayName": "Acme Shop",
+  "displayName": "Tenant A Shop",
   "familyName": "familyName",
   "givenName": "givenName"
 }'

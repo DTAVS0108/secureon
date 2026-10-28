@@ -20,20 +20,20 @@ const ACTION_TONE: Record<ConfigChange["action"], BadgeTone> = { create: "succes
 const EXAMPLE = `apiVersion: secureone/v1
 kind: TenantConfiguration
 tenant:
-  slug: acme
-  name: Acme Corp
+  slug: tenant-slug
+  name: Tenant name
 applications:
-  - slug: shop
-    name: Shop
+  - slug: app-slug
+    name: Application name
     clients:
-      - clientId: shop-web
+      - clientId: client-id
         type: spa
         redirectUris: [http://localhost:5173/]
     permissions:
-      - key: orders:read
+      - key: resource:read
     roles:
       - name: viewer
-        permissions: [orders:read]
+        permissions: [resource:read]
 `;
 
 export function ConfigWorkspace({ tenants }: { tenants: Tenant[] }) {

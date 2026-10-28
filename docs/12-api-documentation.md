@@ -97,15 +97,15 @@ curl -s http://localhost:9000/v3/api-docs/all -o secureone-openapi.json
   `OAuth2OpenApiDocumentation` (protocol endpoints), `SwaggerAccessFilter`
 - Endpoint texts: `@Tag`, `@Operation` and `@Parameter` on the controllers
 
-## SecureOne Confluence APIs (admin console)
+## SecureOne Documentation APIs (admin console)
 
 The documentation you are reading is served by the admin console and is public (no sign-in).
 
 | API | Purpose |
 |-----|---------|
-| `GET /api/v1/confluence` (auth-server) | Catalog by category, with links to the Confluence UI and content API |
-| `GET /admin/api/confluence` | Full catalog JSON |
-| `GET /admin/api/confluence/{slug}` | One page: markdown and metadata |
-| `GET /admin/api/confluence/assets/{path}` | Files next to the docs (`.drawio`, images) |
+| `GET /api/v1/documentation` (auth-server) | Catalog by category, with links to the Documentation UI and content API |
+| `GET /admin/api/documentation` | Full catalog JSON |
+| `GET /admin/api/documentation/{slug}` | One page: markdown and metadata |
+| `GET /admin/api/documentation/assets/{path}` | Files next to the docs (`.drawio`, images) |
 
-UI: `http://localhost:9000/admin/confluence`.
+UI: `http://localhost:9000/admin/documentation`.

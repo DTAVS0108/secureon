@@ -42,7 +42,7 @@ Every endpoint has the same parts, in this order:
 | **Parameters** | Path and query values. |
 | **Request body** | The JSON (or form) fields, with a link to the full type in [Data models](13-data-models.md). |
 | **Responses** | The success status and its body type. The common errors (400, 401, 403, 404, 409) are the same everywhere and described once in [Getting started › Errors](00-getting-started.md#errors). |
-| `curl` | A command to copy. It uses the shell variables from [Getting started](00-getting-started.md#set-up-your-shell); replace `{placeholders}` with real values. Example values in request bodies (`Acme Shop`, `user@example.com`) are only examples. |
+| `curl` | A command to copy. It uses the shell variables from [Getting started](00-getting-started.md#set-up-your-shell); replace `{placeholders}` with real values. Example values in request bodies (`Tenant A Shop`, `user@example.com`) are only examples. |
 
 ## Keeping this reference current
 

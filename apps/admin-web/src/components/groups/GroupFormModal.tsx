@@ -111,7 +111,7 @@ function GroupForm({
       <FormSection title="Details">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <FieldRow label="Name">
-            <Input name="name" defaultValue={group?.name ?? ""} required placeholder="Engineering" disabled={pending} />
+            <Input name="name" defaultValue={group?.name ?? ""} required placeholder="Group name" disabled={pending} />
           </FieldRow>
           <FieldRow label="Description" hint="optional">
             <Input

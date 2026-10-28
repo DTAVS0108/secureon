@@ -2,7 +2,7 @@
 
 **Developers:** start with the full walkthrough:
 
-→ **[23 — Application integration guide](../23-application-integration-guide.md)** (Demo Store example, signup/signin, public APIs, hosted vs custom UI)
+→ **[23 — Application integration guide](../23-application-integration-guide.md)** (Example App example, signup/signin, public APIs, hosted vs custom UI)
 
 **Operators:** setting up SecureOne for the first time:
 
@@ -18,6 +18,5 @@
 | 2. Choose login approach | [23 — Application integration guide](../23-application-integration-guide.md) § Two ways to integrate |
 | 3. Interactive API list | Admin → **App console → Settings → Integration** |
 | 4. Full OpenAPI | http://localhost:9000/docs |
-| 5. Sample apps | [samples/](../../samples/README.md) |
 
 For the complete integration checklist, API tables, and code samples, see **[23 — Application integration guide](../23-application-integration-guide.md)**.

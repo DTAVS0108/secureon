@@ -126,7 +126,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
         <h3 className="text-sm font-semibold text-ui">Application product</h3>
         <div className="grid grid-cols-2 gap-4">
           <FieldRow label="Display name">
-            <Input name="name" placeholder="Demo Store" required />
+            <Input name="name" placeholder="Application name" required />
           </FieldRow>
           <FieldRow label="Tenant">
             <Select name="tenantId" defaultValue={tenants[0]?.id} disabled={tenants.length === 0} required>
@@ -139,11 +139,11 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
             </Select>
           </FieldRow>
         </div>
-        <FieldRow label="Slug" hint="Schema name + default client ID (e.g. demostore)">
-          <Input name="slug" placeholder="demostore" />
+        <FieldRow label="Slug" hint="Schema name and default client ID">
+          <Input name="slug" placeholder="Slug" />
         </FieldRow>
         <FieldRow label="Description" hint="Optional">
-          <Textarea name="description" rows={2} placeholder="Customer-facing product" />
+          <Textarea name="description" rows={2} placeholder="Description" />
         </FieldRow>
         <FieldRow label="Status">
           <Select name="status" defaultValue="active">
@@ -170,7 +170,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
             </Select>
           </FieldRow>
           <FieldRow label="Client ID" hint="Optional — defaults to application slug">
-            <Input name="clientId" placeholder="demostore-web" />
+            <Input name="clientId" placeholder="Client ID" />
           </FieldRow>
         </div>
         <FieldRow label="Grant types">
@@ -185,7 +185,7 @@ function CombinedForm({ tenants, close }: { tenants: Tenant[]; close: () => void
           <Input name="scopes" value={scopes} onChange={(e) => setScopes(e.target.value)} />
         </FieldRow>
         <FieldRow label="Redirect URIs" hint="One per line">
-          <Textarea name="redirectUris" placeholder="https://app.example.com/callback" />
+          <Textarea name="redirectUris" placeholder="Redirect URIs, one per line" />
         </FieldRow>
         <FieldRow label="Post-logout redirect URIs" hint="Optional">
           <Textarea name="postLogoutRedirectUris" />

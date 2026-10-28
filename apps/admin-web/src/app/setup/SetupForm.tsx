@@ -87,7 +87,7 @@ export function SetupForm({ codeFromEnvironment }: { codeFromEnvironment: boolea
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="ABCD-EFGH-JKLM"
+              placeholder="Setup code"
               autoComplete="off"
               spellCheck={false}
               required

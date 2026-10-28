@@ -3,16 +3,16 @@
 Every architecture/flow diagram exists in two forms:
 
 - **Mermaid** — embedded inline in the relevant doc; renders automatically on GitHub.
-- **`.drawio`** — editable source in this folder; **view inline in SecureOne Confluence** on the parent doc page (e.g. [Architecture](../03-architecture.md) → `/confluence/architecture`), or edit in [draw.io / diagrams.net](https://app.diagrams.net) / VS Code Draw.io extension.
+- **`.drawio`** — editable source in this folder; **view inline in SecureOne Documentation** on the parent doc page (e.g. [Architecture](../03-architecture.md) → `/documentation/architecture`), or edit in [draw.io / diagrams.net](https://app.diagrams.net) / VS Code Draw.io extension.
 
-## Viewing in SecureOne Confluence
+## Viewing in SecureOne Documentation
 
-1. Open **SecureOne Confluence** from the admin sidebar (new tab) → http://localhost:9000/admin/confluence
+1. Open **SecureOne Documentation** from the admin sidebar (new tab) → http://localhost:9000/admin/documentation
 2. Go to the doc listed in **Used in** below (or open **Diagrams** and click a row — links to that doc).
 3. Scroll to the section with **Editable source** — the draw.io viewer is embedded inline below the link.
-4. Download the `.drawio` source from the link or `GET /api/confluence/assets/diagrams/{filename}.drawio` (session required).
+4. Download the `.drawio` source from the link or `GET /api/documentation/assets/diagrams/{filename}.drawio` (session required).
 
-> Legacy `/confluence/diagram/diagrams/{file}.drawio` URLs redirect to the parent doc page.
+> Legacy `/documentation/diagram/diagrams/{file}.drawio` URLs redirect to the parent doc page.
 
 ## Index
 

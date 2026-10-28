@@ -228,16 +228,16 @@ export function SamlAppsCard({ applicationId }: { applicationId: string }) {
           <div className="space-y-3 rounded-xl border border-ui p-3">
             <div className="grid gap-3 md:grid-cols-2">
               <FieldRow label="Name">
-                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Expense tracker" />
+                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Application name" />
               </FieldRow>
               <FieldRow label="SP entity ID" hint="The app's entity ID (entityID in its SAML metadata).">
-                <Input value={draft.entityId} onChange={(e) => setDraft({ ...draft, entityId: e.target.value })} placeholder="https://expenses.example.com/saml" />
+                <Input value={draft.entityId} onChange={(e) => setDraft({ ...draft, entityId: e.target.value })} placeholder="Entity ID" />
               </FieldRow>
               <FieldRow label="ACS URL" hint="Where the app receives assertions (HTTP-POST). Only this URL is ever sent one.">
-                <Input value={draft.acsUrl} onChange={(e) => setDraft({ ...draft, acsUrl: e.target.value })} placeholder="https://expenses.example.com/saml/acs" />
+                <Input value={draft.acsUrl} onChange={(e) => setDraft({ ...draft, acsUrl: e.target.value })} placeholder="ACS URL" />
               </FieldRow>
               <FieldRow label="Single logout URL (optional)">
-                <Input value={draft.sloUrl} onChange={(e) => setDraft({ ...draft, sloUrl: e.target.value })} placeholder="https://expenses.example.com/saml/slo" />
+                <Input value={draft.sloUrl} onChange={(e) => setDraft({ ...draft, sloUrl: e.target.value })} placeholder="SLO URL" />
               </FieldRow>
               <FieldRow label="Name ID" hint="email: the user's email; persistent: the user's ID, which never changes.">
                 <Select value={draft.nameIdFormat} onChange={(e) => setDraft({ ...draft, nameIdFormat: e.target.value as Draft["nameIdFormat"] })}>

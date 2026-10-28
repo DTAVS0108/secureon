@@ -31,11 +31,11 @@ its own roles, permissions and groups. Console roles are granted on top of that 
 
 ```mermaid
 flowchart TB
-  P["Platform"] --> T1["Tenant: Acme<br/>users · tenant roles · departments · SSO · webhooks"]
-  P --> T2["Tenant: Globex"]
+  P["Platform"] --> T1["Tenant: Tenant A<br/>users · tenant roles · departments · SSO · webhooks"]
+  P --> T2["Tenant: Tenant B"]
   T1 --> A1["App: test-web<br/>app roles · permissions · groups · OAuth clients"]
-  T1 --> A2["App: demostore"]
-  T2 --> A3["App: Globex Portal"]
+  T1 --> A2["App: exampleapp"]
+  T2 --> A3["App: Tenant B Portal"]
   SA(["Platform super admin: everything"]) -.-> P
   TSA(["Tenant super admin: whole tenant"]) -.-> T1
   TA(["Tenant admin: assigned apps"]) -.-> A1
@@ -80,20 +80,20 @@ If a person holds several console roles, the highest one decides the view.
 
 - **How you get it:** an existing platform super admin adds you under **Access review → Platform operators**. You get an account in the reserved `platform` tenant and an email to set your password; you set up an authenticator app at first sign-in.
 - **Break-glass account:** the account configured at install (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`; `admin` / `admin` in local dev). In production it works only while `SECUREONE_BREAK_GLASS_ENABLED=true`, its password must be a bcrypt hash, sessions last 1 hour, and every sign-in is audited and emailed to platform admins. Use it to recover when no named operator can sign in.
-- **Sidebar:** Application console (every app) · OAuth clients · Platform settings · Access review · SecureOne Confluence · Tenant → Tenants, Roles & Permissions.
+- **Sidebar:** Application console (every app) · OAuth clients · Platform settings · Access review · SecureOne Documentation · Tenant → Tenants, Roles & Permissions.
 - **Can:** create, edit, suspend and delete tenants (not the reserved `platform` tenant); create applications and OAuth clients, rotate secrets; change platform settings, feature flags, MFA, password and token policy; add and remove platform operators (not themselves); grant or revoke any console role; run the platform-wide access review; see audit, logs and sessions across all tenants; delete users; everything a tenant super admin can do, in any tenant.
 
 ### Tenant super admin (`TENANT_SUPER_ADMIN`)
 
 - **How you get it:** granted by the platform super admin for one tenant.
-- **Sidebar:** Application console (all apps in the tenant) · Confluence · Tenant → Tenants, Roles & Permissions, Access review (own tenant only).
+- **Sidebar:** Application console (all apps in the tenant) · Documentation · Tenant → Tenants, Roles & Permissions, Access review (own tenant only).
 - **Can:** every section of every app in the tenant; tenant roles & permissions and their assignment; choose which console sections each console role sees; grant and revoke application admin and tenant admin in their tenant; run the tenant's access review; departments, SSO providers, service accounts and API keys, webhooks, access requests, SCIM token; the tenant roster; **Connect an app** and the OAuth clients of every application in the tenant (register, edit, rotate secrets, delete).
 - **Cannot:** see other tenants, change platform settings, create tenants or applications, grant or revoke tenant super admin, delete users.
 
 ### Tenant admin (`TENANT_ADMIN`)
 
 - **How you get it:** granted per application by the platform super admin or the tenant super admin.
-- **Sidebar:** Application console (assigned apps; switch in the header) · Confluence.
+- **Sidebar:** Application console (assigned apps; switch in the header) · Documentation.
 - **Default sections:** Users · Roles · Groups · Permissions · Settings · Audit log · Application logs · Sessions, in each assigned app.
 - **Also:** **Connect an app** (sidebar) for the assigned apps: register OAuth clients and manage them (edit, rotate secrets, delete). The wizard offers only those apps and cannot create a new application.
 - **Cannot:** open the tenant page, tenant roles or tenant-level features; touch apps they are not assigned to (the server refuses their clients, too); create applications.

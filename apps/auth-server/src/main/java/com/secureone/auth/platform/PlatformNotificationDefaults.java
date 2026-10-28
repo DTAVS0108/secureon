@@ -4,7 +4,6 @@ import com.secureone.auth.notify.SmtpSettingsService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /** Platform operator alerts only — independent from application notification settings. */
@@ -17,7 +16,7 @@ public final class PlatformNotificationDefaults {
         out.put("emailEnabled", true);
         out.put("auditAlertsEnabled", true);
         out.put("securityAlertsEnabled", true);
-        out.put("adminRecipients", new ArrayList<>(List.of("admin@acme.com")));
+        out.put("adminRecipients", new ArrayList<>());
         return out;
     }
 

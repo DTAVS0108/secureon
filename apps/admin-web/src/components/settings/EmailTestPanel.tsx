@@ -69,7 +69,7 @@ export function EmailTestPanel({
       {message && <p className="px-5 text-sm text-brand">{message}</p>}
       <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
         <FieldRow label="To">
-          <Input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="you@example.com" />
+          <Input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="Email address" />
         </FieldRow>
         <FieldRow label="Template">
           <Select value={templateKey} onChange={(e) => setTemplateKey(e.target.value)}>

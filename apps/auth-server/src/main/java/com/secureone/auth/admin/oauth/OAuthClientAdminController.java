@@ -119,7 +119,7 @@ public class OAuthClientAdminController {
 
     /**
      * Deleting a client needs a second admin: this asks for it (202 with the pending change request), and a
-     * platform operator or the tenant's super admin approves it on Access review (docs/plans/change-approvals.md).
+     * platform operator or the tenant's super admin approves it on Access review.
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.ACCEPTED)

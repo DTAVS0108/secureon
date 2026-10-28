@@ -84,7 +84,7 @@ export function ScimSettingsPanel() {
             onChange={(e) =>
               setSettings((prev) => (prev ? { ...prev, userNameDomain: e.target.value } : prev))
             }
-            placeholder="secureone.local"
+            placeholder="User name domain"
           />
         </FieldRow>
         <div className="rounded-lg border border-ui bg-black/5 px-3 py-2 text-xs dark:bg-white/5">

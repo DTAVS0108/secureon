@@ -256,7 +256,7 @@ export function NotificationsSettings({
           description={
             smtpReady
               ? "Application email and alert settings. Changes auto-save."
-              : "Configure SMTP below. Gmail: smtp.gmail.com, port 465, SSL + App Password."
+              : "Configure SMTP below: host, port and security from your mail provider."
           }
         />
         <ul

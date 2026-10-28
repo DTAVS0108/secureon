@@ -60,7 +60,7 @@ migrationJob:
       memory: 1Gi
 
 # Configuration as code (docs/26): tenant configuration files applied at every start-up. Name a ConfigMap
-# whose keys are the files (for example acme.yaml); it is mounted at /etc/secureone/config.
+# whose keys are the files (for example tenant-a.yaml); it is mounted at /etc/secureone/config.
 configImport:
   configMap: ""
 

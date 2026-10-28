@@ -67,7 +67,7 @@ class AdminAccessInterceptorConfigAsCodeTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         boolean proceed = interceptor.preHandle(
-                consoleRequest("/api/admin/v1/config/tenants/acme/export"), response, new Object());
+                consoleRequest("/api/admin/v1/config/tenants/tenant-a/export"), response, new Object());
 
         assertTrue(proceed);
         assertEquals(200, response.getStatus());

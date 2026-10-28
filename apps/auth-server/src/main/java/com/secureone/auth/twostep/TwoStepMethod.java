@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The second-step options (docs/plans/two-factor-authentication.md §2). The id is what policies, factors
+ * The second-step options. The id is what policies, factors
  * ({@code mfa_factor.type}) and the API use.
  */
 public enum TwoStepMethod {

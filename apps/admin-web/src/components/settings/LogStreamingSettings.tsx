@@ -26,7 +26,7 @@ type Stream = {
 type Config = { auditRetentionDays: number; signInHistoryRetentionDays: number; streams: Stream[] };
 
 const PATH = "/api/admin/v1/settings/log-streams";
-const EXAMPLES = "Datadog: https://http-intake.logs.datadoghq.com/api/v2/logs with header DD-API-KEY. Splunk: https://splunk.example.com:8088/services/collector/event with header Authorization = Splunk <token>.";
+const EXAMPLES = "Use the collector's HTTPS intake URL and the header it expects for its API key or token (for example Authorization).";
 
 /** Platform settings › Logs & streaming: retention and streaming the audit log to a SIEM. */
 export function LogStreamingSettings() {
@@ -111,18 +111,18 @@ export function LogStreamingSettings() {
           {config.streams.map((s, i) => (
             <div key={s.id ?? `new-${i}`} className="space-y-3 rounded-xl border border-ui p-4">
               <div className="flex items-center justify-between gap-3">
-                <Input value={s.name} onChange={(e) => patchStream(i, { name: e.target.value })} placeholder="Name (e.g. Datadog)" />
+                <Input value={s.name} onChange={(e) => patchStream(i, { name: e.target.value })} placeholder="Name" />
                 <Toggle checked={s.enabled} onChange={(v) => patchStream(i, { enabled: v })} aria-label="Stream enabled" />
               </div>
               <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
                 <Input value={s.url} onChange={(e) => patchStream(i, { url: e.target.value })} placeholder="https://…" />
                 <Select value={s.format} onChange={(e) => patchStream(i, { format: e.target.value as Stream["format"] })}>
                   <option value="json">JSON (one entry per request)</option>
-                  <option value="splunk">Splunk HTTP Event Collector</option>
+                  <option value="splunk">HTTP Event Collector (HEC)</option>
                 </Select>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <Input value={s.headerName} onChange={(e) => patchStream(i, { headerName: e.target.value })} placeholder="Header name (e.g. DD-API-KEY)" />
+                <Input value={s.headerName} onChange={(e) => patchStream(i, { headerName: e.target.value })} placeholder="Header name" />
                 <Input
                   type="password"
                   autoComplete="off"

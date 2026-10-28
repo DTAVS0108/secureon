@@ -57,7 +57,7 @@ class AdminSessionServiceTest {
         when(redis.opsForValue()).thenReturn(values);
 
         var issued = sessions.create(
-                UsernamePasswordAuthenticationToken.authenticated("acme:jane@acme.test", null, List.of()), false);
+                UsernamePasswordAuthenticationToken.authenticated("tenant-a:member@tenant-a.test", null, List.of()), false);
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
@@ -65,7 +65,7 @@ class AdminSessionServiceTest {
         assertEquals(43, issued.token().length());
         assertFalse(key.getValue().contains(issued.token()));
         assertEquals(AdminSessionService.key(issued.token()), key.getValue());
-        assertTrue(value.getValue().endsWith("|acme:jane@acme.test"));
+        assertTrue(value.getValue().endsWith("|tenant-a:member@tenant-a.test"));
         assertEquals(MAX.toSeconds(), issued.expiresIn());
         assertEquals(IDLE.toSeconds(), issued.idleTimeout());
     }
@@ -106,10 +106,10 @@ class AdminSessionServiceTest {
     @Test
     void knownTokenRestoresThePrincipalAndRestartsTheIdleTimer() {
         String token = "b".repeat(43);
-        Authentication restored = UsernamePasswordAuthenticationToken.authenticated("acme:jane@acme.test", null, List.of());
+        Authentication restored = UsernamePasswordAuthenticationToken.authenticated("tenant-a:member@tenant-a.test", null, List.of());
         when(redis.opsForValue()).thenReturn(values);
-        when(values.get(anyString())).thenReturn(stored(Instant.now().plus(MAX), "acme:jane@acme.test"));
-        when(principals.restore("acme:jane@acme.test")).thenReturn(Optional.of(restored));
+        when(values.get(anyString())).thenReturn(stored(Instant.now().plus(MAX), "tenant-a:member@tenant-a.test"));
+        when(principals.restore("tenant-a:member@tenant-a.test")).thenReturn(Optional.of(restored));
 
         assertEquals(Optional.of(restored), sessions.resolve(token));
         verify(redis, never()).delete(anyString());
@@ -120,7 +120,7 @@ class AdminSessionServiceTest {
     void sessionPastItsAbsoluteLifetimeIsDeleted() {
         String token = "d".repeat(43);
         when(redis.opsForValue()).thenReturn(values);
-        when(values.get(anyString())).thenReturn(stored(Instant.now().minusSeconds(5), "acme:jane@acme.test"));
+        when(values.get(anyString())).thenReturn(stored(Instant.now().minusSeconds(5), "tenant-a:member@tenant-a.test"));
 
         assertTrue(sessions.resolve(token).isEmpty());
         verify(redis).delete(AdminSessionService.key(token));
@@ -131,7 +131,7 @@ class AdminSessionServiceTest {
     void tokenFromBeforeIdleTimeoutsIsDeleted() {
         String token = "e".repeat(43);
         when(redis.opsForValue()).thenReturn(values);
-        when(values.get(anyString())).thenReturn("acme:jane@acme.test");
+        when(values.get(anyString())).thenReturn("tenant-a:member@tenant-a.test");
 
         assertTrue(sessions.resolve(token).isEmpty());
         verify(redis).delete(AdminSessionService.key(token));
@@ -141,8 +141,8 @@ class AdminSessionServiceTest {
     void sessionForADisabledAccountIsDeleted() {
         String token = "c".repeat(43);
         when(redis.opsForValue()).thenReturn(values);
-        when(values.get(anyString())).thenReturn(stored(Instant.now().plus(MAX), "acme:gone@acme.test"));
-        when(principals.restore("acme:gone@acme.test")).thenReturn(Optional.empty());
+        when(values.get(anyString())).thenReturn(stored(Instant.now().plus(MAX), "tenant-a:gone@tenant-a.test"));
+        when(principals.restore("tenant-a:gone@tenant-a.test")).thenReturn(Optional.empty());
 
         assertTrue(sessions.resolve(token).isEmpty());
         verify(redis).delete(AdminSessionService.key(token));

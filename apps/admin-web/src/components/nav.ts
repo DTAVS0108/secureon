@@ -116,8 +116,8 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
     superAdminOnly: true,
   },
   {
-    label: "SecureOne Confluence",
-    href: "/confluence",
+    label: "SecureOne Documentation",
+    href: "/documentation",
     description: "Platform & integration documentation",
     superAdminOnly: true,
     openInNewTab: true,
@@ -129,8 +129,8 @@ export const SUPER_ADMIN_NAV: NavItem[] = [
 export const TENANT_OPERATOR_NAV: NavItem[] = [
   { label: "Application console", href: "/app", description: "Manage users, roles, and settings per application" },
   {
-    label: "SecureOne Confluence",
-    href: "/confluence",
+    label: "SecureOne Documentation",
+    href: "/documentation",
     description: "Setup, architecture, API integration",
     openInNewTab: true,
   },

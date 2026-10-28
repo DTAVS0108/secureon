@@ -14,23 +14,23 @@ class TenantIssuerRulesTest {
 
     @Test
     void tenantPrefixes() {
-        assertTrue(TenantIssuers.hasTenantPrefix("/t/acme/oauth2/token"));
-        assertTrue(TenantIssuers.hasTenantPrefix("/t/acme"));
+        assertTrue(TenantIssuers.hasTenantPrefix("/t/tenant-a/oauth2/token"));
+        assertTrue(TenantIssuers.hasTenantPrefix("/t/tenant-a"));
         assertFalse(TenantIssuers.hasTenantPrefix("/oauth2/token"));
-        assertFalse(TenantIssuers.hasTenantPrefix("/t/Acme/oauth2/token"), "slugs are lower case");
-        assertFalse(TenantIssuers.hasTenantPrefix("/tx/acme/oauth2/token"));
+        assertFalse(TenantIssuers.hasTenantPrefix("/t/Tenant-A/oauth2/token"), "slugs are lower case");
+        assertFalse(TenantIssuers.hasTenantPrefix("/tx/tenant-a/oauth2/token"));
     }
 
     @Test
     void continueUrlsMayNameATenantIssuersAuthorizeEndpoint() {
-        assertTrue(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/acme/oauth2/authorize?client_id=x"));
+        assertTrue(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/tenant-a/oauth2/authorize?client_id=x"));
         assertTrue(OAuthLoginRedirectSupport.isAuthorizeUrl("/oauth2/authorize?client_id=x"));
         assertTrue(OAuthLoginRedirectSupport.isAuthorizeUrl("/saml2/idp/resume?ref=ab"));
-        assertFalse(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/acme"));
-        assertFalse(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/acme/admin"));
+        assertFalse(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/tenant-a"));
+        assertFalse(OAuthLoginRedirectSupport.isAuthorizeUrl("/t/tenant-a/admin"));
         MockHttpServletRequest request = new MockHttpServletRequest();
-        assertTrue(OAuthLoginRedirectSupport.isSafeContinue(request, "/t/acme/oauth2/authorize?client_id=x"));
-        assertFalse(OAuthLoginRedirectSupport.isSafeContinue(request, "//evil.example/t/acme/oauth2/authorize"));
+        assertTrue(OAuthLoginRedirectSupport.isSafeContinue(request, "/t/tenant-a/oauth2/authorize?client_id=x"));
+        assertFalse(OAuthLoginRedirectSupport.isSafeContinue(request, "//evil.example/t/tenant-a/oauth2/authorize"));
     }
 
     @Test
@@ -39,8 +39,8 @@ class TenantIssuerRulesTest {
         request.setQueryString("client_id=x");
         assertEquals("/oauth2/authorize?client_id=x", OAuthLoginRedirectSupport.buildAuthorizeUrl(request));
         request.setAttribute(TenantIssuers.ATTRIBUTE,
-                new TenantIssuers.Target(java.util.UUID.randomUUID(), "acme", "https://a/t/acme", "/t/acme"));
-        assertEquals("/t/acme/oauth2/authorize?client_id=x", OAuthLoginRedirectSupport.buildAuthorizeUrl(request));
+                new TenantIssuers.Target(java.util.UUID.randomUUID(), "tenant-a", "https://a/t/tenant-a", "/t/tenant-a"));
+        assertEquals("/t/tenant-a/oauth2/authorize?client_id=x", OAuthLoginRedirectSupport.buildAuthorizeUrl(request));
     }
 
     @Test

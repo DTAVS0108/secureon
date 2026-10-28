@@ -295,7 +295,7 @@ export function FederationProvidersPanel({
             <Input
               value={draft.displayName ?? ""}
               onChange={(e) => setDraft((prev) => ({ ...prev, displayName: e.target.value }))}
-              placeholder="Continue with Google"
+              placeholder="Button label"
             />
           </FieldRow>
           {draft.type === "SAML" ? (
@@ -304,7 +304,7 @@ export function FederationProvidersPanel({
                 <Input
                   value={configText(draft, "metadataUrl")}
                   onChange={(e) => setConfig("metadataUrl", e.target.value)}
-                  placeholder="https://idp.example.com/saml/metadata"
+                  placeholder="Metadata URL"
                 />
               </FieldRow>
               <FieldRow label="IdP entity ID">
@@ -329,7 +329,7 @@ export function FederationProvidersPanel({
                       config: { ...prev.config, landingUrl: value, allowIdpInitiated: value.trim().length > 0 },
                     }));
                   }}
-                  placeholder="https://app.example.com/"
+                  placeholder="Landing URL"
                 />
               </FieldRow>
               <FieldRow label="Email attribute" hint="Optional. Defaults to email/mail attributes, then an email NameID.">

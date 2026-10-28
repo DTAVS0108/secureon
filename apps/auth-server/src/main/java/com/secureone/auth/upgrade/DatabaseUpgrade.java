@@ -30,6 +30,9 @@ public final class DatabaseUpgrade {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseUpgrade.class);
 
+    /** Description of V1 in databases created before the migrations were squashed into V1__baseline. */
+    private static final String PRE_BASELINE_V1 = "core schema";
+
     public enum Mode {
         AUTO,
         ONLY,
@@ -74,6 +77,7 @@ public final class DatabaseUpgrade {
 
     public void run() {
         MigrationInfoService info = flyway.info();
+        refusePreBaseline(info);
         String known = latestKnown(info);
         refuseNewerPlatform(info, known);
         ApplicationSchemaUpgrader.Status apps = applicationSchemas.status();
@@ -107,6 +111,17 @@ public final class DatabaseUpgrade {
         state.record(platformVersion, ApplicationSchemaMigrations.latest().version(), apps.count(), mode.name().toLowerCase(Locale.ROOT));
         log.info("Database schema: platform V{}, application schemas V{} ({} schema(s)), mode {}",
                 platformVersion, ApplicationSchemaMigrations.latest().version(), apps.count(), mode.name().toLowerCase(Locale.ROOT));
+    }
+
+    private static void refusePreBaseline(MigrationInfoService info) {
+        boolean preBaseline = Arrays.stream(info.applied())
+                .anyMatch(m -> m.getVersion() != null && "1".equals(m.getVersion().getVersion())
+                        && PRE_BASELINE_V1.equals(m.getDescription()));
+        if (preBaseline) {
+            throw new IllegalStateException(
+                    "This database was created by a release before the schema baseline and cannot be upgraded in"
+                            + " place. Start this release on an empty database and set it up again.");
+        }
     }
 
     private void refuseNewerPlatform(MigrationInfoService info, String known) {

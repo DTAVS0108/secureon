@@ -23,7 +23,7 @@ SecureOne adopts the modern, consolidated standards set so existing OAuth/OIDC c
 | **UMA 2.0** | User-managed access / resource sharing | 3 |
 | **FAPI 2.0** | Financial-grade / high-assurance client profile | 4 |
 
-See [Enterprise Capabilities](10-enterprise.md) for the full enterprise feature set; phases are defined in the [Roadmap](08-roadmap.md).
+See [Enterprise Capabilities](10-enterprise.md) for the full enterprise feature set.
 
 ## Supported flows
 

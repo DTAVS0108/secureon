@@ -136,10 +136,10 @@ function UserForm({
           <FormSection title="Profile">
             <FormFieldGrid>
               <FieldRow label="First name">
-                <Input name="firstName" defaultValue={user?.firstName} placeholder="Sarah" required disabled={pending} />
+                <Input name="firstName" defaultValue={user?.firstName} placeholder="First name" required disabled={pending} />
               </FieldRow>
               <FieldRow label="Last name">
-                <Input name="lastName" defaultValue={user?.lastName} placeholder="Chen" required disabled={pending} />
+                <Input name="lastName" defaultValue={user?.lastName} placeholder="Last name" required disabled={pending} />
               </FieldRow>
             </FormFieldGrid>
             <FieldRow label="Email" hint="sign-in address">
@@ -147,14 +147,14 @@ function UserForm({
                 name="email"
                 type="email"
                 defaultValue={user?.email}
-                placeholder="you@company.com"
+                placeholder="Email address"
                 required
                 disabled={pending}
               />
             </FieldRow>
             <FormFieldGrid>
               <FieldRow label="Username" hint="optional">
-                <Input name="username" defaultValue={user?.username} placeholder="schen" disabled={pending} />
+                <Input name="username" defaultValue={user?.username} placeholder="Username" disabled={pending} />
               </FieldRow>
               {!lockToApp && (
                 <FieldRow label="Tenant">

@@ -386,13 +386,13 @@ sequenceDiagram
 
 ## Database & migrations
 
-| Object | Migration | Purpose |
-|--------|-----------|---------|
-| `otp_challenge` | **V46** | Audit trail for issued/consumed OTPs |
-| `platform_setting.verification_policy` | V46+ | Signup/login/recovery policy JSON |
-| `platform_setting.sms` | V47+ | SMS provider config |
-| `recovery_otp` feature flag | V48 | Password reset via OTP |
-| `user_account.phone`, `phone_verified` | V1 (wired in V46) | Phone identity |
+| Object | Purpose |
+|--------|---------|
+| `otp_challenge` | Audit trail for issued/consumed OTPs |
+| `platform_setting.verification_policy` | Signup/login/recovery policy JSON |
+| `platform_setting.sms` | SMS provider config |
+| `recovery_otp` feature flag | Password reset via OTP |
+| `user_account.phone`, `phone_verified` | Phone identity |
 
 Flyway runs on `bootRun`. See [18 — Flyway migration files](18-flyway-migration-files.md).
 
@@ -425,5 +425,3 @@ Flyway runs on `bootRun`. See [18 — Flyway migration files](18-flyway-migratio
 1. **TOTP / passkey** MFA step-up after password login.
 2. **`clientUrls.magicLink`** override for native magic-link landing pages.
 3. **`GET /api/v1/account/sessions`** — list and revoke active sessions.
-
-See [08 — Roadmap](08-roadmap.md) for phase planning.

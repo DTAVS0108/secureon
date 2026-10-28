@@ -2,7 +2,7 @@
 
 This document describes the capabilities that take SecureOne from a solid OIDC provider to a full **enterprise IAM platform** (the class of commercial and open-source enterprise identity suites).
 
-> **Scope discipline:** none of this is in the MVP. Everything here is **clearly phased** (see [Roadmap](08-roadmap.md)) so the initial build stays lean. The existing foundation — isolated auth core, `PolicyEvaluator` abstraction, repository layer, append-only audit, pluggable tenant resolution — was designed so these are **additive**, not rewrites.
+> **Scope discipline:** none of this is in the MVP. Everything here is **clearly phased** so the initial build stays lean. The existing foundation — isolated auth core, `PolicyEvaluator` abstraction, repository layer, append-only audit, pluggable tenant resolution — was designed so these are **additive**, not rewrites.
 
 Capability map (Mermaid + editable source): [`diagrams/enterprise-capability-map.drawio`](diagrams/enterprise-capability-map.drawio)
 
@@ -81,7 +81,7 @@ mindmap
 
 ## 5. Organizations, Groups & Delegated Administration (B2B)
 
-> **Status:** sub-organizations inside a tenant were removed (V78) — they had no members or sign-in rules. Tenants are the customer boundary; groups and delegated administration below remain.
+> **Status:** sub-organizations inside a tenant were removed — they had no members or sign-in rules. Tenants are the customer boundary; groups and delegated administration below remain.
 - **Organizations & sub-organizations**, **nested groups**, group-based role mapping.
 - **Delegated administration** — org admins manage only their org via fine-grained admin scopes.
 - Teams / membership with inherited permissions.
@@ -125,5 +125,3 @@ These are **not** in the MVP schema; noted so [Data Model](04-data-model.md) can
 - `webhook`, `webhook_delivery`, `event` (extensibility + event streaming)
 - `tenant_branding`, `email_template`, `sms_template` (theming / templates)
 - `risk_signal`, `trusted_device` (adaptive auth)
-
-See [Roadmap](08-roadmap.md) for sequencing.

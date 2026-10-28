@@ -367,7 +367,7 @@ export function ApplicationIntegrationSettings({
                     clientUrls: { ...config.clientUrls, forgotPassword: e.target.value },
                   })
                 }
-                placeholder="http://localhost:5173/forgot-password"
+                placeholder="Forgot password URL"
               />
             </FieldRow>
             <FieldRow
@@ -381,7 +381,7 @@ export function ApplicationIntegrationSettings({
                     clientUrls: { ...config.clientUrls, passwordReset: e.target.value },
                   })
                 }
-                placeholder="http://localhost:5173/reset-password"
+                placeholder="Reset password URL"
               />
             </FieldRow>
             <FieldRow
@@ -395,7 +395,7 @@ export function ApplicationIntegrationSettings({
                     clientUrls: { ...config.clientUrls, magicLink: e.target.value },
                   })
                 }
-                placeholder="http://localhost:5173/magic-link"
+                placeholder="Magic link URL"
               />
             </FieldRow>
           </div>
@@ -443,7 +443,7 @@ export function ApplicationIntegrationSettings({
             rows={3}
             value={config.notes}
             onChange={(e) => updateConfig({ notes: e.target.value })}
-            placeholder="Environment URLs, test accounts, rollout notes…"
+            placeholder="Notes"
           />
         </div>
       </Card>

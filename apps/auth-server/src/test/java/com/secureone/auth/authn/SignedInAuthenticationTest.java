@@ -16,7 +16,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 class SignedInAuthenticationTest {
 
     private final UserDetails user =
-            User.withUsername("acme:a@example.com").password("x").roles("USER").build();
+            User.withUsername("tenant-a:a@example.com").password("x").roles("USER").build();
 
     @Test
     void carriesTheCompletingFactorStampedNow() {

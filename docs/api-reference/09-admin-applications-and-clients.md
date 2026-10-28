@@ -90,8 +90,8 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications" \
   -H "Content-Type: application/json" \
   --data '{
   "description": "Short explanation",
-  "name": "Acme Shop",
-  "slug": "acme",
+  "name": "Tenant A Shop",
+  "slug": "tenant-a",
   "status": "ACTIVE",
   "tenantId": "{tenantId}"
 }'
@@ -152,7 +152,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{id}" \
   -H "Content-Type: application/json" \
   --data '{
   "description": "Short explanation",
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "status": "ACTIVE"
 }'
 ```
@@ -297,7 +297,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients" \
   -H "Content-Type: application/json" \
   --data '{
   "applicationId": "{applicationId}",
-  "applicationName": "Acme Shop",
+  "applicationName": "Tenant A Shop",
   "backchannelLogoutUri": "https://app.example.com",
   "clientId": "{clientId}",
   "consentRequired": true,

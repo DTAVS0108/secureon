@@ -184,7 +184,7 @@ export function AccessReviewPanel({ tenantId }: { tenantId?: string }) {
         <Input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Review note (optional), e.g. Q4 review, removed 2 stale admins"
+          placeholder="Review note (optional)"
           className="flex-1"
           maxLength={500}
         />

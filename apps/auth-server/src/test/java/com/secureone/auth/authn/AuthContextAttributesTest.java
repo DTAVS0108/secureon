@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 class AuthContextAttributesTest {
 
-    private final UserDetails user = User.withUsername("acme:jane@example.com").password("").roles("USER").build();
+    private final UserDetails user = User.withUsername("tenant-a:member@example.com").password("").roles("USER").build();
 
     private MockHttpServletRequest signIn(String... factors) {
         MockHttpServletRequest request = new MockHttpServletRequest();

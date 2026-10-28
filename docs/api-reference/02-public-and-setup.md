@@ -13,7 +13,7 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [2.1 System](#21-system)
   - [GET `/api/info`](#211-service-info) — Service info
 - [2.2 Documentation](#22-documentation)
-  - [GET `/api/v1/confluence`](#221-confluence-catalog) — Confluence catalog
+  - [GET `/api/v1/documentation`](#221-documentation-catalog) — Documentation catalog
 - [2.3 First-run setup](#23-first-run-setup)
   - [POST `/api/v1/setup/complete`](#231-complete-setup) — Complete setup
   - [GET `/api/v1/setup/status`](#232-list-status) — List status
@@ -43,13 +43,13 @@ curl -s "$SECUREONE_URL/api/info"
 
 ## 2.2 Documentation
 
-SecureOne Confluence discovery
+SecureOne Documentation discovery
 
-### 2.2.1 Confluence catalog
+### 2.2.1 Documentation catalog
 
-`GET /api/v1/confluence`
+`GET /api/v1/documentation`
 
-Lists documentation pages by category and links to the SecureOne Confluence UI (standalone docs browser on admin-web) and session-gated content API. Draw.io diagrams render inline on doc pages.
+Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Draw.io diagrams render inline on doc pages.
 
 **Authentication:** None (public)
 
@@ -60,7 +60,7 @@ Lists documentation pages by category and links to the SecureOne Confluence UI (
 | `200` | OK | object |
 
 ```bash
-curl -s "$SECUREONE_URL/api/v1/confluence"
+curl -s "$SECUREONE_URL/api/v1/documentation"
 ```
 
 ## 2.3 First-run setup
@@ -95,8 +95,8 @@ curl -s -X POST "$SECUREONE_URL/api/v1/setup/complete" \
   --data '{
   "code": "123456",
   "email": "user@example.com",
-  "firstName": "Jane",
-  "lastName": "Doe",
+  "firstName": "First",
+  "lastName": "Last",
   "password": "Choose-a-Strong-Pass-1!"
 }'
 ```

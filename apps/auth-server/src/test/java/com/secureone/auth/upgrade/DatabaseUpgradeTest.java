@@ -60,6 +60,18 @@ class DatabaseUpgradeTest {
     }
 
     @Test
+    void aDatabaseFromBeforeTheBaselineIsRefused() {
+        MigrationInfo v1 = migration("1", MigrationState.SUCCESS);
+        when(v1.getDescription()).thenReturn("core schema");
+        MigrationInfo v89 = migration("89", MigrationState.FUTURE_SUCCESS);
+        Flyway flyway = flyway(new MigrationInfo[] {v1, v89}, new MigrationInfo[0], new MigrationInfo[] {v1, v89});
+        var error = assertThrows(IllegalStateException.class,
+                () -> new DatabaseUpgrade(flyway, DatabaseUpgrade.Mode.AUTO, apps(NO_APPS), new DatabaseVersionState()).run());
+        assertTrue(error.getMessage().contains("before the schema baseline"), error.getMessage());
+        verify(flyway, never()).migrate();
+    }
+
+    @Test
     void applicationSchemasAheadOfThisReleaseAreRefused() {
         MigrationInfo v67 = migration("67", MigrationState.SUCCESS);
         int next = ApplicationSchemaMigrations.latest().version() + 1;

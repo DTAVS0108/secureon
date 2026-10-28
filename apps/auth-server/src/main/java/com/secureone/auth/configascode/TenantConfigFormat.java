@@ -18,7 +18,7 @@ public final class TenantConfigFormat {
     private static final YAMLMapper YAML = YAMLMapper.builder()
             .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
             .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-            // "+15550001111" or "0123" must stay text when read back.
+            // "+10000000000" or "0123" must stay text when read back.
             .enable(YAMLGenerator.Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
             .enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR)
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)

@@ -225,7 +225,7 @@ docker compose logs -f secureone
 | `SECUREONE_CONSOLE_PORT` | `3001` | Internal port on `127.0.0.1` (never published) |
 | `SECUREONE_CONSOLE_UPSTREAM_URL` | — | Forward `/admin` to a console running elsewhere instead (development uses `http://localhost:3001`) |
 | `SECUREONE_ADMIN_WEB_URL` | `<SECUREONE_PUBLIC_BASE_URL>/admin` | Console URL shown in `/api/info` and the docs discovery API |
-| `SECUREONE_DOCS_DIR` | `/opt/secureone/docs` | Documentation shown in the console (SecureOne Confluence) |
+| `SECUREONE_DOCS_DIR` | `/opt/secureone/docs` | Documentation shown in the console (SecureOne Documentation) |
 | `SECUREONE_MANAGEMENT_PORT` | `9001` | Health, info and Prometheus metrics, served **only** on this port (no authentication there). Do not publish it: probes and the metrics scraper reach it inside your network. `/actuator` is not served on 9000 |
 | `JAVA_TOOL_OPTIONS` | `-XX:+UseG1GC -XX:MaxRAMPercentage=75 …` | JVM options. Keep `-XX:+UseG1GC`: the start-up cache below is only used with the collector it was recorded with |
 
@@ -738,4 +738,3 @@ At start-up the platform migrations and every application schema are brought to 
 | Tenant configuration files, upgrades, rollback | [26 — Configuration as code and upgrades](26-configuration-as-code-and-upgrades.md) |
 | Apps vs OAuth clients | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | App developer APIs | [23 — Application integration](23-application-integration-guide.md) |
-| Prod hardening roadmap | [20 — Production completion master plan](20-production-completion-master-plan.md) |

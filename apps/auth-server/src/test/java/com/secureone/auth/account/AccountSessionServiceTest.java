@@ -42,10 +42,10 @@ class AccountSessionServiceTest {
         when(sessionA.getLastAccessedTime()).thenReturn(Instant.parse("2026-01-02T00:00:00Z"));
         when(sessionB.getCreationTime()).thenReturn(Instant.parse("2026-01-01T01:00:00Z"));
         when(sessionB.getLastAccessedTime()).thenReturn(Instant.parse("2026-01-03T00:00:00Z"));
-        when(sessions.findByPrincipalName("acme:user@acme.com"))
+        when(sessions.findByPrincipalName("tenant-a:user@example.com"))
                 .thenReturn(Map.of("sess-a", sessionA, "sess-b", sessionB));
 
-        var views = service.list("acme:user@acme.com", "sess-a");
+        var views = service.list("tenant-a:user@example.com", "sess-a");
 
         assertEquals(2, views.size());
         assertEquals("sess-b", views.get(0).id());
@@ -54,10 +54,10 @@ class AccountSessionServiceTest {
 
     @Test
     void revokeOthersSkipsCurrentSession() {
-        when(sessions.findByPrincipalName("acme:user@acme.com"))
+        when(sessions.findByPrincipalName("tenant-a:user@example.com"))
                 .thenReturn(Map.of("sess-a", sessionA, "sess-b", sessionB));
 
-        int revoked = service.revokeOthers("acme:user@acme.com", "sess-a");
+        int revoked = service.revokeOthers("tenant-a:user@example.com", "sess-a");
 
         assertEquals(1, revoked);
         verify(sessions).deleteById(eq("sess-b"));
@@ -65,8 +65,8 @@ class AccountSessionServiceTest {
 
     @Test
     void revokeRejectsForeignSession() {
-        when(sessions.findByPrincipalName("acme:user@acme.com")).thenReturn(Map.of("sess-a", sessionA));
+        when(sessions.findByPrincipalName("tenant-a:user@example.com")).thenReturn(Map.of("sess-a", sessionA));
 
-        assertThrows(ResponseStatusException.class, () -> service.revoke("acme:user@acme.com", "other"));
+        assertThrows(ResponseStatusException.class, () -> service.revoke("tenant-a:user@example.com", "other"));
     }
 }

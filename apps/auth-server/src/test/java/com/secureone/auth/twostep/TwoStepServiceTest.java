@@ -144,7 +144,7 @@ class TwoStepServiceTest {
     @Test
     void aCodeOrLinkFirstStepCannotFinishWithAnotherSentCode() {
         p.put("methods", List.of("totp", "sms", "email"));
-        addFactor("email", Map.of("destination", "jane@example.com"));
+        addFactor("email", Map.of("destination", "member@example.com"));
         addFactor("totp", Map.of());
         var d = assertInstanceOf(TwoStepService.SecondStep.class, decide(FactorGrantedAuthority.OTT_AUTHORITY));
         assertEquals(List.of(TwoStepMethod.TOTP), d.methods().stream().map(TwoStepService.UserMethod::method).toList());

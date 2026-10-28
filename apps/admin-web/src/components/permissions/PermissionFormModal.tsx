@@ -102,7 +102,7 @@ function PermissionForm({
               name="key"
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase())}
-              placeholder="user:read"
+              placeholder="Permission key"
               required={!permission}
               pattern={KEY_PATTERN}
               disabled={pending}

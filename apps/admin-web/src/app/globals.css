@@ -138,42 +138,42 @@ body {
   color: var(--ui-notify-error-text);
 }
 
-/* SecureOne Confluence — markdown body */
-.confluence-prose {
+/* SecureOne Documentation — markdown body */
+.docs-prose {
   @apply text-sm leading-relaxed text-soft;
 }
-.confluence-prose h1 {
+.docs-prose h1 {
   @apply mb-4 mt-8 text-2xl font-semibold text-ui first:mt-0;
 }
-.confluence-prose h2 {
+.docs-prose h2 {
   @apply mb-3 mt-8 border-b border-ui pb-2 text-xl font-semibold text-ui;
 }
-.confluence-prose h3 {
+.docs-prose h3 {
   @apply mb-2 mt-6 text-lg font-semibold text-ui;
 }
-.confluence-prose h4 {
+.docs-prose h4 {
   @apply mb-2 mt-4 text-base font-semibold text-ui;
 }
-.confluence-prose p {
+.docs-prose p {
   @apply my-3;
 }
-.confluence-prose ul {
+.docs-prose ul {
   @apply my-3 list-disc space-y-1 pl-6;
 }
-.confluence-prose ol {
+.docs-prose ol {
   @apply my-3 list-decimal space-y-1 pl-6;
 }
-.confluence-prose li {
+.docs-prose li {
   @apply text-soft;
 }
-.confluence-prose blockquote {
+.docs-prose blockquote {
   @apply my-4 border-l-4 pl-4 italic text-muted;
   border-left-color: color-mix(in srgb, var(--ui-primary) 40%, transparent);
 }
-.confluence-prose hr {
+.docs-prose hr {
   @apply my-8 border-ui;
 }
-.confluence-prose strong {
+.docs-prose strong {
   @apply font-semibold text-ui;
 }
 .mermaid-diagram svg {
@@ -182,7 +182,7 @@ body {
   max-width: 100%;
 }
 
-/* SecureOne Confluence — PDF export (print-friendly view) */
+/* SecureOne Documentation — PDF export (print-friendly view) */
 @media print {
   .print-hide {
     display: none !important;
@@ -193,42 +193,42 @@ body {
   .print-page-break-after {
     break-after: page;
   }
-  .confluence-print {
+  .docs-print {
     background: #ffffff !important;
   }
-  .confluence-print,
-  .confluence-print .confluence-prose,
-  .confluence-print .confluence-prose li,
-  .confluence-print .confluence-prose td {
+  .docs-print,
+  .docs-print .docs-prose,
+  .docs-print .docs-prose li,
+  .docs-print .docs-prose td {
     color: #1f2430 !important;
   }
-  .confluence-print h1,
-  .confluence-print h2,
-  .confluence-print h3,
-  .confluence-print h4,
-  .confluence-print .confluence-prose strong {
+  .docs-print h1,
+  .docs-print h2,
+  .docs-print h3,
+  .docs-print h4,
+  .docs-print .docs-prose strong {
     color: #000000 !important;
   }
-  .confluence-print pre,
-  .confluence-print code {
+  .docs-print pre,
+  .docs-print code {
     background: #f3f4f6 !important;
     color: #1f2430 !important;
   }
-  .confluence-print table,
-  .confluence-print pre,
-  .confluence-print .mermaid-diagram {
+  .docs-print table,
+  .docs-print pre,
+  .docs-print .mermaid-diagram {
     break-inside: avoid;
   }
-  .confluence-print .mermaid-diagram {
+  .docs-print .mermaid-diagram {
     border-color: #d1d5db !important;
     background: #ffffff !important;
   }
-  .confluence-print h1,
-  .confluence-print h2,
-  .confluence-print h3 {
+  .docs-print h1,
+  .docs-print h2,
+  .docs-print h3 {
     break-after: avoid;
   }
-  .confluence-print a {
+  .docs-print a {
     color: #1d4ed8 !important;
     text-decoration: underline;
   }

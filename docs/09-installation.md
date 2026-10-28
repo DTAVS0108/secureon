@@ -51,7 +51,7 @@ cd apps/auth-server
 ```
 
 - Listens on **http://localhost:9000**
-- **Flyway** applies `db/migration/postgresql` on boot (through V45+ platform schema)
+- **Flyway** applies `db/migration/postgresql` on boot (`V1__baseline.sql` on an empty database)
 - API docs: **http://localhost:9000/docs**
 - Health: `GET /api/info`
 
@@ -91,8 +91,8 @@ This provisions a **PostgreSQL schema** for the app and seeds default RBAC. See 
 | Situation | Command |
 |-----------|---------|
 | Empty database / start fresh | `.\scripts\reset-database.ps1` |
-| Truncated catalog tables only | `.\scripts\reseed-catalog.ps1` |
-| Repair after partial migration | Restart auth-server; check `public.flyway_schema_history` |
+| Truncated catalog tables only | Restart auth-server (the startup bootstrap re-seeds the catalog) |
+| Repair after partial migration | Restart auth-server; check `platform.flyway_schema_history` |
 
 **Platform super admin** (dev): the break-glass account `admin` / `admin` (console sign-in page → **Emergency access**; not stored in Postgres). Add named platform operators under **Access review** for daily use. See [25 — Roles and access](25-roles-and-access.md).
 
@@ -112,15 +112,15 @@ MailHog catches outbound mail. Configure in **Settings → Notifications**, then
 | **OAuth client registry** | Platform super-admin | `/applications` |
 | **Platform settings** | Super-admin | `/settings` |
 | **Tenants** | Platform / tenant super-admin | `/tenants` |
-| **SecureOne Confluence** | All signed-in operators | `/confluence` (sidebar opens **new tab**; standalone docs UI) |
+| **SecureOne Documentation** | All signed-in operators | `/documentation` (sidebar opens **new tab**; standalone docs UI) |
 
 ## 10. Verify
 
 | Check | URL |
 |-------|-----|
 | Discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
-| Confluence discovery | `GET http://localhost:9000/api/v1/confluence` |
-| SecureOne Confluence UI | http://localhost:9000/admin/confluence |
+| Documentation discovery | `GET http://localhost:9000/api/v1/documentation` |
+| SecureOne Documentation UI | http://localhost:9000/admin/documentation |
 | JWKS | `GET http://localhost:9000/oauth2/jwks` |
 | Admin UI | http://localhost:9000/admin |
 | MailHog | `http://localhost:8025` |
@@ -139,7 +139,7 @@ Docker/Kubernetes, managed Postgres + Redis, TLS, KMS for secrets. See [Architec
 | `SECUREONE_REDIS_URL` | Redis |
 | `SECUREONE_ISSUER_URL` | OIDC issuer |
 | `SECUREONE_DEV_USER` / `_PASSWORD` | Admin API Basic auth |
-| `SECUREONE_ADMIN_WEB_URL` | Console URL for Confluence links in `/api/info` (default `<SECUREONE_PUBLIC_BASE_URL>/admin`) |
+| `SECUREONE_ADMIN_WEB_URL` | Console URL for Documentation links in `/api/info` (default `<SECUREONE_PUBLIC_BASE_URL>/admin`) |
 | `SECUREONE_CONSOLE_UPSTREAM_URL` | Where the auth-server forwards `/admin` in development (`http://localhost:3001`; set by `start-all.ps1`) |
 | `SECUREONE_PUBLIC_BASE_URL` | Links in emails |
 | `SECUREONE_SMTP_*` | Outbound email |

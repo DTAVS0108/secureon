@@ -15,7 +15,7 @@ Spring Boot application: **Spring Authorization Server** (OAuth 2.1 / OIDC), adm
 
 - **http://localhost:9000** — API + OAuth endpoints
 - **http://localhost:9000/docs** — Swagger UI
-- **GET /api/info** — service metadata (`confluence`, `confluenceApi`, `confluenceDiscovery` URLs)
+- **GET /api/info** — service metadata (`documentation`, `documentationApi`, `documentationDiscovery` URLs)
 
 Admin API auth: a console session token (`Authorization: SecureOne-Admin-Session <token>`) from `POST /api/admin/v1/auth/login` plus an authenticator code (`/api/admin/v1/auth/mfa/verify`). HTTP Basic is refused. The configured account (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`, `admin` / `admin` in dev) is the break-glass login; in production it needs `SECUREONE_BREAK_GLASS_ENABLED=true`. See docs/26-roles-and-access.md.
 
@@ -28,7 +28,7 @@ Admin API auth: a console session token (`Authorization: SecureOne-Admin-Session
 | `spring.datasource.url` | JDBC with `currentSchema=platform` |
 | `spring.flyway.locations` | `classpath:db/migration/postgresql` |
 | `secureone.issuer` | OIDC issuer URL |
-| `secureone.admin-web-url` | Base URL for Confluence links in `/api/info` and `/api/v1/confluence` (default `http://localhost:3001`) |
+| `secureone.admin-web-url` | Base URL for Documentation links in `/api/info` and `/api/v1/documentation` (default `http://localhost:3001`) |
 | `secureone.otp.pepper` | Server secret for OTP code hashing (`SECUREONE_OTP_PEPPER`) |
 
 Environment overrides: `SECUREONE_DB_URL`, `SECUREONE_REDIS_URL`, `SECUREONE_ISSUER_URL`, `SECUREONE_ADMIN_WEB_URL`, `SECUREONE_PORT`, `SECUREONE_OTP_PEPPER`.
@@ -41,12 +41,11 @@ Sessions and OTP challenges use **Redis** (`spring.session.store-type: redis`).
 
 ```
 src/main/resources/db/migration/postgresql/
-├── V1__…sql … V45__platform_schema_oauth_client.sql
-├── V46__otp_verification_and_phone.sql
+├── V1__baseline.sql          ← complete platform schema + built-in reference rows
 └── R__z_repair_catalog.sql
 ```
 
-History table: **`public.flyway_schema_history`** (not in `platform`).
+History table: **`platform.flyway_schema_history`**. Later changes go in `V2__…`, `V3__…`.
 
 ### Per-application schemas (runtime)
 
@@ -81,5 +80,5 @@ See [Database strategy](../../docs/06-database.md) and [Applications & OAuth cli
 - [Environment & operations](../../docs/16-environment-setup-and-operations.md)
 - [Verification & OTP](../../docs/19-verification-and-otp.md)
 - [API documentation](../../docs/12-api-documentation.md)
-- [SecureOne Confluence](../../docs/README.md#secureone-confluence-in-app-ui) (in-app docs on admin-web)
+- [SecureOne Documentation](../../docs/README.md#secureone-documentation-in-app-ui) (in-app docs on admin-web)
 - [ADR 0010 — Platform and app schemas](../../docs/decisions/0010-platform-and-app-schemas.md)

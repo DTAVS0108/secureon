@@ -124,7 +124,7 @@ export function CreateTenantCustomRoleDialog({
               id={nameId}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Support lead"
+              placeholder="Role name"
               autoFocus
               required
               disabled={submitting}

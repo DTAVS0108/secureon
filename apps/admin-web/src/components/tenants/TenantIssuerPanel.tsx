@@ -109,7 +109,7 @@ export function TenantIssuerPanel({ tenantId }: { tenantId: string }) {
           <div className="flex gap-2">
             <div className="flex-1">
               <FieldRow label="Domain">
-                <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="login.example.com" />
+                <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="Custom domain" />
               </FieldRow>
             </div>
             <Button

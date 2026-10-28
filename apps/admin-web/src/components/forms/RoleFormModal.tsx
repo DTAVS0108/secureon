@@ -230,7 +230,7 @@ function RoleForm({
               <Input
                 name="name"
                 defaultValue={role?.name}
-                placeholder="e.g. Support Agent"
+                placeholder="Role name"
                 required
                 disabled={(role && !canRenameRole(role)) || pending}
               />

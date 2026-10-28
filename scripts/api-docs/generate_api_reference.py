@@ -262,7 +262,7 @@ FIELD_EXAMPLES = {
     "subjectType": "public",
     "tokenEndpointAuthMethod": "none",
     "setupFramework": "react",
-    "tenantSlug": "acme",
+    "tenantSlug": "tenant-a",
     "emailOrUsername": "admin@example.com",
     "plan": "enterprise",
     "status": "ACTIVE",
@@ -279,7 +279,7 @@ FIELD_EXAMPLES = {
     "note": "Short explanation",
     "enabled": True,
     "label": "Production",
-    "username": "acme:user@example.com",
+    "username": "tenant-a:user@example.com",
     "to": "you@example.com",
     "verificationMode": "otp",
     "verificationChannel": "email",
@@ -290,8 +290,8 @@ FIELD_EXAMPLES = {
 }
 
 EXAMPLE_BY_NAME = [
-    (r"email", "user@example.com"), (r"password", "Choose-a-Strong-Pass-1!"), (r"^slug$|tenantslug", "acme"),
-    (r"^name$|displayname|applicationname", "Acme Shop"), (r"firstname", "Jane"), (r"lastname", "Doe"),
+    (r"email", "user@example.com"), (r"password", "Choose-a-Strong-Pass-1!"), (r"^slug$|tenantslug", "tenant-a"),
+    (r"^name$|displayname|applicationname", "Tenant A Shop"), (r"firstname", "First"), (r"lastname", "Last"),
     (r"clientid", "{clientId}"), (r"redirecturis?$", "http://localhost:5173/callback"), (r"url|uri", "https://app.example.com"),
     (r"phone", "+14155552671"), (r"code$", "123456"), (r"reason|note|description", "Short explanation"),
     (r"scope", "openid profile email"), (r"key$", "key"), (r"token", "{token}"), (r"status", "ACTIVE"),

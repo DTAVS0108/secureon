@@ -146,7 +146,7 @@ See [Password expiry notifications](10-settings-governance.md#password-expiry-no
 
 ### `user_identity` (federated logins)
 | id, user_id (FK) | UUID | |
-| provider | VARCHAR | `google / github / saml:acme` |
+| provider | VARCHAR | `google / github / saml:tenant-a` |
 | provider_subject | VARCHAR | unique `(provider, provider_subject)` |
 | metadata | JSON | |
 | linked_at | TIMESTAMP | |

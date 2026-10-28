@@ -419,7 +419,7 @@ function PasswordForm({
               id="tenantSlug"
               value={tenantSlug}
               onChange={(e) => setTenantSlug(e.target.value)}
-              placeholder="your-organization"
+              placeholder="Organization slug"
               autoComplete="organization"
               required
               className={INPUT_CLASS}
@@ -436,7 +436,7 @@ function PasswordForm({
             type={emergency ? "text" : "email"}
             value={emailOrUsername}
             onChange={(e) => setEmailOrUsername(e.target.value)}
-            placeholder={emergency ? "admin" : "you@company.com"}
+            placeholder={emergency ? "Username" : "Email address"}
             autoComplete="username"
             required
             className={INPUT_CLASS}
@@ -731,7 +731,7 @@ function SecondFactorForm({
             autoFocus
             required
             maxLength={useRecovery ? 20 : 6}
-            placeholder={useRecovery ? "Recovery code" : "123456"}
+            placeholder={useRecovery ? "Recovery code" : "Verification code"}
             className={`${INPUT_CLASS} ${useRecovery ? "" : "text-center font-mono tracking-[0.4em]"}`}
           />
         </div>

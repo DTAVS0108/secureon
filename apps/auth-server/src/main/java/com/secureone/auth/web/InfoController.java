@@ -44,9 +44,9 @@ public class InfoController {
         out.put("openapi", "/v3/api-docs");
         out.put("swaggerUi", "/swagger-ui/index.html");
         out.put("docs", "/docs");
-        out.put("confluence", adminWebUrl + "/confluence");
-        out.put("confluenceApi", adminWebUrl + "/api/confluence");
-        out.put("confluenceDiscovery", "/api/v1/confluence");
+        out.put("documentation", adminWebUrl + "/documentation");
+        out.put("documentationApi", adminWebUrl + "/api/documentation");
+        out.put("documentationDiscovery", "/api/v1/documentation");
         return out;
     }
 

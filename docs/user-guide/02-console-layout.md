@@ -40,18 +40,18 @@ All of these are described in [Application console](06-application-console.md).
 | **Tenant › Roles & Permissions** | Console roles and custom governance roles per tenant |
 | **Connect an app** | Guided registration with ready-to-paste code ([chapter 3](03-connect-an-app.md)). Hidden when turned off in **Platform settings › Feature flags**. |
 | **OAuth clients** | The client registry ([chapter 4](04-oauth-clients.md)) |
-| **SecureOne Confluence** | This documentation, inside the console (opens in a new tab) |
+| **SecureOne Documentation** | This documentation, inside the console (opens in a new tab) |
 | **Platform settings** | Global defaults inherited by all applications ([chapter 7](07-settings.md)) |
 | **Configuration as code** | Export, preview and apply configuration files ([chapter 9](09-configuration-as-code.md)). Shown only when turned on in **Platform settings › Feature flags**. |
 | **Access review** | Who holds privileged roles; platform operators ([chapter 8](08-access-review-and-operators.md)) |
 
 ### Tenant Super Admin
 
-The **Tenant** group links only to your own organization: **Tenants** (your tenant page), **Roles & Permissions** and **Access review**. You also see **Connect an app**, **Application console** and **SecureOne Confluence**.
+The **Tenant** group links only to your own organization: **Tenants** (your tenant page), **Roles & Permissions** and **Access review**. You also see **Connect an app**, **Application console** and **SecureOne Documentation**.
 
 ### Tenant Admin and Application Admin
 
-**Application console** (the application section above, for your applications only) and **SecureOne Confluence**. Tenant Admins who can manage clients also see **Connect an app**.
+**Application console** (the application section above, for your applications only) and **SecureOne Documentation**. Tenant Admins who can manage clients also see **Connect an app**.
 
 ## Where you land after sign-in
 
@@ -65,7 +65,7 @@ Old addresses such as `/users`, `/roles`, `/audit`, `/sessions`, `/logs` and `/t
 
 - **i** icons beside field labels show an explanation on hover or keyboard focus.
 - The three action buttons on the OAuth clients page show a tooltip explaining when to use each one.
-- **SecureOne Confluence** offers **Download PDF** (the current page) and **All docs PDF** (every page in one file). The documentation is public: anyone can read it at `/admin/confluence` without signing in, for example to share a page with a developer.
+- **SecureOne Documentation** offers **Download PDF** (the current page) and **All docs PDF** (every page in one file). The documentation is public: anyone can read it at `/admin/documentation` without signing in, for example to share a page with a developer.
 
 ## Common controls
 

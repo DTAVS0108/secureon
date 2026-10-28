@@ -80,7 +80,7 @@ export function TokenClaimsCard({ applicationId }: { applicationId: string }) {
           const source = SOURCES.find((s) => s.value === c.source);
           return (
             <div key={i} className="grid items-center gap-2 rounded-xl border border-ui p-3 md:grid-cols-[1.2fr_1fr_1fr_auto]">
-              <Input value={c.name} onChange={(e) => patch(i, { name: e.target.value })} placeholder="Claim name (e.g. plan)" aria-label="Claim name" />
+              <Input value={c.name} onChange={(e) => patch(i, { name: e.target.value })} placeholder="Claim name" aria-label="Claim name" />
               <Select value={c.source} onChange={(e) => patch(i, { source: e.target.value })} aria-label="Source">
                 {SOURCES.map((s) => (
                   <option key={s.value} value={s.value}>

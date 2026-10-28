@@ -16,8 +16,8 @@ class TenantConfigFormatTest {
             apiVersion: secureone/v1
             kind: TenantConfiguration
             tenant:
-              slug: acme
-              name: Acme
+              slug: tenant-a
+              name: Tenant A
             applications:
               - slug: shop
                 name: Shop
@@ -38,7 +38,7 @@ class TenantConfigFormatTest {
     @Test
     void readsYamlAndWritesItBack() {
         TenantConfig config = TenantConfigFormat.parse(FILE);
-        assertEquals("acme", config.tenant().slug());
+        assertEquals("tenant-a", config.tenant().slug());
         TenantConfig.Client client = config.applications().getFirst().clients().getFirst();
         assertEquals("SHOP_WEB_SECRET", client.clientSecretEnv());
         assertEquals(List.of("viewer"), config.applications().getFirst().roles().getFirst().includes());

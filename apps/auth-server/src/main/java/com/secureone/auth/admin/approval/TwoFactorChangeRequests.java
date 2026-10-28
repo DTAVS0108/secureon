@@ -28,7 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Two Factor Authentication changes that weaken protection wait for a second admin (docs/plans/change-approvals.md):
+ * Two Factor Authentication changes that weaken protection wait for a second admin:
  * an application turning it off, a weaker application, tenant or platform policy (or an unlocked setting), closing
  * it to applications, and exempting a user. Strengthening changes never come here.
  *

@@ -5,7 +5,7 @@
 | Component | Tech | Responsibility |
 |---|---|---|
 | **auth-server** | Spring Boot + Spring Authorization Server | OIDC/OAuth endpoints, token issuance, JWKS, user/tenant/role APIs, admin APIs |
-| **admin-web** | Next.js | Admin console and **SecureOne Confluence** (in-app docs), served by the auth-server at **`/admin`** from the same container (one image, one port); hosted sign-in pages are served by the auth-server itself |
+| **admin-web** | Next.js | Admin console and **SecureOne Documentation** (in-app docs), served by the auth-server at **`/admin`** from the same container (one image, one port); hosted sign-in pages are served by the auth-server itself |
 | **docs-site** | Next.js/Nextra + Scalar | Public developer docs + OpenAPI rendering (planned) |
 | **sdk-js** | TypeScript | Client SDK for integrating applications |
 | **PostgreSQL** | RDBMS | Durable system of record |
@@ -213,8 +213,7 @@ IAM data for each application product can live in a **dedicated PostgreSQL schem
 
 ```
 secureone DB
-├── public.flyway_schema_history
-├── platform.*          ← tenants, applications, oauth_client, identity, governance
+├── platform.*          ← tenants, applications, oauth_client, identity, governance, flyway_schema_history
 └── {app_slug}.*        ← per-app role, permission, settings, groups (when isolated)
 ```
 

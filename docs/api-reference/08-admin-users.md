@@ -165,14 +165,14 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/users" \
   --data '{
   "applicationId": "{applicationId}",
   "email": "user@example.com",
-  "firstName": "Jane",
-  "lastName": "Doe",
+  "firstName": "First",
+  "lastName": "Last",
   "roleIds": [
     "{roleId}"
   ],
   "status": "ACTIVE",
   "tenantId": "{tenantId}",
-  "username": "acme:user@example.com"
+  "username": "tenant-a:user@example.com"
 }'
 ```
 
@@ -236,13 +236,13 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/users/{id}" \
   --data '{
   "email": "user@example.com",
   "emailVerified": true,
-  "firstName": "Jane",
-  "lastName": "Doe",
+  "firstName": "First",
+  "lastName": "Last",
   "roleIds": [
     "{roleId}"
   ],
   "status": "ACTIVE",
-  "username": "acme:user@example.com"
+  "username": "tenant-a:user@example.com"
 }'
 ```
 

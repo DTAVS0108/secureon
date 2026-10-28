@@ -15,7 +15,7 @@ flowchart TD
 ```
 
 1. **Platform** (`/settings` or `/api/admin/v1/settings/*`) — super admin sets defaults and SMTP, auth catalog, flags, etc.
-2. **For applications** — toggles which sections appear under each app’s **Settings** (`app_settings_exposure` / V10 migration).
+2. **For applications** — toggles which sections appear under each app’s **Settings** (`app_settings_exposure`).
 3. **Application** (`/app/{id}/settings`) — only exposed sections. A section **follows the platform** until its first saved change, which gives the application its own copy in `application_setting` (opening a page never does). A bar above each section says which it is and offers **Reset to platform** (`PUT .../settings/policy-source/{section}` with `platform`). V76 removed copies that only repeated the platform value, made by older consoles on page load.
 4. **Platform minimums** — for **Password policy**, **Verification & OTP**, **OAuth tokens** and **Sign-in methods**, an application can be stricter than the platform, never weaker (`PlatformMinimums`). A weaker save is refused with what the platform requires; values saved before the platform tightened are raised when read, so a stricter platform reaches every application. Sign-in methods the platform has off are off for every application.
 5. **Public API** (`GET /api/v1/applications/{id}`) — optional unauthenticated manifest; requires exposure **and** per-app `enabled`.
@@ -59,7 +59,7 @@ Enable **email OTP login** (`m_email_otp`) and **SMS OTP login** (`m_sms`) under
 2. **Application → Settings → Feature flags → Settings tabs** — switch **Two Factor Authentication** (stored as `tabEnabled` in `auth_mfa_tab`, API `/settings/mfa-tab/tab-enabled`; audited as `settings.feature_flag_changed`).
 3. When both are on, **Authentication → Two Factor Authentication** appears and the application's own values **apply at sign-in**. When the switch is off, two-factor is **off for that application**: no second step or setup at sign-in, and its console hides the users' Two-step tab, 2FA badges and filter. Exception: a platform or tenant lock on **mode** (locked or only stricter) still applies. Values it saved earlier are kept for when the switch is turned on again, and saving new ones is refused. When the platform does not open Two Factor Authentication to applications, every application uses the platform and tenant settings.
 4. **Backup codes per user** (`recoveryCodesPerEnrollment`) is never an application setting: backup codes are one set per user for every application.
-5. State the settings drive is per application (V73): setup deadline, skips, "don't ask again", reminders and exemptions in `user_two_step_state (user_id, application_id)` (zero UUID = no application / every application), and remembered devices in `trusted_device.application_id` with one cookie per application.
+5. State the settings drive is per application: setup deadline, skips, "don't ask again", reminders and exemptions in `user_two_step_state (user_id, application_id)` (zero UUID = no application / every application), and remembered devices in `trusted_device.application_id` with one cookie per application.
 
 ### Feature flags catalog
 
@@ -101,7 +101,7 @@ Setting exposure `feature-flags` controls whether app admins can edit overrides;
 | `saml` | identity | SAML via auth method `m_saml` |
 | `scim_provisioning` | provisioning | Not implemented |
 
-Migration `V41__trim_feature_flag_catalog.sql` strips removed keys from stored platform and application flag JSON.
+Removed keys are not part of the stored platform and application flag JSON.
 
 `application.config` (OAuth client metadata) is separate from policy settings.
 
@@ -278,8 +278,6 @@ Search auth-server logs for `PasswordExpiryScheduler` or `PasswordExpiryService`
 | `expiry_warning_sent_at` | When the approaching-expiry email was sent (null = not yet sent) |
 | `expiry_expired_notice_sent_at` | When the post-expiry reset email was sent (null = not yet sent) |
 
-Migration: `V40__password_expiry_notifications.sql`.
-
 ### Implementation notes
 
 - **Login enforcement:** `PasswordExpiryService.enforceLoginAllowed` (used by `TenantPasswordAuthenticationProvider` after password match).
@@ -340,5 +338,5 @@ For hosted vs native/custom end-user UI (OAuth, magic link, session login, email
 
 ## Operations
 
-- After new migrations (V10+), restart **auth-server** (`./gradlew bootRun` in `apps/auth-server`).
+- After new migrations, restart **auth-server** (`./gradlew bootRun` in `apps/auth-server`).
 - Dev login: `admin` / `admin` (no `SECUREONE_ACT_AS_EMAIL` for platform work); example app: `22222222-2222-2222-2222-222222222201`.

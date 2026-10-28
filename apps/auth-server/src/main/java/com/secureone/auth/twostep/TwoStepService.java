@@ -33,7 +33,6 @@ import org.springframework.stereotype.Service;
 /**
  * Two-step verification for end users: which options a user has, what a sign-in needs next (signed in, second
  * step, or setup now / later), the setup grace period, and the changes admins make (reset, extend, exempt).
- * See docs/plans/two-factor-authentication.md.
  */
 @Service
 public class TwoStepService {

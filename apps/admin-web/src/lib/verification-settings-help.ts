@@ -69,7 +69,7 @@ export const SMS_HELP = {
   provider:
     "log: codes in auth-server log (dev). Twilio/AWS SNS/MSG91: production delivery. Each app can override under its own SMS card.",
   twilioAccountSid: "From Twilio Console → Account Info. Starts with AC…",
-  twilioFromNumber: "Twilio phone number in E.164 format (e.g. +15551234567).",
+  twilioFromNumber: "Sender phone number in E.164 format (+, country code, number).",
   twilioAuthToken: "Twilio auth token. Stored encrypted; leave blank on save to keep the current token.",
   awsRegion: "AWS region for SNS (e.g. ap-south-1 for India).",
   awsAccessKeyId: "IAM user access key with sns:Publish permission.",

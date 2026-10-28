@@ -18,9 +18,9 @@ class WebAuthnCredentialRepositoryTest {
 
     @Test
     void usernameUsesTenantSlugAndEmail() {
-        assertEquals("acme:alice@example.com", PasskeyRegistrationService.username("Acme", "Alice@Example.com"));
+        assertEquals("tenant-a:user-a@example.com", PasskeyRegistrationService.username("Tenant-A", "User-A@Example.com"));
         assertNotEquals(
-                PasskeyRegistrationService.username("acme", "alice@example.com"),
-                PasskeyRegistrationService.username("other", "alice@example.com"));
+                PasskeyRegistrationService.username("tenant-a", "user-a@example.com"),
+                PasskeyRegistrationService.username("other", "user-a@example.com"));
     }
 }

@@ -11,7 +11,7 @@ import java.util.Set;
 
 /**
  * Two-step verification policy (setting {@code mfa_policy}): defaults, validation, and the lock modes a higher
- * level (platform, then tenant) sets for the levels below. See docs/plans/two-factor-authentication.md §4.
+ * level (platform, then tenant) sets for the levels below.
  */
 public final class MfaPolicyDefaults {
 

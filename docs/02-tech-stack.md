@@ -31,7 +31,7 @@ Chosen for maximum enterprise and security pedigree, first-class OAuth2/OIDC sup
 | Angular | Batteries-included, enterprise-friendly | Heavy, slower iteration | Only if team is Angular-native |
 | SvelteKit | Fastest runtime, lean | Smallest ecosystem | Riskier for large admin surface |
 
-**Decision: Next.js + TypeScript + Tailwind + shadcn/ui.** One framework serves the admin dashboard, hosted login/consent/MFA pages, and **SecureOne Confluence** (in-app platform docs on admin-web). A separate public **docs-site** portal is planned for Phase 2+. Add **TanStack Query** (server state) and **TanStack Table** (admin grids).
+**Decision: Next.js + TypeScript + Tailwind + shadcn/ui.** One framework serves the admin dashboard, hosted login/consent/MFA pages, and **SecureOne Documentation** (in-app platform docs on admin-web). A separate public **docs-site** portal is planned for Phase 2+. Add **TanStack Query** (server state) and **TanStack Table** (admin grids).
 
 ---
 
@@ -55,7 +55,7 @@ NoSQL is explicitly excluded — relational integrity (roles, grants, hierarchic
 | Async work | Queue (Spring + Redis / broker) | Emails, audit shipping, webhooks |
 | Secrets | KMS / Vault / cloud secrets manager | Signing keys, TOTP seeds, client secrets |
 | Build | **Gradle** (Kotlin DSL) for backend; **pnpm + Turborepo** for JS workspaces | |
-| API contract | **OpenAPI** | Swagger on auth-server; Confluence + future docs-site; SDK generation |
+| API contract | **OpenAPI** | Swagger on auth-server; Documentation + future docs-site; SDK generation |
 
 ---
 

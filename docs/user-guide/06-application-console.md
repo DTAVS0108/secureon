@@ -34,9 +34,9 @@ Empty state: *No users in this application yet. Invite someone or import from CS
 
 | Field | Required | What to enter |
 |-------|----------|---------------|
-| **First name**, **Last name** | Yes | For example `Sarah` `Chen`. |
+| **First name**, **Last name** | Yes | For example `First` `Last`. |
 | **Email** | Yes | The sign-in email. The invitation is sent here. |
-| **Username** | No | Optional alternative sign-in name, for example `schen`. |
+| **Username** | No | Optional alternative sign-in name, for example `username`. |
 | **Tenant** | Yes | Fixed to the application's tenant. *User will be added to this application automatically after invite.* |
 
 **Account status**

@@ -8,7 +8,7 @@ Related: [Data model — Authorization](04-data-model.md#domain-3--authorization
 
 | Mode | `application.schema_name` | Tables |
 |------|---------------------------|--------|
-| **Isolated** (new apps) | e.g. `demostore` | `{schema}.role`, `{schema}.permission`, … |
+| **Isolated** (new apps) | e.g. `exampleapp` | `{schema}.role`, `{schema}.permission`, … |
 | **Legacy** (pre-isolate) | `NULL` | `platform.role`, `platform.permission`, … |
 
 API paths are unchanged (`/api/admin/v1/applications/{applicationId}/…`). Auth-server sets `search_path` per request so JPA hits the correct schema.
@@ -121,7 +121,7 @@ The **permission catalog** (`permission` table) defines atomic keys (`resource:a
 3. **Groups** — create groups; assign multiple roles; add members.
 4. **Users** — direct role assignment for exceptions; groups for team-wide access.
 
-## Database (migration V42)
+## Database
 
 | Table | Purpose |
 |-------|---------|
@@ -142,4 +142,3 @@ The **permission catalog** (`permission` table) defines atomic keys (`resource:a
 | Permission import/export (CSV) | Not implemented |
 | Effective-permission preview for a user | Not implemented |
 
-After migration V42, restart **auth-server** so Flyway creates group tables and the Groups API is available.

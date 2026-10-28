@@ -63,7 +63,7 @@ export function SmtpSettingsCard(props: SmtpSettingsCardProps) {
         title="SMTP server"
         description={
           isPlatform
-            ? "Platform operator alert delivery (password encrypted at rest). Gmail: smtp.gmail.com, port 465, SSL."
+            ? "Platform operator alert delivery (password encrypted at rest)."
             : "Application SMTP for user and app admin emails (password encrypted at rest)."
         }
       />
@@ -73,7 +73,7 @@ export function SmtpSettingsCard(props: SmtpSettingsCardProps) {
           <Input
             value={draft.host ?? ""}
             onChange={(e) => setDraft({ ...draft, host: e.target.value })}
-            placeholder="smtp.gmail.com"
+            placeholder="SMTP host"
           />
         </FieldRow>
         <FieldRow label="Port">
@@ -99,12 +99,12 @@ export function SmtpSettingsCard(props: SmtpSettingsCardProps) {
           <Input
             value={draft.username ?? ""}
             onChange={(e) => setDraft({ ...draft, username: e.target.value })}
-            placeholder="you@gmail.com"
+            placeholder="Username"
           />
         </FieldRow>
         <FieldRow
           label="Password"
-          hint={draft.passwordConfigured ? "Leave blank to keep current password" : "Gmail App Password"}
+          hint={draft.passwordConfigured ? "Leave blank to keep current password" : "SMTP password or app password"}
         >
           <Input
             type="password"

@@ -165,7 +165,7 @@ export function WebhooksPanel({ tenantId, applicationId }: { tenantId?: string; 
       />
       <div className="space-y-4 px-5 pb-5">
         <FieldRow label="Endpoint URL">
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/hooks/secureone" />
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Endpoint URL" />
         </FieldRow>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-ui">Events</legend>

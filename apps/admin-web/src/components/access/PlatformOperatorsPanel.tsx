@@ -168,7 +168,7 @@ export function PlatformOperatorsPanel() {
       </Table>
       <div className="grid gap-3 border-t border-ui px-5 py-4 sm:grid-cols-5 sm:items-end">
         <FieldRow label="Email">
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" />
         </FieldRow>
         <FieldRow label="First name">
           <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />

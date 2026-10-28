@@ -20,10 +20,10 @@ class SessionOriginGuardFilterTest {
     @BeforeEach
     void setUp() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("https://app.acme.test");
+        config.addAllowedOrigin("https://app.tenant-a.test");
         UrlBasedCorsConfigurationSource cors = new UrlBasedCorsConfigurationSource();
         cors.registerCorsConfiguration("/**", config);
-        filter = new SessionOriginGuardFilter(cors, "https://login.acme.test");
+        filter = new SessionOriginGuardFilter(cors, "https://login.tenant-a.test");
     }
 
     @Test
@@ -40,12 +40,12 @@ class SessionOriginGuardFilterTest {
 
     @Test
     void publicBaseUrlOriginPasses() throws Exception {
-        assertPassed(run(post("/login", "https://login.acme.test")));
+        assertPassed(run(post("/login", "https://login.tenant-a.test")));
     }
 
     @Test
     void allowedCorsOriginPasses() throws Exception {
-        assertPassed(run(post("/api/v1/account/sessions/revoke", "https://app.acme.test")));
+        assertPassed(run(post("/api/v1/account/sessions/revoke", "https://app.tenant-a.test")));
     }
 
     @Test

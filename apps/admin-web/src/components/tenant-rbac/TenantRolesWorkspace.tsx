@@ -393,7 +393,7 @@ export function TenantRolesWorkspace({
                 <Input
                   value={permKey}
                   onChange={(e) => setPermKey(e.target.value)}
-                  placeholder="custom:reports"
+                  placeholder="Permission key"
                   aria-label="Permission key"
                   className="w-40"
                 />

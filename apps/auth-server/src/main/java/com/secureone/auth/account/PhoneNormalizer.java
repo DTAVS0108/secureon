@@ -31,7 +31,7 @@ public final class PhoneNormalizer {
         return UTIL.getSupportedRegions().contains(region) ? region : null;
     }
 
-    /** Normalize to E.164 (e.g. +14155552671). Returns null if invalid. */
+    /** Normalize to E.164 (+, country code, number). Returns null if invalid. */
     public static String toE164(String raw, String defaultRegion) {
         if (raw == null || raw.isBlank()) {
             return null;

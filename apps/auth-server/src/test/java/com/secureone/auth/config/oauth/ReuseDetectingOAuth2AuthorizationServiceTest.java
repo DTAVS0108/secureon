@@ -131,7 +131,7 @@ class ReuseDetectingOAuth2AuthorizationServiceTest {
         OAuth2RefreshToken token = new OAuth2RefreshToken(refreshToken, Instant.now(), Instant.now().plusSeconds(3600));
         return OAuth2Authorization.withRegisteredClient(registeredClient)
                 .id("auth-1")
-                .principalName("acme:user@test.com")
+                .principalName("tenant-a:user@test.com")
                 .authorizationGrantType(org.springframework.security.oauth2.core.AuthorizationGrantType.AUTHORIZATION_CODE)
                 .token(token)
                 .build();

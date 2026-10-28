@@ -13,7 +13,7 @@ class MfaPendingChallengeTest {
 
     @Test
     void setupChallengeSurvivesTheRedisRoundTrip() throws Exception {
-        MfaPendingChallenge setup = new MfaPendingChallenge(UUID.randomUUID(), UUID.randomUUID(), "acme", "a@acme.test",
+        MfaPendingChallenge setup = new MfaPendingChallenge(UUID.randomUUID(), UUID.randomUUID(), "tenant-a", "a@tenant-a.test",
                 UUID.randomUUID(), null, "setup", null, null, "factor-1");
         MfaPendingChallenge read = mapper.readValue(mapper.writeValueAsString(setup), MfaPendingChallenge.class);
         assertEquals(setup, read);
@@ -23,7 +23,7 @@ class MfaPendingChallengeTest {
     @Test
     void entriesWithExtraFieldsStillRead() throws Exception {
         String raw = "{\"challengeId\":\"" + UUID.randomUUID() + "\",\"userId\":\"" + UUID.randomUUID()
-                + "\",\"tenantSlug\":\"acme\",\"email\":\"a@acme.test\",\"stage\":\"setup\",\"setup\":true}";
+                + "\",\"tenantSlug\":\"tenant-a\",\"email\":\"a@tenant-a.test\",\"stage\":\"setup\",\"setup\":true}";
         assertTrue(mapper.readValue(raw, MfaPendingChallenge.class).isSetup());
     }
 }

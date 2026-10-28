@@ -45,8 +45,8 @@ Without a variable: an existing credential is left as it is; a new client, webho
 apiVersion: secureone/v1
 kind: TenantConfiguration
 tenant:
-  slug: acme
-  name: Acme Corp
+  slug: tenant-a
+  name: Tenant A
   plan: team
 applications:
   - slug: shop
@@ -95,7 +95,7 @@ applications:
         twilio: {accountSid: AC123, fromNumber: "+15550001111", authTokenEnv: SHOP_TWILIO_TOKEN}
 scim:
   enabled: true                            # false revokes the token
-  tokenEnv: ACME_SCIM_TOKEN
+  tokenEnv: TENANT_A_SCIM_TOKEN
 identityProviders:                         # for every application of the tenant
   - alias: google
     type: GOOGLE
@@ -106,7 +106,7 @@ webhooks:
   - url: https://hooks.example.com/secureone
     application: shop                      # optional: only this application's events
     events: [user.created, access_request.created]
-    secretEnv: ACME_WEBHOOK_SECRET
+    secretEnv: TENANT_A_WEBHOOK_SECRET
 serviceAccounts:
   - name: billing-sync
     description: Nightly billing job
@@ -146,13 +146,13 @@ scim: {enabled: true, userNameDomain: example.com, bearerTokenEnv: SCIM_PLATFORM
 ```bash
 # Export
 curl -H "Authorization: SecureOne-Admin-Session $TOKEN" \
-  https://id.example.com/api/admin/v1/config/tenants/acme/export > acme.yaml   # ?format=json for JSON
+  https://id.example.com/api/admin/v1/config/tenants/tenant-a/export > tenant-a.yaml   # ?format=json for JSON
 curl -H "Authorization: SecureOne-Admin-Session $TOKEN" \
   https://id.example.com/api/admin/v1/config/platform/export > platform.yaml
 
 # Preview (dry run, the default) and apply
 curl -X POST -H "Authorization: SecureOne-Admin-Session $TOKEN" -H "Content-Type: application/yaml" \
-  --data-binary @acme.yaml "https://id.example.com/api/admin/v1/config/import?dryRun=true"
+  --data-binary @tenant-a.yaml "https://id.example.com/api/admin/v1/config/import?dryRun=true"
 curl -X POST ... "https://id.example.com/api/admin/v1/config/import?dryRun=false&prune=false"
 ```
 
@@ -170,6 +170,8 @@ Every apply is recorded in the audit log as `config.imported`.
 
 ## Part 2 — Upgrades
 
+> **0.1.0 is a fresh start.** Version numbers restarted at 0.1.0 with a new schema baseline: every earlier migration was squashed into one `V1__baseline.sql`. A database created by an earlier release (0.3.x and before) cannot be upgraded in place: 0.1.0 refuses to start on it. Install 0.1.0 on an empty database and set it up again (export tenants as configuration files first if you want to re-apply them). Upgrades from 0.1.0 onwards work as described below.
+
 ### How an upgrade works
 
 Run the new image with the same environment. At start-up, before anything else uses the database, SecureOne:
@@ -181,7 +183,7 @@ Run the new image with the same environment. At start-up, before anything else u
 Instances that start together take turns (Postgres locks), so two replicas never migrate the same thing twice. The log shows the result:
 
 ```
-Database schema: platform V67, application schemas V2 (10 schema(s)), mode auto
+Database schema: platform V1, application schemas V3 (10 schema(s)), mode auto
 ```
 
 The same numbers are on the management port: `GET :9001/actuator/info` → `database`, plus `build.version`. `GET /api/info` shows the release version.

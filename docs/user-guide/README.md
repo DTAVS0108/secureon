@@ -11,7 +11,7 @@ The console runs at `/admin` on your SecureOne server, for example `http://local
 | **Platform** | Your SecureOne installation. It is run by platform operators. |
 | **Platform operator** | A named person with full access to every tenant and application. They sign in on the **Platform operator** tab and must use an authenticator app. |
 | **Tenant** | An organization that uses the platform (a customer, a business unit). Each tenant's data is isolated from the others by PostgreSQL row-level security. |
-| **Application** | A product of a tenant, for example "Demo Store". It has its own users, roles, permissions, groups and settings, stored in its own database schema. |
+| **Application** | A product of a tenant, for example "Example App". It has its own users, roles, permissions, groups and settings, stored in its own database schema. |
 | **OAuth client** | The credentials one piece of software uses to sign users in to an application: a web app, a mobile app or a backend job. One application can have several clients that share the same users and roles. |
 | **End user** | A person who signs in to your application. End users never see the admin console. |
 

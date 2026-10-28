@@ -182,7 +182,7 @@ export function AccessRequestsPanel({
             <Input
               value={resourceId}
               onChange={(e) => setResourceId(e.target.value)}
-              placeholder="Support Agent or role uuid"
+              placeholder="Role name or ID"
             />
           </FieldRow>
           <FieldRow label="Reason">

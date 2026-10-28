@@ -9,8 +9,8 @@ const PUBLIC_PREFIXES = [
   "/setup",
   "/api/setup",
   // Documentation is public: the same docs/ folder is published in the open-source repository.
-  "/confluence",
-  "/api/confluence",
+  "/documentation",
+  "/api/documentation",
 ];
 
 function withPathname(request: NextRequest, pathname: string, response?: NextResponse) {

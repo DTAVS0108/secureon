@@ -30,16 +30,16 @@ Browser origins of the redirect URIs you register are allowed for CORS automatic
 
 ---
 
-## Example: Demo Store web app
+## Example: Example App web app
 
-Throughout this guide we use a fictional **Demo Store Web** app:
+Throughout this guide we use a fictional **Example App Web** app:
 
 | Item | Example value |
 |------|---------------|
-| Tenant slug | `demostore` |
-| Application name | Demo Store Web |
+| Tenant slug | `exampleapp` |
+| Application name | Example App Web |
 | Application ID | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` (UUID from admin) |
-| OAuth client ID | `demostore-web` |
+| OAuth client ID | `exampleapp-web` |
 | Frontend dev URL | `http://localhost:5173` |
 | OAuth callback | `http://localhost:5173/callback` |
 | Auth-server (issuer) | `http://localhost:9000` |
@@ -81,7 +81,7 @@ Content-Type: application/json
     "magicLink": ""
   },
   "checklist": { ... },
-  "notes": "Demo Store branded auth"
+  "notes": "Example App branded auth"
 }
 ```
 
@@ -138,8 +138,8 @@ Example response (trimmed):
   "manifestEnabled": true,
   "application": {
     "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    "name": "Demo Store Web",
-    "slug": "demostore-web",
+    "name": "Example App Web",
+    "slug": "exampleapp-web",
     "status": "active"
   },
   "authMethods": [
@@ -192,12 +192,12 @@ Your app never renders a password field. Users are redirected to SecureOne.
 ```mermaid
 sequenceDiagram
   participant User
-  participant Store as Demo Store SPA
+  participant Store as Example App SPA
   participant SecureOne as auth-server
   User->>Store: Click Sign in
   Store->>SecureOne: Redirect /oauth2/authorize (PKCE)
   SecureOne->>User: login.html
-  User->>SecureOne: Enter demostore:email + password
+  User->>SecureOne: Enter exampleapp:email + password
   SecureOne->>Store: Redirect /callback?code=…
   Store->>SecureOne: POST /oauth2/token (code + verifier)
   SecureOne->>Store: access_token, id_token, refresh_token
@@ -208,7 +208,7 @@ sequenceDiagram
 ```
 GET http://localhost:9000/oauth2/authorize
   ?response_type=code
-  &client_id=demostore-web
+  &client_id=exampleapp-web
   &redirect_uri=http://localhost:5173/callback
   &scope=openid profile email
   &state={random}
@@ -225,11 +225,11 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=authorization_code
 &code={authorization_code}
 &redirect_uri=http://localhost:5173/callback
-&client_id=demostore-web
+&client_id=exampleapp-web
 &code_verifier={original_verifier}
 ```
 
-**User identifier at hosted login:** `demostore:user@example.com` (tenant slug + email).
+**User identifier at hosted login:** `exampleapp:user@example.com` (tenant slug + email).
 
 Hosted pages (can link directly):
 
@@ -244,8 +244,6 @@ partner SSO buttons (configured federation providers), the MFA step, and links t
 when those are enabled. The hosted sign-up page asks for the verification code itself when the app verifies by
 code, and shows a mobile-number field when the policy uses phone.
 
-Working sample: [samples/react-spa](../samples/react-spa/README.md) (with the [Express API](../samples/express-api/README.md) it calls).
-
 ---
 
 ### Path B — Native / custom UI (your own branding)
@@ -255,7 +253,7 @@ Your React app renders its own branded forms and calls SecureOne **public APIs**
 ```mermaid
 sequenceDiagram
   participant User
-  participant Store as Demo Store UI
+  participant Store as Example App UI
   participant SecureOne as auth-server
   User->>Store: Enter email + password
   Store->>SecureOne: POST …/auth/session/login
@@ -439,7 +437,7 @@ A public client (PKCE, no secret) refreshes with its `client_id`:
 
 ```http
 POST /oauth2/token
-grant_type=refresh_token&refresh_token=…&client_id=demostore-web
+grant_type=refresh_token&refresh_token=…&client_id=exampleapp-web
 ```
 
 Each refresh returns a **new** refresh token; using an old one is treated as theft and revokes the whole
@@ -485,7 +483,7 @@ All paths are relative to auth-server (`http://localhost:9000`). CORS allows `lo
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/api/v1/applications/{id}` | Full public manifest |
-| GET | `/api/v1/applications/resolve?clientId=demostore-web` | Resolve app from OAuth client ID |
+| GET | `/api/v1/applications/resolve?clientId=exampleapp-web` | Resolve app from OAuth client ID |
 | GET | `/.well-known/openid-configuration` | OIDC discovery |
 
 ### Signup & account
@@ -588,7 +586,7 @@ async function buildAuthorizeUrl() {
   sessionStorage.setItem("pkce_verifier", verifier);
   const params = new URLSearchParams({
     response_type: "code",
-    client_id: "demostore-web",
+    client_id: "exampleapp-web",
     redirect_uri: "http://localhost:5173/callback",
     scope: "openid profile email",
     state: crypto.randomUUID(),
@@ -721,12 +719,7 @@ The hosted login page and the server only return users to OAuth endpoints on Sec
 
 ## Testing
 
-```powershell
-# From repo root (auth-server on :9000)
-.\scripts\test-external-client.ps1
-```
-
-Sample apps: [samples/](../samples/README.md) (React SPA, Next.js, Express API, device-code CLI)
+In the console, **Connect an app** → **Test sign-in** runs the full authorization code + PKCE flow against your client before you write any code.
 
 ---
 

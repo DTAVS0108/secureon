@@ -61,14 +61,14 @@ class SignupPolicyTest {
                 Map.of("key", "plan", "label", "Plan", "type", "select", "options", List.of("free", "pro")),
                 Map.of("key", "terms", "label", "Terms", "type", "checkbox", "required", true))));
 
-        Map<String, Object> saved = p.attributesFrom(Map.of("company", " Acme ", "plan", "pro", "terms", true, "injected", "x"));
-        assertEquals(Map.of("company", "Acme", "plan", "pro", "terms", true), saved);
+        Map<String, Object> saved = p.attributesFrom(Map.of("company", " Org A ", "plan", "pro", "terms", true, "injected", "x"));
+        assertEquals(Map.of("company", "Org A", "plan", "pro", "terms", true), saved);
         assertFalse(saved.containsKey("injected"));
 
         assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("plan", "pro", "terms", true)));
-        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Acme", "terms", false)));
-        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Acme", "terms", true, "plan", "gold")));
-        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Acme Ltd", "terms", true)));
+        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Org A", "terms", false)));
+        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Org A", "terms", true, "plan", "gold")));
+        assertThrows(IllegalArgumentException.class, () -> p.attributesFrom(Map.of("company", "Org A Ltd", "terms", true)));
     }
 
     @Test

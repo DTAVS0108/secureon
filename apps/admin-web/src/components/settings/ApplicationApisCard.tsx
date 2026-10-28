@@ -154,14 +154,14 @@ export function ApplicationApisCard({ applicationId }: { applicationId: string }
           <div className="space-y-3 rounded-xl border border-ui p-3">
             <div className="grid gap-3 md:grid-cols-2">
               <FieldRow label="Name">
-                <Input id="api-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Orders API" />
+                <Input id="api-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="API name" />
               </FieldRow>
               <FieldRow label="Identifier (audience)" hint="An https:// URL or urn: name. Unique; it is a name, nothing calls it.">
                 <Input
                   id="api-identifier"
                   value={draft.identifier}
                   onChange={(e) => setDraft({ ...draft, identifier: e.target.value })}
-                  placeholder="https://api.example.com/orders"
+                  placeholder="Identifier"
                 />
               </FieldRow>
             </div>
@@ -171,7 +171,7 @@ export function ApplicationApisCard({ applicationId }: { applicationId: string }
                 rows={4}
                 value={draft.scopesText}
                 onChange={(e) => setDraft({ ...draft, scopesText: e.target.value })}
-                placeholder={"orders:read Read orders\norders:write Create and change orders"}
+                placeholder="Scope and description, one per line"
               />
             </FieldRow>
             <div className="flex justify-end gap-2">

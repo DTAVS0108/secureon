@@ -77,23 +77,23 @@ See [Data Model](04-data-model.md).
 
 ```
 apps/auth-server/src/main/resources/db/migration/
-├── postgresql/                    ← platform migrations (V1…V45, R__z_repair_catalog.sql)
+├── postgresql/                    ← platform migrations (V1__baseline.sql, R__z_repair_catalog.sql)
 └── application-schema/
     └── V1__app_core.sql          ← template DDL (not Flyway-versioned per app)
 ```
 
-- **Platform:** versioned scripts run on auth-server boot; history in **`public.flyway_schema_history`**.
+- **Platform:** `V1__baseline.sql` creates the schema; later versioned scripts run before auth-server starts; history in **`platform.flyway_schema_history`**.
 - **Per-app:** `ApplicationSchemaProvisioner` runs `CREATE SCHEMA` + `V1__app_core.sql` inside the new schema; recorded in `platform.application_schema`.
 
 ```bash
 cd apps/auth-server && ./gradlew flywayMigrate   # optional; bootRun also migrates
 ```
 
-Full SQL reference: [18 — Flyway migration files](18-flyway-migration-files.md). Table & schema map: [17 — Database schemas & tables](17-database-schemas-and-tables.md).
+Files and how to add a migration: [18 — Flyway migration files](18-flyway-migration-files.md). Table & schema map: [17 — Database schemas & tables](17-database-schemas-and-tables.md).
 
 ### `flyway_schema_history`
 
-Flyway’s bookkeeping table. Lists which SQL scripts have run (`version`, `description`, `success`). **Stays in `public`** — do not move it to `platform` (V45 excludes it).
+Flyway’s bookkeeping table. Lists which SQL scripts have run (`version`, `description`, `success`). It lives in the `platform` schema.
 
 ## Tenant isolation (defense in depth)
 

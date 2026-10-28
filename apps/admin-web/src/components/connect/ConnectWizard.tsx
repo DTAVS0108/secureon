@@ -221,7 +221,7 @@ export function ConnectWizard({
 
             {isApi ? (
               <FieldRow label="Apps allowed to call it" hint="client IDs, comma-separated" info="Checked against the token's audience (aud), which is the client ID of the app that got the token.">
-                <Input value={audiences} onChange={(e) => setAudiences(e.target.value)} placeholder="shop-web, shop-mobile" />
+                <Input value={audiences} onChange={(e) => setAudiences(e.target.value)} placeholder="Audiences, comma-separated" />
               </FieldRow>
             ) : (
               <>
@@ -246,14 +246,14 @@ export function ConnectWizard({
                 </FieldRow>
                 {!applicationId && (
                   <FieldRow label="Application name" hint="what users see when signing in">
-                    <Input value={applicationName} onChange={(e) => changeAppName(e.target.value)} placeholder="Demo Store" />
+                    <Input value={applicationName} onChange={(e) => changeAppName(e.target.value)} placeholder="Application name" />
                   </FieldRow>
                 )}
                 <FieldRow label="Client ID" hint="your app sends this; lowercase and dashes">
                   <Input
                     value={clientId}
                     onChange={(e) => { setClientId(e.target.value); setClientIdEdited(true); }}
-                    placeholder="demo-store-web"
+                    placeholder="Client ID"
                   />
                 </FieldRow>
 

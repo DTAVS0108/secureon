@@ -113,7 +113,7 @@ export function AuditSearchPanel({ applicationId }: { applicationId?: string }) 
             <option value="success">Success</option>
             <option value="failure">Failure</option>
           </Select>
-          <Input value={action} onChange={(e) => setAction(e.target.value)} placeholder="Action contains (user.locked…)" />
+          <Input value={action} onChange={(e) => setAction(e.target.value)} placeholder="Action contains" />
           <Input value={actor} onChange={(e) => setActor(e.target.value)} placeholder="Actor contains (email)" />
           <div className="flex gap-2 sm:col-span-2 lg:col-span-2 lg:justify-end">
             <Button type="submit" disabled={loading}>

@@ -66,7 +66,7 @@ class AccountPrivacyServiceTest {
         user.setId(userId);
         user.setTenantId(tenantId);
         user.setEmail("user@example.com");
-        user.setDisplayName("Jane");
+        user.setDisplayName("First");
         user.setStatus("ACTIVE");
         jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
@@ -79,8 +79,8 @@ class AccountPrivacyServiceTest {
         when(users.findById(userId)).thenReturn(Optional.of(user));
         Tenant tenant = new Tenant();
         tenant.setId(tenantId);
-        tenant.setSlug("acme");
-        tenant.setName("Acme");
+        tenant.setSlug("tenant-a");
+        tenant.setName("Tenant A");
         when(tenants.findById(tenantId)).thenReturn(Optional.of(tenant));
         MfaFactor totp = new MfaFactor();
         totp.setId(UUID.randomUUID());
@@ -92,7 +92,7 @@ class AccountPrivacyServiceTest {
         Map<String, Object> out = service.export(jwt);
 
         assertEquals("user@example.com", out.get("email"));
-        assertEquals("acme", out.get("tenantSlug"));
+        assertEquals("tenant-a", out.get("tenantSlug"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> factors = (List<Map<String, Object>>) out.get("mfaFactors");
         assertEquals(1, factors.size());

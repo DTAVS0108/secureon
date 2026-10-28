@@ -235,7 +235,7 @@ export function TemplateRecipientsPicker({
                     type="email"
                     list={allUsers.length > 0 ? datalistId : undefined}
                     value={customEmail}
-                    placeholder="name@company.com"
+                    placeholder="Email address"
                     onChange={(e) => {
                       setCustomEmail(e.target.value);
                       setCustomError(null);

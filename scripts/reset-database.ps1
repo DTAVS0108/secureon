@@ -1,4 +1,4 @@
-# Wipe local Postgres data and restart with a clean schema (no Acme/Globex sample tenants).
+# Wipe local Postgres data and restart with a clean schema.
 # Usage:  .\scripts\reset-database.ps1
 #         .\scripts\reset-database.ps1 -SkipInstall
 

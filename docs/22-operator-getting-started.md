@@ -28,7 +28,7 @@ SecureOne is a **central identity platform** (an identity provider you host your
 │   admin-web     │     │   auth-server    │     │  PostgreSQL     │
 │   :9000/admin   │────▶│   :9000          │────▶│  + Redis        │
 │ Admin console   │     │ OAuth, APIs,     │     │ Users, tokens,  │
-│ + Confluence    │     │ hosted login UI  │     │ per-app schemas │
+│ + Documentation    │     │ hosted login UI  │     │ per-app schemas │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
          ▲                        ▲
          │                        │
@@ -40,7 +40,7 @@ SecureOne is a **central identity platform** (an identity provider you host your
 | **admin-web** | http://localhost:9000/admin | Platform admins, tenant admins, app operators |
 | **auth-server** | http://localhost:9000 | End-user login, OAuth, public account APIs |
 | **Swagger / OpenAPI** | http://localhost:9000/docs | API exploration |
-| **SecureOne Confluence** | http://localhost:9000/admin/confluence | In-app documentation browser |
+| **SecureOne Documentation** | http://localhost:9000/admin/documentation | In-app documentation browser |
 | **MailHog** (dev email) | http://localhost:8025 | Catches verification/reset emails |
 
 ---
@@ -49,12 +49,12 @@ SecureOne is a **central identity platform** (an identity provider you host your
 
 | Term | Meaning |
 |------|---------|
-| **Tenant** | An organization (e.g. `acme`, `demostore`). Users belong to a tenant. |
-| **Application (product)** | A product registered in SecureOne (e.g. “Demo Store Web”, “Billing Portal”). Has its own roles, permissions, and database schema. |
+| **Tenant** | An organization (e.g. `tenant-a`, `exampleapp`). Users belong to a tenant. |
+| **Application (product)** | A product registered in SecureOne (e.g. “Example App Web”, “Billing Portal”). Has its own roles, permissions, and database schema. |
 | **OAuth client** | Protocol credentials (`client_id`, redirect URIs) used to obtain tokens. One application can have several clients (web, mobile, M2M). |
 | **Platform super-admin** | Runs the whole deployment. Dev login: `admin` / `admin` (no tenant slug). |
 | **Tenant admin** | Manages users and apps inside one tenant. Login: `tenantSlug:email`. |
-| **End user** | Someone who signs into your product (e.g. a Demo Store customer). |
+| **End user** | Someone who signs into your product (e.g. a Example App customer). |
 | **Hosted UI** | SecureOne’s built-in pages (`login.html`, `signup.html`, …) on auth-server. |
 | **Native / custom UI** | Your own frontend calls SecureOne APIs directly. |
 
@@ -126,28 +126,28 @@ Follow this sequence once after install. It mirrors a real onboarding.
 ### 1. Create a tenant
 
 1. Admin → **Tenants** → **+ Add tenant**
-2. Name: `Demo Store` (example), slug: `demostore`
-3. Note the **tenant slug** — users sign in as `demostore:user@example.com` when using hosted login
+2. Name: `Example App` (example), slug: `exampleapp`
+3. Note the **tenant slug** — users sign in as `exampleapp:user@example.com` when using hosted login
 
 ### 2. Register an application + OAuth client
 
 1. Admin → **Applications** → **+ Register application & OAuth client**
-2. **Application:** tenant = Demo Store, name = `Demo Store Web`, slug = `demostore-web`
-3. **OAuth client:** type = SPA or Web, client ID = `demostore-web`, redirect URI = `http://localhost:5173/callback`, PKCE enabled
+2. **Application:** tenant = Example App, name = `Example App Web`, slug = `exampleapp-web`
+3. **OAuth client:** type = SPA or Web, client ID = `exampleapp-web`, redirect URI = `http://localhost:5173/callback`, PKCE enabled
 4. **Copy** the application UUID and client secret (if confidential)
 
-SecureOne provisions a dedicated PostgreSQL schema (`demostore_web`) and seeds default roles.
+SecureOne provisions a dedicated PostgreSQL schema (`exampleapp_web`) and seeds default roles.
 
 ### 3. Create a test user
 
-1. **Tenants** → open Demo Store → **+ Add user**
+1. **Tenants** → open Example App → **+ Add user**
 2. Email: `customer@example.com`, status Active
 3. **Grant access** → assign a role (e.g. Tenant User or app-scoped role)
-4. **Applications** → Demo Store Web console → **Users** → set password
+4. **Applications** → Example App Web console → **Users** → set password
 
 ### 4. Configure the application
 
-Open **Application console → Settings** for Demo Store Web:
+Open **Application console → Settings** for Example App Web:
 
 | Tab | What to configure |
 |-----|-------------------|
@@ -163,8 +163,8 @@ Open **Application console → Settings** for Demo Store Web:
 | Test | How |
 |------|-----|
 | Hosted login | Open `http://localhost:9000/login.html?applicationId={your-app-uuid}` |
-| Admin as tenant user | Sign out → login with `demostore:customer@example.com` |
-| OAuth PKCE | Run `.\scripts\test-external-client.ps1` or use sample client |
+| Admin as tenant user | Sign out → login with `exampleapp:customer@example.com` |
+| OAuth PKCE | **Connect an app** → **Test sign-in** |
 | Email | Trigger password reset → check http://localhost:8025 |
 
 ---
@@ -175,7 +175,7 @@ Open **Application console → Settings** for Demo Store Web:
 
 ```mermaid
 flowchart LR
-  subgraph your_app [Your application e.g. Demo Store]
+  subgraph your_app [Your application e.g. Example App]
     FE[Frontend]
     BE[Backend API]
   end
@@ -209,7 +209,7 @@ Detail: [11 — Admin control](11-admin-control.md), [14 — Application RBAC](1
 ### Database layout
 
 - **`platform` schema** — tenants, application registry, OAuth clients, global identity
-- **`{app_slug}` schema** — per-application roles, permissions, settings, audit (e.g. `demostore_web`)
+- **`{app_slug}` schema** — per-application roles, permissions, settings, audit (e.g. `exampleapp_web`)
 
 Detail: [06 — Database strategy](06-database.md), [17 — Schemas & tables](17-database-schemas-and-tables.md).
 
@@ -225,7 +225,7 @@ Detail: [06 — Database strategy](06-database.md), [17 — Schemas & tables](17
 | Application console | `/app/{applicationId}/…` | Users, roles, settings for one product |
 | Tenants | `/tenants` | Organizations, roster, access |
 | Platform settings | `/settings` | Global auth policy, SMTP defaults, feature exposure |
-| SecureOne Confluence | `/confluence` | Documentation (opens in new tab) |
+| SecureOne Documentation | `/documentation` | Documentation (opens in new tab) |
 
 ### Common tasks
 
@@ -300,7 +300,6 @@ Detail: [07 — Security](07-security.md), [runbooks/deploy.md](runbooks/deploy.
 | OAuth clients & schemas | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | All API endpoints | [12 — API documentation](12-api-documentation.md) + http://localhost:9000/docs |
 | Settings inheritance | [10 — Settings governance](10-settings-governance.md) |
-| Remaining backlog | [21 — Pending implementation guide](21-pending-implementation-guide.md) |
 
 ---
 
@@ -314,7 +313,7 @@ Install:     docker compose -f deploy/docker-compose.yml up -d
 Admin UI:    http://localhost:9000/admin  (admin / admin)
 Auth server: http://localhost:9000
 API docs:    http://localhost:9000/docs
-Docs UI:     http://localhost:9000/admin/confluence
+Docs UI:     http://localhost:9000/admin/documentation
 Mail (dev):  http://localhost:8025
 
 Tenant login format:  {tenantSlug}:{email}

@@ -259,7 +259,7 @@ export function UserTwoStepPanel({ userId, applicationId }: { userId: string; ap
               <div className="mt-2 grid gap-2 sm:grid-cols-[10rem_1fr_auto]">
                 <Input type="date" value={exemptUntil} onChange={(e) => setExemptUntil(e.target.value)} data-testid="exempt-until" />
                 <Input
-                  placeholder="Reason, e.g. lost phone, travelling"
+                  placeholder="Reason"
                   value={exemptReason}
                   maxLength={500}
                   onChange={(e) => setExemptReason(e.target.value)}

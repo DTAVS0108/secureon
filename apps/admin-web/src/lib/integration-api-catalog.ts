@@ -409,7 +409,7 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
             sub: `${tenantSlug}:user@example.com`,
             email: "user@example.com",
             email_verified: true,
-            name: "Jane Doe",
+            name: "Full name",
             preferred_username: `${tenantSlug}:user@example.com`,
             roles: ["Member", "Order approver"],
             permissions: ["orders:approve", "user:read"],
@@ -435,7 +435,7 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
             sub: "00000000-0000-0000-0000-000000000001",
             email: "user@example.com",
             emailVerified: true,
-            displayName: "Jane Doe",
+            displayName: "Full name",
             status: "ACTIVE",
             hasPassword: true,
             tenantSlug,
@@ -577,11 +577,11 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
       requestExample: json({
         email: "newuser@example.com",
         password: "SecurePass1!",
-        phone: "+14155552671",
+        phone: "+10000000000",
         verificationMode: "otp",
         verificationChannel: "email",
-        firstName: "Jane",
-        lastName: "Doe",
+        firstName: "First name",
+        lastName: "Last name",
       }),
       responses: [
         {
@@ -681,7 +681,7 @@ export function buildIntegrationApiCatalog(ctx: ApiCatalogContext): IntegrationA
         {
           status: 200,
           description: "Tenant record",
-          example: json({ id: "uuid", slug: "acme", name: "Acme Corp", status: "ACTIVE" }),
+          example: json({ id: "uuid", slug: "tenant-slug", name: "Tenant name", status: "ACTIVE" }),
         },
       ],
     },

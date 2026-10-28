@@ -14,7 +14,7 @@ name: secureone
 
 services:
   secureone:
-    image: ${SECUREONE_IMAGE:-dmtavs0108/secureone:0.3.39}
+    image: ${SECUREONE_IMAGE:-dmtavs0108/secureone:0.1.0}
     restart: unless-stopped
     depends_on:
       postgres:

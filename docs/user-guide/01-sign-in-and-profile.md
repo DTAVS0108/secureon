@@ -33,7 +33,7 @@ For tenant operators (Tenant Super Admin, Tenant Admin, Application Admin).
 
 | Field | What to enter |
 |-------|---------------|
-| **Tenant slug** | Your organization's short name, for example `acme` (placeholder `your-organization`). Your platform operator gives it to you. |
+| **Tenant slug** | Your organization's short name, for example `tenant-a` (placeholder `your-organization`). Your platform operator gives it to you. |
 | **Email** | Your work email. |
 | **Password** | Your password. **Show** / **Hide** toggles visibility. |
 

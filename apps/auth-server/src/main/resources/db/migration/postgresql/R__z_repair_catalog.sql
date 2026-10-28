@@ -1,5 +1,5 @@
 -- Idempotent catalog repair (repeatable). Safe after TRUNCATE on catalog tables.
--- Re-run:  .\scripts\reseed-catalog.ps1   OR   flyway migrate (when this file changes)
+-- Flyway re-runs it whenever this file changes.
 
 -- ── Platform settings ────────────────────────────────────────────────────────
 INSERT INTO platform_setting (key, value)

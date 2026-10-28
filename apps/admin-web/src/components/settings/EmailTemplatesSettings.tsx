@@ -360,14 +360,14 @@ export function EmailTemplatesSettings({
             <Input
               value={newTemplateKey}
               onChange={(e) => setNewTemplateKey(e.target.value)}
-              placeholder="welcome_email"
+              placeholder="Template key"
             />
           </FieldRow>
           <FieldRow label="Display name">
             <Input
               value={newTemplateName}
               onChange={(e) => setNewTemplateName(e.target.value)}
-              placeholder="Welcome email"
+              placeholder="Template name"
             />
           </FieldRow>
           <div className="flex items-end">

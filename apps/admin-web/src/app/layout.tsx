@@ -60,7 +60,7 @@ export default async function RootLayout({
     pathname === "/setup" ||
     pathname.startsWith("/api/");
   // Documentation is public: use the operator's context when signed in, an empty one otherwise.
-  const isPublicDocs = pathname === "/confluence" || pathname.startsWith("/confluence/");
+  const isPublicDocs = pathname === "/documentation" || pathname.startsWith("/documentation/");
   const [ctx, theme] = await Promise.all([
     isBareRoute
       ? Promise.resolve(EMPTY_ADMIN_CONTEXT)

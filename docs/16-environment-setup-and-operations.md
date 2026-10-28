@@ -14,7 +14,7 @@ For a shorter first-time walkthrough, see [09 â€” Installation](09-installa
 | **Redis** | `6379` | Sessions, cache, rate limits |
 | **MailHog** | SMTP `1025`, UI `8025` | Catches outbound email in dev |
 | **auth-server** | `9000` | OAuth/OIDC, admin APIs, Flyway, schedulers; serves the console at **`/admin`** |
-| **admin-web** (`next dev`) | `3001` (internal) | Admin console + SecureOne Confluence; open it at http://localhost:9000/admin (or http://localhost:3001/admin for hot reload) |
+| **admin-web** (`next dev`) | `3001` (internal) | Admin console + SecureOne Documentation; open it at http://localhost:9000/admin (or http://localhost:3001/admin for hot reload) |
 
 ---
 
@@ -301,14 +301,14 @@ SECUREONE_SAML_SP_CERT_PEM=
 
 # ---- Email (SMTP) ----
 # Dev default: MailHog via docker compose (localhost:1025, UI http://localhost:8025).
-# Real Gmail: use an App Password (Google Account â†’ Security â†’ 2-Step Verification â†’ App passwords).
-SECUREONE_SMTP_HOST=smtp.gmail.com
+# Most providers need an app password when the account uses two-step sign-in.
+SECUREONE_SMTP_HOST=smtp.example.com
 SECUREONE_SMTP_PORT=587
-SECUREONE_SMTP_USERNAME=your@gmail.com
+SECUREONE_SMTP_USERNAME=you@example.com
 SECUREONE_SMTP_PASSWORD=your-app-password
 SECUREONE_SMTP_AUTH=true
 SECUREONE_SMTP_STARTTLS=true
-SECUREONE_SMTP_SSL_TRUST=smtp.gmail.com
+SECUREONE_SMTP_SSL_TRUST=smtp.example.com
 # Set false when using real SMTP so failures surface instead of logging to console
 SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=true
 
@@ -633,130 +633,22 @@ SecureOne uses **two migration paths**:
 
 | Path | When | Where |
 |------|------|-------|
-| **Platform migrations** | Every auth-server boot | `db/migration/postgresql/` via Flyway |
-| **Application schema DDL** | Register or isolate an application | `db/migration/application-schema/V1__app_core.sql` at runtime |
+| **Platform migrations** | Before every auth-server start | `db/migration/postgresql/` via Flyway |
+| **Application schema migrations** | Register an application; upgrade existing ones at start | `db/migration/application-schema/` |
 
-`
-apps/auth-server/src/main/resources/db/migration/
-├── postgresql/                         ← Flyway versioned + repeatable scripts
-│   ├── V1__….sql … V67__oauth_client_subject_type.sql
-│   └── R__z_repair_catalog.sql         ← idempotent catalog repair (repeatable)
-└── application-schema/
-    └── V1__app_core.sql                ← template DDL (not Flyway-versioned per app)
-`
+The platform schema starts from a single `V1__baseline.sql` (complete schema, row-level security, the `secureone_app` role and built-in reference rows; no sample data). Later changes are `V2__…`, `V3__…`. History: `platform.flyway_schema_history`.
 
-**Flyway config** (from `application.yml`): `spring.flyway.enabled: true`, `locations: classpath:db/migration/postgresql`, `hibernate.ddl-auto: none`.
+`SECUREONE_DB_MIGRATE` picks the mode: `auto` (default, migrate then start), `only` (migrate and exit, for an upgrade job) or `validate` (refuse to start while anything is pending).
 
-**History table:** `public.flyway_schema_history` — stays in `public`, not moved to `platform`.
+See [18 — Flyway migration files](18-flyway-migration-files.md) for the files and how to add one, and [17 — Database schemas & tables](17-database-schemas-and-tables.md) for the tables.
 
-**Run migrations without starting the full app** (optional):
-
-`ash
-cd apps/auth-server
-./gradlew flywayMigrate
-`
-
-> `bootRun` already migrates automatically.
-
-### Migration index (V1–V67 + repeatable)
-
-| Version | File | Summary |
-|---------|------|---------|
-| V1 | `V1__core_schema.sql` | core schema |
-| V2 | `V2__seed_dev_data.sql` | seed dev data |
-| V3 | `V3__platform_settings_and_app_config.sql` | platform settings and app config |
-| V4 | `V4__seed_roles_and_admin_assignments.sql` | seed roles and admin assignments |
-| V5 | `V5__email_tokens_and_user_notifications.sql` | email tokens and user notifications |
-| V6 | `V6__auth_settings_mfa_and_magic_link.sql` | auth settings mfa and magic link |
-| V7 | `V7__dev_password_credentials.sql` | dev password credentials |
-| V8 | `V8__application_scoped_users_and_settings.sql` | application scoped users and settings |
-| V9 | `V9__application_scope_audit_sessions_access.sql` | application scope audit sessions access |
-| V10 | `V10__app_settings_exposure.sql` | app settings exposure |
-| V11 | `V11__rbac_permissions_seed.sql` | rbac permissions seed |
-| V12 | `V12__default_permissions_all_apps.sql` | default permissions all apps |
-| V13 | `V13__user_directory_import_export.sql` | user directory import export |
-| V14 | `V14__public_application_manifest.sql` | public application manifest |
-| V15 | `V15__token_policy.sql` | token policy |
-| V16 | `V16__signup_default_member_role.sql` | signup default member role |
-| V17 | `V17__external_test_application.sql` | external test application |
-| V18 | `V18__application_logs.sql` | application logs |
-| V19 | `V19__smtp_email_templates.sql` | smtp email templates |
-| V20 | `V20__user_credential_one_current.sql` | user credential one current |
-| V21 | `V21__restore_dev_tenant_admin.sql` | restore dev tenant admin |
-| V22 | `V22__dev_reset_acme_operator_password.sql` | dev reset acme operator password |
-| V23 | `V23__admin_console_access.sql` | admin console access |
-| V24 | `V24__dedupe_admin_console_access.sql` | dedupe admin console access |
-| V25 | `V25__remove_dev_seed_data.sql` | remove dev seed data |
-| V26 | `V26__purge_dev_sample_rows.sql` | purge dev sample rows |
-| V27 | `V27__finalize_dev_data_removal.sql` | finalize dev data removal |
-| V28 | `V28__seed_default_roles_all_apps.sql` | seed default roles all apps |
-| V29 | `V29__tenant_user_roster.sql` | tenant user roster |
-| V30 | `V30__repair_invited_application_members.sql` | repair invited application members |
-| V31 | `V31__tenant_roster_metadata.sql` | tenant roster metadata |
-| V32 | `V32__admin_console_feature_overrides.sql` | admin console feature overrides |
-| V33 | `V33__cleanup_orphan_console_roster_rows.sql` | cleanup orphan console roster rows |
-| V34 | `V34__tenant_rbac.sql` | tenant rbac |
-| V35 | `V35__seed_tenant_rbac_existing.sql` | seed tenant rbac existing |
-| V36 | `V36__tenant_console_role_features.sql` | tenant console role features |
-| V37 | `V37__mark_tenant_rbac_system_roles.sql` | mark tenant rbac system roles |
-| V38 | `V38__platform_notifications_independent.sql` | platform notifications independent |
-| V39 | `V39__user_credential_expires_at.sql` | user credential expires at |
-| V40 | `V40__password_expiry_notifications.sql` | password expiry notifications |
-| V41 | `V41__trim_feature_flag_catalog.sql` | trim feature flag catalog |
-| V42 | `V42__application_rbac_groups.sql` | application rbac groups |
-| V43 | `V43__tenant_console_groups.sql` | tenant console groups |
-| V44 | `V44__reseed_platform_settings.sql` | reseed platform settings |
-| V45 | `V45__platform_schema_oauth_client.sql` | platform schema oauth client |
-| V46 | `V46__otp_verification_and_phone.sql` | otp verification and phone |
-| V47 | `V47__expose_sms_to_applications.sql` | expose sms to applications |
-| V48 | `V48__recovery_otp_and_verification_policy.sql` | recovery otp and verification policy |
-| V49 | `V49__oauth2_authorization_jdbc.sql` | oauth2 authorization jdbc |
-| V50 | `V50__signing_keys.sql` | signing keys |
-| V52 | `V52__mfa_factor_extended.sql` | mfa factor extended |
-| V53 | `V53__mfa_policy.sql` | mfa policy |
-| V54 | `V54__tenant_rls_policies.sql` | tenant rls policies |
-| V55 | `V55__identity_federation.sql` | identity federation |
-| V56 | `V56__scim_groups_service_accounts.sql` | scim groups service accounts |
-| V57 | `V57__webhooks_trusted_device_iga.sql` | webhooks trusted device iga |
-| V58 | `V58__access_request_application_id.sql` | access request application id |
-| V59 | `V59__access_request_granted_role_name.sql` | access request granted role name |
-| V60 | `V60__terrafarm_oauth_redirect.sql` | terrafarm oauth redirect |
-| V61 | `V61__rls_fail_closed_option.sql` | rls fail closed option |
-| V62 | `V62__named_platform_operators.sql` | named platform operators |
-| V63 | `V63__rls_application_role.sql` | rls application role |
-| V64 | `V64__rls_functions_schema_qualified.sql` | rls functions schema qualified |
-| V65 | `V65__remove_stale_platform_rbac_copies.sql` | remove stale platform rbac copies |
-| V66 | `V66__application_logs_single_table.sql` | application logs single table |
-| V67 | `V67__oauth_client_subject_type.sql` | oauth client subject type |
-| R | `R__z_repair_catalog.sql` | idempotent catalog repair (repeatable) |
-
-### Application schema provisioning
-
-When you **register an application** or **isolate** a legacy app, `ApplicationSchemaProvisioner` executes `V1__app_core.sql` inside a new PostgreSQL schema. Tracked in `platform.application_schema.flyway_version` as `V1__app_core`, not in `flyway_schema_history`.
-
-See [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md).
-
-### After pulling new migrations
-
-1. Stop auth-server (or let it restart).
-2. Start auth-server — Flyway applies new `V*.sql` scripts.
-3. If migration fails, inspect `public.flyway_schema_history` and auth-server logs.
-4. For a broken dev DB, use `.\scripts\reset-database.ps1` or repair manually.
-
-### Catalog repair without full reset
+### Start fresh (development)
 
 ```powershell
-.\scripts\reseed-catalog.ps1
+.\scripts\reset-database.ps1
 ```
 
-Runs `R__z_repair_catalog.sql` against Postgres, then restart auth-server.
-
-### Related database documents
-
-| Topic | Document |
-|-------|----------|
-| Schemas, tables & connections | [17 — Database schemas & tables](17-database-schemas-and-tables.md) |
-| Full Flyway SQL (V1–V67) | [18 — Flyway migration files](18-flyway-migration-files.md) |
+Drops the local Postgres volume and starts again; the setup wizard then creates the first operator.
 
 ---
 
@@ -845,10 +737,6 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 | `scripts/start-all.ps1` | Docker + auth-server + admin-web |
 | `scripts/stop-all.ps1` | Stop background services (`-KeepDocker` leaves Postgres running) |
 | `scripts/reset-database.ps1` | `docker compose down -v` + fresh start |
-| `scripts/reseed-catalog.ps1` | Re-apply `R__z_repair_catalog.sql` without wiping users |
-| `scripts/test-auth-e2e.ps1` | Auth smoke tests |
-| `scripts/test-external-client.ps1` | External test client OAuth flow |
-| `scripts/test-oauth-token.ps1` | Token endpoint check |
 
 ---
 
@@ -862,7 +750,7 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 | OIDC discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
 | Admin UI | `http://localhost:9000/admin` |
 | MailHog | `http://localhost:8025` |
-| Flyway history | `SELECT version, description, success FROM public.flyway_schema_history ORDER BY installed_rank;` |
+| Flyway history | `SELECT version, description, success FROM platform.flyway_schema_history ORDER BY installed_rank;` |
 | App schemas | `SELECT name, schema_name FROM platform.application;` |
 
 ---
@@ -872,7 +760,7 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Flyway fails on boot | Partial migration, duplicate objects | Check `flyway_schema_history`; dev: `reset-database.ps1` |
-| Empty permissions/roles | Catalog tables truncated | `reseed-catalog.ps1` + restart auth-server |
+| Empty permissions/roles | Catalog tables truncated | Restart auth-server (the startup bootstrap re-seeds the catalog) |
 | auth-server won't start (port) | Process still on `:9000` | `stop-all.ps1` or kill Java process |
 | admin-web can't reach API | Wrong `SECUREONE_PUBLIC_BASE_URL` / `SECUREONE_AUTH_SERVER_INTERNAL_URL` | Set to `http://localhost:9000` in `apps/admin-web/.env.local` |
 | http://localhost:9000/admin returns 404 | auth-server started without `SECUREONE_CONSOLE_UPSTREAM_URL` | Use `scripts/start-all.ps1`, or set it to `http://localhost:3001` |
@@ -905,7 +793,7 @@ See [07 â€” Security](07-security.md) and [03 â€” Architecture Â§ De
 | Password expiry scheduler detail | [10 â€” Settings governance](10-settings-governance.md) |
 | Docker Compose & image | `deploy/docker-compose.yml`, `deploy/docker-compose.quickstart.yml`, `deploy/Dockerfile`, `.dockerignore` |
 | Configuration files (full) | `application.yml`, `.env.example`, `.env.local.example`, `build.gradle.kts`, `package.json`, `next.config.ts` |
-| Full Flyway SQL (V1–V67) | [18 — Flyway migration files](18-flyway-migration-files.md) |
+| Flyway migration files | [18 — Flyway migration files](18-flyway-migration-files.md) |
 | Schemas, tables & FK map | [17 — Database schemas & tables](17-database-schemas-and-tables.md) |
 | auth-server config | [apps/auth-server/README.md](../apps/auth-server/README.md) |
 | admin-web config | [apps/admin-web/README.md](../apps/admin-web/README.md) |

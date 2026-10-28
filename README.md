@@ -147,7 +147,6 @@ All settings with defaults: [docs/24 "All settings"](docs/24-deployment-image-en
 
 1. In the console: **Connect an app**, pick the kind of app (web, single-page, mobile, backend, TV/CLI) and framework.
 2. Copy the generated setup code; try **Test sign-in** before writing any code.
-3. Or start from a [sample app](samples/README.md): React SPA, Next.js, Express API, device-code CLI.
 
 Guide: [docs/23 Application integration](docs/23-application-integration-guide.md).
 
@@ -155,7 +154,7 @@ Guide: [docs/23 Application integration](docs/23-application-integration-guide.m
 
 ## Documentation
 
-**Start here:** [docs/README.md](docs/README.md). The same docs are in the console at `/admin/confluence`.
+**Start here:** [docs/README.md](docs/README.md). The same docs are in the console at `/admin/documentation`.
 
 | # | Document | What's inside |
 |---|---|---|
@@ -163,7 +162,6 @@ Guide: [docs/23 Application integration](docs/23-application-integration-guide.m
 | 03 | [Architecture](docs/03-architecture.md) | Components, flows, deployment |
 | 05 | [Auth standards](docs/05-auth-standards.md) | OAuth 2.1 / OIDC, tokens, MFA |
 | 07 | [Security](docs/07-security.md) | Security practices |
-| 08 | [Roadmap](docs/08-roadmap.md) | Phased delivery |
 | 15 | [Applications & OAuth clients](docs/15-applications-and-oauth-clients.md) | Applications vs clients, per-app schemas |
 | 22 | [Operator getting started](docs/22-operator-getting-started.md) | Day-to-day operation |
 | 23 | [Application integration](docs/23-application-integration-guide.md) | Connecting apps, errors explained |
@@ -191,7 +189,6 @@ secureone/
 │   ├── docker-compose.quickstart.yml  # evaluation with MailHog
 │   ├── docker-compose.yml      # development: PostgreSQL, Redis, MailHog
 │   └── helm/secureone/         # Kubernetes chart (with migration job)
-├── samples/                    # React SPA, Next.js, Express API, device-code CLI
 ├── docs/                       # documentation (also in the console)
 └── scripts/                    # development helpers
 ```

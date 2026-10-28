@@ -104,7 +104,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
 
   async function sendTest() {
     if (!testTo.trim()) {
-      setMessage("Enter a phone number in E.164 format (e.g. +918851512349).");
+      setMessage("Enter a phone number in E.164 format (+, country code, number).");
       return;
     }
     setTesting(true);
@@ -172,7 +172,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
                 onChange={(e) =>
                   setDraft({ ...draft, twilio: { ...twilio, fromNumber: e.target.value } })
                 }
-                placeholder="+15551234567"
+                placeholder="Sender number"
               />
             </FieldRow>
             <FieldRow
@@ -184,7 +184,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
                 type="password"
                 value={twilioAuthToken}
                 onChange={(e) => setTwilioAuthToken(e.target.value)}
-                placeholder={twilio.authTokenConfigured ? "••••••••" : "Twilio auth token"}
+                placeholder={twilio.authTokenConfigured ? "••••••••" : "Auth token"}
               />
             </FieldRow>
           </div>
@@ -217,7 +217,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
                 type="password"
                 value={awsSecret}
                 onChange={(e) => setAwsSecret(e.target.value)}
-                placeholder={aws.secretAccessKeyConfigured ? "••••••••" : "AWS secret key"}
+                placeholder={aws.secretAccessKeyConfigured ? "••••••••" : "Secret access key"}
               />
             </FieldRow>
             <FieldRow label="Sender ID (optional)" info={SMS_HELP.awsSenderId}>
@@ -258,7 +258,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
                 type="password"
                 value={msg91ApiKey}
                 onChange={(e) => setMsg91ApiKey(e.target.value)}
-                placeholder={msg91.apiKeyConfigured ? "••••••••" : "MSG91 auth key"}
+                placeholder={msg91.apiKeyConfigured ? "••••••••" : "Auth key"}
               />
             </FieldRow>
           </div>
@@ -278,7 +278,7 @@ export function SmsProviderSettingsCard(props: SmsProviderSettingsCardProps) {
                 id="sms-test-phone"
                 value={testTo}
                 onChange={(e) => setTestTo(e.target.value)}
-                placeholder="+918851512349"
+                placeholder="Phone number"
               />
               <Button type="button" variant="secondary" onClick={sendTest} disabled={testing || saving}>
                 {testing ? "Sending…" : "Send test"}

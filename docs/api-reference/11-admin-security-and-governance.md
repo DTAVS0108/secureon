@@ -161,8 +161,8 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/platform-operators" \
   -H "Content-Type: application/json" \
   --data '{
   "email": "user@example.com",
-  "firstName": "Jane",
-  "lastName": "Doe",
+  "firstName": "First",
+  "lastName": "Last",
   "role": "role"
 }'
 ```
@@ -536,7 +536,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/roles" \
   ],
   "description": "Short explanation",
   "isComposite": true,
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ],
@@ -607,7 +607,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/roles/{id}" \
   ],
   "description": "Short explanation",
   "isComposite": true,
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ]

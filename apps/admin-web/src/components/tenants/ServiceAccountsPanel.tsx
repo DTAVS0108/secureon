@@ -101,7 +101,7 @@ export function ServiceAccountsPanel({ tenantId }: { tenantId: string }) {
       <div className="space-y-4 px-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <FieldRow label="Name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="billing-sync" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Service account name" />
           </FieldRow>
           <FieldRow label="Description">
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />

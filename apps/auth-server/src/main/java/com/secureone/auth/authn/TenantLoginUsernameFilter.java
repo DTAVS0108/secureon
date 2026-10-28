@@ -64,7 +64,7 @@ public class TenantLoginUsernameFilter extends OncePerRequestFilter {
         }
     }
 
-    /** {@code acme:jane@x.com} -> {@code jane@x.com}; a plain value is returned as-is. */
+    /** {@code tenant:user@example.com} -> {@code user@example.com}; a plain value is returned as-is. */
     private static String stripTenantPrefix(String username) {
         if (username == null) {
             return null;

@@ -26,8 +26,8 @@ import org.springframework.security.access.AccessDeniedException;
 
 class ChangeRequestServiceTest {
 
-    private static final String REQUESTER = "alice@example.com";
-    private static final String APPROVER = "bob@example.com";
+    private static final String REQUESTER = "user-a@example.com";
+    private static final String APPROVER = "user-b@example.com";
 
     private final ChangeRequests requests = mock(ChangeRequests.class);
     private final OAuthClientAdminService clients = mock(OAuthClientAdminService.class);
@@ -49,14 +49,14 @@ class ChangeRequestServiceTest {
 
     private Row row(Status status) {
         return new Row(requestId, ChangeRequestService.OAUTH_CLIENT_DELETE, UUID.randomUUID(), UUID.randomUUID(),
-                clientId, "web-client (Shop)", null, status, REQUESTER, Instant.now(), null, null, null, "Acme",
+                clientId, "web-client (Shop)", null, status, REQUESTER, Instant.now(), null, null, null, "Tenant A",
                 null, null);
     }
 
     private Row twoFactorRow() {
         UUID app = UUID.randomUUID();
         return new Row(requestId, TwoFactorChangeRequests.APP_OFF, UUID.randomUUID(), app, app, "Shop", null,
-                Status.PENDING, REQUESTER, Instant.now(), null, null, null, "Acme",
+                Status.PENDING, REQUESTER, Instant.now(), null, null, null, "Tenant A",
                 "{\"before\":{\"tabEnabled\":true}}", "Turn Two Factor Authentication off for Shop");
     }
 
@@ -105,7 +105,7 @@ class ChangeRequestServiceTest {
     void requesterCannotApproveOrRejectTheirOwnRequest() {
         when(requests.find(requestId)).thenReturn(Optional.of(row(Status.PENDING)));
 
-        assertThrows(AccessDeniedException.class, () -> service.approve(requestId, "ALICE@example.com", null));
+        assertThrows(AccessDeniedException.class, () -> service.approve(requestId, "USER-A@example.com", null));
         assertThrows(AccessDeniedException.class, () -> service.reject(requestId, REQUESTER, "no"));
         verify(clients, never()).delete(any());
     }

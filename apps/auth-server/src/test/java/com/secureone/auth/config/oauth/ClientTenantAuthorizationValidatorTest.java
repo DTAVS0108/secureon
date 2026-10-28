@@ -41,8 +41,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 @ExtendWith(MockitoExtension.class)
 class ClientTenantAuthorizationValidatorTest {
 
-    private static final String CLIENT_ID = "acme-web";
-    private static final String REDIRECT_URI = "https://app.acme.test/callback";
+    private static final String CLIENT_ID = "tenant-a-web";
+    private static final String REDIRECT_URI = "https://app.tenant-a.test/callback";
 
     @Mock
     private ApplicationOAuthClientResolver applications;
@@ -64,7 +64,7 @@ class ClientTenantAuthorizationValidatorTest {
 
         tenant = new Tenant();
         tenant.setId(UUID.randomUUID());
-        tenant.setSlug("acme");
+        tenant.setSlug("tenant-a");
 
         app = new Application();
         app.setId(UUID.randomUUID());
@@ -73,7 +73,7 @@ class ClientTenantAuthorizationValidatorTest {
         user = new UserAccount();
         user.setId(UUID.randomUUID());
         user.setTenantId(tenant.getId());
-        user.setEmail("jane@acme.test");
+        user.setEmail("member@tenant-a.test");
         user.setStatus("ACTIVE");
     }
 
@@ -92,7 +92,7 @@ class ClientTenantAuthorizationValidatorTest {
 
         OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,
-                () -> validator.accept(context(signedIn("globex:jane@acme.test"))));
+                () -> validator.accept(context(signedIn("tenant-b:member@tenant-a.test"))));
 
         assertEquals(OAuth2ErrorCodes.ACCESS_DENIED, ex.getError().getErrorCode());
         verify(access, never()).admit(any(), any());
@@ -111,12 +111,12 @@ class ClientTenantAuthorizationValidatorTest {
     @Test
     void tenantUserWithoutAccessIsDenied() {
         stubClientTenant();
-        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
         when(access.admit(app.getId(), user.getId())).thenReturn(false);
 
         OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,
-                () -> validator.accept(context(signedIn("acme:jane@acme.test"))));
+                () -> validator.accept(context(signedIn("tenant-a:member@tenant-a.test"))));
 
         assertEquals(OAuth2ErrorCodes.ACCESS_DENIED, ex.getError().getErrorCode());
     }
@@ -124,21 +124,21 @@ class ClientTenantAuthorizationValidatorTest {
     @Test
     void admittedTenantUserPasses() {
         stubClientTenant();
-        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
         when(access.admit(app.getId(), user.getId())).thenReturn(true);
 
-        assertDoesNotThrow(() -> validator.accept(context(signedIn("ACME:Jane@acme.test"))));
+        assertDoesNotThrow(() -> validator.accept(context(signedIn("TENANT-A:Member@tenant-a.test"))));
     }
 
     @Test
     void suspendedUserWithABrowserSessionGetsNoCode() {
         stubClientTenant();
         user.setStatus("SUSPENDED");
-        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
 
         OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,
-                () -> validator.accept(context(signedIn("acme:jane@acme.test"))));
+                () -> validator.accept(context(signedIn("tenant-a:member@tenant-a.test"))));
 
         assertEquals(OAuth2ErrorCodes.ACCESS_DENIED, ex.getError().getErrorCode());
         verify(access, never()).admit(any(), any());
@@ -148,11 +148,11 @@ class ClientTenantAuthorizationValidatorTest {
     void userOfASuspendedTenantGetsNoCode() {
         stubClientTenant();
         tenant.setStatus("SUSPENDED");
-        when(users.findByTenantIdAndEmail(tenant.getId(), "jane@acme.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
 
         assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,
-                () -> validator.accept(context(signedIn("acme:jane@acme.test"))));
+                () -> validator.accept(context(signedIn("tenant-a:member@tenant-a.test"))));
         verify(access, never()).admit(any(), any());
     }
 
@@ -161,7 +161,7 @@ class ClientTenantAuthorizationValidatorTest {
         OAuth2AuthorizationCodeRequestAuthenticationToken token = new OAuth2AuthorizationCodeRequestAuthenticationToken(
                 "https://auth.test/oauth2/authorize",
                 CLIENT_ID,
-                signedIn("acme:jane@acme.test"),
+                signedIn("tenant-a:member@tenant-a.test"),
                 "https://evil.test/callback",
                 "state",
                 Set.of("openid"),

@@ -404,7 +404,7 @@ public class SecurityConfig {
                                 "/docs",
                                 "/docs/**",
                                 "/api/info",
-                                "/api/v1/confluence",
+                                "/api/v1/documentation",
                                 "/api/v1/setup/**",
                                 "/api/v1/account/password/forgot",
                                 "/api/v1/account/password/reset",

@@ -62,7 +62,7 @@ The card is titled **Register the app** (**Your API** for the API kind).
 |-------|---------------|
 | **Tenant** | Whose users can sign in to the app (*Users of this tenant can sign in to the app.*). Tenant operators see only their own tenant. |
 | **Application** | An existing application, or **New application…** to create one. Tenant Admins can only pick applications assigned to them. |
-| **Application name** | Shown when **New application…** is chosen: *what users see when signing in*, for example `Demo Store`. |
+| **Application name** | Shown when **New application…** is chosen: *what users see when signing in*, for example `Example App`. |
 | **Client ID** | *Your app sends this; lowercase and dashes*, for example `demo-store-web`. Must be unique. |
 | **App URL** | *Where the app runs*, for example `http://localhost:3000`. Web and single-page apps. |
 | **Redirect URL** | *After sign-in*. Filled from the app URL and the framework's callback path. *Must match what the app sends exactly. Add production URLs later on the client page.* |

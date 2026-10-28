@@ -84,7 +84,7 @@ export function SignupPolicyCard({ applicationId }: { applicationId: string }) {
               rows={4}
               value={draft.allowed}
               onChange={(e) => setDraft({ ...draft, allowed: e.target.value })}
-              placeholder="example.com"
+              placeholder="Domains, one per line"
             />
           </FieldRow>
           <FieldRow label="Blocked email domains" hint="Refused even when allowed above (e.g. disposable mail).">
@@ -92,7 +92,7 @@ export function SignupPolicyCard({ applicationId }: { applicationId: string }) {
               rows={4}
               value={draft.blocked}
               onChange={(e) => setDraft({ ...draft, blocked: e.target.value })}
-              placeholder="mailinator.com"
+              placeholder="Domains, one per line"
             />
           </FieldRow>
         </div>
@@ -104,7 +104,7 @@ export function SignupPolicyCard({ applicationId }: { applicationId: string }) {
             {draft.fields.length === 0 && <p className="text-sm text-muted">None: email, name and password only.</p>}
             {draft.fields.map((f, i) => (
               <div key={i} className="grid items-center gap-2 rounded-xl border border-ui p-3 md:grid-cols-[1fr_1.4fr_0.8fr_1.4fr_auto]">
-                <Input value={f.key} onChange={(e) => patch(i, { key: e.target.value })} placeholder="Key (e.g. company)" aria-label="Key" />
+                <Input value={f.key} onChange={(e) => patch(i, { key: e.target.value })} placeholder="Key" aria-label="Key" />
                 <Input value={f.label} onChange={(e) => patch(i, { label: e.target.value })} placeholder="Label shown" aria-label="Label" />
                 <Select value={f.type} onChange={(e) => patch(i, { type: e.target.value as SignupField["type"] })} aria-label="Type">
                   <option value="text">Text</option>

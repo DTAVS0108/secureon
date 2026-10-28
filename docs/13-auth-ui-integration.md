@@ -52,7 +52,7 @@ The `account` block lists application-scoped endpoints (no `tenantSlug` required
 | `verifyOtpConfirmEndpoint` | `POST /api/v1/applications/{id}/account/verify/otp/confirm` |
 | `passwordResetEndpoint` | `POST /api/v1/account/password/reset` |
 | `setPasswordEndpoint` | `POST /api/v1/account/set-password` |
-| `loginUsernameFormat` | `tenantSlug:email` (e.g. `acme:user@example.com`) |
+| `loginUsernameFormat` | `tenantSlug:email` (e.g. `tenant-a:user@example.com`) |
 
 OIDC discovery applies to all modes:
 

@@ -28,9 +28,8 @@ SECUREONE_DB_PASSWORD=secureone
 
 ```
 secureone (database)
-├── public
-│   └── flyway_schema_history          ← Flyway only (never in platform)
 ├── platform
+│   ├── flyway_schema_history          ← Flyway migration log
 │   ├── tenant, application, oauth_client, application_schema
 │   ├── user_account, user_credential, email_token, mfa_factor
 │   ├── tenant_rbac*, admin_console_*, platform_setting, audit_log, …
@@ -44,7 +43,7 @@ secureone (database)
 
 ```mermaid
 flowchart TB
-    subgraph public_schema["public"]
+    subgraph public_schema["platform (Flyway log)"]
         FSH[flyway_schema_history]
     end
 
@@ -60,7 +59,7 @@ flowchart TB
         PS[platform_setting]
     end
 
-    subgraph app_schema["{app_slug} e.g. acme_billing"]
+    subgraph app_schema["{app_slug} e.g. tenant_a_billing"]
         P[permission]
         R[role]
         UR[user_role]
@@ -89,7 +88,7 @@ flowchart TB
 | Mode | `application.schema_name` | IAM tables (`role`, `permission`, …) | OAuth clients |
 |------|---------------------------|--------------------------------------|---------------|
 | **Legacy** | `NULL` | In **`platform`** schema | `platform.oauth_client` |
-| **Isolated** | e.g. `acme_billing` | In **`{app_slug}`** schema | `platform.oauth_client` (always platform) |
+| **Isolated** | e.g. `tenant_a_billing` | In **`{app_slug}`** schema | `platform.oauth_client` (always platform) |
 
 Identity (`user_account`, `tenant`) and OAuth registry stay in **`platform`**. Only application RBAC/settings/logs move to the app schema.
 
@@ -97,7 +96,7 @@ Identity (`user_account`, `tenant`) and OAuth registry stay in **`platform`**. O
 
 ---
 
-## `public` schema
+## Flyway history
 
 | Table | Purpose | Connections |
 |-------|---------|---------------|
@@ -237,7 +236,7 @@ SELECT id, name, slug, schema_name FROM platform.application ORDER BY name;
 
 -- Flyway history
 SELECT installed_rank, version, description, success, installed_on
-FROM public.flyway_schema_history ORDER BY installed_rank;
+FROM platform.flyway_schema_history ORDER BY installed_rank;
 
 -- Tables in platform vs an app schema
 SELECT tablename FROM pg_tables WHERE schemaname = 'platform' ORDER BY 1;
@@ -257,6 +256,6 @@ JOIN platform.application a ON a.id = oc.application_id;
 |-------|----------|
 | Column-level ERD | [04 — Data model](04-data-model.md) |
 | Flyway & isolation strategy | [06 — Database strategy](06-database.md) |
-| Full migration SQL | [18 — Flyway migration files](18-flyway-migration-files.md) |
+| Migration files | [18 — Flyway migration files](18-flyway-migration-files.md) |
 | App create / isolate | [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) |
 | ADR platform + app schemas | [decisions/0010](decisions/0010-platform-and-app-schemas.md) |

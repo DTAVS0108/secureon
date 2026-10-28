@@ -369,7 +369,7 @@
           return;
         }
         // sms / email
-        var phone = el("input", { id: "ts-phone", type: "tel", autocomplete: "tel", placeholder: "+1 415 555 0100", "data-testid": "setup-phone" });
+        var phone = el("input", { id: "ts-phone", type: "tel", autocomplete: "tel", placeholder: "Phone number", "data-testid": "setup-phone" });
         var code = codeInput("ts-setup-code");
         var confirm = el("button", { type: "button", class: "ts-primary", "data-testid": "setup-code-confirm", text: "Confirm", disabled: true, onclick: function () {
           call("POST", base + "/setup/code/confirm", { mfaChallengeId: challengeId, code: code.value.trim() }).then(finished);
@@ -608,7 +608,7 @@
           });
           return;
         }
-        var phone = el("input", { type: "tel", placeholder: "+1 415 555 0100", "data-testid": "add-phone" });
+        var phone = el("input", { type: "tel", placeholder: "Phone number", "data-testid": "add-phone" });
         var code = codeInput("ts-add-code");
         var confirmBtn = el("button", { type: "button", class: "ts-primary", "data-testid": "add-code-confirm", text: "Confirm", disabled: true, onclick: function () {
           call("POST", base + "/methods/code/confirm" + app, { code: code.value.trim() }).then(added);

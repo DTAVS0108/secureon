@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * High-impact changes that wait for a second admin (docs/plans/change-approvals.md): deleting an OAuth client, and
+ * High-impact changes that wait for a second admin: deleting an OAuth client, and
  * changes that weaken Two Factor Authentication ({@link TwoFactorChangeRequests}). Callers check who may request,
  * list and decide; this class enforces the request rules: one pending request per target, nobody decides their
  * own request.

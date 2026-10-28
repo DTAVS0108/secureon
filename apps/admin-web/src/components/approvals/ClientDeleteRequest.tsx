@@ -105,7 +105,7 @@ export function ClientDeleteRequest({ clientDbId, clientId, tenantId }: {
         title={`Request deletion of ${clientId}?`}
         message="Nothing is deleted yet. Another admin approves the request on Access review; then the client's credentials stop working immediately."
         noteLabel="Reason"
-        notePlaceholder="e.g. App retired, replaced by web-v2"
+        notePlaceholder="Reason"
         confirmLabel="Send for approval"
         confirmVariant="danger"
         onConfirm={async (reason) => {

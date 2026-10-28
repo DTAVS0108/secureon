@@ -10,7 +10,7 @@ Related: [Data model](04-data-model.md), [Database strategy](06-database.md), [I
 
 | Concept | What it is | Stored in | Enables |
 |---------|------------|-----------|---------|
-| **Application product** | The IAM boundary for a product (e.g. “Demo Store”, “Billing portal”) | `platform.application` + optional dedicated schema | Users, roles, permissions, groups, settings, audit in the **application console** |
+| **Application product** | The IAM boundary for a product (e.g. “Example App”, “Billing portal”) | `platform.application` + optional dedicated schema | Users, roles, permissions, groups, settings, audit in the **application console** |
 | **OAuth client** | OIDC/OAuth credentials used to obtain tokens | `platform.oauth_client` | `/oauth2/authorize`, `/oauth2/token`, redirect URIs, PKCE, client secret |
 
 - **1 application → N OAuth clients** (web app, SPA, mobile, M2M can each have their own client).
@@ -22,8 +22,7 @@ Related: [Data model](04-data-model.md), [Database strategy](06-database.md), [I
 
 ```
 secureone (PostgreSQL database)
-├── public.flyway_schema_history   ← Flyway migration log only
-├── platform.*                     ← shared: tenant, application registry, oauth_client, identity, governance
+├── platform.*                     ← shared: tenant, application registry, oauth_client, identity, governance, Flyway log
 └── {app_slug}.*                   ← per-app IAM (role, permission, user_application, settings, groups, logs)
 ```
 
@@ -153,9 +152,9 @@ OAuth clients remain in `platform.oauth_client`. This cannot be undone automatic
 
 | Location | Purpose |
 |----------|---------|
-| `apps/auth-server/src/main/resources/db/migration/postgresql/` | Platform Flyway scripts (`V1`…`V45`, `R__z_repair_catalog.sql`) |
+| `apps/auth-server/src/main/resources/db/migration/postgresql/` | Platform Flyway scripts (`V1__baseline`, `R__z_repair_catalog.sql`) |
 | `apps/auth-server/src/main/resources/db/migration/application-schema/V1__app_core.sql` | Template DDL executed inside each new app schema (not a Flyway version on its own) |
-| `public.flyway_schema_history` | Flyway history table — **stays in `public`**, not moved to `platform` |
+| `platform.flyway_schema_history` | Flyway history table |
 
 On auth-server boot, Flyway applies pending platform migrations. **Application schema creation** happens at runtime when you register or isolate an application (`ApplicationSchemaProvisioner`).
 
@@ -189,7 +188,7 @@ See [Application RBAC management](14-application-rbac-management.md).
 
 If PostgreSQL is reachable and auth-server starts successfully:
 
-1. Flyway applies platform migrations (through V45+).
+1. Flyway applies platform migrations (`V1__baseline.sql` on an empty database).
 2. Registering an application **automatically** creates the PostgreSQL schema and IAM tables — no manual SQL.
 
 Requirements: Docker Compose (`postgres`, `redis`), `gradlew bootRun` (auth-server), `npm run dev` (admin-web). See [Installation](09-installation.md).
@@ -203,7 +202,6 @@ Requirements: Docker Compose (`postgres`, `redis`), `gradlew bootRun` (auth-serv
 | App console shows no roles after create | Auth-server not restarted after schema-routing fix; or `schema_name` set but schema empty |
 | `409` on application create | Slug collision for tenant, or orphan schema from failed provision |
 | `409` “already isolated” on isolate | `schema_name` already set |
-| Flyway fails on `flyway_schema_history` | Partial V45 — ensure only `public.flyway_schema_history` exists |
 | OAuth works but console IAM empty | Legacy app not isolated and `search_path` not applied — check isolated schema or run isolate |
 
 Verify after create:

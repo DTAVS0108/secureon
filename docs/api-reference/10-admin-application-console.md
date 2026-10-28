@@ -2294,7 +2294,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/groups
   "memberUserIds": [
     "{memberUserId}"
   ],
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "roleIds": [
     "{roleId}"
   ],
@@ -2363,7 +2363,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/groups/
   "memberUserIds": [
     "{memberUserId}"
   ],
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "roleIds": [
     "{roleId}"
   ]
@@ -2623,7 +2623,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/roles"
   ],
   "description": "Short explanation",
   "isComposite": true,
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ],
@@ -2694,7 +2694,7 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/roles/{
   ],
   "description": "Short explanation",
   "isComposite": true,
-  "name": "Acme Shop",
+  "name": "Tenant A Shop",
   "permissionIds": [
     "{permissionId}"
   ]

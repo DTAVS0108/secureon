@@ -386,7 +386,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/auth/session
   "applicationId": "{applicationId}",
   "email": "user@example.com",
   "password": "Choose-a-Strong-Pass-1!",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -471,10 +471,10 @@ curl -s -X POST "$SECUREONE_URL/api/v1/applications/{applicationId}/signup" \
   -H "Content-Type: application/json" \
   --data '{
   "attributes": {},
-  "displayName": "Acme Shop",
+  "displayName": "Tenant A Shop",
   "email": "user@example.com",
-  "firstName": "Jane",
-  "lastName": "Doe",
+  "firstName": "First",
+  "lastName": "Last",
   "password": "Choose-a-Strong-Pass-1!",
   "phone": "+14155552671",
   "verificationChannel": "email",
@@ -949,7 +949,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/passkey/options" \
   --data '{
   "applicationId": "{applicationId}",
   "email": "user@example.com",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -1009,7 +1009,7 @@ curl -s -X POST "$SECUREONE_URL/api/v1/auth/session/login" \
   "applicationId": "{applicationId}",
   "email": "user@example.com",
   "password": "Choose-a-Strong-Pass-1!",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 

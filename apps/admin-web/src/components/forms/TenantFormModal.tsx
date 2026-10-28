@@ -44,13 +44,13 @@ function TenantForm({ tenant, close }: { tenant?: Tenant; close: () => void }) {
       {tenant && <input type="hidden" name="id" value={tenant.id} />}
       <FormError state={state} />
       <FieldRow label="Name">
-        <Input name="name" defaultValue={tenant?.name} placeholder="Your organization" required />
+        <Input name="name" defaultValue={tenant?.name} placeholder="Tenant name" required />
       </FieldRow>
       <FieldRow
         label="Slug"
         hint={tenant?.system ? "reserved — the platform tenant's slug cannot change" : "optional — auto-generated"}
       >
-        <Input name="slug" defaultValue={tenant?.slug} placeholder="your-org" readOnly={tenant?.system} />
+        <Input name="slug" defaultValue={tenant?.slug} placeholder="Tenant slug" readOnly={tenant?.system} />
       </FieldRow>
       <div className="grid grid-cols-2 gap-4">
         <FieldRow label="Plan">

@@ -28,33 +28,33 @@ Open **http://localhost:3001/admin** (dev server; the console lives under `/admi
 | Application console | App operators | `/app/{applicationId}/users` (and roles, settings, …) |
 | Tenants | Platform / tenant super-admin | `/tenants` |
 | Platform settings | Platform super-admin | `/settings` |
-| **SecureOne Confluence** | All signed-in operators | `/confluence` |
+| **SecureOne Documentation** | All signed-in operators | `/documentation` |
 
-## SecureOne Confluence
+## SecureOne Documentation
 
-Standalone in-app documentation browser (Confluence-style): one **Documentation** section with architecture, database, installation, application integration, ADRs, and more.
+Standalone in-app documentation browser : one **Documentation** section with architecture, database, installation, application integration, ADRs, and more.
 
 | Access | URL |
 |--------|-----|
-| UI | `/confluence` |
-| Open from console | **Platform admin → SecureOne Confluence** (opens in a **new tab**) |
-| Catalog API | `GET /api/confluence` (requires login session) |
-| Page content API | `GET /api/confluence/{slug}` |
-| Assets API | `GET /api/confluence/assets/{path}` (`.drawio` download) |
-| Public discovery | `GET {auth-server}/api/v1/confluence` |
+| UI | `/documentation` |
+| Open from console | **Platform admin → SecureOne Documentation** (opens in a **new tab**) |
+| Catalog API | `GET /api/documentation` (requires login session) |
+| Page content API | `GET /api/documentation/{slug}` |
+| Assets API | `GET /api/documentation/assets/{path}` (`.drawio` download) |
+| Public discovery | `GET {auth-server}/api/v1/documentation` |
 
 ### UX
 
-- **Standalone layout** — `/confluence` routes skip `ConsoleShell` (no platform/app sidebar or topbar); only the Confluence doc catalog sidebar is shown.
+- **Standalone layout** — `/documentation` routes skip `ConsoleShell` (no platform/app sidebar or topbar); only the Documentation doc catalog sidebar is shown.
 - **Categories** — sidebar groups pages: Getting started, Platform (fundamentals / operations / reference), Application integration.
 - **Draw.io** — diagrams embed **inline on the parent doc page** (not a separate viewer route). Requires internet for `embed.diagrams.net`.
-- **Legacy diagram URLs** — `/confluence/diagram/...` redirect to the doc page that contains the embed.
+- **Legacy diagram URLs** — `/documentation/diagram/...` redirect to the doc page that contains the embed.
 
 Source markdown is read from the monorepo `docs/` folder at runtime (`../../docs` from admin-web cwd).
 
 See [Environment & operations](../../docs/16-environment-setup-and-operations.md) for `start-all.ps1`, migrations, and schedulers.
 
-Implementation: `src/lib/confluence/`, `src/app/confluence/`, `src/components/confluence/`.
+Implementation: `src/lib/documentation/`, `src/app/documentation/`, `src/components/documentation/`.
 
 ## Register application + OAuth client
 
@@ -81,4 +81,4 @@ npm run lint     # ESLint
 
 - Server actions in `src/lib/actions.ts` call auth-server admin APIs.
 - Browser calls go through `/api/proxy` where needed for cookies/CORS.
-- `ConsoleShell` switches between **platform sidebar** and **app sidebar** based on route (`/app/...`). `/confluence` uses a standalone layout (no console chrome).
+- `ConsoleShell` switches between **platform sidebar** and **app sidebar** based on route (`/app/...`). `/documentation` uses a standalone layout (no console chrome).

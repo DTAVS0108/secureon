@@ -69,7 +69,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/auth/login" \
   --data '{
   "emailOrUsername": "admin@example.com",
   "password": "Choose-a-Strong-Pass-1!",
-  "tenantSlug": "acme"
+  "tenantSlug": "tenant-a"
 }'
 ```
 
@@ -295,8 +295,8 @@ curl -s -X PATCH "$SECUREONE_URL/api/admin/v1/me" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
-  "displayName": "Acme Shop",
-  "username": "acme:user@example.com"
+  "displayName": "Tenant A Shop",
+  "username": "tenant-a:user@example.com"
 }'
 ```
 

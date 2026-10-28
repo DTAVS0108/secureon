@@ -47,7 +47,7 @@ class ScimUserControllerTest {
         user.setTenantId(UUID.randomUUID());
         user.setEmail("user@example.com");
         user.setUsername("user@example.com");
-        user.setDisplayName("Jane Doe");
+        user.setDisplayName("Full Name");
         user.setStatus("ACTIVE");
     }
 
@@ -105,10 +105,10 @@ class ScimUserControllerTest {
     @Test
     void filterMatchesUserNameCaseInsensitively() {
         com.secureone.auth.user.UserAccount user = new com.secureone.auth.user.UserAccount();
-        user.setEmail("jane@acme.test");
-        user.setUsername("jane@acme.test");
-        org.junit.jupiter.api.Assertions.assertTrue(ScimUserController.filterPredicate("userName eq \"JANE@acme.test\"").test(user));
-        org.junit.jupiter.api.Assertions.assertFalse(ScimUserController.filterPredicate("userName eq \"other@acme.test\"").test(user));
+        user.setEmail("member@tenant-a.test");
+        user.setUsername("member@tenant-a.test");
+        org.junit.jupiter.api.Assertions.assertTrue(ScimUserController.filterPredicate("userName eq \"MEMBER@tenant-a.test\"").test(user));
+        org.junit.jupiter.api.Assertions.assertFalse(ScimUserController.filterPredicate("userName eq \"other@tenant-a.test\"").test(user));
         org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> ScimUserController.filterPredicate("title sw \"x\""));
     }
 }

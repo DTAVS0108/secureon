@@ -15,14 +15,14 @@ export function ConsoleProviders({
 }) {
   const pathname = usePathname();
   const isLogin = pathname === "/login";
-  const isConfluence =
-    pathname === "/confluence" || pathname.startsWith("/confluence/");
+  const isDocs =
+    pathname === "/documentation" || pathname.startsWith("/documentation/");
 
   if (isLogin) {
     return <>{children}</>;
   }
 
-  if (isConfluence) {
+  if (isDocs) {
     return (
       <AdminContextProvider value={adminContext}>
         <div className="min-h-screen text-ui">{children}</div>

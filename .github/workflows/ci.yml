@@ -101,25 +101,6 @@ jobs:
         # No URLs or environment at build time: the console reads them when it starts.
         run: pnpm --filter admin-web build
 
-  samples:
-    name: samples (install + build)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Build and check each sample from its lockfile
-        run: |
-          set -e
-          (cd samples/express-api && npm ci && node --check server.mjs)
-          (cd samples/react-spa && npm ci && npm run build)
-          (cd samples/nextjs-web && npm ci && npm run build)
-          (cd samples/device-cli && node --check cli.mjs)
-
   image:
     name: image (docker build)
     runs-on: ubuntu-latest

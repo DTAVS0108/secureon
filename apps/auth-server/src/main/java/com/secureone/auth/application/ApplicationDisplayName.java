@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 /**
  * The name end users know an application by: Appearance → display name when set, otherwise the
  * application's name. Used wherever SecureOne speaks to an app's users (email sender and text, the
- * passkey prompt) so they see the app's own name (e.g. "Demo Store"), not the identity platform.
+ * passkey prompt) so they see the app's own name, not the identity platform.
  */
 @Service
 public class ApplicationDisplayName {

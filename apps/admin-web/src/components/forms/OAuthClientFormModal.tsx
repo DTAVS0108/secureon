@@ -193,7 +193,7 @@ function OAuthClientForm({
                 </Select>
               </FieldRow>
               <FieldRow label="Application name" hint="Used for auto-created product and schema">
-                <Input name="applicationName" placeholder="Demo Store" />
+                <Input name="applicationName" placeholder="Application name" />
               </FieldRow>
             </>
           )}
@@ -222,7 +222,7 @@ function OAuthClientForm({
       </div>
       {!client && (
         <FieldRow label="Client ID" hint="Optional — defaults to application slug">
-          <Input name="clientId" placeholder="demostore-web" />
+          <Input name="clientId" placeholder="Client ID" />
         </FieldRow>
       )}
       <FieldRow label="Grant types">
@@ -240,7 +240,7 @@ function OAuthClientForm({
         <Textarea
           name="redirectUris"
           defaultValue={client?.redirectUris.join("\n")}
-          placeholder="https://app.example.com/callback"
+          placeholder="Redirect URI"
         />
       </FieldRow>
       <FieldRow label="Post-logout redirect URIs" hint="Optional">
@@ -256,7 +256,7 @@ function OAuthClientForm({
         <Input
           name="backchannelLogoutUri"
           defaultValue={client?.backchannelLogoutUri ?? ""}
-          placeholder="https://app.example.com/backchannel-logout"
+          placeholder="Back-channel logout URL"
         />
       </FieldRow>
       <div className="flex flex-wrap items-center gap-6 rounded-lg border border-ui bg-ui-elevated/50 px-4 py-3">
@@ -318,7 +318,7 @@ function OAuthClientForm({
       {confidential && authMethod === "private_key_jwt" && (
         <>
           <FieldRow label="JWKS URL" hint="Where the app serves its public keys (https). Keys can rotate there. Leave empty to paste the keys below.">
-            <Input name="jwksUri" type="url" defaultValue={client?.jwksUri ?? ""} placeholder="https://app.example.com/.well-known/jwks.json" />
+            <Input name="jwksUri" type="url" defaultValue={client?.jwksUri ?? ""} placeholder="JWKS URL" />
           </FieldRow>
           <FieldRow label="Public keys (JWKS)" hint='Only when there is no JWKS URL: {"keys": [...]}, public keys only.'>
             <Textarea
@@ -326,7 +326,7 @@ function OAuthClientForm({
               rows={5}
               className="font-mono text-xs"
               defaultValue={client?.jwks ? JSON.stringify(client.jwks, null, 2) : ""}
-              placeholder='{"keys": [{"kty": "RSA", "n": "...", "e": "AQAB", "kid": "app-1"}]}'
+              placeholder="JWKS (JSON)"
             />
           </FieldRow>
           {client?.clientSecretConfigured && (

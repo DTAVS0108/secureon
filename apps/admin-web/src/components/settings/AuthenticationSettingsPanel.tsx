@@ -187,8 +187,7 @@ export function AuthenticationSettingsPanel({
 
       {tab === "mfa" && (
         <div className="space-y-6">
-          {/* One place for second-step options, requirement, setup reminders and grace period
-              (docs/plans/two-factor-authentication.md). */}
+          {/* One place for second-step options, requirement, setup reminders and grace period. */}
           <MfaPolicySettingsPanel applicationId={applicationId} />
         </div>
       )}

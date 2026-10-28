@@ -1,4 +1,4 @@
--- Per-application schema DDL (executed inside each app schema, e.g. demostore).
+-- Per-application schema DDL (executed inside each app schema, e.g. exampleapp).
 -- Cross-schema FKs reference platform.* for tenant, application, and user identity.
 
 CREATE TABLE IF NOT EXISTS permission (

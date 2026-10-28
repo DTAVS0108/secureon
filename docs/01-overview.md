@@ -33,7 +33,7 @@ One central system provides:
 | **Tenant** | An organization/customer boundary. All tenant data is isolated. |
 | **Application (product)** | A registered product within a tenant (e.g. "Billing", "Mobile App"). Owns IAM scope; may have a dedicated PostgreSQL schema (`schema_name`). |
 | **OAuth client** | Protocol credentials for token exchange (`platform.oauth_client`). One application can have many clients (web, SPA, native, M2M). |
-| **Application schema** | Per-app PostgreSQL schema (e.g. `demostore`) holding roles, permissions, settings — provisioned on create or via **isolate**. |
+| **Application schema** | Per-app PostgreSQL schema (e.g. `exampleapp`) holding roles, permissions, settings — provisioned on create or via **isolate**. |
 | **User** | A human identity within a tenant. |
 | **Admin** | A user who manages a tenant (`type = ADMIN`). |
 | **Super-admin / Platform admin** | A platform operator who manages *all* tenants. Kept in a separate trust tier. |
@@ -57,7 +57,7 @@ One central system provides:
 - **Audit logs & login history** — append-only audit trail + per-user login outcomes.
 - **API keys / service accounts** — M2M access mapped onto the same RBAC engine.
 - **Admin dashboard & self-service portal** — manage tenants, apps, users, roles, clients, sessions, audit; end-user self-service for security/MFA/sessions.
-- **Developer docs & SDKs** — OpenAPI spec, **SecureOne Confluence** (in-app platform docs on admin-web), and a TypeScript SDK (more in later phases). See [Authentication UI integration](13-auth-ui-integration.md) for hosted vs custom end-user login.
+- **Developer docs & SDKs** — OpenAPI spec, **SecureOne Documentation** (in-app platform docs on admin-web), and a TypeScript SDK (more in later phases). See [Authentication UI integration](13-auth-ui-integration.md) for hosted vs custom end-user login.
 - **Flexible database setup** — PostgreSQL connection configured at install; the data layer is abstracted (repository interfaces) so other engines can be added later.
 
 > Beyond the core above, SecureOne has a full **enterprise capability roadmap** (governance/IGA, fine-grained authorization, adaptive auth, compliance, multi-region scale). See [Enterprise Capabilities](10-enterprise.md).

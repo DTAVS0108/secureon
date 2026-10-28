@@ -25,12 +25,12 @@ class ClientRegistrationPolicyTest {
 
     @Test
     void aWebAppWithDefaults() {
-        var r = service.validate(Map.of("redirect_uris", List.of("https://tool.example.com/cb"), "client_name", "InvoicePro"),
+        var r = service.validate(Map.of("redirect_uris", List.of("https://tool.example.com/cb"), "client_name", "Example Client"),
                 policy(List.of("authorization_code", "refresh_token"), List.of()));
         assertEquals("web", r.type());
         assertEquals("client_secret_basic", r.authMethod());
         assertEquals(List.of("openid", "profile", "orders:read"), r.scopes(), "no scope asked: all allowed scopes");
-        assertEquals("InvoicePro", r.echo().get("client_name"));
+        assertEquals("Example Client", r.echo().get("client_name"));
         assertEquals(List.of("code"), r.echo().get("response_types"));
     }
 

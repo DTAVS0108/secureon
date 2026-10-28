@@ -23,7 +23,7 @@ cd apps/admin-web; pnpm dev   # console on :3001; open http://localhost:9000/adm
 
 ```powershell
 docker build -f deploy/Dockerfile -t secureone/secureone:<version> .   # repo root; needs Maven Central + build.shibboleth.net (OpenSAML)
-# One image: auth-server on :9000 with the admin console at /admin (and docs/ for Confluence).
+# One image: auth-server on :9000 with the admin console at /admin (and docs/ for Documentation).
 ```
 
 ## Kubernetes (Helm)

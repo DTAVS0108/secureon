@@ -1,6 +1,6 @@
 import { browserApiFetch as apiFetch } from "./browser-client";
 
-/** A high-impact change waiting for a second admin (docs/plans/change-approvals.md). */
+/** A high-impact change waiting for a second admin. */
 export type ChangeRequest = {
   id: string;
   action: "oauth_client.delete" | string;
