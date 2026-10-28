@@ -55,6 +55,24 @@ public class Application {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** A detached copy (config deep-copied), for values handed out from a cache. */
+    public Application detachedCopy() {
+        Application copy = new Application();
+        copy.id = id;
+        copy.tenantId = tenantId;
+        copy.name = name;
+        copy.slug = slug;
+        copy.description = description;
+        copy.status = status;
+        copy.schemaName = schemaName;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> config = (Map<String, Object>) com.secureone.auth.platform.PlatformSettingsService.copy(this.config);
+        copy.config = config != null ? config : new HashMap<>();
+        copy.createdAt = createdAt;
+        copy.updatedAt = updatedAt;
+        return copy;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

@@ -110,6 +110,10 @@ secureone:
   # while dev auth is on; in production enable only during an incident. Every use is audited.
   break-glass:
     enabled: ${SECUREONE_BREAK_GLASS_ENABLED:false}
+  cache:
+    # Clients, applications and settings read on every OAuth request are kept this long in memory (ConfigCache);
+    # changes through the admin API clear it at once on every instance. 0 turns it off.
+    config-ttl: ${SECUREONE_CACHE_CONFIG_TTL:30s}
   oauth:
     # Fully expired authorizations (every token expired) are deleted this long after (ExpiredAuthorizationCleanup).
     expired-retention: ${SECUREONE_OAUTH_EXPIRED_RETENTION:1d}

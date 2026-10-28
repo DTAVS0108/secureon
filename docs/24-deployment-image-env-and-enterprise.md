@@ -505,6 +505,7 @@ Every instance must use the **same** encryption key, OTP pepper and signing key.
 | `SECUREONE_SWAGGER_ENABLED` | `false` in production, `true` otherwise | API docs at `/swagger-ui.html` and `/v3/api-docs` |
 | `SECUREONE_DB_POOL_SIZE` | `20` | Database connections per instance; keep instances × pool size under PostgreSQL's `max_connections` |
 | `SECUREONE_DB_POOL_TIMEOUT_MS` | `10000` | How long a request waits for a free connection before failing |
+| `SECUREONE_CACHE_CONFIG_TTL` | `30s` | Clients, applications and settings used by every OAuth request are cached in memory this long. Changes made through the console or admin API apply at once on every instance (Redis message); other changes (direct SQL) within this time. `0` turns the cache off |
 | `SECUREONE_OAUTH_EXPIRED_RETENTION` | `1d` | Fully expired authorizations (all their tokens) are deleted this long after expiry, every 15 minutes |
 | `SECUREONE_RATE_LIMIT_*` | e.g. 20 sign-ins / min | `_LOGIN_PER_MINUTE`, `_TOKEN_PER_MINUTE`, `_ADMIN_LOGIN_PER_MINUTE`, … |
 | `SECUREONE_BREAK_GLASS_ENABLED`, `SECUREONE_DEV_USER`, `SECUREONE_DEV_PASSWORD` | off | Emergency access only; the password must be a bcrypt hash in production |

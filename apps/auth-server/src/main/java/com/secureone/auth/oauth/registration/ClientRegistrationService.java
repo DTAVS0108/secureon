@@ -189,12 +189,19 @@ public class ClientRegistrationService {
 
     /** Whether any application (of the tenant, or anywhere when null) takes registrations: discovery then names the endpoint. */
     public boolean anyEnabled(UUID tenantId) {
-        Integer count = RlsScope.asPlatform(() -> tenantId == null
-                ? jdbc.queryForObject("SELECT count(*) FROM platform.application_client_registration WHERE mode <> 'off'", Integer.class)
-                : jdbc.queryForObject("SELECT count(*) FROM platform.application_client_registration WHERE mode <> 'off' AND tenant_id = ?",
-                        Integer.class, tenantId));
-        return count != null && count > 0;
+        // Asked on every discovery request; changes go through the admin API, which clears the cache.
+        return RlsScope.asPlatform(() -> configCache.get("client-registration-enabled",
+                tenantId == null ? "*" : tenantId, () -> {
+                    Integer count = tenantId == null
+                            ? jdbc.queryForObject("SELECT count(*) FROM platform.application_client_registration WHERE mode <> 'off'", Integer.class)
+                            : jdbc.queryForObject("SELECT count(*) FROM platform.application_client_registration WHERE mode <> 'off' AND tenant_id = ?",
+                                    Integer.class, tenantId);
+                    return count != null && count > 0;
+                }));
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.cache.ConfigCache configCache;
 
     // ---- initial access tokens ----
 

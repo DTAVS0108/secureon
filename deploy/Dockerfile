@@ -86,7 +86,8 @@ if ! SPRING_PROFILES_ACTIVE=prod SECUREONE_ENV=development SECUREONE_CONSOLE_DIR
      JDK_AOT_VM_OPTIONS="-Xmx384m" \
      java -Xmx384m -XX:AOTCacheOutput=/opt/secureone/app.aot -Dspring.context.exit=onRefresh -jar app/auth-server.jar \
      > /tmp/training.log 2>&1; then
-  tail -80 /tmp/training.log
+  # Without the AOT linker's per-class notes, which would fill the last 80 lines and hide the error.
+  grep -v -E 'AOTClassLinking|Unsupported location|\[aot\]' /tmp/training.log | tail -80
   exit 1
 fi
 test -s /opt/secureone/app.aot

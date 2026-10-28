@@ -15,11 +15,15 @@ public class ApplicationOAuthClientResolver {
 
     private final OAuthClientRepository oauthClients;
     private final ApplicationRepository applications;
+    private final com.secureone.auth.cache.ConfigCache cache;
 
     public ApplicationOAuthClientResolver(
-            OAuthClientRepository oauthClients, ApplicationRepository applications) {
+            OAuthClientRepository oauthClients,
+            ApplicationRepository applications,
+            com.secureone.auth.cache.ConfigCache cache) {
         this.oauthClients = oauthClients;
         this.applications = applications;
+        this.cache = cache;
     }
 
     // Outside any transaction, so each lookup opens its connection inside the platform scope below
@@ -31,11 +35,17 @@ public class ApplicationOAuthClientResolver {
         }
         // Runs before any tenant is known (anonymous sign-in and discovery requests), so it reads across
         // tenants like the OAuth client lookups; it only maps a known client_id to its active application.
-        return RlsScope.asPlatform(() -> oauthClients
-                .findByClientId(clientId.trim())
-                .filter(this::isActiveClient)
-                .flatMap(client -> applications.findById(client.getApplicationId()))
-                .filter(this::isActiveApplication));
+        // Asked several times per token request: cached (ConfigCache), each caller gets its own copy.
+        String trimmed = clientId.trim();
+        return RlsScope.asPlatform(() -> Optional.ofNullable(cache.get("application-of-client", trimmed,
+                        () -> oauthClients
+                                .findByClientId(trimmed)
+                                .filter(this::isActiveClient)
+                                .flatMap(client -> applications.findById(client.getApplicationId()))
+                                .filter(this::isActiveApplication)
+                                .map(Application::detachedCopy)
+                                .orElse(null)))
+                .map(Application::detachedCopy));
     }
 
     private boolean isActiveClient(OAuthClient client) {

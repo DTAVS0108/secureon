@@ -16,28 +16,40 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import com.secureone.auth.cache.ConfigCache;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
-/** Loads OAuth clients from oauth_client records (admin-registered credentials). */
+/**
+ * Loads OAuth clients from oauth_client records (admin-registered credentials). Read on every token,
+ * introspection and authorization request (often several times each), so built clients are kept in the
+ * {@link ConfigCache}; a cache hit needs no database work at all, not even a transaction.
+ */
 @Service
-@Transactional(readOnly = true)
 public class ApplicationRegisteredClientRepository implements RegisteredClientRepository {
 
     private final OAuthClientRepository oauthClients;
     private final ApplicationRepository applications;
     private final ApplicationSettingsService applicationSettings;
     private final PasswordEncoder passwordEncoder;
+    private final ConfigCache cache;
+    private final TransactionTemplate readOnly;
 
     public ApplicationRegisteredClientRepository(
             OAuthClientRepository oauthClients,
             ApplicationRepository applications,
             ApplicationSettingsService applicationSettings,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            ConfigCache cache,
+            PlatformTransactionManager transactions) {
         this.oauthClients = oauthClients;
         this.applications = applications;
         this.applicationSettings = applicationSettings;
         this.passwordEncoder = passwordEncoder;
+        this.cache = cache;
+        this.readOnly = new TransactionTemplate(transactions);
+        this.readOnly.setReadOnly(true);
     }
 
     @Override
@@ -48,15 +60,17 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
 
     @Override
     public RegisteredClient findById(String id) {
+        UUID uuid;
         try {
-            return oauthClients
-                    .findById(UUID.fromString(id))
-                    .filter(this::isActive)
-                    .map(this::toRegisteredClient)
-                    .orElse(null);
-        } catch (IllegalArgumentException ex) {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException | NullPointerException ex) {
             return null;
         }
+        return cache.get("registered-client-by-id", uuid, () -> readOnly.execute(status -> oauthClients
+                .findById(uuid)
+                .filter(this::isActive)
+                .map(this::toRegisteredClient)
+                .orElse(null)));
     }
 
     @Override
@@ -64,11 +78,12 @@ public class ApplicationRegisteredClientRepository implements RegisteredClientRe
         if (clientId == null || clientId.isBlank()) {
             return null;
         }
-        return oauthClients
-                .findByClientId(clientId.trim())
+        String trimmed = clientId.trim();
+        return cache.get("registered-client", trimmed, () -> readOnly.execute(status -> oauthClients
+                .findByClientId(trimmed)
                 .filter(this::isActive)
                 .map(this::toRegisteredClient)
-                .orElse(null);
+                .orElse(null)));
     }
 
     /** The client, its application and its organization must all be active (a suspended tenant gets no tokens). */

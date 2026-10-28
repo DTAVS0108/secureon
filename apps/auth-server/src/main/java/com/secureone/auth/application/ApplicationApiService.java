@@ -44,9 +44,11 @@ public class ApplicationApiService {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json = new ObjectMapper();
+    private final com.secureone.auth.cache.ConfigCache cache;
 
-    public ApplicationApiService(JdbcTemplate jdbc) {
+    public ApplicationApiService(JdbcTemplate jdbc, com.secureone.auth.cache.ConfigCache cache) {
         this.jdbc = jdbc;
+        this.cache = cache;
     }
 
     public record Api(
@@ -81,6 +83,7 @@ public class ApplicationApiService {
 
     public Api create(UUID tenantId, UUID applicationId, Map<String, Object> body) {
         Api api = validated(UUID.randomUUID(), tenantId, applicationId, body);
+        cache.changedAfterCommit();
         try {
             RlsScope.runAsPlatform(() -> jdbc.update(
                     "INSERT INTO application_api (id, tenant_id, application_id, name, identifier, scopes)"
@@ -95,6 +98,7 @@ public class ApplicationApiService {
     public Api update(UUID tenantId, UUID applicationId, UUID id, Map<String, Object> body) {
         find(applicationId, id).orElseThrow(() -> notFound(id));
         Api api = validated(id, tenantId, applicationId, body);
+        cache.changedAfterCommit();
         try {
             RlsScope.runAsPlatform(() -> jdbc.update(
                     "UPDATE application_api SET name = ?, identifier = ?, scopes = ?::jsonb, updated_at = now()"
@@ -108,6 +112,7 @@ public class ApplicationApiService {
 
     public Api delete(UUID applicationId, UUID id) {
         Api api = find(applicationId, id).orElseThrow(() -> notFound(id));
+        cache.changedAfterCommit();
         RlsScope.runAsPlatform(() -> jdbc.update(
                 "DELETE FROM application_api WHERE id = ? AND application_id = ?", id, applicationId));
         return api;
@@ -119,7 +124,8 @@ public class ApplicationApiService {
      * (the token request then fails with invalid_target).
      */
     public Optional<List<String>> audiences(UUID applicationId, Collection<String> grantedScopes, String resource) {
-        List<Api> apis = list(applicationId);
+        // Asked for every access token: cached (ConfigCache); only read here, never changed.
+        List<Api> apis = cache.get("application-apis", applicationId, () -> list(applicationId));
         if (resource != null && !resource.isBlank()) {
             return apis.stream()
                     .filter(a -> a.identifier().equalsIgnoreCase(resource.trim()))

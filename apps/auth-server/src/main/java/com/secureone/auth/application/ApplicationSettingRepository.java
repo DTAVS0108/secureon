@@ -2,6 +2,7 @@ package com.secureone.auth.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.secureone.auth.cache.ConfigCache;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -21,30 +22,44 @@ public class ApplicationSettingRepository {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
+    private final ConfigCache cache;
 
-    public ApplicationSettingRepository(JdbcTemplate jdbc, ObjectMapper json) {
+    /** A stored row as read: the JSON text, parsed again for every caller (callers may change the value). */
+    private record Raw(String value, Instant updatedAt) {}
+
+    /** No row for that key: cached too, since most applications override few settings. */
+    private static final Raw ABSENT = new Raw(null, null);
+
+    public ApplicationSettingRepository(JdbcTemplate jdbc, ObjectMapper json, ConfigCache cache) {
         this.jdbc = jdbc;
         this.json = json;
+        this.cache = cache;
     }
 
     public Optional<ApplicationSetting> findByApplicationIdAndKey(UUID applicationId, String key) {
-        List<ApplicationSetting> rows = jdbc.query(
-                "SELECT value::text, updated_at FROM " + table(applicationId)
-                        + " WHERE application_id = ? AND setting_key = ?",
-                (rs, i) -> {
-                    ApplicationSetting s = new ApplicationSetting();
-                    s.setApplicationId(applicationId);
-                    s.setKey(key);
-                    s.setValue(parse(rs.getString(1)));
-                    s.setUpdatedAt(rs.getTimestamp(2) != null ? rs.getTimestamp(2).toInstant() : null);
-                    return s;
-                },
-                applicationId,
-                key);
-        return rows.stream().findFirst();
+        Raw raw = cache.get("application-setting", applicationId + "|" + key, () -> {
+            List<Raw> rows = jdbc.query(
+                    "SELECT value::text, updated_at FROM " + table(applicationId)
+                            + " WHERE application_id = ? AND setting_key = ?",
+                    (rs, i) -> new Raw(rs.getString(1),
+                            rs.getTimestamp(2) != null ? rs.getTimestamp(2).toInstant() : null),
+                    applicationId,
+                    key);
+            return rows.isEmpty() ? ABSENT : rows.get(0);
+        });
+        if (raw == ABSENT) {
+            return Optional.empty();
+        }
+        ApplicationSetting s = new ApplicationSetting();
+        s.setApplicationId(applicationId);
+        s.setKey(key);
+        s.setValue(parse(raw.value()));
+        s.setUpdatedAt(raw.updatedAt());
+        return Optional.of(s);
     }
 
     public ApplicationSetting save(ApplicationSetting row) {
+        cache.changedAfterCommit();
         Instant now = Instant.now();
         jdbc.update(
                 "INSERT INTO " + table(row.getApplicationId())
@@ -59,6 +74,7 @@ public class ApplicationSettingRepository {
     }
 
     public void delete(ApplicationSetting row) {
+        cache.changedAfterCommit();
         jdbc.update(
                 "DELETE FROM " + table(row.getApplicationId()) + " WHERE application_id = ? AND setting_key = ?",
                 row.getApplicationId(),
@@ -67,11 +83,13 @@ public class ApplicationSettingRepository {
 
     /** The application's own schema when it is isolated, else the shared platform schema. */
     private String table(UUID applicationId) {
-        List<String> names = jdbc.queryForList(
-                "SELECT schema_name FROM platform.application WHERE id = ?", String.class, applicationId);
-        String schema = names.isEmpty() || names.get(0) == null || names.get(0).isBlank()
-                ? ApplicationSchemaNames.PLATFORM_SCHEMA
-                : names.get(0);
+        String schema = cache.get("application-schema", applicationId, () -> {
+            List<String> names = jdbc.queryForList(
+                    "SELECT schema_name FROM platform.application WHERE id = ?", String.class, applicationId);
+            return names.isEmpty() || names.get(0) == null || names.get(0).isBlank()
+                    ? ApplicationSchemaNames.PLATFORM_SCHEMA
+                    : names.get(0);
+        });
         return "\"" + schema.replace("\"", "\"\"") + "\".application_setting";
     }
 

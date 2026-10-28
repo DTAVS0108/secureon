@@ -31,9 +31,11 @@ public class OAuth2TokenCustomizerConfig {
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationRepository> applications,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantIssuers> issuers) {
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantIssuers> issuers,
+            com.secureone.auth.cache.ConfigCache cache) {
         return context -> {
-            requireIssuerOfClientTenant(context, clients, applications, issuers);
+            ClientApp clientApp = clientApp(context, clients, applications, cache);
+            requireIssuerOfClientTenant(context, clientApp, issuers);
             requireActiveUser(context, users);
             addProfileClaims(context, users);
             SubjectClaims.apply(context, users);
@@ -61,9 +63,36 @@ public class OAuth2TokenCustomizerConfig {
             }
             applyPolicyLifetime(context);
             addApplicationAccess(context, accessClaims);
-            addApiAudiences(context, clients, apis);
-            addApplicationClaims(context, users, clients, settings, tenants);
+            addApiAudiences(context, clientApp, apis);
+            addApplicationClaims(context, users, clientApp, settings, tenants);
         };
+    }
+
+    /** The application (and its tenant) of the client a token is issued to; null when it has none. */
+    record ClientApp(java.util.UUID applicationId, java.util.UUID tenantId) {}
+
+    /** Looked up once per token, and cached (ConfigCache): every token needs it, up to three times. */
+    private static ClientApp clientApp(
+            JwtEncodingContext context,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationRepository> applications,
+            com.secureone.auth.cache.ConfigCache cache) {
+        if (context.getRegisteredClient() == null) {
+            return null;
+        }
+        java.util.UUID clientRowId;
+        try {
+            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        return com.secureone.auth.tenant.RlsScope.asPlatform(() -> cache.get("client-application", clientRowId,
+                () -> clients.getObject().findById(clientRowId)
+                        .map(c -> new ClientApp(c.getApplicationId(), applications.getObject()
+                                .findById(c.getApplicationId())
+                                .map(com.secureone.auth.application.Application::getTenantId)
+                                .orElse(null)))
+                        .orElse(null)));
     }
 
     /**
@@ -72,8 +101,7 @@ public class OAuth2TokenCustomizerConfig {
      */
     private static void requireIssuerOfClientTenant(
             JwtEncodingContext context,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationRepository> applications,
+            ClientApp clientApp,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantIssuers> issuers) {
         com.secureone.auth.tenant.TenantIssuers tenantIssuers = issuers.getIfAvailable();
         if (tenantIssuers == null || context.getRegisteredClient() == null
@@ -81,17 +109,12 @@ public class OAuth2TokenCustomizerConfig {
                         instanceof org.springframework.web.context.request.ServletRequestAttributes attributes)) {
             return;
         }
-        java.util.UUID clientRowId;
         try {
-            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
+            java.util.UUID.fromString(context.getRegisteredClient().getId());
         } catch (IllegalArgumentException e) {
             return;
         }
-        java.util.UUID tenantId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
-                .findById(clientRowId)
-                .flatMap(c -> applications.getObject().findById(c.getApplicationId()))
-                .map(com.secureone.auth.application.Application::getTenantId)
-                .orElse(null));
+        java.util.UUID tenantId = clientApp != null ? clientApp.tenantId() : null;
         tenantIssuers.refusal(attributes.getRequest(), tenantId).ifPresent(reason -> {
             throw new org.springframework.security.oauth2.core.OAuth2AuthenticationException(
                     new org.springframework.security.oauth2.core.OAuth2Error("unauthorized_client", reason, null));
@@ -106,19 +129,12 @@ public class OAuth2TokenCustomizerConfig {
      */
     private static void addApiAudiences(
             JwtEncodingContext context,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            ClientApp clientApp,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationApiService> apis) {
         if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType()) || context.getRegisteredClient() == null) {
             return;
         }
-        java.util.UUID clientRowId;
-        try {
-            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
-        } catch (IllegalArgumentException e) {
-            return;
-        }
-        java.util.UUID applicationId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
-                .findById(clientRowId).map(com.secureone.auth.oauth.OAuthClient::getApplicationId).orElse(null));
+        java.util.UUID applicationId = clientApp != null ? clientApp.applicationId() : null;
         if (applicationId == null) {
             return;
         }
@@ -164,7 +180,7 @@ public class OAuth2TokenCustomizerConfig {
     private static void addApplicationClaims(
             JwtEncodingContext context,
             TenantUserDetailsService users,
-            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.oauth.OAuthClientRepository> clients,
+            ClientApp clientApp,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSettingsService> settings,
             org.springframework.beans.factory.ObjectProvider<com.secureone.auth.tenant.TenantRepository> tenants) {
         boolean idToken = OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue());
@@ -172,14 +188,7 @@ public class OAuth2TokenCustomizerConfig {
         if (!idToken && !accessToken) {
             return;
         }
-        java.util.UUID clientRowId;
-        try {
-            clientRowId = java.util.UUID.fromString(context.getRegisteredClient().getId());
-        } catch (IllegalArgumentException e) {
-            return;
-        }
-        java.util.UUID applicationId = com.secureone.auth.tenant.RlsScope.asPlatform(() -> clients.getObject()
-                .findById(clientRowId).map(com.secureone.auth.oauth.OAuthClient::getApplicationId).orElse(null));
+        java.util.UUID applicationId = clientApp != null ? clientApp.applicationId() : null;
         if (applicationId == null) {
             return;
         }
