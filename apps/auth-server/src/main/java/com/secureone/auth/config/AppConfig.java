@@ -37,7 +37,62 @@ public class AppConfig {
                         DualSecret.ID, dual));
         encoder.setDefaultPasswordEncoderForMatches(bcrypt);
         dual.single = encoder;
-        return encoder;
+        return new BoundedPasswordEncoder(encoder, Math.max(2, Runtime.getRuntime().availableProcessors() * 2));
+    }
+
+    /**
+     * At most {@code permits} password hashes at a time. Each Argon2id hash takes 16 MB and a CPU core for a
+     * moment by design; a burst of sign-ins hashing at once ran the server out of memory under load (about
+     * 20 a second on 2 CPUs). Extra sign-ins wait their turn, up to {@link #WAIT}, and are then refused.
+     */
+    static final class BoundedPasswordEncoder implements PasswordEncoder {
+        static final java.time.Duration WAIT = java.time.Duration.ofSeconds(10);
+        private final PasswordEncoder delegate;
+        private final java.util.concurrent.Semaphore permits;
+        private final java.time.Duration wait;
+
+        BoundedPasswordEncoder(PasswordEncoder delegate, int permits) {
+            this(delegate, permits, WAIT);
+        }
+
+        BoundedPasswordEncoder(PasswordEncoder delegate, int permits, java.time.Duration wait) {
+            this.delegate = delegate;
+            this.permits = new java.util.concurrent.Semaphore(permits, true);
+            this.wait = wait;
+        }
+
+        private <T> T bounded(java.util.function.Supplier<T> hash) {
+            boolean acquired;
+            try {
+                acquired = permits.tryAcquire(wait.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                acquired = false;
+            }
+            if (!acquired) {
+                throw new PasswordHashingBusyException();
+            }
+            try {
+                return hash.get();
+            } finally {
+                permits.release();
+            }
+        }
+
+        @Override
+        public String encode(CharSequence rawPassword) {
+            return bounded(() -> delegate.encode(rawPassword));
+        }
+
+        @Override
+        public boolean matches(CharSequence rawPassword, String encodedPassword) {
+            return bounded(() -> delegate.matches(rawPassword, encodedPassword));
+        }
+
+        @Override
+        public boolean upgradeEncoding(String encodedPassword) {
+            return delegate.upgradeEncoding(encodedPassword);
+        }
     }
 
     /**

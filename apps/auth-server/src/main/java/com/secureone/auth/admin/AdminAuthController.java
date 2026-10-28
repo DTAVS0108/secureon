@@ -138,6 +138,11 @@ public class AdminAuthController {
                     "detail", "Choose a new password to continue.",
                     "passwordChangeRequired", true,
                     "changeToken", ex.changeToken()));
+        } catch (com.secureone.auth.config.PasswordHashingBusyException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .header(HttpHeaders.RETRY_AFTER,
+                            String.valueOf(com.secureone.auth.config.PasswordHashingBusyException.RETRY_AFTER_SECONDS))
+                    .body(Map.of("detail", ex.getMessage()));
         } catch (AuthenticationException ex) {
             // Unknown account and wrong password look the same, so sign-in cannot be used to probe
             // which accounts exist. Locked and suspended keep their message so people know to wait

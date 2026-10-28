@@ -481,7 +481,7 @@ Every instance must use the **same** encryption key, OTP pepper and signing key.
 | Setting | Notes |
 |---------|-------|
 | `SECUREONE_BOOTSTRAP_ADMIN_EMAIL` | Ignored once a platform operator exists |
-| `SECUREONE_BOOTSTRAP_ADMIN_PASSWORD` | Platform password policy; best as a secret file; remove after the first start |
+| `SECUREONE_BOOTSTRAP_ADMIN_PASSWORD` | Platform password policy; best as a secret file. Temporary: the first sign-in asks for a new password (kept only in the database), so this value never works again; remove it after the first start |
 | `SECUREONE_BOOTSTRAP_ADMIN_FIRST_NAME`, `_LAST_NAME` | Optional |
 
 **Recommended**
@@ -501,6 +501,11 @@ Every instance must use the **same** encryption key, OTP pepper and signing key.
 | `SECUREONE_SAML_SP_KEY_PEM`, `SECUREONE_SAML_SP_CERT_PEM` | generated and stored | SAML sign-in with a certificate you control |
 | `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` | private address ranges | Your proxy is not on a private network (e.g. a CDN): a regular expression of its addresses, so client addresses and https are read from `X-Forwarded-*` |
 | `SECUREONE_ADMIN_SESSION_IDLE`, `_MAX` | `30m`, `8h` | Console session lengths |
+| `SECUREONE_ADMIN_MFA_REQUIRED` | `true` in production, `false` otherwise | Console sign-in with an authenticator app |
+| `SECUREONE_SWAGGER_ENABLED` | `false` in production, `true` otherwise | API docs at `/swagger-ui.html` and `/v3/api-docs` |
+| `SECUREONE_DB_POOL_SIZE` | `20` | Database connections per instance; keep instances × pool size under PostgreSQL's `max_connections` |
+| `SECUREONE_DB_POOL_TIMEOUT_MS` | `10000` | How long a request waits for a free connection before failing |
+| `SECUREONE_OAUTH_EXPIRED_RETENTION` | `1d` | Fully expired authorizations (all their tokens) are deleted this long after expiry, every 15 minutes |
 | `SECUREONE_RATE_LIMIT_*` | e.g. 20 sign-ins / min | `_LOGIN_PER_MINUTE`, `_TOKEN_PER_MINUTE`, `_ADMIN_LOGIN_PER_MINUTE`, … |
 | `SECUREONE_BREAK_GLASS_ENABLED`, `SECUREONE_DEV_USER`, `SECUREONE_DEV_PASSWORD` | off | Emergency access only; the password must be a bcrypt hash in production |
 | `SECUREONE_SECRETS_DIR` | `/run/secrets` | Another folder for secret files |

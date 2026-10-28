@@ -23,6 +23,10 @@ spring:
     username: ${SECUREONE_DB_USERNAME:secureone}
     password: ${SECUREONE_DB_PASSWORD:secureone}
     hikari:
+      # Connections per instance (keep instances x pool size under PostgreSQL's max_connections), and how long
+      # a request waits for one before failing instead of queueing without end.
+      maximum-pool-size: ${SECUREONE_DB_POOL_SIZE:20}
+      connection-timeout: ${SECUREONE_DB_POOL_TIMEOUT_MS:10000}
       # Every pooled connection: the RLS mode (V61, must match secureone.rls.enforce) and the
       # data-only role secureone_app (V63), which RLS policies always apply to. Superuser and
       # BYPASSRLS roles skip RLS entirely, so request queries must not run as the schema owner.
@@ -106,6 +110,9 @@ secureone:
   # while dev auth is on; in production enable only during an incident. Every use is audited.
   break-glass:
     enabled: ${SECUREONE_BREAK_GLASS_ENABLED:false}
+  oauth:
+    # Fully expired authorizations (every token expired) are deleted this long after (ExpiredAuthorizationCleanup).
+    expired-retention: ${SECUREONE_OAUTH_EXPIRED_RETENTION:1d}
   admin:
     # true: console sign-in requires an authenticator-app code (TOTP) or a recovery code.
     # Default: on when SECUREONE_ENV=production, off otherwise (SecureOneEnvironmentDefaults).

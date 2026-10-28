@@ -109,6 +109,9 @@ public class SecurityConfig {
             throws Exception {
         // Client secrets are hashed by SecureOne (bcrypt; two during a rotation's overlap) and the client store is
         // read-only: the authorization server must not try to re-hash and save them after a successful check.
+        // A secret that passed is remembered for a while, so busy clients do not pay bcrypt on every call.
+        com.secureone.auth.oauth.ClientSecretVerificationCache verifiedSecrets =
+                new com.secureone.auth.oauth.ClientSecretVerificationCache(passwordEncoder::matches);
         org.springframework.security.crypto.password.PasswordEncoder clientSecrets =
                 new org.springframework.security.crypto.password.PasswordEncoder() {
                     @Override
@@ -118,7 +121,7 @@ public class SecurityConfig {
 
                     @Override
                     public boolean matches(CharSequence raw, String encoded) {
-                        return passwordEncoder.matches(raw, encoded);
+                        return verifiedSecrets.matches(raw, encoded);
                     }
 
                     @Override

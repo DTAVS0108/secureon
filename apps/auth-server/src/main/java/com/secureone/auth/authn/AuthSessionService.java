@@ -62,6 +62,13 @@ public class AuthSessionService {
             problem.setProperty("passwordChangeRequired", true);
             problem.setProperty("changeToken", ex.changeToken());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
+        } catch (com.secureone.auth.config.PasswordHashingBusyException ex) {
+            // Overloaded, not wrong credentials: not a failed sign-in.
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .header(org.springframework.http.HttpHeaders.RETRY_AFTER,
+                            String.valueOf(com.secureone.auth.config.PasswordHashingBusyException.RETRY_AFTER_SECONDS))
+                    .body(problem);
         } catch (AuthenticationException ex) {
             // Counts towards "CAPTCHA after failures" (Attack protection), as the hosted form does.
             if (attackProtection != null) {
