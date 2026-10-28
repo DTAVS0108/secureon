@@ -41,8 +41,8 @@ Each endpoint states its **Authentication**. There are six kinds:
 ## Admin API: get a console session token
 
 Admin APIs accept only a console session token, never a password alone, so automation signs in the same way a
-person does: password, then an authenticator code. Use a dedicated operator account for scripts, and keep its
-authenticator secret in your secret store.
+person does: password, then (when console two-step sign-in is on) an authenticator code. Use a dedicated operator
+account for scripts, and keep its password and authenticator secret in your secret store.
 
 **Step 1: password.** Platform operators use the tenant slug `platform`; tenant operators use their tenant's slug.
 
@@ -53,6 +53,19 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/auth/login" \
 ```
 
 The answer is one of:
+
+- the **session** at once (same shape as at the end of step 2) when console two-step sign-in is off, the default
+  outside production (`SECUREONE_ADMIN_MFA_REQUIRED` overrides): skip to step 3;
+- **403** with `"passwordChangeRequired": true` and a `changeToken` when the password is temporary (the bootstrap
+  admin's first sign-in). Set a new one, then sign in again:
+
+  ```bash
+  curl -s -X POST "$SECUREONE_URL/api/v1/account/password/reset" \
+    -H "Content-Type: application/json" \
+    --data '{"token": "{changeToken}", "password": "…"}'
+  ```
+
+- a **second step**:
 
 ```json
 { "mfaRequired": true, "mfaToken": "nAODpe…", "methods": ["totp", "recovery_code"], "expiresIn": 300 }
@@ -190,9 +203,9 @@ The same API is described as OpenAPI 3 and can be tried in Swagger UI:
 | OpenAPI JSON, everything | `$SECUREONE_URL/v3/api-docs/all` |
 | OpenAPI JSON by area | `/v3/api-docs/public`, `/account`, `/applications`, `/admin-platform`, `/admin-applications`, `/oauth-oidc` |
 
-They are **off in production** until you set `SECUREONE_SWAGGER_ENABLED=true` on the server (the Docker image runs
-the production profile). They only describe the API; every call still needs its normal credential. In Swagger UI,
-sign in with the two auth calls, then **Authorize** with `SecureOne-Admin-Session <sessionToken>`.
+They are **off in production** (the image's default `SECUREONE_ENV`) until you set `SECUREONE_SWAGGER_ENABLED=true`
+on the server, and on in development. They only describe the API; every call still needs its normal credential. In Swagger UI,
+sign in with the auth calls above, then **Authorize** with `SecureOne-Admin-Session <sessionToken>`.
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" "$SECUREONE_URL/v3/api-docs/all"   # 200 when on, 404 when off

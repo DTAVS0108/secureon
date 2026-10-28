@@ -200,7 +200,7 @@ The Helm chart does this for you: `migrationJob.enabled: true` (the default) run
 
 ```bash
 # Docker, by hand
-docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only secureone/secureone:1.5.0
+docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only dmtavs0108/secureone:0.1.1
 ```
 
 ### Upgrade checklist

@@ -69,7 +69,7 @@ public class ApplicationPublicController {
         return manifest.branding(applicationId);
     }
 
-    /** Whether self-service sign-up is available (for integrated apps such as e-commerce clients). */
+    /** Whether self-service sign-up is available (for integrated apps). */
     @GetMapping("/{applicationId}/signup")
     public Map<String, Object> signupOptions(@PathVariable UUID applicationId) {
         return signup.signupOptions(applicationId);

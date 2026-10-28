@@ -5,7 +5,6 @@ import io.swagger.v3.oas.models.ExternalDocumentation;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.ObjectSchema;
@@ -17,7 +16,9 @@ import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -25,30 +26,38 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     @Bean
-    OpenAPI secureOneOpenAPI(@Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl) {
+    OpenAPI secureOneOpenAPI(
+            @Value("${secureone.public-base-url:http://localhost:9000}") String publicBaseUrl,
+            @Value("${secureone.admin-web-url:}") String adminWebUrl,
+            ObjectProvider<BuildProperties> build) {
         String base = publicBaseUrl.endsWith("/") ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1) : publicBaseUrl;
+        String console = adminWebUrl.isBlank() ? base + "/admin" : adminWebUrl.replaceAll("/+$", "");
+        BuildProperties properties = build.getIfAvailable();
+        String version = properties != null ? properties.getVersion() : "development";
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("SecureOne Auth Server API")
-                        .version("0.0.1-SNAPSHOT")
+                        .title("SecureOne API")
+                        .version(version)
                         .description(
                                 """
-                                Centralized IAM for multi-tenant applications.
+                                Identity and access management for multi-tenant applications.
 
                                 **API surfaces**
-                                - **Public** — unauthenticated manifest, sign-up, auth method catalog, account recovery
-                                - **Admin** — platform and application-scoped management (console session token after MFA)
+                                - **Public** — server info, sign-in method catalog, application manifest, sign-up, account recovery
+                                - **Account** — self-service for a signed-in user (Bearer access token)
+                                - **Admin** — platform and per-application management (console session token)
                                 - **OAuth 2.1 / OIDC** — authorization server protocol endpoints
 
-                                **Try admin APIs in Swagger UI:** sign in with `POST /api/admin/v1/auth/login` (and `/auth/mfa/verify`), then Authorize with `SecureOne-Admin-Session <sessionToken>`.
+                                **Try admin APIs here:** sign in with `POST /api/admin/v1/auth/login` (then `POST /api/admin/v1/auth/mfa/verify` when the answer asks for a second step), and choose **Authorize** with `SecureOne-Admin-Session <sessionToken>`.
 
-                                **Integrated apps (e.g. e-commerce):** use `GET/POST /api/v1/applications/{applicationId}/signup` when Self Registration is enabled.""")
-                        .contact(new Contact().name("SecureOne").email("support@secureone.local"))
-                        .license(new License().name("Proprietary").url("https://github.com/secureone")))
+                                **Integrated apps:** use `GET/POST /api/v1/applications/{applicationId}/signup` when Self Registration is enabled.
+
+                                API docs are on by default in development and off in production (`SECUREONE_SWAGGER_ENABLED` overrides).""")
+                        .contact(new Contact().name("SecureOne")))
                 .externalDocs(new ExternalDocumentation()
-                        .description("Architecture & auth standards")
-                        .url("https://github.com/secureone/secureone/blob/develop/docs/05-auth-standards.md"))
+                        .description("SecureOne Documentation (in the console)")
+                        .url(console + "/documentation"))
                 .servers(List.of(
                         new Server().url("/").description("Current host (use this in Swagger UI)"),
                         new Server().url(base).description("Configured public base URL")))
@@ -201,7 +210,8 @@ public class OpenApiConfig {
                 .name("Authorization")
                 .description(
                         "Console session token: `SecureOne-Admin-Session <sessionToken>`. Get one from "
-                                + "`POST /api/admin/v1/auth/login` (then `/auth/mfa/verify` with an authenticator code). "
+                                + "`POST /api/admin/v1/auth/login` (then `/auth/mfa/verify` with an authenticator code when "
+                                + "console two-step sign-in is on). "
                                 + "HTTP Basic and sign-in cookies are not accepted on admin APIs.");
     }
 }

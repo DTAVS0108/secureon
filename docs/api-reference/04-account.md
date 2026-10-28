@@ -1431,7 +1431,7 @@ curl -s -X PATCH "$SECUREONE_URL/api/v1/account/profile/session" \
 
 ## 4.10 Account linked sign-in
 
-The Google, SAML… accounts a user signs in with (hosted Account security page)
+External accounts (social, OIDC, SAML) a user signs in with (hosted Account security page)
 
 ### 4.10.1 My linked sign-in accounts
 

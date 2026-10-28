@@ -33,8 +33,8 @@ match the running code. See [Keeping this reference current](api-reference/READM
 
 ## Turn on Swagger UI and the OpenAPI document
 
-They are **on** when the server runs from source (`application.yml`) and **off** in the production profile, which
-the Docker image uses. Turn them on with one setting:
+They follow `SECUREONE_ENV`: **on** in development (from source, or the image with `SECUREONE_ENV=development`) and
+**off** in production, which is the image's default. Turn them on in production with one setting:
 
 ```dotenv
 SECUREONE_SWAGGER_ENABLED=true
@@ -66,7 +66,7 @@ admin API except the per-application console, which is in **Admin — per applic
 | Calls | How |
 |-------|-----|
 | Public (discovery, sign-in, sign-up, reset) | Nothing. Leave **Authorize** empty. |
-| Admin APIs (`/api/admin/v1/…`) | Run `POST /api/admin/v1/auth/login`, then `POST /api/admin/v1/auth/mfa/verify` with an authenticator code. Copy `sessionToken`, click **Authorize**, and under **adminHttpBasic** enter `SecureOne-Admin-Session <sessionToken>`. Passwords alone (HTTP Basic) and console cookies are not accepted. |
+| Admin APIs (`/api/admin/v1/…`) | Run `POST /api/admin/v1/auth/login`. It returns `sessionToken` at once, or `mfaToken` when console two-step sign-in is on (default in production): then run `POST /api/admin/v1/auth/mfa/verify` with an authenticator code. Copy `sessionToken`, click **Authorize**, and under **adminHttpBasic** enter `SecureOne-Admin-Session <sessionToken>`. Passwords alone (HTTP Basic) and console cookies are not accepted. |
 | UserInfo, account profile and privacy | Get an access token from `POST /oauth2/token`, then **Authorize › bearerAuth**. |
 | Token, revoke, introspect (confidential client) | **Authorize › oauthClientBasic** with the client ID and secret. |
 
@@ -76,7 +76,7 @@ The same steps with curl: [Getting started › Admin API](api-reference/00-getti
 
 | Symptom | Cause and fix |
 |---------|---------------|
-| `/docs` or `/v3/api-docs/all` returns **404** | Swagger is off: set `SECUREONE_SWAGGER_ENABLED=true` (above) and restart. |
+| `/docs` or `/v3/api-docs/all` returns **404** | Swagger is off (production): set `SECUREONE_SWAGGER_ENABLED=true` (above) and restart. |
 | Swagger UI: *No API definition provided* | Open `/docs` or `/swagger-ui/index.html?url=/v3/api-docs/all`. |
 | Swagger UI: *Failed to fetch* | Open Swagger on the same host as the API (`localhost` vs `127.0.0.1` matters) and choose the server **Current host** (`/`). Check `GET /api/info` says `UP`. |
 | Admin call returns **401** | No token, or it expired (30 minutes idle, 8 hours at most) or was signed out. Sign in again. |
@@ -91,8 +91,10 @@ curl -s http://localhost:9000/v3/api-docs/all -o secureone-openapi.json
 
 ## Configuration
 
-- `apps/auth-server/src/main/resources/application.yml` and `application-prod.yml` → `springdoc.*`,
-  `secureone.swagger-enabled`
+- `apps/auth-server/src/main/resources/application.yml` → `springdoc.*`, `secureone.swagger-enabled`
+  (default from `SecureOneEnvironmentDefaults`: on unless `SECUREONE_ENV=production`)
+- The document's title, version (the build version, e.g. `0.1.0`) and link to SecureOne Documentation:
+  `OpenApiConfig`
 - Java: `com.secureone.auth.config.openapi.OpenApiConfig` (groups, security schemes),
   `OAuth2OpenApiDocumentation` (protocol endpoints), `SwaggerAccessFilter`
 - Endpoint texts: `@Tag`, `@Operation` and `@Parameter` on the controllers

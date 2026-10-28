@@ -270,7 +270,7 @@ There are two kinds of flag.
 Flags hide parts of the console; who may see the data is still decided by roles and permissions. The **Audit log**
 page is always available. A flag is on or off; there is no rollout percentage.
 
-Retired in 0.3.28 (they did nothing, or a second switch decided the same thing): **Recovery OTP** (codes for
+Retired (they did nothing, or a second switch decided the same thing): **Recovery OTP** (codes for
 password recovery are allowed under **Verification & OTP › Password recovery**; where the flag was off, the upgrade
 removed codes there), **LDAP / AD** (back when LDAP import is built), **Audit log** (always shown).
 

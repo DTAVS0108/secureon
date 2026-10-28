@@ -241,7 +241,6 @@ info:
   app:
     name: SecureOne Auth Server
     description: Centralized IAM platform â€” authorization server
-    version: 0.0.1-SNAPSHOT
 
 springdoc:
   api-docs:
@@ -381,7 +380,7 @@ export default nextConfig;
 ```json
 {
   "name": "secureone",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "SecureOne â€” centralized Identity & Access Management platform (JS workspaces).",
   "packageManager": "pnpm@9.15.9",
@@ -417,7 +416,7 @@ plugins {
 }
 
 group = "com.secureone"
-version = "0.0.1-SNAPSHOT"
+version = "0.1.0"
 
 java {
 	toolchain {

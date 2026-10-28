@@ -27,7 +27,7 @@ public class DocsDiscoveryController {
     @Operation(
             summary = "Documentation catalog",
             description =
-                    "Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Draw.io diagrams render inline on doc pages.")
+                    "Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Diagrams render inline on doc pages.")
     @GetMapping
     public Map<String, Object> catalog() {
         List<Map<String, Object>> categories =

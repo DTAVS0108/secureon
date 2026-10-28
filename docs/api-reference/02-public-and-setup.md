@@ -49,7 +49,7 @@ SecureOne Documentation discovery
 
 `GET /api/v1/documentation`
 
-Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Draw.io diagrams render inline on doc pages.
+Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Diagrams render inline on doc pages.
 
 **Authentication:** None (public)
 

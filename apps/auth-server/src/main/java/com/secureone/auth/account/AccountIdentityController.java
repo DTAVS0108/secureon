@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Account linked sign-in", description = "The Google, SAML… accounts a user signs in with (hosted Account security page)")
+@Tag(name = "Account linked sign-in", description = "External accounts (social, OIDC, SAML) a user signs in with (hosted Account security page)")
 @RestController
 public class AccountIdentityController {
 

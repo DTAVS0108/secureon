@@ -5,7 +5,7 @@ global:
   imagePullPolicy: IfNotPresent
 
 image:
-  repository: secureone/secureone
+  repository: dmtavs0108/secureone
   # Defaults to the chart's appVersion. Pin a version; never deploy "latest" to production.
   tag: ""
 

@@ -4,7 +4,7 @@
 
 SecureOne ships as **one Docker image**: the authorization server (Spring Boot + Spring Authorization Server) with the admin console built in at `/admin`. It needs PostgreSQL and Redis. Apps connect with standard OAuth 2.1 / OpenID Connect.
 
-- Image: [`dmtavs0108/secureone`](https://hub.docker.com/r/dmtavs0108/secureone) (current: `0.3.1`)
+- Image: [`dmtavs0108/secureone`](https://hub.docker.com/r/dmtavs0108/secureone) (current: `0.1.0`)
 - Everything is configured when the container is created (environment variables or secret files), including the first admin.
 
 ---
@@ -99,7 +99,7 @@ kubectl create secret generic secureone \
   --from-literal=SECUREONE_BOOTSTRAP_ADMIN_PASSWORD='…'
 
 helm upgrade --install secureone deploy/helm/secureone \
-  --set image.repository=dmtavs0108/secureone --set image.tag=0.3.1 \
+  --set image.repository=dmtavs0108/secureone --set image.tag=0.1.0 \
   --set env.SECUREONE_ISSUER_URL=https://id.example.com --set env.SECUREONE_PUBLIC_BASE_URL=https://id.example.com \
   --set env.SECUREONE_DB_URL='jdbc:postgresql://postgres:5432/secureone?currentSchema=platform' \
   --set env.SECUREONE_REDIS_URL=redis://redis:6379 \

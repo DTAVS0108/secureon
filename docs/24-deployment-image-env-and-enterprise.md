@@ -1,6 +1,6 @@
 # 24 — Deployment: image + env & enterprise (source)
 
-**Audience:** Platform owners, DevOps, and architects who need to **deploy SecureOne as a central IdP** and then **register applications** (e.g. `econsumer`) from the admin console.
+**Audience:** Platform owners, DevOps, and architects who need to **deploy SecureOne as a central IdP** and then **register applications** from the admin console.
 
 **Related:** [22 — Operator getting started](22-operator-getting-started.md) · [16 — Environment & operations](16-environment-setup-and-operations.md) · [runbooks/deploy.md](runbooks/deploy.md) · [15 — Applications & OAuth clients](15-applications-and-oauth-clients.md) · [23 — Application integration](23-application-integration-guide.md)
 
@@ -15,13 +15,13 @@
 
 Both paths end the same way: **admin login → create tenants / applications / OAuth clients → connect your products**.
 
-**One image, one port, one host.** SecureOne ships as a single container image, `secureone/secureone`. It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
+**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `0.1.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
 
 **Just evaluating?** One command starts SecureOne with PostgreSQL, Redis and a mail catcher on your machine:
 
 ```bash
 docker compose -f deploy/docker-compose.quickstart.yml up --build
-# http://localhost:9000/admin  (emergency account admin / admin) · email: http://localhost:8025
+# http://localhost:9000/admin  (admin@example.com / Quickstart-Admin-2026!) · email: http://localhost:8025
 ```
 
 The quickstart runs in development mode with throw-away passwords; never expose it.
@@ -46,7 +46,7 @@ flowchart TB
         S1[Login platform admin]
         S2[Create tenant]
         S3[Register application + OAuth client]
-        S4[Wire product e.g. econsumer]
+        S4[Connect your application]
     end
 
     A3 --> S1
@@ -56,19 +56,19 @@ flowchart TB
 
 ---
 
-## Example product used in this guide
+## Example values used in this guide
 
 | Item | Example value |
 |------|----------------|
-| Product / app name | `econsumer` |
-| Public app URL | `https://econsumer.com` |
-| SecureOne issuer | `https://auth.econsumer.com` |
-| Admin console | `https://auth.econsumer.com/admin` (same host) |
-| OAuth client ID | `econsumer-web` |
-| Redirect URI | `https://econsumer.com/callback` |
-| Platform admin (deploy-time) | `econsumer-admin` / strong password |
+| Application name / slug | `Example App` / `exampleapp` |
+| Public app URL | `https://app.example.com` |
+| SecureOne issuer | `https://id.example.com` |
+| Admin console | `https://id.example.com/admin` (same host) |
+| OAuth client ID | `exampleapp-web` |
+| Redirect URI | `https://app.example.com/callback` |
+| First platform operator | `owner@example.com` / strong password (temporary) |
 
-Everything SecureOne serves is on one host (`auth.econsumer.com`): one DNS name, one certificate, no CORS between the console and the API.
+Replace these with your own values. Everything SecureOne serves is on one host (`id.example.com`): one DNS name, one certificate, no CORS between the console and the API.
 
 ---
 
@@ -81,9 +81,9 @@ You provide (or compose) these services. SecureOne does **not** embed production
 | **PostgreSQL 16+** | System of record (`platform` + per-app schemas) | `5432` |
 | **Redis 7+** | Sessions, OTP, rate limits, MFA | `6379` |
 | **SMTP** | Verification, reset, invites | `587` / `465` |
-| **SecureOne** (`secureone/secureone`) | OAuth/OIDC, SAML, SCIM, hosted pages, APIs, Flyway; admin console at `/admin` | `9000` |
+| **SecureOne** (`dmtavs0108/secureone`) | OAuth/OIDC, SAML, SCIM, hosted pages, APIs, Flyway; admin console at `/admin` | `9000` |
 
-On first start, **Flyway** applies `platform` migrations automatically. You do not run SQL by hand for schema bootstrap.
+On first start, **Flyway** creates the schema from `V1__baseline.sql` on the empty database; later releases upgrade it at start-up. You do not run SQL by hand. A database created by a release before 0.1.0 cannot be upgraded: start 0.1.0 on an empty database.
 
 ---
 
@@ -93,16 +93,16 @@ Use this when SecureOne is delivered as **Docker images**: configure with env, s
 
 ### What you need
 
-- The image `secureone/secureone:<version>` (from your registry)
+- The image `dmtavs0108/secureone:0.1.0` (Docker Hub, or your registry)
 - Your Postgres, Redis, SMTP
-- DNS + TLS for one host, e.g. `auth.econsumer.com` (or a reverse proxy)
+- DNS + TLS for one host, e.g. `id.example.com` (or a reverse proxy)
 - An env file — **no SecureOne Java/TS code on the host**
 
 ### A1 — Prepare Postgres
 
 ```bash
-psql -h pg.econsumer.com -U postgres -c "CREATE USER secureone WITH PASSWORD 'StrongDbPass!';"
-psql -h pg.econsumer.com -U postgres -c "CREATE DATABASE secureone OWNER secureone;"
+psql -h pg.internal -U postgres -c "CREATE USER secureone WITH PASSWORD 'StrongDbPass!';"
+psql -h pg.internal -U postgres -c "CREATE DATABASE secureone OWNER secureone;"
 ```
 
 ### A2 — Generate secrets
@@ -131,33 +131,27 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=SecureOne SAML S
 ```bash
 mkdir -p /opt/secureone
 cat > /opt/secureone/secureone.env <<'EOF'
-# Profile / environment
-# Use staging (or development) for first image+env installs so platform
-# admin can be set via SECUREONE_DEV_USER / SECUREONE_DEV_PASSWORD.
-SPRING_PROFILES_ACTIVE=dev
-SECUREONE_ENV=staging
-SECUREONE_SWAGGER_ENABLED=true
-SECUREONE_DEV_AUTH_ENABLED=true
+# The image runs in production mode (SECUREONE_ENV=production): https URLs and the secrets below are required.
 
-# Platform admin credentials (set at deploy time)
-SECUREONE_DEV_USER=econsumer-admin
-SECUREONE_DEV_PASSWORD=ChangeThisStrongPassword!
+# First platform operator, created at the first start (temporary password: the first sign-in replaces it)
+SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com
+SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Change-This-Strong-Password-1!
 
 # Public URLs
-SECUREONE_ISSUER_URL=https://auth.econsumer.com
-SECUREONE_PUBLIC_BASE_URL=https://auth.econsumer.com
+SECUREONE_ISSUER_URL=https://id.example.com
+SECUREONE_PUBLIC_BASE_URL=https://id.example.com
 # The console is at <public URL>/admin; set SECUREONE_ADMIN_WEB_URL only if you serve it elsewhere.
 # Origins of registered redirect URIs are allowed automatically; list only other browser origins
 # that call SecureOne APIs directly (optional):
 SECUREONE_CORS_ALLOWED_ORIGINS=
 
 # Your Postgres
-SECUREONE_DB_URL=jdbc:postgresql://pg.econsumer.com:5432/secureone?currentSchema=platform
+SECUREONE_DB_URL=jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform
 SECUREONE_DB_USERNAME=secureone
 SECUREONE_DB_PASSWORD=StrongDbPass!
 
 # Your Redis
-SECUREONE_REDIS_URL=redis://redis.econsumer.com:6379
+SECUREONE_REDIS_URL=redis://redis.internal:6379
 
 # Secrets
 SECUREONE_OTP_PEPPER=replace-with-long-random-string
@@ -177,7 +171,6 @@ SECUREONE_SMTP_AUTH=true
 SECUREONE_SMTP_STARTTLS=true
 SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=false
 
-SECUREONE_PORT=9000
 EOF
 chmod 600 /opt/secureone/secureone.env
 ```
@@ -190,7 +183,7 @@ docker run -d \
   --env-file /opt/secureone/secureone.env \
   -p 9000:9000 \
   --restart unless-stopped \
-  your-registry/secureone/secureone:1.0.0
+  dmtavs0108/secureone:0.1.0
 
 docker logs -f secureone
 # Wait for "Started AuthServerApplication" and "Admin console started ... served at /admin"
@@ -204,7 +197,7 @@ One container, one process tree: the auth-server (Java) starts the console (Node
 # /opt/secureone/docker-compose.yml
 services:
   secureone:
-    image: your-registry/secureone/secureone:1.0.0
+    image: dmtavs0108/secureone:0.1.0
     env_file: ./secureone.env
     ports:
       - "9000:9000"
@@ -233,9 +226,9 @@ docker compose logs -f secureone
 
 ### A7 — TLS / reverse proxy
 
-Point `auth.econsumer.com` → `:9000` (Nginx, Traefik, or cloud LB). Use HTTPS. The console is the `/admin` path on the same host; no second host, port or route is needed.
+Point `id.example.com` → `:9000` (Nginx, Traefik, or cloud LB). Use HTTPS. The console is the `/admin` path on the same host; no second host, port or route is needed.
 
-- Forward `X-Forwarded-Proto/Host/For` (the auth-server trusts them: `server.forward-headers-strategy: native`) so the issuer, SAML entity IDs, ACS/SLO URLs and the device `verification_uri` come out as `https://auth.econsumer.com/…`.
+- Forward `X-Forwarded-Proto/Host/For` (the auth-server trusts them: `server.forward-headers-strategy: native`) so the issuer, SAML entity IDs, ACS/SLO URLs and the device `verification_uri` come out as `https://id.example.com/…`.
 - **Do not add CORS or origin rules in front of** `/api/v1/auth/federation/saml/acs/*` and `/api/v1/auth/federation/saml/slo/*`: the company IdP's page posts there cross-site (any `Origin`, often `null`). The SAML signatures authenticate those requests.
 - WAFs: allow form POSTs with large `SAMLResponse` bodies (encrypted assertions can exceed 20 KB).
 
@@ -244,14 +237,14 @@ Point `auth.econsumer.com` → `:9000` (Nginx, Traefik, or cloud LB). Use HTTPS.
 ### A8 — Health checks
 
 ```bash
-curl -s https://auth.econsumer.com/api/info
-curl -s https://auth.econsumer.com/.well-known/openid-configuration
-curl -s -o /dev/null -w "%{http_code}\n" https://auth.econsumer.com/admin/login   # 200
+curl -s https://id.example.com/api/info
+curl -s https://id.example.com/.well-known/openid-configuration
+curl -s -o /dev/null -w "%{http_code}\n" https://id.example.com/admin/login   # 200
 docker exec secureone wget -qO- http://127.0.0.1:9001/actuator/health              # management port, inside the container
 docker inspect secureone --format '{{.State.Health.Status}}'                          # healthy (image HEALTHCHECK)
 ```
 
-Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"status":"UP"` on the management port. `https://auth.econsumer.com/actuator/...` returns 404 by design.
+Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"status":"UP"` on the management port. `https://id.example.com/actuator/...` returns 404 by design.
 
 ### A9 — Continue at [Shared post-deploy flow](#shared-post-deploy-flow)
 
@@ -259,7 +252,7 @@ Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"stat
 
 # Path B — Enterprise: you have the code and deploy for the whole organization
 
-Use this when your team **owns the SecureOne monorepo**, builds images in CI, and runs SecureOne as shared enterprise IAM for many products (econsumer, billing, mobile, M2M, …).
+Use this when your team **owns the SecureOne monorepo**, builds images in CI, and runs SecureOne as shared enterprise IAM for many products (web, mobile, back-end services, …).
 
 ### B1 — Clone and prerequisites
 
@@ -299,15 +292,15 @@ cd apps/admin-web && npm install && npm run dev
 
 - Auth: http://localhost:9000
 - Admin console: http://localhost:9000/admin (the auth-server forwards it to `next dev`; for hot reload you can also use http://localhost:3001/admin directly)  
-- Dev platform admin: `admin` / `admin` (when `SECUREONE_DEV_AUTH_ENABLED=true`)
+- First run: create the operator with the setup code from the auth-server log (`/admin/setup`); in development the emergency account `admin` / `admin` also works
 
 ### B3 — Build production images from source
 
 From repo root:
 
 ```bash
-docker build -f deploy/Dockerfile -t your-registry/secureone/secureone:1.0.0 .
-docker push your-registry/secureone/secureone:1.0.0
+docker build -f deploy/Dockerfile -t your-registry/secureone:0.1.0 .
+docker push your-registry/secureone:0.1.0
 ```
 
 Give the builder about 4 GB of memory (the console's type check and the Gradle build run in parallel, and the last step starts the application once with a temporary PostgreSQL and Redis to record the start-up cache). With Docker Desktop's 2 GB default, build the console stage first and the rest reuses it: `docker build --target console -f deploy/Dockerfile .` then the command above.
@@ -318,7 +311,7 @@ The build context is the repo root; `.dockerignore` is an allow-list, so local `
 
 CI builds and smoke-tests the image on every push (`.github/workflows/ci.yml`, job `image`); publish it tagged with a semantic version (and the git SHA), and scan it.
 
-> **Build network:** the auth-server build pulls OpenSAML (SAML SSO) from the Shibboleth Maven repository (`https://build.shibboleth.net/maven/releases/`) as well as Maven Central. Allow it in CI egress or mirror it in your artifact proxy (Nexus/Artifactory); Gradle only resolves the `org.opensaml` / `net.shibboleth` groups from it.
+> **Build network:** the build downloads Gradle (services.gradle.org, which redirects to GitHub release downloads), npm and Maven packages. The auth-server build also pulls OpenSAML (SAML SSO) from the Shibboleth Maven repository (`https://build.shibboleth.net/maven/releases/`) as well as Maven Central. Allow it in CI egress or mirror it in your artifact proxy (Nexus/Artifactory); Gradle only resolves the `org.opensaml` / `net.shibboleth` groups from it.
 
 ### B4 — Create Kubernetes secret
 
@@ -335,14 +328,10 @@ kubectl -n secureone create secret generic secureone \
   --from-file=SECUREONE_JWK_PRIVATE_KEY_PEM=jwk.pem \
   --from-file=SECUREONE_SAML_SP_KEY_PEM=saml-sp.key \
   --from-file=SECUREONE_SAML_SP_CERT_PEM=saml-sp.crt \
-  --from-literal=SECUREONE_ISSUER_URL='https://auth.econsumer.com' \
-  --from-literal=SECUREONE_PUBLIC_BASE_URL='https://auth.econsumer.com' \
-  --from-literal=SECUREONE_CORS_ALLOWED_ORIGINS='https://econsumer.com' \
-  --from-literal=SECUREONE_DEV_USER='econsumer-admin' \
-  --from-literal=SECUREONE_DEV_PASSWORD='ChangeThisStrongPassword!' \
-  --from-literal=SECUREONE_DEV_AUTH_ENABLED='true' \
-  --from-literal=SECUREONE_ENV='staging' \
-  --from-literal=SPRING_PROFILES_ACTIVE='dev' \
+  --from-literal=SECUREONE_ISSUER_URL='https://id.example.com' \
+  --from-literal=SECUREONE_PUBLIC_BASE_URL='https://id.example.com' \
+  --from-literal=SECUREONE_BOOTSTRAP_ADMIN_EMAIL='owner@example.com' \
+  --from-literal=SECUREONE_BOOTSTRAP_ADMIN_PASSWORD='Change-This-Strong-Password-1!' \
   --from-literal=SECUREONE_SMTP_HOST='email-smtp.example.com' \
   --from-literal=SECUREONE_SMTP_PORT='587' \
   --from-literal=SECUREONE_SMTP_USERNAME='smtp-user' \
@@ -351,7 +340,7 @@ kubectl -n secureone create secret generic secureone \
   --from-literal=SECUREONE_SMTP_STARTTLS='true'
 ```
 
-Adjust `SECUREONE_ENV` / profile when you harden to full production (see [Production caveats](#production-caveats)).
+The image runs in production mode; see [All settings](#all-settings) for what else you can set.
 
 **Several replicas** (the chart runs 2): all shared state — sessions, SAML AuthnRequests and logout state, device-code polling, rate limits, the one-time key-creation lock — lives in Redis, so any replica can serve any step of a flow. Supply the JWT and SAML keys from the secret (as above) so every replica uses the same keys from the first boot.
 
@@ -361,24 +350,20 @@ Create `prod-values.yaml` (example):
 
 ```yaml
 image:
-  repository: your-registry/secureone/secureone
-  tag: "1.0.0"
+  repository: dmtavs0108/secureone
+  tag: "0.1.0"
 replicaCount: 2
 existingSecret: secureone
 env:
-  SPRING_PROFILES_ACTIVE: "dev"
-  SECUREONE_ENV: "staging"
-  SECUREONE_SWAGGER_ENABLED: "true"
-  SECUREONE_DEV_AUTH_ENABLED: "true"
-  SECUREONE_ISSUER_URL: https://auth.econsumer.com
-  SECUREONE_PUBLIC_BASE_URL: https://auth.econsumer.com
+  SECUREONE_ISSUER_URL: https://id.example.com
+  SECUREONE_PUBLIC_BASE_URL: https://id.example.com
   SECUREONE_DB_URL: jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform
   SECUREONE_REDIS_URL: redis://redis.internal:6379
 
 ingress:
   enabled: true
   className: nginx
-  host: auth.econsumer.com
+  host: id.example.com
   tlsSecretName: secureone-tls
 ```
 
@@ -388,7 +373,7 @@ helm upgrade --install secureone deploy/helm/secureone \
   -f prod-values.yaml
 
 kubectl -n secureone rollout status deployment/secureone
-curl -s https://auth.econsumer.com/.well-known/openid-configuration
+curl -s https://id.example.com/.well-known/openid-configuration
 ```
 
 The chart runs one Deployment (rolling update with `maxUnavailable: 0`), one Service and an optional Ingress for the single host; the console is the `/admin` path behind it. The pod runs as UID 10001 (`runAsNonRoot`).
@@ -399,7 +384,7 @@ The chart runs one Deployment (rolling update with `maxUnavailable: 0`), one Ser
 |----------|----------------|
 | One SecureOne cluster | Shared IdP for all products |
 | One tenant per customer org (B2B) **or** one product tenant (B2C) | Match your business |
-| One **application** per product | e.g. `econsumer`, `billing`, `partner-portal` |
+| One **application** per product | e.g. web shop, billing, partner portal |
 | N **OAuth clients** per application | web, SPA, mobile, M2M |
 | Secrets | Vault / cloud secrets → K8s secret; never commit `.env` |
 | Replicas | auth-server ≥ 2; sessions/OTP in Redis |
@@ -418,7 +403,7 @@ Once SecureOne is healthy (Path A or B), operators use the **same** admin workfl
 
 Two ways; pick one.
 
-**A. With the container settings (no browser step), like Keycloak's `KC_BOOTSTRAP_ADMIN_*`.** Set these when you create the container; the first start creates the first platform operator:
+**A. With the container settings (no browser step).** Set these when you create the container; the first start creates the first platform operator:
 
 | Setting | Example |
 |---------|---------|
@@ -437,12 +422,12 @@ Two ways; pick one.
 ```
 ==============================================================================
  SecureOne is not set up yet: no platform operator exists.
- Open https://auth.econsumer.com/admin/setup and enter this setup code:  9NNC-DZ3H-WF6S
+ Open https://id.example.com/admin/setup and enter this setup code:  9NNC-DZ3H-WF6S
  (valid for 24 hours; every instance prints it again when it starts)
 ==============================================================================
 ```
 
-1. Open `https://auth.econsumer.com/admin/setup` (the sign-in page also links there while setup is open).
+1. Open `https://id.example.com/admin/setup` (the sign-in page also links there while setup is open).
 2. Enter the setup code. It proves you can read the server's log; 10 wrong codes from one address lock it for 15 minutes.
 3. Create the first platform operator: name, work email, password (platform password policy).
 4. Sign in under **Platform operator**. In production the first sign-in also adds an authenticator app and shows recovery codes once.
@@ -502,7 +487,7 @@ Every instance must use the **same** encryption key, OTP pepper and signing key.
 | `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` | private address ranges | Your proxy is not on a private network (e.g. a CDN): a regular expression of its addresses, so client addresses and https are read from `X-Forwarded-*` |
 | `SECUREONE_ADMIN_SESSION_IDLE`, `_MAX` | `30m`, `8h` | Console session lengths |
 | `SECUREONE_ADMIN_MFA_REQUIRED` | `true` in production, `false` otherwise | Console sign-in with an authenticator app |
-| `SECUREONE_SWAGGER_ENABLED` | `false` in production, `true` otherwise | API docs at `/swagger-ui.html` and `/v3/api-docs` |
+| `SECUREONE_SWAGGER_ENABLED` | `false` in production, `true` otherwise | API docs: Swagger UI at `/docs` (`/swagger-ui.html`), OpenAPI at `/v3/api-docs/all` (groups: `/v3/api-docs/{group}`) |
 | `SECUREONE_DB_POOL_SIZE` | `20` | Database connections per instance; keep instances × pool size under PostgreSQL's `max_connections` |
 | `SECUREONE_DB_POOL_TIMEOUT_MS` | `10000` | How long a request waits for a free connection before failing |
 | `SECUREONE_CACHE_CONFIG_TTL` | `30s` | Clients, applications and settings used by every OAuth request are cached in memory this long. Changes made through the console or admin API apply at once on every instance (Redis message); other changes (direct SQL) within this time. `0` turns the cache off |
@@ -573,8 +558,8 @@ In **Settings**:
 
 | Field | Example |
 |-------|---------|
-| Name | Econsumer |
-| Slug | `econsumer` |
+| Name | Tenant name |
+| Slug | `tenant-slug` |
 
 ## 4. Register application + OAuth client
 
@@ -582,12 +567,12 @@ In **Settings**:
 
 | Field | Example |
 |-------|---------|
-| Application name | `econsumer` |
-| Tenant | `econsumer` |
-| Slug | `econsumer` (schema `econsumer`) |
-| Client ID | `econsumer-web` |
+| Application name | `Example App` |
+| Tenant | your tenant |
+| Slug | `exampleapp` (schema `exampleapp`) |
+| Client ID | `exampleapp-web` |
 | Type | SPA (PKCE) or Web |
-| Redirect URIs | `https://econsumer.com/callback` |
+| Redirect URIs | `https://app.example.com/callback` |
 | Scopes | `openid profile email` |
 | Auth UI mode | `hosted` or `native` |
 
@@ -597,36 +582,36 @@ Save and copy:
 - **Client ID**
 - Client secret (confidential clients only — shown once)
 
-## 5. Wire the product (econsumer)
+## 5. Connect your application
 
-In the **econsumer** app config only (not SecureOne source):
+In your application's configuration only (not SecureOne source):
 
 ```env
-SECUREONE_ISSUER=https://auth.econsumer.com
+SECUREONE_ISSUER=https://id.example.com
 SECUREONE_APPLICATION_ID=<uuid-from-admin>
-SECUREONE_CLIENT_ID=econsumer-web
-SECUREONE_REDIRECT_URI=https://econsumer.com/callback
+SECUREONE_CLIENT_ID=exampleapp-web
+SECUREONE_REDIRECT_URI=https://app.example.com/callback
 ```
 
 ### Hosted UI (redirect to SecureOne login)
 
 ```
-GET https://auth.econsumer.com/oauth2/authorize
+GET https://id.example.com/oauth2/authorize
   ?response_type=code
-  &client_id=econsumer-web
-  &redirect_uri=https://econsumer.com/callback
+  &client_id=exampleapp-web
+  &redirect_uri=https://app.example.com/callback
   &scope=openid%20profile%20email
   &code_challenge=...
   &code_challenge_method=S256
   &state=...
 ```
 
-Then `POST https://auth.econsumer.com/oauth2/token` and optionally `GET /userinfo`.
+Then `POST https://id.example.com/oauth2/token` and optionally `GET /userinfo`.
 
-### Native UI (forms on econsumer.com)
+### Native UI (forms in your application)
 
 ```http
-POST https://auth.econsumer.com/api/v1/applications/{applicationId}/auth/session/login
+POST https://id.example.com/api/v1/applications/{applicationId}/auth/session/login
 Content-Type: application/json
 
 { "identifier": "user@example.com", "password": "..." }
@@ -660,7 +645,7 @@ Signup / OTP: see [23 — Application integration](23-application-integration-gu
 
 | Topic | Current behavior | Guidance |
 |-------|------------------|----------|
-| Platform admin via env | Works with `SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD` when `SECUREONE_DEV_AUTH_ENABLED=true` | Use for Path A / first enterprise staging |
+| First operator via env | `SECUREONE_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD`, used once; the first sign-in replaces the password | Remove the password from the environment after the first start |
 | `SECUREONE_ENV=production` | **Refuses to start** with `SECUREONE_DEV_AUTH_ENABLED=true`, the default OTP pepper, a non-`https://` `SECUREONE_ISSUER_URL` / `SECUREONE_PUBLIC_BASE_URL`, no `SECUREONE_ENCRYPTION_KEY`, or (only when break-glass is on) default `admin/admin` credentials; the message names the setting | Ready for production: the first operator is created by first-run setup |
 | First operator | **First-run setup** (`/admin/setup` with the code from the log or `SECUREONE_SETUP_CODE`) | No emergency account or env credentials needed |
 | `SECUREONE_ENCRYPTION_KEY` | Encrypts all stored secrets and generated private keys (earlier versions documented it but did not read it) | Set it before first boot; back it up separately from the database |
@@ -681,15 +666,15 @@ kubectl -n secureone logs -f deploy/secureone
 # Restart after env change
 docker rm -f secureone
 docker run -d --name secureone --env-file /opt/secureone/secureone.env \
-  -p 9000:9000 your-registry/secureone/secureone:1.0.0
+  -p 9000:9000 dmtavs0108/secureone:0.1.0
 
 # Upgrade: back up the database, then swap the image tag; the database is upgraded at start
-docker pull your-registry/secureone/secureone:1.1.0
-# recreate the container, or: helm upgrade secureone deploy/helm/secureone --reuse-values --set image.tag=1.1.0
+docker pull dmtavs0108/secureone:0.1.1
+# recreate the container, or: helm upgrade secureone deploy/helm/secureone --reuse-values --set image.tag=0.1.1
 # (the chart's pre-upgrade job migrates once; the pods then only check)
 
 # Health
-curl -s https://auth.econsumer.com/api/info
+curl -s https://id.example.com/api/info
 kubectl -n secureone exec deploy/secureone -- wget -qO- http://127.0.0.1:9001/actuator/health
 ```
 
@@ -703,7 +688,7 @@ At start-up the platform migrations and every application schema are brought to 
 
 - [ ] Postgres / Redis / SMTP reachable  
 - [ ] Images pulled  
-- [ ] `secureone.env` filled (URLs, secrets, admin user/pass)
+- [ ] `secureone.env` filled (URLs, secrets, bootstrap admin)
 - [ ] `SECUREONE_ENCRYPTION_KEY` and `SECUREONE_JWK_PRIVATE_KEY_PEM` generated and kept in your secret store  
 - [ ] SecureOne healthy (management port 9001) and console at `/admin/login`; port 9001 not published
 - [ ] TLS for the one public host  
@@ -720,7 +705,7 @@ At start-up the platform migrations and every application schema are brought to 
 ### Shared
 
 - [ ] Platform admin can sign in  
-- [ ] Tenant + `econsumer` application + OAuth client created  
+- [ ] Tenant + application + OAuth client created  
 - [ ] Product config points at issuer  
 - [ ] End-to-end login tested (hosted or native)
 - [ ] If used: the SAML IdP imported the SP metadata; SSO and sign-out from the IdP tested

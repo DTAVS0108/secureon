@@ -640,7 +640,7 @@ curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/roles/{id}" \
 
 ## 11.5 Federation
 
-Configure Google, GitHub, and OIDC identity providers
+Configure social, OIDC and SAML identity providers
 
 ### 11.5.1 List providers
 

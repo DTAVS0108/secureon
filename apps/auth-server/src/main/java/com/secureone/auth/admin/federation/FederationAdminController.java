@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-@Tag(name = "Admin — federation", description = "Configure Google, GitHub, and OIDC identity providers")
+@Tag(name = "Admin — federation", description = "Configure social, OIDC and SAML identity providers")
 @SecurityRequirement(name = "adminHttpBasic")
 @RestController
 public class FederationAdminController {

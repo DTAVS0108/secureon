@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # SecureOne: one image with the auth-server and the admin console.
 #
-#   docker build -f deploy/Dockerfile -t secureone/secureone:1.0.0 .        (from the repo root)
+#   docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.0 .        (from the repo root)
 #
 # One process to run and one port (9000): the auth-server serves OAuth/OIDC, SAML, SCIM, the hosted
 # sign-in pages and the APIs, and the admin console at /admin (it starts the console itself on
