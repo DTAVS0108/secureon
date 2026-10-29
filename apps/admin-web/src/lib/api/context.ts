@@ -46,6 +46,8 @@ export type AdminContext = {
   clientSetupCodeEnabled?: boolean;
   /** Console controls decided in Platform settings → Feature flags (e.g. sessions: true). */
   consoleFlags?: Record<string, boolean>;
+  /** When the operator's profile picture last changed (epoch ms); null without one. */
+  avatarVersion?: number | null;
 };
 
 export async function fetchAdminContext(): Promise<AdminContext> {
@@ -69,6 +71,7 @@ export async function fetchAdminContext(): Promise<AdminContext> {
     connectAppEnabled?: boolean;
     clientSetupCodeEnabled?: boolean;
     consoleFlags?: Record<string, boolean>;
+    avatarVersion?: number | null;
   }>("/api/admin/v1/context");
   return {
     platformSuperAdmin: raw.platformSuperAdmin,
@@ -95,5 +98,6 @@ export async function fetchAdminContext(): Promise<AdminContext> {
     connectAppEnabled: raw.connectAppEnabled ?? true,
     clientSetupCodeEnabled: raw.clientSetupCodeEnabled ?? true,
     consoleFlags: raw.consoleFlags ?? {},
+    avatarVersion: raw.avatarVersion ?? null,
   };
 }

@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { DialogProvider } from "@/components/ui/Dialogs";
 import { getServerThemeBootstrap } from "@/lib/theme/server";
-import { serverPublicConfig } from "@/lib/config";
+import { serverPublicConfig, withBasePath } from "@/lib/config";
 import { RuntimeConfigProvider } from "@/components/RuntimeConfigProvider";
 
 const EMPTY_ADMIN_CONTEXT: AdminContext = {
@@ -46,6 +46,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SecureOne · Admin",
   description: "Admin console for the SecureOne Identity & Access Management platform.",
+  // Fixed brand files in public/brand (not Appearance settings); src/app/favicon.ico is the fallback.
+  icons: {
+    icon: [{ url: withBasePath("/brand/secureone-mark.svg"), type: "image/svg+xml" }],
+    apple: withBasePath("/brand/apple-touch-icon.png"),
+  },
 };
 
 export default async function RootLayout({

@@ -71,9 +71,11 @@ The **Emergency access** link appears only when the server has the emergency acc
 
 ## My profile
 
-Open it by clicking your initials and name at the right of the top bar (tooltip **My profile**). The panel says *Account details, password, and MFA*. Operators with a passkey or security key can use it at sign-in (**Use your passkey or security key**); sensitive console actions ask **Verify it's you** again, see [Two-step verification](12-two-step-verification.md#admin-actions-for-a-user). Close it with **×**.
+Open it by clicking your picture (or initials) and name at the right of the top bar (tooltip **My profile**). The panel says *Account details, password, and MFA*. Operators with a passkey or security key can use it at sign-in (**Use your passkey or security key**); sensitive console actions ask **Verify it's you** again, see [Two-step verification](12-two-step-verification.md#admin-actions-for-a-user). Close it with **×**.
 
 ### Account
+
+**Profile picture:** **Upload picture** (or **Change picture**) takes a PNG, JPEG or WebP file. The console crops it to a square and resizes it to 256 px before sending it, which also drops any camera or location details stored in the photo; the server accepts at most 512 KB and checks that the file really is one of those formats. **Remove** goes back to your initials. The picture shows in the top bar. The emergency account has no picture.
 
 **Email**, **Username** and **Display name**, plus your role badge (**Super admin**, **Emergency account**) and **Member since**. Change what is editable and press **Save changes** (*Profile updated*).
 

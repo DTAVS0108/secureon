@@ -41,6 +41,7 @@ public class AdminContextController {
     private final AdminSessionService sessions;
     private final PlatformFeatures platformFeatures;
     private final AuthSettingsService authSettings;
+    private final com.secureone.auth.user.UserAvatarService avatars;
 
     public AdminContextController(
             AdminAccessService access,
@@ -53,7 +54,8 @@ public class AdminContextController {
             UserAccountRepository users,
             AdminSessionService sessions,
             PlatformFeatures platformFeatures,
-            AuthSettingsService authSettings) {
+            AuthSettingsService authSettings,
+            com.secureone.auth.user.UserAvatarService avatars) {
         this.access = access;
         this.permissions = permissions;
         this.consoleCapabilities = consoleCapabilities;
@@ -65,6 +67,7 @@ public class AdminContextController {
         this.sessions = sessions;
         this.platformFeatures = platformFeatures;
         this.authSettings = authSettings;
+        this.avatars = avatars;
     }
 
     public record ApplicationContextItem(
@@ -107,7 +110,9 @@ public class AdminContextController {
              * each is on. Decided in platform settings for every application; sent here so the console never
              * depends on an application's settings being readable.
              */
-            Map<String, Boolean> consoleFlags) {}
+            Map<String, Boolean> consoleFlags,
+            /** When the operator's profile picture last changed (epoch ms; GET /me/avatar?v=…); null without one. */
+            Long avatarVersion) {}
 
     @GetMapping
     public AdminContextResponse context(
@@ -186,7 +191,8 @@ public class AdminContextController {
                 superAdmin && platformFeatures.configAsCodeEnabled(),
                 platformFeatures.connectAppEnabled(),
                 platformFeatures.clientSetupCodeEnabled(),
-                consoleFlags());
+                consoleFlags(),
+                userId != null ? avatars.version(userId).map(java.time.Instant::toEpochMilli).orElse(null) : null);
     }
 
     private Map<String, Boolean> consoleFlags() {

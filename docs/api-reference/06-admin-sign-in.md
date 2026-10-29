@@ -25,11 +25,14 @@ Set the variables from [Getting started](00-getting-started.md) first (`SECUREON
 - [6.3 Operator profile](#63-operator-profile)
   - [GET `/api/admin/v1/me`](#631-get-the-signed-in-operator) — Get the signed-in operator
   - [PATCH `/api/admin/v1/me`](#632-update-me) — Update me
-  - [POST `/api/admin/v1/me/password`](#633-password) — Password
-  - [GET `/api/admin/v1/me/step-up`](#634-whether-the-operator-verified-recently-and-with-which-methods-they-can) — Whether the operator verified recently, and with which methods they can
-  - [POST `/api/admin/v1/me/step-up`](#635-verify-its-you-with-an-authenticator-code-or-a-recovery-code) — Verify it's you with an authenticator code or a recovery code
-  - [POST `/api/admin/v1/me/step-up/passkey/options`](#636-verify-its-you-with-a-passkey-or-security-key-options) — Verify it's you with a passkey or security key: options
-  - [POST `/api/admin/v1/me/step-up/passkey/verify`](#637-verify-its-you-with-a-passkey-or-security-key) — Verify it's you with a passkey or security key
+  - [GET `/api/admin/v1/me/avatar`](#633-my-profile-picture) — My profile picture
+  - [PUT `/api/admin/v1/me/avatar`](#634-set-my-profile-picture) — Set my profile picture
+  - [DELETE `/api/admin/v1/me/avatar`](#635-remove-my-profile-picture) — Remove my profile picture
+  - [POST `/api/admin/v1/me/password`](#636-password) — Password
+  - [GET `/api/admin/v1/me/step-up`](#637-whether-the-operator-verified-recently-and-with-which-methods-they-can) — Whether the operator verified recently, and with which methods they can
+  - [POST `/api/admin/v1/me/step-up`](#638-verify-its-you-with-an-authenticator-code-or-a-recovery-code) — Verify it's you with an authenticator code or a recovery code
+  - [POST `/api/admin/v1/me/step-up/passkey/options`](#639-verify-its-you-with-a-passkey-or-security-key-options) — Verify it's you with a passkey or security key: options
+  - [POST `/api/admin/v1/me/step-up/passkey/verify`](#6310-verify-its-you-with-a-passkey-or-security-key) — Verify it's you with a passkey or security key
 - [6.4 Operator MFA](#64-operator-mfa)
   - [GET `/api/admin/v1/me/mfa/factors`](#641-list-factors) — List factors
   - [POST `/api/admin/v1/me/mfa/passkey/register/options`](#642-start-passkey-registration) — Start passkey registration
@@ -302,7 +305,69 @@ curl -s -X PATCH "$SECUREONE_URL/api/admin/v1/me" \
 }'
 ```
 
-### 6.3.3 Password
+### 6.3.3 My profile picture
+
+`GET /api/admin/v1/me/avatar`
+
+PNG, JPEG or WebP; 404 when none is set.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | string |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/me/avatar" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 6.3.4 Set my profile picture
+
+`PUT /api/admin/v1/me/avatar`
+
+Multipart field `file`: PNG, JPEG or WebP, at most 512 KB (checked by content).
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Request body** (`multipart/form-data`)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `file` | string (binary) | yes |  |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [OperatorProfileResponse](13-data-models.md#operatorprofileresponse) |
+
+```bash
+curl -s -X PUT "$SECUREONE_URL/api/admin/v1/me/avatar" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN" \
+  -F "file=@users.csv"
+```
+
+### 6.3.5 Remove my profile picture
+
+`DELETE /api/admin/v1/me/avatar`
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](00-getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | [OperatorProfileResponse](13-data-models.md#operatorprofileresponse) |
+
+```bash
+curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/me/avatar" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### 6.3.6 Password
 
 `POST /api/admin/v1/me/password`
 
@@ -331,7 +396,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/me/password" \
 }'
 ```
 
-### 6.3.4 Whether the operator verified recently, and with which methods they can
+### 6.3.7 Whether the operator verified recently, and with which methods they can
 
 `GET /api/admin/v1/me/step-up`
 
@@ -348,7 +413,7 @@ curl -s "$SECUREONE_URL/api/admin/v1/me/step-up" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 6.3.5 Verify it's you with an authenticator code or a recovery code
+### 6.3.8 Verify it's you with an authenticator code or a recovery code
 
 `POST /api/admin/v1/me/step-up`
 
@@ -377,7 +442,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/me/step-up" \
 }'
 ```
 
-### 6.3.6 Verify it's you with a passkey or security key: options
+### 6.3.9 Verify it's you with a passkey or security key: options
 
 `POST /api/admin/v1/me/step-up/passkey/options`
 
@@ -394,7 +459,7 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/me/step-up/passkey/options" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 
-### 6.3.7 Verify it's you with a passkey or security key
+### 6.3.10 Verify it's you with a passkey or security key
 
 `POST /api/admin/v1/me/step-up/passkey/verify`
 

@@ -39,6 +39,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
@@ -52,6 +53,7 @@ import org.springframework.security.oauth2.server.authorization.authentication.O
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2DeviceVerificationAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcUserInfoAuthenticationContext;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
@@ -435,7 +437,10 @@ public class SecurityConfig {
                                 "/api/v1/attack-protection",
                                 "/account/**",
                                 "/login",
-                                "/login.html")
+                                "/login.html",
+                                // SecureOne icon (static/favicon.*): browsers request it on every page.
+                                "/favicon.ico",
+                                "/favicon.svg")
                         .permitAll()
                         .requestMatchers("/api/admin/v1/auth/login", "/api/admin/v1/auth/logout", "/api/admin/v1/auth/mfa/**")
                         .permitAll()
@@ -461,7 +466,9 @@ public class SecurityConfig {
                         "/oauth2/register/**",
                         "/connect/register",
                         "/login"))
-                .httpBasic(Customizer.withDefaults())
+                // Plain 401 without "WWW-Authenticate: Basic": that header makes browsers open their own
+                // username/password dialog for any unknown path (favicon, DevTools probes). Nothing accepts Basic here.
+                .httpBasic(basic -> basic.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(adminCredentialAuthenticationFilter, BasicAuthenticationFilter.class)
                 .addFilterBefore(adminBasicAuthenticationFilter, BasicAuthenticationFilter.class)
                 .addFilterBefore(tenantLoginUsernameFilter, UsernamePasswordAuthenticationFilter.class)

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { FieldRow, Input } from "@/components/ui/Field";
 import { APP_NAME, withBasePath } from "@/lib/config";
+import { BrandMark } from "@/components/BrandMark";
 
 async function post(action: "verify" | "complete", body: unknown) {
   const res = await fetch(withBasePath(`/api/setup/${action}`), {
@@ -63,7 +64,7 @@ export function SetupForm({ codeFromEnvironment }: { codeFromEnvironment: boolea
   return (
     <div className="w-full max-w-md rounded-2xl border border-ui bg-ui-surface p-8 shadow-lg">
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-lg font-bold text-on-brand">S1</div>
+        <BrandMark size={48} className="mx-auto mb-4" />
         <h1 className="text-xl font-semibold text-ui">Set up {APP_NAME}</h1>
         <p className="mt-1 text-sm text-muted">
           {step === "code" ? "Step 1 of 2 · Prove you run this server" : "Step 2 of 2 · Create the first platform operator"}

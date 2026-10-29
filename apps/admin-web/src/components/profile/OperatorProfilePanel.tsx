@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
+import { OperatorAvatar } from "@/components/profile/OperatorAvatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -11,9 +13,35 @@ import { OperatorSecurityPanel } from "@/components/profile/OperatorSecurityPane
 import {
   changeOperatorPassword,
   fetchOperatorProfile,
+  removeOperatorAvatar,
   updateOperatorProfile,
+  uploadOperatorAvatar,
   type OperatorProfile,
 } from "@/lib/api/profile";
+
+const AVATAR_PX = 256;
+
+/**
+ * Centre-crops the image to a square and redraws it at `size` px, so uploads stay small and carry no
+ * metadata (camera, location). WebP where the browser can encode it, PNG otherwise.
+ */
+async function squareImage(file: File, size: number): Promise<Blob> {
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error("That file is not an image this browser can read.");
+  });
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const g = canvas.getContext("2d");
+  if (!g) throw new Error("Could not prepare the picture.");
+  g.imageSmoothingQuality = "high";
+  g.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not prepare the picture."))), "image/webp", 0.9),
+  );
+}
 import { statusTone } from "@/lib/status";
 import type { Status } from "@/lib/types";
 import { LocalTime } from "@/components/ui/LocalTime";
@@ -36,6 +64,9 @@ export function OperatorProfilePanel({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [pictureBusy, setPictureBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useDeferredEffect(() => {
     let cancelled = false;
@@ -110,9 +141,68 @@ export function OperatorProfilePanel({
     }
   }
 
+  async function changePicture(file: File) {
+    setPictureBusy(true);
+    try {
+      const updated = await uploadOperatorAvatar(await squareImage(file, AVATAR_PX));
+      setProfile(updated);
+      router.refresh(); // the header reads the picture from the admin context
+      toast("Profile picture updated", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not update the picture", "error");
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  async function removePicture() {
+    setPictureBusy(true);
+    try {
+      setProfile(await removeOperatorAvatar());
+      router.refresh();
+      toast("Profile picture removed", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not remove the picture", "error");
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  const pictureRow = !readOnly && (
+    <div className="flex items-center gap-4">
+      <OperatorAvatar name={profile.displayName || profile.principal} version={profile.avatarVersion} size={64} />
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" disabled={pictureBusy} onClick={() => fileInput.current?.click()}>
+            {pictureBusy ? "Saving…" : profile.avatarVersion ? "Change picture" : "Upload picture"}
+          </Button>
+          {profile.avatarVersion != null && (
+            <Button variant="ghost" disabled={pictureBusy} onClick={() => void removePicture()}>
+              Remove
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-faint">PNG, JPEG or WebP. Cropped to a square and resized to {AVATAR_PX} px.</p>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          aria-label="Profile picture"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void changePicture(file);
+          }}
+        />
+      </div>
+    </div>
+  );
+
   const accountSection = (
     <>
       <div className={variant === "modal" ? "space-y-4" : "space-y-4 px-5 pb-5"}>
+          {pictureRow}
           <div className="flex flex-wrap gap-2">
             <Badge tone="neutral" className="capitalize">
               {profile.operatorTier.replace("_", " ")}

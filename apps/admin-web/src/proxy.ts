@@ -11,6 +11,8 @@ const PUBLIC_PREFIXES = [
   // Documentation is public: the same docs/ folder is published in the open-source repository.
   "/documentation",
   "/api/documentation",
+  // The SecureOne mark and icons (public/brand), shown on the sign-in page before there is a session.
+  "/brand",
 ];
 
 function withPathname(request: NextRequest, pathname: string, response?: NextResponse) {

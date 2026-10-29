@@ -19,6 +19,7 @@
 |---|---|---|---|
 | `actAsEmail` | string | no |  |
 | `applications` | [ApplicationContextItem](13-data-models.md#applicationcontextitem)[] | no |  |
+| `avatarVersion` | integer (int64) | no |  |
 | `breakGlass` | boolean | no |  |
 | `clientSetupCodeEnabled` | boolean | no |  |
 | `configAsCodeEnabled` | boolean | no |  |
@@ -582,6 +583,7 @@
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| `avatarVersion` | integer (int64) | no |  |
 | `breakGlass` | boolean | no |  |
 | `createdAt` | string (date-time) | no |  |
 | `displayName` | string | no |  |

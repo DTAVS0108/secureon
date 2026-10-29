@@ -5,6 +5,7 @@ import { signWithPasskey } from "@/lib/webauthn";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { APP_NAME, withBasePath } from "@/lib/config";
+import { BrandMark } from "@/components/BrandMark";
 
 const INPUT_CLASS =
   "h-10 w-full rounded-[var(--ui-radius)] border border-ui bg-ui-elevated px-3 text-sm text-ui outline-none focus:border-[var(--ui-primary)] focus:ring-2 focus:ring-brand";
@@ -225,9 +226,7 @@ function Card({ subtitle, children }: { subtitle: string; children: ReactNode })
   return (
     <div className="w-full max-w-md rounded-2xl border border-ui bg-ui-surface p-8 shadow-lg">
       <div className="mb-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-on-brand text-lg font-bold">
-          S1
-        </div>
+        <BrandMark size={48} className="mx-auto mb-4" />
         <h1 className="text-xl font-semibold text-ui">{APP_NAME} Admin</h1>
         <p className="mt-1 text-sm text-muted">{subtitle}</p>
       </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { appNav } from "./nav";
 import { PlatformAdminNav } from "./PlatformAdminNav";
+import { BrandMark } from "./BrandMark";
 import { isTenantSuperAdmin } from "@/lib/operator-access";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { cn } from "@/lib/cn";
@@ -37,9 +38,7 @@ export function AppSidebar({
   return (
     <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-ui bg-ui-surface px-3 py-5">
       <Link href={buildAppPath(applicationId, "users")} className="mb-5 flex items-center gap-2.5 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-on-brand text-sm font-bold shadow-sm">
-          S1
-        </div>
+        <BrandMark />
         <div>
           <p className="text-sm font-semibold leading-tight text-ui">{APP_NAME}</p>
           <p className="text-xs text-muted">{APP_TAGLINE}</p>

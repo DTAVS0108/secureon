@@ -24,10 +24,11 @@ COPY apps/admin-web apps/admin-web
 WORKDIR /src/apps/admin-web
 ENV NEXT_TELEMETRY_DISABLED=1
 # Standalone output mirrors the workspace: shared packages in node_modules/ at its root, the app (server.js)
-# under apps/admin-web/. Keep the whole tree; static files go next to server.js.
+# under apps/admin-web/. Keep the whole tree; static files and public/ (brand mark and icons) go next to server.js.
 RUN pnpm run build \
     && test -f .next/standalone/apps/admin-web/server.js \
     && cp -r .next/static .next/standalone/apps/admin-web/.next/static \
+    && cp -r public .next/standalone/apps/admin-web/public \
     && mv .next/standalone /console
 
 # ---- Auth-server (Spring Boot jar) ------------------------------------------------------------

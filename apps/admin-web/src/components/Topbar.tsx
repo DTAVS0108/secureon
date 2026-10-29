@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { initials } from "@/lib/format";
 import { ApplicationSelector } from "./ApplicationSelector";
 import { OperatorProfileModal } from "./profile/OperatorProfileModal";
+import { OperatorAvatar } from "./profile/OperatorAvatar";
 import { useAdminContext } from "./AdminContextProvider";
 import type { ApplicationContextItem } from "@/lib/api/context";
 import { withBasePath } from "@/lib/config";
@@ -80,9 +80,7 @@ export function Topbar({
           className="flex items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-ui-elevated"
           title="My profile"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-muted text-xs font-semibold text-brand">
-            {initials(displayName)}
-          </div>
+          <OperatorAvatar name={displayName} version={ctx.avatarVersion} />
           <div className="hidden leading-tight sm:block">
             <p className="text-xs font-medium text-[var(--ui-text)]">{displayName}</p>
             <p className="text-[11px] text-faint">{subtitle}</p>

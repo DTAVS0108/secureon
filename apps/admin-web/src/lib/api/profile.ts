@@ -1,5 +1,6 @@
 import { browserApiFetch as apiFetch } from "./browser-client";
 import { ApiError } from "./http";
+import { withBasePath } from "@/lib/config";
 import type { OperatorTier } from "./context";
 
 export type OperatorProfile = {
@@ -19,7 +20,45 @@ export type OperatorProfile = {
   createdAt: string | null;
   /** The configured emergency account: nothing to edit here. */
   breakGlass: boolean;
+  /** When the profile picture last changed (epoch ms); null without one. */
+  avatarVersion?: number | null;
 };
+
+/** URL of the signed-in operator's profile picture; the version makes a new picture a new URL. */
+export function operatorAvatarUrl(version: number): string {
+  return withBasePath(`/api/proxy/api/admin/v1/me/avatar?v=${version}`);
+}
+
+/** Uploads a profile picture (PNG, JPEG or WebP, at most 512 KB). */
+export async function uploadOperatorAvatar(image: Blob): Promise<OperatorProfile> {
+  const form = new FormData();
+  form.append("file", image, "avatar");
+  const res = await fetch(withBasePath("/api/proxy/api/admin/v1/me/avatar"), {
+    method: "PUT",
+    credentials: "same-origin",
+    body: form,
+    cache: "no-store",
+  });
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+  if (!res.ok) {
+    const detail =
+      typeof body === "object" && body !== null && "detail" in body
+        ? String((body as { detail: unknown }).detail)
+        : `Upload failed (${res.status})`;
+    throw new ApiError(detail, res.status, body);
+  }
+  return body as OperatorProfile;
+}
+
+export async function removeOperatorAvatar(): Promise<OperatorProfile> {
+  return apiFetch<OperatorProfile>("/api/admin/v1/me/avatar", { method: "DELETE" });
+}
 
 type AdminContextDto = {
   platformSuperAdmin: boolean;

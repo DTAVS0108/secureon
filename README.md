@@ -1,3 +1,5 @@
+<p align="center"><img src="apps/admin-web/public/brand/secureone-logo.svg" alt="SecureOne" width="300"></p>
+
 # SecureOne
 
 > A centralized, multi-tenant **Identity and Access Management (IAM)** platform: sign-in, single sign-on, MFA, users, roles and permissions for all your applications, from one place.

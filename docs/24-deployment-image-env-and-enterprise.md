@@ -222,6 +222,22 @@ docker compose logs -f secureone
 | `SECUREONE_MANAGEMENT_PORT` | `9001` | Health, info and Prometheus metrics, served **only** on this port (no authentication there). Do not publish it: probes and the metrics scraper reach it inside your network. `/actuator` is not served on 9000 |
 | `JAVA_TOOL_OPTIONS` | `-XX:+UseG1GC -XX:MaxRAMPercentage=75 …` | JVM options. Keep `-XX:+UseG1GC`: the start-up cache below is only used with the collector it was recorded with |
 
+**SecureOne logo.** The mark is a set of fixed files, not a setting: Appearance settings, tenant and application
+branding never change it (application logos only brand that application's hosted sign-in pages). To use another
+mark, replace the files at the same paths, keeping the names:
+
+| File (source tree) | In the image | Used for |
+|--------------------|--------------|----------|
+| `apps/admin-web/public/brand/secureone-mark.svg` | `/opt/secureone/console/apps/admin-web/public/brand/secureone-mark.svg` | Console sidebar, sign-in and setup pages, console tab icon |
+| `apps/admin-web/public/brand/apple-touch-icon.png` (180 px) | same folder | Home-screen icon |
+| `apps/admin-web/src/app/favicon.ico` | built into the console | Tab icon for browsers without SVG icons |
+| `apps/auth-server/src/main/resources/static/favicon.svg`, `favicon.ico` | inside the auth-server jar | Tab icon of the hosted sign-in and account pages |
+| `apps/admin-web/public/brand/secureone-logo.svg` | console `public/brand` | Mark with the name (README, documents) |
+
+Rebuild the image after replacing them. Without rebuilding, the console files can be swapped in a running
+installation with a read-only mount, e.g. `-v /opt/secureone/brand:/opt/secureone/console/apps/admin-web/public/brand:ro`
+(the folder must contain every file listed for `public/brand`).
+
 **Start-up cache.** The image carries a JDK 25 ahead-of-time cache (`/opt/secureone/app.aot`), recorded at build time by starting the application once against a throw-away database. The JVM uses it automatically, so a new container or pod is ready noticeably sooner (see the timings in the CI log or `Started AuthServerApplication in … seconds`). If the JVM version or flags no longer match, it starts normally without it; `-e JDK_JAVA_OPTIONS=-XX:AOTMode=off` turns it off for comparison.
 
 ### A7 — TLS / reverse proxy
