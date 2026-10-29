@@ -176,6 +176,75 @@ body {
 .docs-prose strong {
   @apply font-semibold text-ui;
 }
+
+/* Documentation (Confluence-style spaces): reading rhythm, anchors, panels, code. */
+.docs-prose {
+  @apply text-[15px] leading-7;
+}
+.docs-prose h2 {
+  @apply mt-12 text-[1.4rem] tracking-tight;
+}
+.docs-prose h3 {
+  @apply mt-8;
+}
+.docs-prose a {
+  @apply font-medium text-brand underline decoration-transparent underline-offset-2 transition-colors;
+}
+.docs-prose a:hover {
+  text-decoration-color: currentColor;
+}
+.docs-prose h1 > .docs-anchor,
+.docs-prose h2 > .docs-anchor,
+.docs-prose h3 > .docs-anchor,
+.docs-prose h4 > .docs-anchor {
+  @apply ml-2 inline-flex align-middle text-faint no-underline opacity-0 transition-opacity;
+}
+.docs-prose :is(h1, h2, h3, h4):hover > .docs-anchor,
+.docs-prose .docs-anchor:focus {
+  @apply opacity-100;
+}
+.docs-inline-code {
+  @apply rounded-md border border-ui bg-ui-elevated px-1.5 py-0.5 font-mono text-[0.85em] text-ui;
+}
+.docs-code {
+  background: color-mix(in srgb, var(--ui-text) 4%, var(--ui-surface));
+}
+.docs-code code {
+  @apply font-mono;
+}
+.docs-kbd {
+  @apply rounded border border-ui bg-ui-surface px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted;
+}
+.docs-callout {
+  @apply my-5 rounded-xl border px-4 py-3 not-italic;
+  --callout: var(--ui-primary);
+  border-color: color-mix(in srgb, var(--callout) 35%, transparent);
+  background: color-mix(in srgb, var(--callout) 8%, var(--ui-surface));
+}
+.docs-callout > p {
+  @apply my-1.5;
+}
+.docs-callout-title {
+  @apply mb-1 text-xs font-semibold uppercase tracking-wider;
+  color: var(--callout);
+}
+.docs-callout-tip {
+  --callout: #059669;
+}
+.docs-callout-important {
+  --callout: #7c3aed;
+}
+.docs-callout-warning {
+  --callout: #d97706;
+}
+.docs-callout-caution {
+  --callout: #dc2626;
+}
+.docs-hero {
+  background:
+    radial-gradient(circle at 85% 15%, rgb(255 255 255 / 0.18), transparent 40%),
+    linear-gradient(135deg, #6366f1 0%, #4f46e5 45%, #3730a3 100%);
+}
 .mermaid-diagram svg {
   width: 100%;
   height: auto;

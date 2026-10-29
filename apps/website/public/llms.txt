@@ -1,0 +1,11 @@
+# SecureOne
+
+> Identity and access management in one container: sign-in, single sign-on, MFA, users, roles and permissions for every application, over OAuth 2.1, OpenID Connect, SAML 2.0 and SCIM 2.0.
+
+## Documentation
+- [Get started](/docs/get-started/): what SecureOne is, quickstart, key concepts
+- [Install and operate](/docs/install/): installation, deployment, configuration and upgrades
+- [Integrate applications](/docs/integrate/): integration guide, hosted and native sign-in, roles and access
+- [Admin console guide](/docs/guide/): every console page
+- [API reference](/docs/api/): every endpoint with examples
+- [Architecture and security](/docs/architecture/): architecture, standards, security

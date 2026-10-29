@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { withBasePath } from "@/lib/config";
 import type { NavItem } from "./nav";
 
 function OpenInNewTabIcon({ className }: { className?: string }) {
@@ -54,7 +55,14 @@ export function SidebarNavItem({
 
   if (item.openInNewTab) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className={className} title="Opens in a new tab">
+      // A plain link skips Next.js's base path: console pages need /admin in front, or the auth-server answers.
+      <a
+        href={url.startsWith("/") ? withBasePath(url) : url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        title="Opens in a new tab"
+      >
         {label}
       </a>
     );

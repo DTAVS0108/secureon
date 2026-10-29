@@ -1,0 +1,32 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Site title="About" description="Why SecureOne exists and the principles it is built on.">
+  <PageHead
+    eyebrow="About"
+    title="Sign-in should be solved once"
+    lead="Every product needs sign-in, password resets, MFA, roles and an admin screen. SecureOne exists so teams build those once, well, and spend their time on their product instead."
+  />
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head reveal"><span class="eyebrow">Principles</span><h2 class="h2">What guides the project</h2></div>
+      <div class="grid grid-3">
+        <div class="card reveal"><div class="icon"><Icon name="globe" /></div><h3 class="h3">Open standards</h3><p>OAuth 2.1, OpenID Connect, SAML and SCIM, so you are never locked in and every language already has a library.</p></div>
+        <div class="card reveal"><div class="icon"><Icon name="shield" /></div><h3 class="h3">Safe by default</h3><p>Production mode refuses unsafe settings; isolation, encryption and audit are on without being asked.</p></div>
+        <div class="card reveal"><div class="icon"><Icon name="container" /></div><h3 class="h3">Simple to run</h3><p>One image, every setting at start-up, a schema that upgrades itself and documentation for every screen.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container prose reveal">
+      <h2>Your infrastructure</h2>
+      <p>SecureOne runs where you run it, with your database and your keys. There is no hosted service between your users and your applications.</p>
+      <h2>Open source</h2>
+      <p>The code, the documentation and this website live in one public repository. Read it, run it and contribute.</p>
+      <p><a href="https://github.com/DTAVS0108/secureon" rel="noopener">github.com/DTAVS0108/secureon</a></p>
+    </div>
+  </section>
+</Site>

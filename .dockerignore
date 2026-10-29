@@ -1,4 +1,5 @@
-# Allow-list for `docker build -f deploy/Dockerfile .` (the single SecureOne image).
+# Allow-list for `docker build -f deploy/Dockerfile .` (the single SecureOne image) and
+# `docker build -f deploy/website.Dockerfile .` (the public website).
 # Only the sources the image needs are sent to the build: no local .env files, keys, logs or node_modules.
 *
 
@@ -22,3 +23,11 @@ apps/admin-web/.env*
 apps/admin-web/*.tsbuildinfo
 
 !docs/
+
+# Public website (deploy/website.Dockerfile) and the nginx config it copies
+!apps/website/
+apps/website/node_modules/
+apps/website/dist/
+apps/website/.astro/
+apps/website/src/content/docs/
+!deploy/website-nginx.conf

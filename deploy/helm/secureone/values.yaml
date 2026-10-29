@@ -29,7 +29,7 @@ resources:
     memory: 1536Mi
 
 # Non-secret settings. Secrets (database password, encryption key, signing keys, OTP pepper, ...)
-# come from existingSecret; see docs/24 "Generate secrets".
+# come from existingSecret; see docs/install/deployment.md "Generate secrets".
 env:
   SPRING_PROFILES_ACTIVE: prod
   SECUREONE_ENV: production
@@ -46,7 +46,7 @@ env:
 # Kubernetes Secret with the SECUREONE_* secrets, loaded with envFrom.
 existingSecret: secureone
 
-# Database upgrades (docs/26). Enabled: a Job upgrades the database once before every install and upgrade
+# Database upgrades (docs/install/configuration-and-upgrades.md). Enabled: a Job upgrades the database once before every install and upgrade
 # (helm hook), and the pods refuse to start if it did not run. Disabled: each pod upgrades at start.
 migrationJob:
   enabled: true
@@ -59,7 +59,7 @@ migrationJob:
     limits:
       memory: 1Gi
 
-# Configuration as code (docs/26): tenant configuration files applied at every start-up. Name a ConfigMap
+# Configuration as code (docs/install/configuration-and-upgrades.md): tenant configuration files applied at every start-up. Name a ConfigMap
 # whose keys are the files (for example tenant-a.yaml); it is mounted at /etc/secureone/config.
 configImport:
   configMap: ""

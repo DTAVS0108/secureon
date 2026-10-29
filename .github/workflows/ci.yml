@@ -61,7 +61,7 @@ jobs:
         working-directory: apps/auth-server
         run: ./gradlew test --no-daemon
 
-      # docs/26: upgrade an empty database, run again (no change), and refuse a database from a newer release.
+      # docs/install/configuration-and-upgrades.md: upgrade an empty database, run again (no change), and refuse a database from a newer release.
       - name: Database upgrade check
         working-directory: apps/auth-server
         env:
@@ -100,6 +100,33 @@ jobs:
       - name: Build
         # No URLs or environment at build time: the console reads them when it starts.
         run: pnpm --filter admin-web build
+
+  docs:
+    name: docs (front matter, links, audience)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every page
+        run: python3 scripts/docs/docs_tool.py check
+
+  website:
+    name: website (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies (pnpm workspace, root lockfile)
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter website
+
+      - name: Build (public docs from docs/, then the site)
+        run: pnpm --filter website build
 
   image:
     name: image (docker build)

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Creates ./secrets/ with every secret deploy/docker-compose.example.yml needs (docs/24).
+# Creates ./secrets/ with every secret deploy/docker-compose.example.yml needs (docs/install/deployment.md).
 # Run once, next to the Compose file:   sh generate-secrets.sh owner@example.com
 # Existing files are kept, so running it again never replaces a key in use.
 # Needs openssl (Linux, macOS, Git Bash or WSL on Windows).

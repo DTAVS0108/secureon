@@ -6,7 +6,7 @@
 
 SecureOne ships as **one Docker image**: the authorization server (Spring Boot + Spring Authorization Server) with the admin console built in at `/admin`. It needs PostgreSQL and Redis. Apps connect with standard OAuth 2.1 / OpenID Connect.
 
-- Image: [`dmtavs0108/secureone`](https://hub.docker.com/r/dmtavs0108/secureone) (current: `0.1.0`)
+- Image: [`dmtavs0108/secureone`](https://hub.docker.com/r/dmtavs0108/secureone) (current: `0.1.3`)
 - Everything is configured when the container is created (environment variables or secret files), including the first admin.
 
 ---
@@ -101,14 +101,14 @@ kubectl create secret generic secureone \
   --from-literal=SECUREONE_BOOTSTRAP_ADMIN_PASSWORD='…'
 
 helm upgrade --install secureone deploy/helm/secureone \
-  --set image.repository=dmtavs0108/secureone --set image.tag=0.1.0 \
+  --set image.repository=dmtavs0108/secureone --set image.tag=0.1.3 \
   --set env.SECUREONE_ISSUER_URL=https://id.example.com --set env.SECUREONE_PUBLIC_BASE_URL=https://id.example.com \
   --set env.SECUREONE_DB_URL='jdbc:postgresql://postgres:5432/secureone?currentSchema=platform' \
   --set env.SECUREONE_REDIS_URL=redis://redis:6379 \
   --set ingress.enabled=true --set ingress.host=id.example.com
 ```
 
-A pre-install / pre-upgrade job upgrades the database before the pods start. PostgreSQL and Redis are not part of the chart (use managed services or their own charts). Details: [docs/24](docs/24-deployment-image-env-and-enterprise.md).
+A pre-install / pre-upgrade job upgrades the database before the pods start. PostgreSQL and Redis are not part of the chart (use managed services or their own charts). Details: [Deployment](docs/install/deployment.md).
 
 ### D. From source (development)
 
@@ -139,9 +139,9 @@ Every setting is read when the container starts: an environment variable, or a f
 | `SECUREONE_CONFIG_IMPORT` | optional | Folder of tenant configuration files applied at every start |
 | `SECUREONE_ENV` | optional | `production` (image default) or `development` |
 
-All settings with defaults: [docs/24 "All settings"](docs/24-deployment-image-env-and-enterprise.md#all-settings). Ports: publish **9000**; keep **9001** (health, metrics) internal.
+All settings with defaults: [Deployment › All settings](docs/install/deployment.md#all-settings). Ports: publish **9000**; keep **9001** (health, metrics) internal.
 
-**Upgrade**: back up the database, change the image tag, start it; the database upgrades itself. **Backups**: database dumps plus the secrets (above all the encryption key). See [docs/26](docs/26-configuration-as-code-and-upgrades.md) and [docs/24 "Backups"](docs/24-deployment-image-env-and-enterprise.md#backups).
+**Upgrade**: back up the database, change the image tag, start it; the database upgrades itself. **Backups**: database dumps plus the secrets (above all the encryption key). See [Configuration as code and upgrades](docs/install/configuration-and-upgrades.md) and [Deployment › Backups](docs/install/deployment.md#backups).
 
 ---
 
@@ -150,30 +150,25 @@ All settings with defaults: [docs/24 "All settings"](docs/24-deployment-image-en
 1. In the console: **Connect an app**, pick the kind of app (web, single-page, mobile, backend, TV/CLI) and framework.
 2. Copy the generated setup code; try **Test sign-in** before writing any code.
 
-Guide: [docs/23 Application integration](docs/23-application-integration-guide.md).
+Guide: [Integration guide](docs/integrate/integration-guide.md).
 
 ---
 
 ## Documentation
 
-**Start here:** [docs/README.md](docs/README.md). The same docs are in the console at `/admin/documentation`.
+The same documentation is in the console at `/admin/documentation`, organised in spaces:
 
-| # | Document | What's inside |
-|---|---|---|
-| 01 | [Overview](docs/01-overview.md) | Vision, goals, glossary |
-| 03 | [Architecture](docs/03-architecture.md) | Components, flows, deployment |
-| 05 | [Auth standards](docs/05-auth-standards.md) | OAuth 2.1 / OIDC, tokens, MFA |
-| 07 | [Security](docs/07-security.md) | Security practices |
-| 15 | [Applications & OAuth clients](docs/15-applications-and-oauth-clients.md) | Applications vs clients, per-app schemas |
-| 22 | [Operator getting started](docs/22-operator-getting-started.md) | Day-to-day operation |
-| 23 | [Application integration](docs/23-application-integration-guide.md) | Connecting apps, errors explained |
-| **24** | **[Deployment](docs/24-deployment-image-env-and-enterprise.md)** | **Image, all settings, backups, Redis, Helm** |
-| 25 | [Roles and access](docs/25-roles-and-access.md) | Who sees and can do what |
-| **26** | **[Configuration as code and upgrades](docs/26-configuration-as-code-and-upgrades.md)** | **Tenant files, upgrades, rollback** |
-| — | [Build, update and run the container](deploy/README.md) | Build the image, update or roll back a container, start a new installation |
-| — | [User guide](docs/user-guide/README.md) | Every console page, button and field |
-| — | [Runbooks](docs/runbooks/) | Deploy, rollback, incidents, key rotation |
-| — | [Decision records](docs/decisions/README.md) | ADRs |
+| Space | What's inside |
+|---|---|
+| [Get started](docs/get-started/index.md) | What SecureOne is, a five-minute quickstart, key concepts |
+| [Install and operate](docs/install/index.md) | Installation, [deployment](docs/install/deployment.md) (image, all settings, backups, Helm), configuration and upgrades, runbooks |
+| [Integrate applications](docs/integrate/index.md) | [Integration guide](docs/integrate/integration-guide.md), hosted or native sign-in, OAuth clients, roles and access |
+| [Admin console guide](docs/guide/index.md) | Every console page, button and field |
+| [API reference](docs/api/index.md) | Every endpoint with curl, Swagger UI and OpenAPI |
+| [Architecture and security](docs/architecture/index.md) | Architecture, auth standards, security, diagrams |
+| [Developer](docs/developer/index.md) | Data model, database, migrations, decision records |
+
+Building, updating and running the container: [deploy/README.md](deploy/README.md).
 
 ---
 
@@ -197,4 +192,4 @@ secureone/
 
 ## Stack
 
-Java 25 · Spring Boot 4 · Spring Authorization Server · PostgreSQL 16 (Flyway, row-level security) · Redis 7 · Next.js 16 · TypeScript · Tailwind. Details: [docs/02](docs/02-tech-stack.md).
+Java 25 · Spring Boot 4 · Spring Authorization Server · PostgreSQL 16 (Flyway, row-level security) · Redis 7 · Next.js 16 · TypeScript · Tailwind. Details: [Tech stack](docs/architecture/tech-stack.md).

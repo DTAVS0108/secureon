@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Configuration as code (docs/26). Platform operators only (AdminAccessInterceptor). */
+/** Configuration as code (docs/install/configuration-and-upgrades.md). Platform operators only (AdminAccessInterceptor). */
 @Tag(name = "Admin — configuration as code", description = "Export a tenant to a file; preview and apply a file")
 @SecurityRequirement(name = "adminHttpBasic")
 @RestController

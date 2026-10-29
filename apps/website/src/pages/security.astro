@@ -1,0 +1,77 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+
+const layers = [
+  { icon: "database", title: "Tenant isolation in the database", text: "Every request runs as a database role without bypass rights, and row-level security limits it to its tenant's rows. Application data can live in a schema of its own." },
+  { icon: "lock", title: "Encryption of stored secrets", text: "SMTP and SMS credentials, identity-provider secrets and generated private keys are encrypted with AES-256-GCM. The key lives outside the database." },
+  { icon: "key", title: "Tokens that resist theft", text: "Authorization codes require PKCE, refresh tokens rotate, and reusing an old one revokes every token issued from it. Signing keys rotate with overlap." },
+  { icon: "users", title: "Administrators held to account", text: "Console administrators sign in in two steps in production, sensitive actions ask them to verify again, and every change lands in the audit log." },
+  { icon: "shield", title: "Protection from automated attacks", text: "Rate limits on sign-in and token endpoints, account lockout, optional CAPTCHA and IP rules, and a leaked-password check." },
+  { icon: "audit", title: "An audit log that cannot be rewritten", text: "Audit entries are append-only at the database level and kept for review; stream them to your log platform as they happen." },
+];
+---
+
+<Site title="Security" description="How SecureOne protects your users and data: tenant isolation, encryption, token safety, accountable administrators and an append-only audit log.">
+  <PageHead
+    eyebrow="Security"
+    title="Security that starts with the defaults"
+    lead="An identity platform holds the keys to every application. SecureOne is built so the safe choice is the one that happens without anyone remembering to make it."
+  />
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="grid grid-3">
+        {layers.map((l) => (
+          <div class="card hover reveal">
+            <div class="icon"><Icon name={l.icon} /></div>
+            <h3 class="h3">{l.title}</h3>
+            <p>{l.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container split">
+      <div class="reveal">
+        <span class="eyebrow">Production mode</span>
+        <h2 class="h2">It will not start unsafely</h2>
+        <p class="lead" style="margin-top:16px">The image runs in production mode. If something that keeps you safe is missing, it stops at start-up and the log names the setting.</p>
+        <ul class="ticks">
+          <li>https addresses for the issuer and public URL</li>
+          <li>An encryption key for stored secrets</li>
+          <li>A token-signing key shared by every instance</li>
+          <li>A secret pepper for one-time codes</li>
+          <li>No development shortcuts such as the emergency test account</li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <div class="code">
+          <div class="code-tabs"><button aria-selected="true">secureone.env</button></div>
+          <pre><span class="c"># Generate once; keep apart from database backups</span>
+SECUREONE_ENCRYPTION_KEY=base64:<span class="s">…32 random bytes…</span>
+SECUREONE_OTP_PEPPER=<span class="s">…random hex…</span>
+SECUREONE_JWK_PRIVATE_KEY_PEM=<span class="s">…RSA key…</span>
+SECUREONE_ISSUER_URL=<span class="s">https://id.example.com</span>
+
+<span class="c"># Or as files in /run/secrets (Docker and Kubernetes secrets)</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-soft">
+    <div class="container center">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Responsible disclosure</span>
+        <h2 class="h2">Found a vulnerability?</h2>
+        <p class="lead">Please report it privately through the project's security advisories instead of a public issue, so it can be fixed before details are shared.</p>
+      </div>
+      <a class="btn btn-primary" href="https://github.com/DTAVS0108/secureon/security/advisories/new" rel="noopener">Report privately</a>
+      <a class="btn btn-ghost" style="margin-left:10px" href="/docs/architecture/security/">Security documentation</a>
+    </div>
+  </section>
+</Site>

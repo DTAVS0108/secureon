@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 /**
- * Configuration as code (docs/26): exports a tenant to a {@link TenantConfig}, and compares a file with
+ * Configuration as code (docs/install/configuration-and-upgrades.md): exports a tenant to a {@link TenantConfig}, and compares a file with
  * the database (the dry run) and applies the difference. Every change goes through the same admin
  * services as the console, so validation, audit records and schema provisioning are the same.
  *

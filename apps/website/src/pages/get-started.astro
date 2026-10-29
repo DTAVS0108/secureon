@@ -1,0 +1,73 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Site title="Get started" description="Try SecureOne in five minutes, install it for real, or connect your first application.">
+  <PageHead eyebrow="Get started" title="Pick your path" lead="Whether you are evaluating, installing for your team or connecting an application, start here." />
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="grid grid-3">
+        <a class="card reveal" href="/docs/get-started/quickstart/">
+          <div class="icon"><Icon name="bolt" /></div>
+          <h3 class="h3">Try it in five minutes</h3>
+          <p>One command starts SecureOne with its database, cache and a mail catcher on your machine.</p>
+          <span class="more">Quickstart <Icon name="arrow" /></span>
+        </a>
+        <a class="card reveal" href="/docs/install/deployment/">
+          <div class="icon"><Icon name="container" /></div>
+          <h3 class="h3">Install it for real</h3>
+          <p>The image with your PostgreSQL, Redis, secrets and domain, on a server or Kubernetes.</p>
+          <span class="more">Deployment guide <Icon name="arrow" /></span>
+        </a>
+        <a class="card reveal" href="/docs/integrate/integration-guide/">
+          <div class="icon"><Icon name="code" /></div>
+          <h3 class="h3">Connect an application</h3>
+          <p>Register the app, choose hosted or native sign-in, and read roles from the token.</p>
+          <span class="more">Integration guide <Icon name="arrow" /></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container split">
+      <div class="reveal">
+        <span class="eyebrow">Quickstart</span>
+        <h2 class="h2">From zero to a real sign-in</h2>
+        <div class="grid steps" style="margin-top:32px;gap:26px">
+          <div class="step"><h3 class="h3">Start everything</h3><p class="muted" style="margin:8px 0 0">From a copy of the repository, run the quickstart Compose file.</p></div>
+          <div class="step"><h3 class="h3">Sign in to the console</h3><p class="muted" style="margin:8px 0 0">Open <code>/admin</code> and sign in as the platform operator; choose your own password.</p></div>
+          <div class="step"><h3 class="h3">Connect an app</h3><p class="muted" style="margin:8px 0 0">Use the wizard, then <b>Test sign-in</b> to see the whole flow.</p></div>
+        </div>
+      </div>
+      <div class="code reveal">
+        <div class="code-tabs"><button aria-selected="true">Terminal</button></div>
+        <pre><span class="c"># From the repository root</span>
+docker compose -f deploy/docker-compose.quickstart.yml up --build
+
+<span class="c"># When the log says "Started AuthServerApplication":</span>
+<span class="c">#   console   http://localhost:9000/admin</span>
+<span class="c">#   email     admin@example.com</span>
+<span class="c">#   mail      http://localhost:8025</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">Requirements</span>
+        <h2 class="h2">What you need</h2>
+      </div>
+      <div class="grid grid-4">
+        <div class="card reveal"><h3 class="h3">PostgreSQL 16+</h3><p>The system of record. The schema creates and upgrades itself.</p></div>
+        <div class="card reveal"><h3 class="h3">Redis 7+</h3><p>Sessions, codes and rate limits, shared between instances.</p></div>
+        <div class="card reveal"><h3 class="h3">1 GB memory</h3><p>Per SecureOne container; it starts in seconds.</p></div>
+        <div class="card reveal"><h3 class="h3">HTTPS</h3><p>For production: a TLS proxy or load balancer in front of port 9000.</p></div>
+      </div>
+    </div>
+  </section>
+</Site>

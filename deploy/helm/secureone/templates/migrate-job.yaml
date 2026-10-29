@@ -1,5 +1,5 @@
 {{- if .Values.migrationJob.enabled }}
-# Upgrades the database once, before the new pods start (docs/26). The pods then only check that the
+# Upgrades the database once, before the new pods start (docs/install/configuration-and-upgrades.md). The pods then only check that the
 # database matches their release (SECUREONE_DB_MIGRATE=validate). A failed job stops the upgrade and
 # the old pods keep running.
 apiVersion: batch/v1

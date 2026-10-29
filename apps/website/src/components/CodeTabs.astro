@@ -1,0 +1,45 @@
+---
+// Small tabbed code sample: run, discover, sign in. Generic: any OpenID Connect library works.
+---
+
+<div class="code" data-tabs>
+  <div class="code-tabs" role="tablist" aria-label="Examples">
+    <button role="tab" aria-selected="true" data-tab="run">Run</button>
+    <button role="tab" aria-selected="false" data-tab="discover">Discover</button>
+    <button role="tab" aria-selected="false" data-tab="token">Token</button>
+  </div>
+  <pre data-panel="run"><span class="c"># Start SecureOne with your database and cache</span>
+docker run -d --name secureone -p 9000:9000 \
+  --env-file secureone.env \
+  dmtavs0108/secureone:0.1.3
+
+<span class="c"># Then open /admin and connect your first app</span></pre>
+  <pre data-panel="discover" hidden><span class="c"># Every OpenID Connect library starts here</span>
+curl $SECUREONE_URL/.well-known/openid-configuration
+
+{"{"}
+  <span class="k">"issuer"</span>: <span class="s">"https://id.example.com"</span>,
+  <span class="k">"authorization_endpoint"</span>: <span class="s">".../oauth2/authorize"</span>,
+  <span class="k">"token_endpoint"</span>: <span class="s">".../oauth2/token"</span>,
+  <span class="k">"code_challenge_methods_supported"</span>: [<span class="s">"S256"</span>]
+{"}"}</pre>
+  <pre data-panel="token" hidden><span class="c"># Exchange the code from the redirect (PKCE)</span>
+curl -X POST $SECUREONE_URL/oauth2/token \
+  -d grant_type=authorization_code \
+  -d client_id=exampleapp-web \
+  -d code=$CODE \
+  -d code_verifier=$VERIFIER \
+  -d redirect_uri=https://app.example.com/callback</pre>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-tabs]").forEach((root) => {
+    const tabs = root.querySelectorAll<HTMLButtonElement>("[data-tab]");
+    tabs.forEach((tab) =>
+      tab.addEventListener("click", () => {
+        tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+        root.querySelectorAll<HTMLElement>("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== tab.dataset.tab));
+      }),
+    );
+  });
+</script>

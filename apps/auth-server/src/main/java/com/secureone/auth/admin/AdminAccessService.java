@@ -164,7 +164,7 @@ public class AdminAccessService {
         }
     }
 
-    /** Platform super admins, the tenant super admin, and tenant admins of this application (see docs/25). */
+    /** Platform super admins, the tenant super admin, and tenant admins of this application (see docs/integrate/roles-and-access.md). */
     public boolean canManageClients(Authentication authentication, String actAsEmail, UUID applicationId) {
         if (applicationId == null) {
             return canAccessPlatformSettings(authentication, actAsEmail);

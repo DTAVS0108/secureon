@@ -14,7 +14,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   strategy:
     # New pods must be ready before old ones stop. Old and new pods overlap briefly, so a release's
-    # migrations only add (columns, tables); removals wait for a later release (docs/26).
+    # migrations only add (columns, tables); removals wait for a later release (docs/install/configuration-and-upgrades.md).
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0

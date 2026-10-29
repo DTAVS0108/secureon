@@ -1,0 +1,19 @@
+---
+import Default from "@astrojs/starlight/components/Head.astro";
+---
+
+<Default />
+<meta property="og:image" content={new URL("/og.png", Astro.site).href} />
+
+<script>
+  // Mermaid diagrams (sync-docs turns ```mermaid blocks into <pre class="mermaid">); loaded only when a page has one.
+  async function draw() {
+    const blocks = document.querySelectorAll("pre.mermaid:not([data-processed])");
+    if (blocks.length === 0) return;
+    const { default: mermaid } = await import("mermaid");
+    const dark = document.documentElement.dataset.theme === "dark";
+    mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral", securityLevel: "strict" });
+    await mermaid.run({ nodes: [...blocks] as HTMLElement[] });
+  }
+  draw();
+</script>

@@ -5,7 +5,7 @@ Next.js admin console and platform operator UI for SecureOne.
 ## Prerequisites
 
 - Node.js 20+
-- **auth-server** running on `http://localhost:9000` (see [Installation](../../docs/09-installation.md))
+- **auth-server** running on `http://localhost:9000` (see [Installation](../../docs/install/installation.md))
 - Platform super-admin credentials (dev default: `admin` / `admin`)
 
 ## Setup
@@ -52,7 +52,7 @@ Standalone in-app documentation browser : one **Documentation** section with arc
 
 Source markdown is read from the monorepo `docs/` folder at runtime (`../../docs` from admin-web cwd).
 
-See [Environment & operations](../../docs/16-environment-setup-and-operations.md) for `start-all.ps1`, migrations, and schedulers.
+See [Environment & operations](../../docs/install/environment-and-operations.md) for `start-all.ps1`, migrations, and schedulers.
 
 Implementation: `src/lib/documentation/`, `src/app/documentation/`, `src/components/documentation/`.
 
@@ -60,7 +60,7 @@ Implementation: `src/lib/documentation/`, `src/app/documentation/`, `src/compone
 
 On **/applications**, use **+ Register application & OAuth client** for a new product and its first OAuth credentials in one form. Use **+ Add OAuth client** to attach another client to an existing application.
 
-See [Applications & OAuth clients](../../docs/15-applications-and-oauth-clients.md).
+See [Applications & OAuth clients](../../docs/integrate/applications-and-oauth-clients.md).
 
 ## Environment
 

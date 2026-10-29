@@ -1,0 +1,172 @@
+---
+import Site from "../layouts/Site.astro";
+import Icon from "../components/Icon.astro";
+import CodeTabs from "../components/CodeTabs.astro";
+
+const features = [
+  { icon: "browser", title: "Hosted or your own sign-in", text: "Send users to polished hosted pages, or draw your own screens on top of the sign-in APIs." },
+  { icon: "passkey", title: "Passkeys and MFA", text: "Passkeys, authenticator apps, email and SMS codes, magic links and recovery codes, with per-app policies." },
+  { icon: "sso", title: "Single sign-on", text: "One sign-in across your apps, plus company sign-in through SAML 2.0 and OpenID Connect providers." },
+  { icon: "roles", title: "Roles and permissions", text: "Roles, permissions and groups per application, delivered in the token your app already reads." },
+  { icon: "tenants", title: "Multi-tenant by design", text: "Each organisation isolated down to the database, with its own domain, settings and administrators." },
+  { icon: "console", title: "A console for every admin", text: "Platform, tenant and application admins each see exactly what they manage, nothing more." },
+  { icon: "audit", title: "Audit and sessions", text: "An append-only audit log, live sessions you can end, and streaming to your log platform." },
+  { icon: "sync", title: "SCIM and webhooks", text: "Provision users from a company directory and react to changes with signed webhooks." },
+  { icon: "file", title: "Configuration as code", text: "Keep tenants, applications and roles in files; preview and apply them, or load them at start-up." },
+];
+const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passkeys (WebAuthn)", "PKCE", "Device flow", "Dynamic client registration"];
+---
+
+<Site title="SecureOne" description="Sign-in, single sign-on, MFA, users, roles and permissions for every application you build. One container, open standards.">
+  <section class="hero">
+    <div class="container">
+      <div>
+        <span class="pill"><b>0.1</b> Fresh start: new docs, profile pictures and more</span>
+        <h1 class="h1">Identity and access for <span class="gradient-text">every app</span> you build</h1>
+        <p class="lead" style="margin-top:22px">
+          SecureOne gives your applications sign-in, single sign-on, multi-factor authentication, users, roles and
+          permissions, from one place. It runs as a single container and speaks the standards your apps already use.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/get-started/">Get started <Icon name="arrow" /></a>
+          <a class="btn btn-ghost" href="/docs/">Read the docs</a>
+        </div>
+        <div class="hero-note">
+          <span><span class="check"><Icon name="check" /></span>One container</span>
+          <span><span class="check"><Icon name="check" /></span>PostgreSQL and Redis</span>
+          <span><span class="check"><Icon name="check" /></span>Open standards</span>
+        </div>
+      </div>
+
+      <div class="mock" aria-hidden="true">
+        <div class="mock-window">
+          <div class="mock-bar"><i></i><i></i><i></i><span>id.example.com/login</span></div>
+          <div class="signin">
+            <div class="signin-head">
+              <img src="/favicon.svg" alt="" />
+              <div>
+                <div class="h3">Sign in to Example App</div>
+                <div class="muted" style="font-size:14px">Secured by SecureOne</div>
+              </div>
+            </div>
+            <div class="field">Email address</div>
+            <div class="field">Password</div>
+            <span class="btn btn-primary">Continue</span>
+            <div class="divider">or</div>
+            <span class="btn btn-ghost" style="width:100%"><Icon name="passkey" /> Sign in with a passkey</span>
+          </div>
+        </div>
+        <div class="float-badge"><span class="dot"><Icon name="check" /></span>Two-step verified</div>
+        <div class="token-card">
+          <div class="t">// ID token claims</div>
+          {"{"}<br />
+          &nbsp;&nbsp;<span class="k">"sub"</span>: <span class="s">"8f2c…e1"</span>,<br />
+          &nbsp;&nbsp;<span class="k">"email"</span>: <span class="s">"user@example.com"</span>,<br />
+          &nbsp;&nbsp;<span class="k">"roles"</span>: [<span class="s">"Editor"</span>],<br />
+          &nbsp;&nbsp;<span class="k">"permissions"</span>: [<span class="s">"report:read"</span>]<br />
+          {"}"}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:8px 0 72px">
+    <div class="container center">
+      <p class="muted" style="font-size:14px;margin:0 0 16px">Built on open standards</p>
+      <div class="standards">{standards.map((s) => <span>{s}</span>)}</div>
+    </div>
+  </section>
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Features</span>
+        <h2 class="h2">Everything sign-in needs, already built</h2>
+        <p class="lead">Stop rebuilding login, password resets and admin screens for every product. Connect each app once and manage people in one place.</p>
+      </div>
+      <div class="grid grid-3">
+        {features.map((f) => (
+          <div class="card hover reveal">
+            <div class="icon"><Icon name={f.icon} /></div>
+            <h3 class="h3">{f.title}</h3>
+            <p>{f.text}</p>
+          </div>
+        ))}
+      </div>
+      <div class="center" style="margin-top:40px">
+        <a class="btn btn-ghost" href="/features/">See all features <Icon name="arrow" /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container split">
+      <div class="reveal">
+        <span class="eyebrow">How it works</span>
+        <h2 class="h2">Running in minutes, connected in an afternoon</h2>
+        <div class="grid steps" style="margin-top:36px;gap:28px">
+          <div class="step"><h3 class="h3">Run one container</h3><p class="muted" style="margin:8px 0 0">Point it at PostgreSQL and Redis. The database schema creates and upgrades itself.</p></div>
+          <div class="step"><h3 class="h3">Connect your app</h3><p class="muted" style="margin:8px 0 0">The console's <b>Connect an app</b> wizard gives you the client ID and settings, and tests sign-in for you.</p></div>
+          <div class="step"><h3 class="h3">Sign users in</h3><p class="muted" style="margin:8px 0 0">Use any OpenID Connect library. Your app receives standard tokens with roles and permissions.</p></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <CodeTabs />
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-soft">
+    <div class="container split">
+      <div class="reveal">
+        <div class="card" style="padding:36px">
+          <div class="grid grid-2" style="gap:24px">
+            <div><div class="icon"><Icon name="database" /></div><h3 class="h3">Row-level isolation</h3><p>PostgreSQL row-level security keeps every tenant's rows apart, on every query.</p></div>
+            <div><div class="icon"><Icon name="lock" /></div><h3 class="h3">Encrypted secrets</h3><p>Stored secrets and private keys are encrypted with a key kept outside the database.</p></div>
+            <div><div class="icon"><Icon name="key" /></div><h3 class="h3">Token safety</h3><p>Rotating refresh tokens with reuse detection; a replayed token revokes its whole family.</p></div>
+            <div><div class="icon"><Icon name="eye" /></div><h3 class="h3">Append-only audit</h3><p>Who did what, when, kept for review and never edited after the fact.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal">
+        <span class="eyebrow">Security</span>
+        <h2 class="h2">Secure defaults, not settings to remember</h2>
+        <ul class="ticks">
+          <li>Production mode refuses to start without https addresses, an encryption key and a signing key.</li>
+          <li>In production, console administrators sign in in two steps, and sensitive actions ask them to verify again.</li>
+          <li>Rate limits, CAPTCHA and IP rules protect sign-in from automated attacks.</li>
+          <li>High-impact changes, such as deleting an OAuth client, wait for a second administrator.</li>
+        </ul>
+        <a class="btn btn-ghost" style="margin-top:28px" href="/security/">How SecureOne protects you <Icon name="arrow" /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Deploy anywhere</span>
+        <h2 class="h2">Your infrastructure, your data</h2>
+        <p class="lead">SecureOne runs where you run: a laptop, a single server or a Kubernetes cluster. Every setting is read when the container starts.</p>
+      </div>
+      <div class="grid grid-3">
+        <a class="card reveal" href="/docs/get-started/quickstart/"><div class="icon"><Icon name="bolt" /></div><h3 class="h3">Quickstart</h3><p>One command starts SecureOne with its database, cache and a mail catcher for trying it out.</p><span class="more">Five-minute quickstart <Icon name="arrow" /></span></a>
+        <a class="card reveal" href="/docs/install/deployment/"><div class="icon"><Icon name="container" /></div><h3 class="h3">Docker</h3><p>The image, an environment file and your PostgreSQL and Redis. Secrets can come from files.</p><span class="more">Deployment guide <Icon name="arrow" /></span></a>
+        <a class="card reveal" href="/docs/install/deployment/#b5--helm-install"><div class="icon"><Icon name="cloud" /></div><h3 class="h3">Kubernetes</h3><p>A Helm chart with replicas, an upgrade job before rollout and health checks on a private port.</p><span class="more">Helm install <Icon name="arrow" /></span></a>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:24px 0 112px">
+    <div class="container">
+      <div class="cta reveal">
+        <h2 class="h2" style="margin:0;color:#fff">Give every app a secure front door</h2>
+        <p class="lead" style="margin-top:14px">Start SecureOne locally, connect your first application and see a real sign-in, all in a few minutes.</p>
+        <div class="hero-actions">
+          <a class="btn btn-ghost" style="background:#fff;color:#312e81;border-color:#fff" href="/get-started/">Get started</a>
+          <a class="btn btn-ghost" href="/docs/integrate/integration-guide/">Integration guide</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Site>

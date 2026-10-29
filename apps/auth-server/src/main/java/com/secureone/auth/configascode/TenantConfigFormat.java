@@ -74,7 +74,7 @@ public final class TenantConfigFormat {
 
     public static String yaml(TenantConfig config) {
         try {
-            return "# SecureOne tenant configuration (docs/26). Secrets and users are not included.\n"
+            return "# SecureOne tenant configuration (docs/install/configuration-and-upgrades.md). Secrets and users are not included.\n"
                     + YAML.writeValueAsString(config);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException(ex);
@@ -83,7 +83,7 @@ public final class TenantConfigFormat {
 
     public static String yaml(PlatformConfig config) {
         try {
-            return "# SecureOne platform configuration (docs/26). Credentials come from environment variables.\n"
+            return "# SecureOne platform configuration (docs/install/configuration-and-upgrades.md). Credentials come from environment variables.\n"
                     + YAML.writeValueAsString(config);
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException(ex);

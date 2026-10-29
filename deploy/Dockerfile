@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # SecureOne: one image with the auth-server and the admin console.
 #
-#   docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.0 .        (from the repo root)
+#   docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.3 .        (from the repo root)
 #
 # One process to run and one port (9000): the auth-server serves OAuth/OIDC, SAML, SCIM, the hosted
 # sign-in pages and the APIs, and the admin console at /admin (it starts the console itself on
 # 127.0.0.1 and forwards to it). All settings are environment variables read at start-up, so the
-# same image serves every installation; see docs/24-deployment-image-env-and-enterprise.md.
+# same image serves every installation; see docs/install/deployment.md.
 #
 # Build network: the auth-server build downloads OpenSAML from the Shibboleth Maven repository
 # (https://build.shibboleth.net/maven/releases/) as well as Maven Central.
@@ -18,6 +18,7 @@ WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/admin-web/package.json apps/admin-web/
+COPY apps/website/package.json apps/website/
 COPY packages/secureone-client/package.json packages/secureone-client/
 RUN pnpm install --frozen-lockfile --filter admin-web
 COPY apps/admin-web apps/admin-web

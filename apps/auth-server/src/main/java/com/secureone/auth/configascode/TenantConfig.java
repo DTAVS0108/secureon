@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A tenant's configuration as a file (docs/26): the tenant, its applications, their OAuth clients,
+ * A tenant's configuration as a file (docs/install/configuration-and-upgrades.md): the tenant, its applications, their OAuth clients,
  * permissions, roles, groups and settings. Users, group members, secrets and provider credentials are
  * never part of it. A field left out (null) means "leave as it is"; a list given means "exactly this".
  */

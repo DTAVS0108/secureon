@@ -1,0 +1,31 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+
+const faqs = [
+  ["What is SecureOne?", "An identity and access management platform: it signs users in to your applications, handles single sign-on and multi-factor authentication, and manages users, roles and permissions, for many organisations from one installation."],
+  ["What do I need to run it?", "Docker (or Kubernetes), PostgreSQL 16 or later and Redis 7 or later. SecureOne is one container; the admin console is built in at /admin."],
+  ["Does my application need a special SDK?", "No. Any OAuth 2.1 or OpenID Connect library works. SAML 2.0 is available for applications that only speak SAML, and SCIM 2.0 for user provisioning."],
+  ["Can users sign in on screens I design myself?", "Yes. Use the hosted pages for the least code, or draw your own screens and call the sign-in APIs; both end with the same tokens."],
+  ["How are organisations kept apart?", "Each organisation is a tenant. Database row-level security limits every request to its tenant's rows, and each tenant can have its own domain, settings and administrators."],
+  ["Which multi-factor methods are supported?", "Passkeys and security keys, authenticator apps, email and SMS codes, and recovery codes. Each application decides whether a second step is required or optional."],
+  ["How do upgrades work?", "Back up the database, change the image tag and start it. The database is upgraded at start-up; an older image refuses a database a newer release has upgraded."],
+  ["Where is my data?", "In your PostgreSQL. SecureOne runs in your infrastructure; secrets stored in the database are encrypted with a key you keep outside it."],
+  ["Can I manage configuration in files?", "Yes. Export a tenant to a file, preview a change, apply it, or have files loaded at every start."],
+];
+---
+
+<Site title="FAQ" description="Frequently asked questions about SecureOne.">
+  <PageHead eyebrow="FAQ" title="Questions, answered" lead="Short answers to what people ask most. The documentation has the details." />
+  <section class="section" style="padding-top:24px">
+    <div class="container" style="max-width:820px">
+      {faqs.map(([q, a]) => (
+        <details class="faq reveal">
+          <summary>{q}</summary>
+          <p>{a}</p>
+        </details>
+      ))}
+      <p class="muted" style="margin-top:28px">Not answered here? See <a class="gradient-text" style="font-weight:600" href="/support/">Support</a>.</p>
+    </div>
+  </section>
+</Site>

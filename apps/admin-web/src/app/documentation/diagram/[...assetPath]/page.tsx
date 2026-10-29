@@ -14,9 +14,9 @@ export default async function DocsDiagramRedirectPage({
   const assetPath = assetPathFromSegments(segments);
 
   if (!isDrawioAssetPath(assetPath)) {
-    redirect("/documentation/diagrams");
+    redirect("/documentation/architecture/diagrams");
   }
 
-  const slug = drawioDocumentSlug(assetPath) ?? "diagrams";
+  const slug = drawioDocumentSlug(assetPath) ?? "architecture/diagrams";
   redirect(`/documentation/${slug}`);
 }

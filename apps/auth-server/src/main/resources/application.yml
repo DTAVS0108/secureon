@@ -3,7 +3,7 @@ spring:
     name: auth-server
   config:
     # Secrets as files (Docker / Kubernetes secrets): a file /run/secrets/SECUREONE_DB_PASSWORD sets that
-    # setting like the environment variable would (which still wins). Missing directory: ignored. docs/24.
+    # setting like the environment variable would (which still wins). Missing directory: ignored. docs/install/deployment.md.
     import: optional:configtree:${SECUREONE_SECRETS_DIR:/run/secrets}/
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
@@ -97,9 +97,9 @@ secureone:
   environment: ${SECUREONE_ENV:development}
   database:
     # auto: upgrade the database at start-up. only: upgrade, then exit (an upgrade job before rollout).
-    # validate: never change it; refuse to start while an upgrade is missing. See docs/26.
+    # validate: never change it; refuse to start while an upgrade is missing. See docs/install/configuration-and-upgrades.md.
     migrate: ${SECUREONE_DB_MIGRATE:auto}
-  # Tenant configuration files (YAML/JSON, a file or a directory) applied at every start-up. See docs/26.
+  # Tenant configuration files (YAML/JSON, a file or a directory) applied at every start-up. See docs/install/configuration-and-upgrades.md.
   config-import: ${SECUREONE_CONFIG_IMPORT:}
   # Reverse proxies / load balancers whose X-Forwarded-For is believed: addresses or IPv4 /8 /16 /24 /32 ranges.
   trusted-proxies: ${SECUREONE_TRUSTED_PROXIES:}

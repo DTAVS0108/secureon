@@ -1,0 +1,67 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+
+const kinds = [
+  { icon: "server", title: "Server-rendered web apps", text: "Authorization code flow with a client secret kept on your server.", href: "/docs/integrate/integration-guide/" },
+  { icon: "browser", title: "Single-page apps", text: "Authorization code with PKCE in the browser; no secret to hide.", href: "/docs/integrate/integration-guide/" },
+  { icon: "phone", title: "Mobile and desktop apps", text: "PKCE with the system browser, deep-link redirects and refresh tokens.", href: "/docs/integrate/integration-guide/" },
+  { icon: "code", title: "APIs and services", text: "Validate access tokens, read roles and permissions; client credentials for service-to-service calls.", href: "/docs/integrate/roles-and-access/" },
+  { icon: "tv", title: "TVs and command-line tools", text: "The device flow: show a code, the user approves on their phone.", href: "/docs/api/oauth-oidc/" },
+  { icon: "sso", title: "SAML applications", text: "SecureOne as the SAML identity provider for apps that only speak SAML.", href: "/docs/architecture/security-and-integration-features/" },
+  { icon: "users", title: "Directories (SCIM)", text: "Create, update and remove users and groups from a company directory.", href: "/docs/api/machine-and-scim/" },
+  { icon: "hook", title: "Webhooks", text: "Signed events when users, sessions or settings change.", href: "/docs/architecture/security-and-integration-features/" },
+];
+---
+
+<Site title="Integrations" description="Connect web, single-page, mobile and back-end applications, devices, SAML apps and directories to SecureOne.">
+  <PageHead
+    eyebrow="Integrations"
+    title="Connect any application that speaks the standards"
+    lead="If your stack has an OAuth 2.1 or OpenID Connect library, it can use SecureOne. Pick how your users sign in, register the app in the console, and you are done."
+  />
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="grid grid-4">
+        {kinds.map((k) => (
+          <a class="card reveal" href={k.href}>
+            <div class="icon"><Icon name={k.icon} /></div>
+            <h3 class="h3">{k.title}</h3>
+            <p>{k.text}</p>
+            <span class="more">Guide <Icon name="arrow" /></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container split">
+      <div class="reveal">
+        <span class="eyebrow">Two ways to sign in</span>
+        <h2 class="h2">Hosted pages or your own screens</h2>
+        <p class="lead" style="margin-top:16px">Most apps redirect to SecureOne's hosted pages: the least code and the strongest security. Apps that need full control of the look draw their own screens and call the sign-in APIs.</p>
+        <a class="btn btn-ghost" style="margin-top:24px" href="/docs/integrate/hosted-and-native-sign-in/">Compare the two <Icon name="arrow" /></a>
+      </div>
+      <div class="grid grid-2 reveal">
+        <div class="card"><h3 class="h3">Hosted</h3><ul class="ticks" style="margin-top:14px;font-size:15px"><li>Passkeys and MFA included</li><li>Your app's name, logo and colours</li><li>Standard redirect flow</li></ul></div>
+        <div class="card"><h3 class="h3">Native</h3><ul class="ticks" style="margin-top:14px;font-size:15px"><li>Your own screens</li><li>Sign-in and sign-up APIs</li><li>Same tokens at the end</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:24px 0 112px">
+    <div class="container">
+      <div class="cta reveal">
+        <h2 class="h2" style="margin:0;color:#fff">Connect your first app</h2>
+        <p class="lead" style="margin-top:14px">The console's Connect an app wizard asks what you are building and gives you the settings, ready to copy.</p>
+        <div class="hero-actions">
+          <a class="btn btn-ghost" style="background:#fff;color:#312e81;border-color:#fff" href="/docs/integrate/">Integration overview</a>
+          <a class="btn btn-ghost" href="/docs/api/">API reference</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Site>

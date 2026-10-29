@@ -2,7 +2,7 @@
 secureone:
   environment: ${SECUREONE_ENV:production}
   dev-auth-enabled: ${SECUREONE_DEV_AUTH_ENABLED:false}
-  # Database row-level security is enforced in production (see docs/26 and migrations V61-V64).
+  # Database row-level security is enforced in production (see docs/install/configuration-and-upgrades.md and migrations V61-V64).
   rls:
     enforce: ${SECUREONE_RLS_ENFORCE:on}
   mail:

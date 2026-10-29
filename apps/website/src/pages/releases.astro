@@ -1,0 +1,53 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+
+const releases = [
+  {
+    version: "0.1.3",
+    title: "Documentation spaces and the public website",
+    items: [
+      "Documentation organised in spaces (Get started, Install and operate, Integrate applications, Admin console guide, API reference, Architecture and security), each with an overview page.",
+      "A new documentation reader in the console: page tree, breadcrumbs, “On this page”, search across every page (Ctrl K), note and warning panels, copy buttons on code.",
+      "Pages are marked public, for operators or for developers: operator pages need a console sign-in, developer pages are for platform operators.",
+      "Swagger UI groups the API by category (public, authentication, OAuth and SAML, account, machine-to-machine, and the admin areas).",
+      "This website, built from the same documentation.",
+    ],
+  },
+  {
+    version: "0.1.2",
+    title: "Logo and profile pictures",
+    items: [
+      "The SecureOne logo in the console, on sign-in pages and as the browser icon.",
+      "Profile pictures for console operators: PNG, JPEG or WebP, cropped and resized in the browser, checked by content on the server.",
+      "Browsers no longer show their own password dialog for unknown addresses.",
+    ],
+  },
+  {
+    version: "0.1.0",
+    title: "A fresh start",
+    items: [
+      "Version numbers restart at 0.1.0 with a single database baseline; databases from earlier releases are refused with a clear message.",
+      "No sample data: an installation starts empty and the first operator comes from the setup wizard or the bootstrap settings.",
+      "Neutral examples and labels throughout the console and the documentation.",
+    ],
+  },
+];
+---
+
+<Site title="Releases" description="What changed in each SecureOne release.">
+  <PageHead eyebrow="Releases" title="Release notes" lead="What changed in each release. Upgrades within 0.1.x happen automatically when the new image starts." />
+  <section class="section" style="padding-top:24px">
+    <div class="container prose">
+      {releases.map((r) => (
+        <article class="release reveal">
+          <span class="tag">{r.version}</span>
+          <h2 style="margin-top:12px">{r.title}</h2>
+          <ul>{r.items.map((i) => <li>{i}</li>)}</ul>
+          <p class="muted" style="font-size:14px">Image: <code>dmtavs0108/secureone:{r.version}</code></p>
+        </article>
+      ))}
+      <p class="muted">Upgrading: back up the database, change the image tag and start it. See <a href="/docs/install/configuration-and-upgrades/">Configuration as code and upgrades</a>.</p>
+    </div>
+  </section>
+</Site>

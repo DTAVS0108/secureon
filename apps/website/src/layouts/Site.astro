@@ -1,0 +1,134 @@
+---
+import "../styles/site.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+const path = Astro.url.pathname;
+const pageTitle = title === "SecureOne" ? "SecureOne · Identity and access for every app" : `${title} · SecureOne`;
+const canonical = new URL(path, Astro.site).href;
+const og = new URL("/og.png", Astro.site).href;
+
+const nav = [
+  { href: "/features/", label: "Features" },
+  { href: "/security/", label: "Security" },
+  { href: "/how-it-works/", label: "How it works" },
+  { href: "/integrations/", label: "Integrations" },
+  { href: "/docs/", label: "Docs" },
+  { href: "/releases/", label: "Releases" },
+];
+const repo = "https://github.com/DTAVS0108/secureon";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header" data-open="false">
+      <div class="container">
+        <a href="/" class="brand" aria-label="SecureOne home">
+          <img src="/favicon.svg" alt="" width="32" height="32" />
+          SecureOne
+        </a>
+        <nav class="nav" aria-label="Main">
+          {nav.map((item) => (
+            <a href={item.href} aria-current={path.startsWith(item.href) ? "page" : undefined}>{item.label}</a>
+          ))}
+        </nav>
+        <div class="header-cta">
+          <a class="btn btn-ghost btn-sm" href={repo} rel="noopener">Source</a>
+          <a class="btn btn-primary btn-sm" href="/get-started/">Get started</a>
+        </div>
+        <button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false">Menu</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <a href="/" class="brand"><img src="/favicon.svg" alt="" width="32" height="32" />SecureOne</a>
+            <p class="muted" style="max-width:320px;margin-top:14px;font-size:15px">
+              Sign-in, single sign-on, MFA, users, roles and permissions for all your applications, from one place.
+            </p>
+          </div>
+          <div>
+            <h4>Product</h4>
+            <ul>
+              <li><a href="/features/">Features</a></li>
+              <li><a href="/security/">Security</a></li>
+              <li><a href="/how-it-works/">How it works</a></li>
+              <li><a href="/releases/">Releases</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Documentation</h4>
+            <ul>
+              <li><a href="/get-started/">Get started</a></li>
+              <li><a href="/docs/install/">Install and operate</a></li>
+              <li><a href="/integrations/">Integrations</a></li>
+              <li><a href="/docs/api/">API reference</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Project</h4>
+            <ul>
+              <li><a href="/about/">About</a></li>
+              <li><a href="/faq/">FAQ</a></li>
+              <li><a href="/support/">Support</a></li>
+              <li><a href={repo} rel="noopener">Source code</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© {new Date().getFullYear()} SecureOne</span>
+          <span>OAuth 2.1 · OpenID Connect · SAML 2.0 · SCIM 2.0</span>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const header = document.querySelector(".site-header");
+      const button = header?.querySelector(".menu-btn");
+      button?.addEventListener("click", () => {
+        const open = header?.getAttribute("data-open") !== "true";
+        header?.setAttribute("data-open", String(open));
+        button.setAttribute("aria-expanded", String(open));
+      });
+      const observer = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("visible");
+              observer.unobserve(e.target);
+            }
+          }),
+        { threshold: 0.12 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>

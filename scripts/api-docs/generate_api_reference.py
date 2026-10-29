@@ -1,4 +1,4 @@
-"""Generates docs/api-reference/ from the server's OpenAPI document.
+"""Generates docs/api/ (the API reference space) from the server's OpenAPI document.
 
 Every endpoint gets its method and path, what it does, how to authenticate, its parameters, request body
 fields, success response and a ready-to-run curl command. Pages follow the order an integration or an
@@ -6,10 +6,10 @@ operator meets the APIs (see SECTIONS).
 
     # The server must run with SECUREONE_SWAGGER_ENABLED=true
     curl -s http://localhost:9000/v3/api-docs/all -o openapi.json
-    python scripts/api-docs/generate_api_reference.py openapi.json docs/api-reference
+    python scripts/api-docs/generate_api_reference.py openapi.json docs/api
 
-Hand-written pages (README.md, 00-getting-started.md) are kept; only the section table in README.md
-(between its markers) is rewritten.
+Hand-written pages (index.md, getting-started.md, swagger-and-openapi.md) are kept; only the section table in
+index.md (between its markers) is rewritten. Generated pages get front matter (title, summary, order, audience).
 """
 
 from __future__ import annotations
@@ -21,61 +21,61 @@ from pathlib import Path
 
 # (file, title, intro, tags). An operation goes to the first section listing one of its tags.
 SECTIONS = [
-    ("01-public-and-setup.md", "Public endpoints and first-run setup",
+    ("public-and-setup.md", "Public endpoints and setup",
      "Server information, the one-time setup of a new installation, documentation discovery, custom-domain "
      "checks and the CAPTCHA settings the sign-in pages use. No authentication.",
      ["System", "First-run setup", "Documentation", "Custom domains", "Bot protection"]),
-    ("02-application-sign-in.md", "Application sign-in and sign-up (native UI)",
+    ("application-sign-in.md", "Application sign-in and sign-up",
      "For apps that draw their own sign-in screens instead of redirecting to the hosted page: application "
      "manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in.",
      ["Application public API", "Public auth", "Public auth — federation", "Public auth — device sign-in",
       "Public auth — impersonation"]),
-    ("03-oauth-oidc.md", "OAuth 2.1 and OpenID Connect",
+    ("oauth-oidc.md", "OAuth 2.1, OpenID Connect and SAML",
      "The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device "
      "flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library "
      "calls them for you.",
      ["OAuth 2.1 / OIDC", "OAuth 2.1 / OIDC — consent", "Client registration", "SAML identity provider"]),
-    ("04-account.md", "Account self-service",
+    ("account.md", "Account self-service",
      "What a signed-in user can do for themselves: password reset and change, email verification, profile, "
      "MFA factors, sessions, email change, connected apps and privacy (export, delete request).",
      ["Account", "Account profile", "Account MFA", "Account sessions", "Account privacy",
       "Account privacy (session)", "Account email change", "Account connected apps",
       "Account password change", "Account linked sign-in"]),
-    ("05-machine-and-scim.md", "Machine-to-machine and SCIM provisioning",
+    ("machine-and-scim.md", "Machine-to-machine and SCIM",
      "Calls made by other systems: service accounts with API keys, and SCIM 2.0 user and group provisioning "
      "from an identity provider.",
      ["Machine-to-machine (API keys)", "SCIM 2.0 provisioning"]),
-    ("06-admin-sign-in.md", "Admin API: sign-in, context and operator profile",
+    ("admin-sign-in.md", "Admin API: sign-in and operator",
      "Getting a console session token (sign-in plus MFA), the admin context (who am I, what can I open) and the "
      "signed-in operator's own profile and authenticators.",
      ["Admin — auth", "Admin — context", "Admin — operator profile", "Admin — operator MFA"]),
-    ("07-admin-tenants.md", "Admin API: tenants",
+    ("admin-tenants.md", "Admin API: tenants",
      "Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, "
      "console roles and access, access requests and the tenant's SCIM token.",
      ["Admin — tenants", "Admin — tenant workspace", "Admin — tenant RBAC", "Admin — tenant console roles",
       "Admin — console access", "Admin — console capabilities",
       "Admin — access requests", "Admin — tenant SCIM", "Admin — SCIM", "Admin — deletion requests",
       "Admin — tenant issuer and domains"]),
-    ("08-admin-users.md", "Admin API: users",
+    ("admin-users.md", "Admin API: users",
      "User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, "
      "unlock and impersonation.",
      ["Admin — users"]),
-    ("09-admin-applications-and-clients.md", "Admin API: applications, OAuth clients and change approvals",
+    ("admin-applications-and-clients.md", "Admin API: applications and OAuth clients",
      "Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth "
      "client returns 202 with a change request; another admin approves it).",
      ["Admin — applications", "Admin — OAuth clients", "Admin — change approvals"]),
-    ("10-admin-application-console.md", "Admin API: application console",
+    ("admin-application-console.md", "Admin API: application console",
      "Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, "
      "permissions, groups, settings and logs.",
      ["Admin — application scope", "Admin — application RBAC", "Admin — application logs",
       "Admin — application webhooks", "Admin — application APIs", "Admin — application SAML apps",
       "Admin — application client registration"]),
-    ("11-admin-security-and-governance.md", "Admin API: security and governance",
+    ("admin-security-and-governance.md", "Admin API: security and governance",
      "Platform operators, access review, platform roles, sign-in federation providers, service accounts, "
      "webhooks, the audit log (search and CSV export), sessions and the console overview.",
      ["Admin — overview", "Admin — platform operators", "Admin — access review", "Admin — platform RBAC", "Admin — federation",
       "Admin — service accounts", "Admin — webhooks", "Admin — audit", "Admin — sessions"]),
-    ("12-admin-platform-settings.md", "Admin API: platform settings and configuration as code",
+    ("admin-platform-settings.md", "Admin API: platform settings",
      "Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature "
      "flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).",
      ["Admin — platform settings", "Admin — attack protection", "Admin — log streams", "Admin — configuration as code",
@@ -240,7 +240,7 @@ def type_of(spec: dict, schema: dict) -> str:
     name = ref_name(schema)
     if name:
         base = name.removesuffix("[]")
-        return f"[{base}](13-data-models.md#{base.lower()}){'[]' if name.endswith('[]') else ''}"
+        return f"[{base}](data-models.md#{base.lower()}){'[]' if name.endswith('[]') else ''}"
     t = schema.get("type", "object")
     if t == "array":
         return f"{type_of(spec, schema.get('items', {}))}[]"
@@ -332,7 +332,7 @@ def auth_for(path: str, op: dict) -> tuple[str, list[str]]:
     schemes = [k for s in op.get("security", []) for k in s]
     if "adminHttpBasic" in schemes or (path.startswith("/api/admin/") and not re.match(r"/api/admin/v1/auth/(login|mfa)", path)):
         return ("Console session token (`Authorization: SecureOne-Admin-Session …`), see "
-                "[Getting started](00-getting-started.md#admin-api-get-a-console-session-token)",
+                "[Getting started](getting-started.md#admin-api-get-a-console-session-token)",
                 ['-H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"'])
     if "bearerAuth" in schemes or "oauth2Bearer" in schemes:
         return ("Access token (`Authorization: Bearer …`) from the token endpoint",
@@ -463,9 +463,26 @@ def anchor(text: str) -> str:
     return re.sub(r"[^a-z0-9 -]", "", text.lower()).strip().replace(" ", "-")
 
 
-def render_operation(spec: dict, number: str, method: str, path: str, op: dict) -> list[str]:
+class Anchors:
+    """Heading anchors as GitHub (and the console) make them: a repeated heading gets -1, -2, ..."""
+
+    def __init__(self) -> None:
+        self.seen: dict[str, int] = {}
+
+    def __call__(self, text: str) -> str:
+        base = anchor(text)
+        count = self.seen.get(base, 0)
+        self.seen[base] = count + 1
+        return base if count == 0 else f"{base}-{count}"
+
+
+def front_matter(title: str, summary: str, order: int) -> list[str]:
+    return ["---", f"title: {title}", f"summary: {summary}", f"order: {order}", "audience: public", "---", ""]
+
+
+def render_operation(spec: dict, method: str, path: str, op: dict) -> list[str]:
     title = summary_for(method, path, op)
-    out = [f"### {number} {title}", "", f"`{method.upper()} {path}`", ""]
+    out = [f"### {title}", "", f"`{method.upper()} {path}`", ""]
     if op.get("description"):
         out += [op["description"].strip(), ""]
     auth_text, auth_args = auth_for(path, op)
@@ -545,9 +562,10 @@ def main(spec_path: str, out_dir: str) -> None:
         ops = buckets[i - 1]
         ops.sort(key=lambda o: (tags.index(o[0]) if o[0] in tags else 99, o[1], o[2]))
         lines = [
-            f"# {i}. {title}",
+            *front_matter(title, intro.split(". ")[0].rstrip(".") + ".", i + 2),
+            f"# {title}",
             "",
-            "[API reference](README.md) › " + title,
+            "[API reference](index.md) › " + title,
             "",
             "> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by "
             "hand: change the controllers and regenerate.",
@@ -555,7 +573,7 @@ def main(spec_path: str, out_dir: str) -> None:
             intro,
             "",
             *swagger_line(spec, tags),
-            "Set the variables from [Getting started](00-getting-started.md) first (`SECUREONE_URL`, and the token "
+            "Set the variables from [Getting started](getting-started.md) first (`SECUREONE_URL`, and the token "
             "the endpoint needs). Replace `{placeholders}` with real values.",
             "",
             "## Contents",
@@ -563,28 +581,26 @@ def main(spec_path: str, out_dir: str) -> None:
         ]
         current = None
         body: list[str] = []
-        number = 0
-        group_no = 0
+        anchors = Anchors()
+        anchors("Contents")
         for tag, path, _, method, op in ops:
             if tag != current:
                 current = tag
-                group_no += 1
-                number = 0
                 heading = tag.replace("Admin — ", "").replace("Public auth — ", "")
                 heading = heading[:1].upper() + heading[1:]
-                lines.append(f"- [{i}.{group_no} {heading}](#{anchor(f'{i}.{group_no} {heading}')})")
-                body += [f"## {i}.{group_no} {heading}", ""]
+                lines.append(f"- [{heading}](#{anchors(heading)})")
+                body += [f"## {heading}", ""]
                 tag_info = next((t for t in spec.get("tags", []) if t.get("name") == tag), None)
                 if tag_info and tag_info.get("description"):
                     body += [tag_info["description"], ""]
-            number += 1
             title_text = summary_for(method, path, op)
-            lines.append(f"  - [{method.upper()} `{path}`](#{anchor(f'{i}.{group_no}.{number} {title_text}')}) — {title_text}")
-            body += render_operation(spec, f"{i}.{group_no}.{number}", method, path, op)
+            lines.append(f"  - [{method.upper()} `{path}`](#{anchors(title_text)}) — {title_text}")
+            body += render_operation(spec, method, path, op)
         (out / file).write_text("\n".join(lines + [""] + body).rstrip() + "\n", encoding="utf-8")
-        index_rows.append([f"{i}", f"[{title}]({file})", str(len(ops)), intro.split(". ")[0].rstrip(".") + "."])
+        index_rows.append([f"[{title}]({file})", str(len(ops)), intro.split(". ")[0].rstrip(".") + "."])
 
-    models = ["# 13. Data models", "", "[API reference](README.md) › Data models", "",
+    models = [*front_matter("Data models", "Every request and response type", len(SECTIONS) + 3),
+              "# Data models", "", "[API reference](index.md) › Data models", "",
               "> Generated from the OpenAPI document. Request and response types used by the endpoints, A to Z.", ""]
     for name in sorted(spec.get("components", {}).get("schemas", {}), key=str.lower):
         schema = spec["components"]["schemas"][name]
@@ -599,17 +615,17 @@ def main(spec_path: str, out_dir: str) -> None:
             models += table(rows, ["Field", "Type", "Required", "Description"]) + [""]
         else:
             models += [f"Type: {type_of(spec, schema)}", ""]
-    (out / "13-data-models.md").write_text("\n".join(models).rstrip() + "\n", encoding="utf-8")
-    index_rows.append(["13", "[Data models](13-data-models.md)", str(len(spec.get("components", {}).get("schemas", {}))),
+    (out / "data-models.md").write_text("\n".join(models).rstrip() + "\n", encoding="utf-8")
+    index_rows.append(["[Data models](data-models.md)", str(len(spec.get("components", {}).get("schemas", {}))),
                        "Every request and response type with its fields."])
 
-    # The section table in README.md sits between these markers and is rewritten on every run.
-    readme = out / "README.md"
+    # The section table in index.md sits between these markers and is rewritten on every run.
+    readme = out / "index.md"
     if readme.exists():
         text = readme.read_text(encoding="utf-8")
         start, end = "<!-- sections:start -->", "<!-- sections:end -->"
         if start in text and end in text:
-            rows = "\n".join(table(index_rows, ["#", "Section", "Endpoints", "What it covers"]))
+            rows = "\n".join(table(index_rows, ["Section", "Endpoints", "What it covers"]))
             text = text[: text.index(start) + len(start)] + "\n" + rows + "\n" + text[text.index(end):]
             readme.write_text(text, encoding="utf-8")
     total = sum(len(b) for b in buckets.values())

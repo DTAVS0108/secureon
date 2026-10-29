@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 /**
- * Platform-wide settings as a file (docs/26): the default SMTP server and SMS provider for every
+ * Platform-wide settings as a file (docs/install/configuration-and-upgrades.md): the default SMTP server and SMS provider for every
  * application, and SCIM. Credentials come from environment variables named in the file.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)

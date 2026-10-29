@@ -70,7 +70,7 @@ public class OAuthClientAdminController {
 
     // Platform super admins manage every client. The tenant super admin manages the clients of the
     // tenant's applications, a tenant admin those of the applications assigned to them; application
-    // admins only view (docs/25). Only platform super admins create applications here.
+    // admins only view (docs/integrate/roles-and-access.md). Only platform super admins create applications here.
 
     @GetMapping("/{id}")
     public OAuthClientResponse get(

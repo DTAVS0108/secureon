@@ -25,13 +25,14 @@ class AuthServerApplicationTests {
         StaticListableBeanFactory beans = new StaticListableBeanFactory();
         beans.addBean("buildProperties", new BuildProperties(build));
         InfoController controller =
-                new InfoController("http://localhost:3001", env, beans.getBeanProvider(BuildProperties.class));
+                new InfoController(env, beans.getBeanProvider(BuildProperties.class));
         assertNotNull(controller.info().get("status"));
         assertNotNull(controller.info().get("environment"));
         assertEquals("1.4.0", controller.info().get("version"));
+        assertEquals("/admin/documentation", controller.info().get("documentation"), "relative: any installation's address");
 
         InfoController withoutBuildInfo = new InfoController(
-                "http://localhost:3001", env, new StaticListableBeanFactory().getBeanProvider(BuildProperties.class));
+                env, new StaticListableBeanFactory().getBeanProvider(BuildProperties.class));
         assertEquals("development", withoutBuildInfo.info().get("version"));
     }
 }

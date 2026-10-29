@@ -17,7 +17,7 @@ import java.util.function.Function;
 import org.springframework.stereotype.Service;
 
 /**
- * The platform file (docs/26): default SMTP server and SMS provider for all applications, and SCIM.
+ * The platform file (docs/install/configuration-and-upgrades.md): default SMTP server and SMS provider for all applications, and SCIM.
  * Same rules as tenant files: left out means unchanged, credentials come from environment variables.
  */
 @Service

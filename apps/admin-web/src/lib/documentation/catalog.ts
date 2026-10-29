@@ -1,418 +1,165 @@
-export type DocsPage = {
-  slug: string;
-  title: string;
-  /** Path relative to repo `docs/` root */
-  file: string;
-  description?: string;
-};
+import "server-only";
 
-export type DocsCategory = {
-  id: string;
-  label: string;
-  description?: string;
-  pages: DocsPage[];
-};
+import fs from "fs/promises";
+import path from "path";
+import { docsRoot } from "./assets";
+import { canRead, type DocAudience, type DocsNode, type DocsViewer } from "./types";
 
-/** Documentation catalog grouped by category (aligned with docs/README.md). */
-export const DOCS_CATEGORIES: DocsCategory[] = [
-  {
-    id: "getting-started",
-    label: "Getting started",
-    pages: [
-      { slug: "home", title: "Documentation hub", file: "README.md", description: "Start here" },
-      {
-        slug: "operator-getting-started",
-        title: "Operator getting started",
-        file: "22-operator-getting-started.md",
-        description: "Install, setup, and run SecureOne",
-      },
-    ],
-  },
-  {
-    id: "user-guide",
-    label: "User guide",
-    description: "The console page by page: every button, form and field",
-    pages: [
-      { slug: "user-guide", title: "User guide", file: "user-guide/README.md", description: "Roles, chapters and conventions" },
-      {
-        slug: "guide-sign-in",
-        title: "Sign-in, setup and My profile",
-        file: "user-guide/01-sign-in-and-profile.md",
-        description: "First-run setup, sign-in tabs, authenticator, recovery codes",
-      },
-      {
-        slug: "guide-console-layout",
-        title: "Console layout and navigation",
-        file: "user-guide/02-console-layout.md",
-        description: "Top bar, sidebars, what each role sees",
-      },
-      {
-        slug: "guide-connect-an-app",
-        title: "Connect an app",
-        file: "user-guide/03-connect-an-app.md",
-        description: "The guided wizard, field by field",
-      },
-      {
-        slug: "guide-oauth-clients",
-        title: "OAuth clients",
-        file: "user-guide/04-oauth-clients.md",
-        description: "Register application & OAuth client, templates, grants, client page",
-      },
-      {
-        slug: "guide-tenants",
-        title: "Tenants",
-        file: "user-guide/05-tenants.md",
-        description: "Tenant page panels, roster, console access, tenant roles",
-      },
-      {
-        slug: "guide-application-console",
-        title: "Application console",
-        file: "user-guide/06-application-console.md",
-        description: "Users, groups, roles, permissions, audit, logs, sessions",
-      },
-      {
-        slug: "guide-settings",
-        title: "Settings",
-        file: "user-guide/07-settings.md",
-        description: "Platform and application settings, tab by tab",
-      },
-      {
-        slug: "guide-access-review",
-        title: "Access review and operators",
-        file: "user-guide/08-access-review-and-operators.md",
-        description: "Privileged access review, platform operators",
-      },
-      {
-        slug: "guide-configuration-as-code",
-        title: "Configuration as code (console)",
-        file: "user-guide/09-configuration-as-code.md",
-        description: "Export, preview and apply files",
-      },
-      {
-        slug: "guide-end-user-pages",
-        title: "End-user pages",
-        file: "user-guide/10-end-user-pages.md",
-        description: "Hosted sign-in, sign-up, recovery, account security",
-      },
-      {
-        slug: "guide-common-tasks",
-        title: "Common tasks",
-        file: "user-guide/11-common-tasks.md",
-        description: "Step-by-step recipes and what is coming soon",
-      },
-      {
-        slug: "guide-two-step-verification",
-        title: "Two-step verification",
-        file: "user-guide/12-two-step-verification.md",
-        description: "Options, setup now or later, settings and locks, reset, extend, exempt",
-      },
-    ],
-  },
-  {
-    id: "platform-fundamentals",
-    label: "Platform — fundamentals",
-    description: "Vision, architecture, data & security",
-    pages: [
-      { slug: "overview", title: "Overview", file: "01-overview.md", description: "Vision, goals, glossary" },
-      { slug: "tech-stack", title: "Tech stack", file: "02-tech-stack.md" },
-      { slug: "architecture", title: "Architecture", file: "03-architecture.md", description: "Components & flows" },
-      { slug: "data-model", title: "Data model", file: "04-data-model.md", description: "ERD & tables" },
-      { slug: "auth-standards", title: "Auth standards", file: "05-auth-standards.md", description: "OAuth, OIDC, MFA" },
-      { slug: "database", title: "Database strategy", file: "06-database.md", description: "Platform & app schemas" },
-      {
-        slug: "database-schemas",
-        title: "Schemas & tables",
-        file: "17-database-schemas-and-tables.md",
-        description: "Tables, FKs, connections",
-      },
-      { slug: "security", title: "Security", file: "07-security.md" },
-    ],
-  },
-  {
-    id: "platform-operations",
-    label: "Platform — operations",
-    description: "Install, govern, and run",
-    pages: [
-      { slug: "installation", title: "Installation", file: "09-installation.md", description: "Local setup" },
-      {
-        slug: "environment-setup",
-        title: "Environment & operations",
-        file: "16-environment-setup-and-operations.md",
-        description: "Run stack, config, schedulers",
-      },
-      { slug: "enterprise", title: "Enterprise", file: "10-enterprise.md" },
-      { slug: "settings-governance", title: "Settings governance", file: "10-settings-governance.md" },
-      { slug: "admin-control", title: "Admin control", file: "11-admin-control.md" },
-      {
-        slug: "roles-and-access",
-        title: "Roles and access",
-        file: "25-roles-and-access.md",
-        description: "Who sees and can do what, MFA, access review, RLS",
-      },
-      { slug: "application-rbac", title: "Application RBAC", file: "14-application-rbac-management.md" },
-      {
-        slug: "applications-oauth",
-        title: "Applications & OAuth clients",
-        file: "15-applications-and-oauth-clients.md",
-        description: "Products, schemas, isolate",
-      },
-      {
-        slug: "verification-otp",
-        title: "Verification & OTP",
-        file: "19-verification-and-otp.md",
-        description: "Signup/login OTP, phone, SMS",
-      },
-    ],
-  },
-  {
-    id: "deployment",
-    label: "Deployment",
-    description: "Ship SecureOne: images, env, Helm, enterprise rollout",
-    pages: [
-      {
-        slug: "deployment-image-env-enterprise",
-        title: "Deployment: image + env & enterprise",
-        file: "24-deployment-image-env-and-enterprise.md",
-        description: "Path A: Docker images + env only · Path B: source/Helm",
-      },
-      {
-        slug: "configuration-as-code-and-upgrades",
-        title: "Configuration as code and upgrades",
-        file: "26-configuration-as-code-and-upgrades.md",
-        description: "Tenant setup in files (export, preview, apply); upgrades and rollback",
-      },
-      {
-        slug: "deploy-runbook",
-        title: "Deploy runbook",
-        file: "runbooks/deploy.md",
-        description: "Prerequisites, images, Helm, post-deploy checks",
-      },
-    ],
-  },
-  {
-    id: "api-reference",
-    label: "API reference",
-    description: "Every HTTP endpoint with curl, generated from the OpenAPI document",
-    pages: [
-      {
-        slug: "api-reference",
-        title: "API reference",
-        file: "api-reference/README.md",
-        description: "Every endpoint section by section, with curl",
-      },
-      {
-        slug: "api-getting-started",
-        title: "0. Getting started",
-        file: "api-reference/00-getting-started.md",
-        description: "Shell setup, credentials, admin session token, errors",
-      },
-      {
-        slug: "api-public-and-setup",
-        title: "1. Public endpoints and setup",
-        file: "api-reference/01-public-and-setup.md",
-        description: "Server info, first-run setup, documentation, domain checks",
-      },
-      {
-        slug: "api-application-sign-in",
-        title: "2. Application sign-in and sign-up",
-        file: "api-reference/02-application-sign-in.md",
-        description: "Native UI: manifest, password, OTP, MFA, passkeys, federation",
-      },
-      {
-        slug: "api-oauth-oidc",
-        title: "3. OAuth 2.1, OpenID Connect and SAML",
-        file: "api-reference/03-oauth-oidc.md",
-        description: "Discovery, authorize, token, revoke, introspect, UserInfo, consent, SAML",
-      },
-      {
-        slug: "api-account",
-        title: "4. Account self-service",
-        file: "api-reference/04-account.md",
-        description: "Password, email verification, profile, MFA, sessions, privacy",
-      },
-      {
-        slug: "api-machine-and-scim",
-        title: "5. Machine-to-machine and SCIM",
-        file: "api-reference/05-machine-and-scim.md",
-        description: "API keys and SCIM 2.0 provisioning",
-      },
-      {
-        slug: "api-admin-sign-in",
-        title: "6. Admin API: sign-in and context",
-        file: "api-reference/06-admin-sign-in.md",
-        description: "Console session token, context, operator profile",
-      },
-      {
-        slug: "api-admin-tenants",
-        title: "7. Admin API: tenants",
-        file: "api-reference/07-admin-tenants.md",
-        description: "Tenants, workspace, roles, console access",
-      },
-      {
-        slug: "api-admin-users",
-        title: "8. Admin API: users",
-        file: "api-reference/08-admin-users.md",
-        description: "Users, passwords, MFA reset, unlock, impersonation",
-      },
-      {
-        slug: "api-admin-applications",
-        title: "9. Admin API: applications and OAuth clients",
-        file: "api-reference/09-admin-applications-and-clients.md",
-        description: "Applications, OAuth clients, change approvals",
-      },
-      {
-        slug: "api-admin-application-console",
-        title: "10. Admin API: application console",
-        file: "api-reference/10-admin-application-console.md",
-        description: "An application's users, roles, permissions, settings, logs",
-      },
-      {
-        slug: "api-admin-governance",
-        title: "11. Admin API: security and governance",
-        file: "api-reference/11-admin-security-and-governance.md",
-        description: "Operators, access review, federation, service accounts, webhooks, audit",
-      },
-      {
-        slug: "api-admin-settings",
-        title: "12. Admin API: platform settings",
-        file: "api-reference/12-admin-platform-settings.md",
-        description: "Platform settings and configuration as code",
-      },
-      {
-        slug: "api-data-models",
-        title: "13. Data models",
-        file: "api-reference/13-data-models.md",
-        description: "Every request and response type",
-      },
-    ],
-  },
-  {
-    id: "platform-reference",
-    label: "Platform — reference",
-    description: "APIs, ADRs, diagrams",
-    pages: [
-      {
-        slug: "api-documentation",
-        title: "API documentation",
-        file: "12-api-documentation.md",
-        description: "Reference, curl, OpenAPI and Swagger UI",
-      },
-      { slug: "decisions", title: "Architecture decisions", file: "decisions/README.md", description: "ADRs" },
-      { slug: "diagrams", title: "Diagrams", file: "diagrams/README.md", description: "Diagram index" },
-      {
-        slug: "flyway-migrations",
-        title: "Flyway migration files",
-        file: "18-flyway-migration-files.md",
-        description: "V1–V45 SQL reference",
-      },
-    ],
-  },
-  {
-    id: "application-integration",
-    label: "Application integration",
-    description: "Developers wiring products into SecureOne",
-    pages: [
-      {
-        slug: "application-integration",
-        title: "Application integration guide",
-        file: "23-application-integration-guide.md",
-        description: "Example App example, APIs, hosted vs native UI",
-      },
-      {
-        slug: "auth-ui-integration",
-        title: "Auth UI integration",
-        file: "13-auth-ui-integration.md",
-        description: "Hosted vs native login",
-      },
-      {
-        slug: "verification-otp",
-        title: "Verification & OTP",
-        file: "19-verification-and-otp.md",
-        description: "Signup/login OTP, phone, SMS",
-      },
-    ],
-  },
-];
+/**
+ * The documentation catalog, built from the files themselves: every page under docs/ starts with front matter
+ * (title, summary, order, audience). A top-level folder is a space, a folder inside it a section; a folder's
+ * index.md describes it. docs/README.md is the GitHub index and not part of the catalog.
+ */
 
-/** @deprecated Use DOCS_CATEGORIES — kept for flat page iteration. */
-export const DOCS_SECTION = {
-  id: "documentation",
-  label: "Documentation",
-  pages: DOCS_CATEGORIES.flatMap((c) => c.pages),
-};
+const FRONT_MATTER = /^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n/;
 
-const pages = DOCS_SECTION.pages;
-
-export function getAllDocsPages(): DocsPage[] {
-  return pages;
+/** Splits YAML front matter (only simple `key: value` lines are used) from the Markdown body. */
+export function splitFrontMatter(raw: string): { fields: Record<string, string>; body: string } {
+  const match = FRONT_MATTER.exec(raw);
+  if (!match) return { fields: {}, body: raw.replace(/^﻿/, "") };
+  const fields: Record<string, string> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const pair = /^([A-Za-z][\w-]*):\s*(.*?)\s*$/.exec(line);
+    if (pair) fields[pair[1]] = pair[2].replace(/^["']|["']$/g, "");
+  }
+  return { fields, body: raw.slice(match[0].length) };
 }
 
-export function getDocsPage(slug: string): DocsPage | undefined {
-  return pages.find((p) => p.slug === slug);
+function audienceOf(value: string | undefined): DocAudience {
+  // No valid audience: treated as internal, so nothing is published by accident.
+  return value === "public" || value === "operator" ? value : "internal";
 }
 
-export function getDefaultDocsSlug(): string {
-  return "home";
+export function slugForFile(file: string): string {
+  const withoutExt = file.replace(/\\/g, "/").replace(/\.md$/i, "");
+  return withoutExt.endsWith("/index") ? withoutExt.slice(0, -"/index".length) : withoutExt;
 }
 
-/** Documentation slug that contains the inline draw.io embed for each source file. */
-export const DRAWIO_DOCUMENT_SLUG: Record<string, string> = {
-  "logical-architecture.drawio": "architecture",
-  "auth-flow-authorization-code-pkce.drawio": "architecture",
-  "auth-flow-client-credentials.drawio": "architecture",
-  "auth-flow-refresh-rotation.drawio": "architecture",
-  "auth-flow-hosted-vs-native.drawio": "architecture",
-  "auth-flow-device-code.drawio": "architecture",
-  "auth-flow-saml.drawio": "architecture",
-  "deployment-mvp.drawio": "architecture",
-  "deployment-production.drawio": "architecture",
-  "data-layer-layering.drawio": "database",
-  "tenant-isolation.drawio": "database",
-  "enterprise-capability-map.drawio": "enterprise",
-  "config-inheritance.drawio": "admin-control",
-  "roles-permissions.drawio": "data-model",
+type Catalog = { spaces: DocsNode[]; bySlug: Map<string, DocsNode>; parentOf: Map<string, DocsNode> };
+
+let cached: { at: number; catalog: Catalog } | null = null;
+// The image's docs never change while it runs; in development pick up edits within a couple of seconds.
+const TTL_MS = process.env.NODE_ENV === "production" ? Number.POSITIVE_INFINITY : 2000;
+
+async function readNode(file: string, kind: DocsNode["kind"]): Promise<DocsNode> {
+  const raw = await fs.readFile(path.join(/*turbopackIgnore: true*/ docsRoot(), file), "utf8");
+  const { fields } = splitFrontMatter(raw);
+  const order = Number.parseInt(fields.order ?? "", 10);
+  const slug = slugForFile(file);
+  return {
+    slug,
+    title: fields.title || slug.split("/").pop() || slug,
+    summary: fields.summary ?? "",
+    order: Number.isFinite(order) ? order : 999,
+    audience: audienceOf(fields.audience),
+    file,
+    kind,
+    children: [],
+  };
+}
+
+async function readFolder(folder: string, kind: "space" | "section"): Promise<DocsNode | null> {
+  const dir = path.join(/*turbopackIgnore: true*/ docsRoot(), folder);
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  if (!entries.some((e) => e.isFile() && e.name === "index.md")) return null;
+  const node = await readNode(`${folder}/index.md`, kind);
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const child = await readFolder(`${folder}/${entry.name}`, "section");
+      if (child) node.children.push(child);
+    } else if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "index.md") {
+      node.children.push(await readNode(`${folder}/${entry.name}`, "page"));
+    }
+  }
+  node.children.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+  return node;
+}
+
+async function buildCatalog(): Promise<Catalog> {
+  const entries = await fs.readdir(docsRoot(), { withFileTypes: true });
+  const spaces: DocsNode[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const space = await readFolder(entry.name, "space");
+    if (space) spaces.push(space);
+  }
+  spaces.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+  const bySlug = new Map<string, DocsNode>();
+  const parentOf = new Map<string, DocsNode>();
+  const walk = (node: DocsNode, parent?: DocsNode) => {
+    bySlug.set(node.slug, node);
+    if (parent) parentOf.set(node.slug, parent);
+    node.children.forEach((child) => walk(child, node));
+  };
+  spaces.forEach((space) => walk(space));
+  return { spaces, bySlug, parentOf };
+}
+
+async function catalog(): Promise<Catalog> {
+  if (cached && Date.now() - cached.at < TTL_MS) return cached.catalog;
+  const built = await buildCatalog();
+  cached = { at: Date.now(), catalog: built };
+  return built;
+}
+
+/** The spaces a viewer may see: developer pages hidden unless allowed; operator pages shown locked when signed out. */
+export async function getSpaces(viewer: DocsViewer): Promise<DocsNode[]> {
+  const filter = (node: DocsNode): DocsNode | null => {
+    if (node.audience === "internal" && !viewer.platformOperator) return null;
+    return {
+      ...node,
+      locked: !canRead(node.audience, viewer),
+      children: node.children.map(filter).filter((n): n is DocsNode => n !== null),
+    };
+  };
+  return (await catalog()).spaces.map(filter).filter((n): n is DocsNode => n !== null);
+}
+
+export async function findNode(slug: string): Promise<DocsNode | undefined> {
+  return (await catalog()).bySlug.get(slug);
+}
+
+/** Space › section › … › the node itself. */
+export async function trail(slug: string): Promise<DocsNode[]> {
+  const { bySlug, parentOf } = await catalog();
+  const out: DocsNode[] = [];
+  let node = bySlug.get(slug);
+  while (node) {
+    out.unshift(node);
+    node = parentOf.get(node.slug);
+  }
+  return out;
+}
+
+/** Every node of a tree in reading order (depth first). */
+export function flatten(nodes: DocsNode[]): DocsNode[] {
+  return nodes.flatMap((node) => [node, ...flatten(node.children)]);
+}
+
+export async function allNodes(): Promise<DocsNode[]> {
+  return flatten((await catalog()).spaces);
+}
+
+/** Page that shows each draw.io file inline (old /documentation/diagram/… links redirect there). */
+const DRAWIO_PAGE: Record<string, string> = {
+  "logical-architecture.drawio": "architecture/architecture",
+  "auth-flow-authorization-code-pkce.drawio": "architecture/architecture",
+  "auth-flow-client-credentials.drawio": "architecture/architecture",
+  "auth-flow-refresh-rotation.drawio": "architecture/architecture",
+  "auth-flow-hosted-vs-native.drawio": "architecture/architecture",
+  "auth-flow-device-code.drawio": "architecture/architecture",
+  "auth-flow-saml.drawio": "architecture/architecture",
+  "deployment-mvp.drawio": "architecture/architecture",
+  "deployment-production.drawio": "architecture/architecture",
+  "data-layer-layering.drawio": "developer/database",
+  "tenant-isolation.drawio": "developer/database",
+  "enterprise-capability-map.drawio": "architecture/enterprise",
+  "config-inheritance.drawio": "install/admin-control",
+  "roles-permissions.drawio": "developer/data-model",
 };
 
 export function drawioDocumentSlug(assetPath: string): string | undefined {
-  const fileName = assetPath.split("/").pop() ?? assetPath;
-  return DRAWIO_DOCUMENT_SLUG[fileName];
+  return DRAWIO_PAGE[assetPath.split("/").pop() ?? assetPath];
 }
 
-/** Map `01-overview.md` / `decisions/README.md` → slug for link rewriting */
-export function buildFileToSlugMap(): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const p of pages) {
-    map.set(p.file, p.slug);
-    map.set(`./${p.file}`, p.slug);
-    map.set(`../${p.file}`, p.slug);
-  }
-  // Bare file names last and never over an exact path: several folders have a README.md.
-  for (const p of pages) {
-    const base = p.file.split("/").pop();
-    if (base && !map.has(base)) map.set(base, p.slug);
-  }
-  return map;
-}
-
-export function docsCatalogJson() {
-  return {
-    name: "SecureOne Documentation",
-    defaultSlug: getDefaultDocsSlug(),
-    uiPath: "/documentation",
-    apiPath: "/api/documentation",
-    categories: DOCS_CATEGORIES.map((category) => ({
-      id: category.id,
-      label: category.label,
-      description: category.description,
-      pages: category.pages.map((page) => ({
-        slug: page.slug,
-        title: page.title,
-        file: page.file,
-        description: page.description,
-        uiPath: `/documentation/${page.slug}`,
-      })),
-    })),
-    /** Flat list for backward compatibility */
-    section: DOCS_SECTION,
-  };
-}
+export const DOCS_HOME_SLUG = "";

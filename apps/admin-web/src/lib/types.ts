@@ -1,6 +1,6 @@
 /**
  * Domain types for the admin console. These mirror the platform data model
- * (see docs/04-data-model.md) and are consumed by the mock data layer in
+ * (see docs/developer/data-model.md) and are consumed by the mock data layer in
  * data.ts. When the backend admin API lands, the data layer is swapped for
  * real fetch calls while these types stay stable.
  */

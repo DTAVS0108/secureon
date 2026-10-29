@@ -1,0 +1,37 @@
+---
+// Docs header: links back to the website, then Starlight's own icons.
+import Default from "@astrojs/starlight/components/SocialIcons.astro";
+
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/features/", label: "Features" },
+  { href: "/integrations/", label: "Integrations" },
+  { href: "/releases/", label: "Releases" },
+];
+---
+
+<nav class="so-docs-nav" aria-label="Website">
+  {links.map((l) => <a href={l.href}>{l.label}</a>)}
+</nav>
+<Default />
+
+<style>
+  .so-docs-nav {
+    display: none;
+    gap: 1.25rem;
+    margin-inline-end: 0.75rem;
+    font-size: var(--sl-text-sm);
+  }
+  .so-docs-nav a {
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+  }
+  .so-docs-nav a:hover {
+    color: var(--sl-color-white);
+  }
+  @media (min-width: 72rem) {
+    .so-docs-nav {
+      display: flex;
+    }
+  }
+</style>

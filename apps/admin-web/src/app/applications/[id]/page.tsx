@@ -21,7 +21,7 @@ export default async function ApplicationClientPage({
   const { id } = await params;
   const platform = ctx.platformSuperAdmin;
 
-  // Tenant super admins and tenant admins open the clients of applications they manage (docs/25).
+  // Tenant super admins and tenant admins open the clients of applications they manage (docs/integrate/roles-and-access.md).
   const client = await getOAuthClient(id).catch(() => null);
   if (!client) notFound();
   const managed = ctx.applications.find((a) => a.id === client.applicationId && a.canManageClients);

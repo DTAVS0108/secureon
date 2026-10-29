@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,15 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class InfoController {
 
-    private final String adminWebUrl;
     private final SecureOneEnvironmentProperties environment;
     private final String version;
 
     public InfoController(
-            @Value("${secureone.admin-web-url:http://localhost:3001}") String adminWebUrl,
             SecureOneEnvironmentProperties environment,
             ObjectProvider<BuildProperties> build) {
-        this.adminWebUrl = adminWebUrl.endsWith("/") ? adminWebUrl.substring(0, adminWebUrl.length() - 1) : adminWebUrl;
         this.environment = environment;
         BuildProperties properties = build.getIfAvailable();
         this.version = properties != null ? properties.getVersion() : "development";
@@ -44,8 +40,8 @@ public class InfoController {
         out.put("openapi", "/v3/api-docs");
         out.put("swaggerUi", "/swagger-ui/index.html");
         out.put("docs", "/docs");
-        out.put("documentation", adminWebUrl + "/documentation");
-        out.put("documentationApi", adminWebUrl + "/api/documentation");
+        out.put("documentation", "/admin/documentation");
+        out.put("documentationApi", "/admin/api/documentation");
         out.put("documentationDiscovery", "/api/v1/documentation");
         return out;
     }

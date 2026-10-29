@@ -1,0 +1,81 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Site title="How it works" description="SecureOne's architecture: one container with the authorization server and admin console, PostgreSQL, Redis, and standard sign-in flows.">
+  <PageHead
+    eyebrow="How it works"
+    title="One container between your users and your apps"
+    lead="SecureOne is an authorization server with its admin console built in. Your applications redirect users to it, or call its sign-in APIs, and receive standard tokens."
+  />
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">Architecture</span>
+        <h2 class="h2">Simple to run, built to scale out</h2>
+      </div>
+      <div class="grid grid-3">
+        <div class="card reveal"><div class="icon"><Icon name="container" /></div><h3 class="h3">SecureOne</h3><p>OAuth 2.1, OpenID Connect, SAML and SCIM, the hosted sign-in pages, the APIs and the admin console at <code>/admin</code>, all on port 9000.</p></div>
+        <div class="card reveal"><div class="icon"><Icon name="database" /></div><h3 class="h3">PostgreSQL</h3><p>The system of record: tenants, users, applications, clients, roles and the audit log, isolated by row-level security.</p></div>
+        <div class="card reveal"><div class="icon"><Icon name="bolt" /></div><h3 class="h3">Redis</h3><p>Sessions, one-time codes, rate limits and caches, shared by every instance so any replica can serve any request.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container split">
+      <div class="reveal">
+        <span class="eyebrow">Sign-in flow</span>
+        <h2 class="h2">The standard flow your library already knows</h2>
+        <ul class="ticks">
+          <li>Your app sends the user to SecureOne with a PKCE challenge.</li>
+          <li>SecureOne signs them in: password, passkey or one-time code, then the second step when required.</li>
+          <li>SecureOne redirects back with a short-lived code.</li>
+          <li>Your app exchanges the code for an ID token and an access token carrying roles and permissions.</li>
+          <li>Refresh tokens keep the session going; they rotate on every use.</li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <div class="card" style="padding:32px">
+          {[
+            ["browser", "Your app", "Redirects to /oauth2/authorize"],
+            ["shield", "SecureOne", "Signs the user in, checks policy"],
+            ["key", "Your app", "Exchanges the code at /oauth2/token"],
+            ["check", "Signed in", "Tokens with roles and permissions"],
+          ].map(([icon, title, text], i) => (
+            <div style={`display:flex;gap:16px;align-items:flex-start;${i < 3 ? "padding-bottom:22px;margin-bottom:22px;border-bottom:1px dashed var(--border)" : ""}`}>
+              <div class="icon" style="margin:0;flex:none"><Icon name={icon} /></div>
+              <div><h3 class="h3">{title}</h3><p style="margin-top:4px">{text}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">Building blocks</span>
+        <h2 class="h2">The words you will see everywhere</h2>
+      </div>
+      <div class="grid grid-4">
+        {[
+          ["Tenant", "An organisation or customer, isolated from every other."],
+          ["Application", "A product you protect, with its own roles and settings."],
+          ["OAuth client", "How one front end or service of an application connects."],
+          ["Role and permission", "What a user may do in an application, checked by your code."],
+        ].map(([title, text]) => (
+          <div class="card reveal"><h3 class="h3">{title}</h3><p>{text}</p></div>
+        ))}
+      </div>
+      <div style="margin-top:32px" class="reveal">
+        <a class="btn btn-ghost" href="/docs/get-started/concepts/">Key concepts <Icon name="arrow" /></a>
+        <a class="btn btn-ghost" style="margin-left:10px" href="/docs/architecture/architecture/">Full architecture</a>
+      </div>
+    </div>
+  </section>
+</Site>

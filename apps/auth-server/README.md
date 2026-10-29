@@ -55,7 +55,7 @@ src/main/resources/db/migration/application-schema/V1__app_core.sql
 
 Provisioned by `ApplicationSchemaProvisioner` when an application is registered or isolated.
 
-See [Database strategy](../../docs/06-database.md) and [Applications & OAuth clients](../../docs/15-applications-and-oauth-clients.md).
+See [Database strategy](../../docs/developer/database.md) and [Applications & OAuth clients](../../docs/integrate/applications-and-oauth-clients.md).
 
 ## Key packages
 
@@ -76,9 +76,9 @@ See [Database strategy](../../docs/06-database.md) and [Applications & OAuth cli
 
 ## Related docs
 
-- [Installation](../../docs/09-installation.md)
-- [Environment & operations](../../docs/16-environment-setup-and-operations.md)
-- [Verification & OTP](../../docs/19-verification-and-otp.md)
-- [API documentation](../../docs/12-api-documentation.md)
+- [Installation](../../docs/install/installation.md)
+- [Environment & operations](../../docs/install/environment-and-operations.md)
+- [Verification & OTP](../../docs/integrate/verification-and-one-time-codes.md)
+- [API documentation](../../docs/api/swagger-and-openapi.md)
 - [SecureOne Documentation](../../docs/README.md#secureone-documentation-in-app-ui) (in-app docs on admin-web)
-- [ADR 0010 — Platform and app schemas](../../docs/decisions/0010-platform-and-app-schemas.md)
+- [Decision: platform and application schemas](../../docs/developer/decisions/platform-and-app-schemas.md)

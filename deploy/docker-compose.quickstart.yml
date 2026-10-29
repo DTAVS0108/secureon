@@ -9,7 +9,7 @@
 # Ports in use? QUICKSTART_PORT=9300 MAILHOG_PORT=8125 docker compose -f deploy/docker-compose.quickstart.yml up --build
 #
 # NOT for production: development mode (emergency admin/admin account, API docs on, relaxed checks)
-# and throw-away passwords. For production see docs/24-deployment-image-env-and-enterprise.md.
+# and throw-away passwords. For production see docs/install/deployment.md.
 # (deploy/docker-compose.yml only starts PostgreSQL, Redis and MailHog for local development.)
 
 # Own project name: deploy/docker-compose.yml (dev) lives in the same folder and has services with the same names;

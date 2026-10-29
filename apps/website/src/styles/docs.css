@@ -1,0 +1,33 @@
+/* Starlight docs in SecureOne's colours. */
+:root {
+  --sl-color-accent-low: #1e1b4b;
+  --sl-color-accent: #818cf8;
+  --sl-color-accent-high: #e0e7ff;
+  --sl-color-bg-nav: #0d0f1c;
+  --sl-color-bg-sidebar: #0d0f1c;
+  --sl-color-bg: #0b0d17;
+}
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e0e7ff;
+  --sl-color-accent: #4f46e5;
+  --sl-color-accent-high: #312e81;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #fbfbfe;
+  --sl-color-bg: #ffffff;
+}
+.site-title img {
+  border-radius: 0.6rem;
+}
+pre.mermaid {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.75rem;
+  background: var(--sl-color-bg-nav);
+  overflow-x: auto;
+}
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+}

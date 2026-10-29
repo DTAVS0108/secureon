@@ -1,0 +1,94 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+
+const groups = [
+  {
+    eyebrow: "Sign-in",
+    title: "Every way your users want to sign in",
+    text: "Hosted pages that carry each application's name, logo and colours, or your own screens on top of the same APIs.",
+    items: [
+      ["Passwords done right", "Configurable policy, a leaked-password check, lockout after repeated failures and self-service reset."],
+      ["Passkeys", "Phishing-resistant sign-in with passkeys and security keys."],
+      ["One-time codes and magic links", "Sign in or verify with a code sent by email or SMS, or a single-use link."],
+      ["Two-step verification", "Authenticator apps, passkeys, email or SMS codes and recovery codes, required or optional per application."],
+      ["Devices and command-line tools", "The device flow for TVs, consoles and CLIs: a short code and a URL."],
+      ["Self-service sign-up", "Optional sign-up with email verification, allowed or blocked domains and your own extra fields."],
+    ],
+  },
+  {
+    eyebrow: "Single sign-on",
+    title: "One sign-in across apps and companies",
+    text: "Users sign in once for all your applications. Business customers bring their own identity provider.",
+    items: [
+      ["OpenID Connect provider", "Standard discovery, authorization code with PKCE, refresh tokens, UserInfo and back-channel logout."],
+      ["SAML 2.0", "Act as a SAML identity provider for your apps, and accept company sign-in from SAML providers."],
+      ["Social and company sign-in", "Add OpenID Connect providers per tenant or application; users can link several sign-in methods."],
+      ["Custom domains", "Each tenant can sign in on its own domain with its own issuer."],
+    ],
+  },
+  {
+    eyebrow: "Access control",
+    title: "Roles and permissions your code can trust",
+    text: "Define what each application can do, decide who may do it, and read the answer from the token.",
+    items: [
+      ["Roles, permissions and groups", "Per application, with composite roles and group-based assignment."],
+      ["Claims in the token", "Roles, permissions and your own claims arrive in the ID and access tokens."],
+      ["Access requests and reviews", "Users ask for access; administrators review who holds privileged roles."],
+      ["Change approvals", "High-impact changes wait for a second administrator before they take effect."],
+    ],
+  },
+  {
+    eyebrow: "Operations",
+    title: "Built to be run, not babysat",
+    text: "Everything an operator needs to keep SecureOne healthy and every administrator accountable.",
+    items: [
+      ["Audit log", "Append-only, searchable and exportable; stream it to your log platform as it happens."],
+      ["Sessions", "See active sessions and end them, for one user or everyone."],
+      ["SCIM 2.0 and webhooks", "Provision users from directories and get signed events when things change."],
+      ["Configuration as code", "Export a tenant to a file, preview changes, apply them, or load files at every start."],
+      ["Service accounts", "API keys and client credentials for machine-to-machine calls."],
+      ["Health and metrics", "Health checks and Prometheus metrics on a separate internal port."],
+    ],
+  },
+];
+---
+
+<Site title="Features" description="Sign-in, passkeys, MFA, single sign-on, SAML, roles and permissions, multi-tenancy, audit, SCIM and more.">
+  <PageHead
+    eyebrow="Features"
+    title="A complete identity platform in one container"
+    lead="SecureOne covers sign-in, single sign-on, multi-factor authentication, users, roles and permissions for every application, with an admin console for each level of your organisation."
+  />
+  {groups.map((group, i) => (
+    <section class={`section ${i % 2 === 0 ? "section-soft" : ""}`}>
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">{group.eyebrow}</span>
+          <h2 class="h2">{group.title}</h2>
+          <p class="lead">{group.text}</p>
+        </div>
+        <div class="grid grid-3">
+          {group.items.map(([title, text]) => (
+            <div class="card hover reveal">
+              <h3 class="h3">{title}</h3>
+              <p>{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ))}
+  <section style="padding:72px 0 112px">
+    <div class="container">
+      <div class="cta reveal">
+        <h2 class="h2" style="margin:0;color:#fff">See it for yourself</h2>
+        <p class="lead" style="margin-top:14px">Start SecureOne locally in five minutes and click through the console.</p>
+        <div class="hero-actions">
+          <a class="btn btn-ghost" style="background:#fff;color:#312e81;border-color:#fff" href="/docs/get-started/quickstart/">Quickstart <Icon name="arrow" /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Site>

@@ -14,7 +14,7 @@ which run as their own containers. All three share a Docker network:
 | `secureone-cache` | `redis:7-alpine` | Sessions, rate limits (data in `secureone-redisdata`) |
 
 Network: `secureone-net`. Every setting is an environment variable; see
-[docs/24 — Deployment](../docs/24-deployment-image-env-and-enterprise.md) for the full list.
+[Deployment](../docs/install/deployment.md) for the full list.
 
 ---
 
@@ -27,13 +27,13 @@ From the **repository root**:
 
 ```powershell
 cd "C:\path\to\secureone"
-docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.0 .
+docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.3 .
 ```
 
-- Pick a new version number each time (`0.1.0`, `0.1.1`, …) so you can always roll back.
+- Pick a new version number each time (`0.1.3`, `0.1.4`, …) so you can always roll back.
 - A full build takes **8–10 minutes**: the console build, the Java build, then a start-up training step that
   launches the server once to record a start-up cache (this is why the container starts in about 10 seconds).
-- The build ends with `naming to docker.io/dmtavs0108/secureone:0.1.0 done`. Check with
+- The build ends with `naming to docker.io/dmtavs0108/secureone:0.1.3 done`. Check with
   `docker images dmtavs0108/secureone`.
 
 ## 2. Publish it (optional)
@@ -41,8 +41,8 @@ docker build -f deploy/Dockerfile -t dmtavs0108/secureone:0.1.0 .
 Only needed if other machines pull the image from Docker Hub (`docker login` first):
 
 ```powershell
-docker push dmtavs0108/secureone:0.1.0
-docker tag  dmtavs0108/secureone:0.1.0 dmtavs0108/secureone:latest
+docker push dmtavs0108/secureone:0.1.3
+docker tag  dmtavs0108/secureone:0.1.3 dmtavs0108/secureone:latest
 docker push dmtavs0108/secureone:latest
 ```
 
@@ -50,8 +50,8 @@ docker push dmtavs0108/secureone:latest
 
 ## 3. Update a running container to the new image
 
-> **From 0.3.x or earlier to 0.1.0:** not possible in place. 0.1.0 starts a new schema baseline and refuses a
-> database created by an earlier release. Back up (3.2), then start 0.1.0 on an empty database (section 4) and
+> **From 0.3.x or earlier to 0.1.x:** not possible in place. 0.1.0 started a new schema baseline and 0.1.x refuses a
+> database created by an earlier release. Back up (3.2), then start 0.1.x on an empty database (section 4) and
 > set it up again.
 
 Your data lives in the database container, so replacing the `secureone` container keeps every tenant, user and
@@ -93,7 +93,7 @@ docker stop secureone
 docker rename secureone secureone-old
 docker run -d --name secureone --network secureone-net -p 9000:9000 --restart unless-stopped `
   --env-file C:\secureone\secureone.env `
-  dmtavs0108/secureone:0.1.1
+  dmtavs0108/secureone:0.1.4
 ```
 
 ### 3.4 Wait until it is healthy
@@ -112,7 +112,7 @@ When the new version works:
 
 ```powershell
 docker rm secureone-old
-docker rmi dmtavs0108/secureone:0.1.0         # the previous version, if you no longer need it
+docker rmi dmtavs0108/secureone:0.1.3         # the previous version, if you no longer need it
 docker builder prune -f                       # build cache (can be several GB)
 ```
 
@@ -158,7 +158,7 @@ SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Change-Me-2026!x
 
 `SECUREONE_ENV=development` allows plain `http://` and local URLs, and turns on the API docs (Swagger UI at
 `/docs`, OpenAPI at `/v3/api-docs/all`). For a real server use `production` with
-`https://` URLs and the extra settings in [docs/24](../docs/24-deployment-image-env-and-enterprise.md)
+`https://` URLs and the extra settings in [Deployment](../docs/install/deployment.md)
 (encryption key, secrets as files, mail).
 
 ### 4.2 Start the containers
@@ -178,7 +178,7 @@ do { Start-Sleep 2 } until ((docker exec secureone-db pg_isready -U secureone -d
 
 docker run -d --name secureone --network secureone-net -p 9000:9000 --restart unless-stopped `
   --env-file C:\secureone\secureone.env `
-  dmtavs0108/secureone:0.1.0
+  dmtavs0108/secureone:0.1.3
 ```
 
 The database password must be the same in `POSTGRES_PASSWORD` and `SECUREONE_DB_PASSWORD`.
