@@ -30,17 +30,31 @@ SecureOne is a **central identity platform** (an identity provider you host your
 
 ### Main components
 
+```mermaid
+flowchart LR
+    operator(["You<br/>(operators)"])
+    users(["End users"])
+    apps(["Your applications"])
+
+    subgraph container["SecureOne container · port 9000"]
+        direction TB
+        console["<b>Admin console</b><br/>/admin<br/>tenants, users, apps, settings<br/>+ Documentation"]
+        auth["<b>Auth server</b><br/>OAuth 2.1 · OpenID Connect · SAML · SCIM<br/>hosted sign-in pages · APIs"]
+        console -- "admin API" --> auth
+    end
+
+    postgres[("<b>PostgreSQL</b><br/>tenants, users, tokens,<br/>per-app schemas")]
+    redis[("<b>Redis</b><br/>sessions, codes,<br/>rate limits")]
+
+    operator -- "manage" --> console
+    users -- "sign in" --> auth
+    apps -- "tokens, APIs" --> auth
+    auth --> postgres
+    auth --> redis
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   admin-web     │     │   auth-server    │     │  PostgreSQL     │
-│   :9000/admin   │────▶│   :9000          │────▶│  + Redis        │
-│ Admin console   │     │ OAuth, APIs,     │     │ Users, tokens,  │
-│ + Documentation    │     │ hosted login UI  │     │ per-app schemas │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-         ▲                        ▲
-         │                        │
-    You (operator)          End users + your apps
-```
+
+The console and the auth server run in **one container** and share port 9000: the console is the `/admin` path.
+PostgreSQL holds everything that must last; Redis holds short-lived state that several SecureOne instances share.
 
 | Component | URL (dev) | Who uses it |
 |-----------|-----------|-------------|
