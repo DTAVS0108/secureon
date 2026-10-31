@@ -3,3 +3,6 @@ dist/
 .astro/
 # Generated from ../../docs by scripts/sync-docs.mjs
 src/content/docs/
+
+.vercel
+.env*
