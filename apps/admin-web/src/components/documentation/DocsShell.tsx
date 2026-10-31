@@ -29,6 +29,17 @@ export function DocsShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Same sign-out as the console's top bar; stay on this page, which reloads for a signed-out reader.
+  async function signOut() {
+    setSigningOut(true);
+    try {
+      await fetch(withBasePath("/api/auth/logout"), { method: "POST" });
+    } finally {
+      window.location.reload();
+    }
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -72,12 +83,22 @@ export function DocsShell({
             <kbd className="docs-kbd hidden sm:inline">Ctrl K</kbd>
           </button>
           {viewer.signedIn ? (
-            <a
-              href={withBasePath("/")}
-              className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand hover:opacity-90"
-            >
-              Open console
-            </a>
+            <div className="flex shrink-0 items-center gap-2">
+              <a
+                href={withBasePath("/")}
+                className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand hover:opacity-90"
+              >
+                Open console
+              </a>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                disabled={signingOut}
+                className="rounded-lg border border-ui px-3 py-1.5 text-sm font-medium text-soft hover:bg-ui-elevated disabled:opacity-60"
+              >
+                {signingOut ? "Signing out…" : "Sign out"}
+              </button>
+            </div>
           ) : (
             <a
               href={withBasePath(`/login?next=${encodeURIComponent(next)}`)}
