@@ -84,7 +84,7 @@ spring:
       password: ${SECUREONE_DEV_PASSWORD:admin}
     oauth2:
       authorizationserver:
-        issuer: ${SECUREONE_ISSUER_URL:http://localhost:9000}
+        issuer: ${SECUREONE_ISSUER_URL:${SECUREONE_PUBLIC_BASE_URL:http://localhost:9000}}  # defaults to the public address
         # OAuth clients are loaded from application records (admin Applications API).
 
 server:

@@ -15,6 +15,7 @@ public class AuthServerApplication {
 		if (System.getProperty("jdk.httpclient.allowRestrictedHeaders") == null) {
 			System.setProperty("jdk.httpclient.allowRestrictedHeaders", "host");
 		}
+		StartupWait.forDependencies();
 		if (MigrateOnly.requested()) {
 			System.exit(MigrateOnly.run(args));
 		}

@@ -1,0 +1,229 @@
+---
+import Site from "../layouts/Site.astro";
+import PageHead from "../components/PageHead.astro";
+import Icon from "../components/Icon.astro";
+
+const IMAGE = "dmtavs0108/secureone:1.1.0";
+
+// Each platform: what to create, then the exact steps. "tested": run end to end by the SecureOne team.
+const platforms = [
+  {
+    id: "docker",
+    label: "Docker",
+    tested: true,
+    create: ["A server with Docker and Compose", "Your domain with HTTPS in front of port 9000"],
+    code: `# docker-compose.yml: SecureOne with PostgreSQL and Redis
+services:
+  secureone:
+    image: ${IMAGE}
+    ports: ["127.0.0.1:9000:9000"]
+    environment:
+      SECUREONE_PUBLIC_BASE_URL: https://id.example.com
+      SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+      SECUREONE_DB_USERNAME: secureone
+      SECUREONE_DB_PASSWORD: choose-a-password
+      SECUREONE_REDIS_URL: redis://redis:6379
+    volumes: ["secureone-data:/var/lib/secureone"]
+    restart: unless-stopped
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_DB: secureone, POSTGRES_USER: secureone, POSTGRES_PASSWORD: choose-a-password}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+volumes: {secureone-data: {}, pgdata: {}}
+
+# then
+docker compose up -d && docker compose logs -f secureone`,
+    guide: "/docs/install/installation/",
+  },
+  {
+    id: "desktop",
+    label: "Docker Desktop",
+    tested: true,
+    create: ["Docker Desktop (Windows, Mac or Linux)", "PostgreSQL and Redis it can reach (or use the Docker tab's Compose file)"],
+    steps: [
+      `Images → search <code>${IMAGE}</code> → Pull.`,
+      "Run → Optional settings.",
+      "Ports: host <code>9000</code> → container <code>9000</code>.",
+      "Volumes: a volume named <code>secureone-data</code> → container path <code>/var/lib/secureone</code>.",
+      "Environment variables: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code>, <code>SECUREONE_DB_USERNAME</code>, <code>SECUREONE_DB_PASSWORD</code>, <code>SECUREONE_REDIS_URL</code>.",
+      "Run, open the container's Logs for the setup code, then <code>/admin/setup</code>.",
+    ],
+    guide: "/docs/install/installation/",
+  },
+  {
+    id: "kubernetes",
+    label: "Kubernetes",
+    tested: true,
+    create: ["Any cluster (EKS, AKS, GKE, k3s, on-premises) with Helm 3", "PostgreSQL and Redis the cluster can reach", "An ingress with TLS"],
+    code: `helm repo add secureone https://secureone-website.vercel.app/charts
+helm install secureone secureone/secureone -n secureone --create-namespace \\
+  --set publicUrl=https://id.example.com \\
+  --set database.url="jdbc:postgresql://<host>:5432/secureone?currentSchema=platform" \\
+  --set database.username=secureone --set database.password=<password> \\
+  --set redis.url=redis://<host>:6379 \\
+  --set ingress.enabled=true --set ingress.host=id.example.com
+
+# back up the generated encryption key
+kubectl -n secureone get secret secureone-secrets \\
+  -o jsonpath='{.data.SECUREONE_ENCRYPTION_KEY}' | base64 -d`,
+    guide: "/docs/install/kubernetes/",
+  },
+  {
+    id: "aws",
+    label: "AWS",
+    tested: false,
+    create: [
+      "Amazon RDS for PostgreSQL 16 (empty database <code>secureone</code>)",
+      "Amazon ElastiCache for Redis OSS 7",
+      "An encryption key in AWS Secrets Manager: <code>base64:</code> + <code>openssl rand -base64 32</code>, with the database password",
+      "An Application Load Balancer with an ACM certificate",
+    ],
+    steps: [
+      `ECS on Fargate: a task definition with image <code>${IMAGE}</code>, port <code>9000</code>, 1 vCPU and 2 GB memory.`,
+      "Environment: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code>, <code>SECUREONE_DB_USERNAME</code>, <code>SECUREONE_REDIS_URL</code>.",
+      "Secrets (from Secrets Manager): <code>SECUREONE_ENCRYPTION_KEY</code>, <code>SECUREONE_DB_PASSWORD</code>. With the key as a secret, no volume is needed.",
+      "Service behind the load balancer: target port <code>9000</code>; health check on port <code>9001</code>, path <code>/actuator/health/readiness</code>.",
+      "Security groups: the tasks reach RDS (5432) and ElastiCache (6379).",
+    ],
+    guide: "/docs/install/deployment/",
+  },
+  {
+    id: "azure",
+    label: "Azure",
+    tested: false,
+    create: [
+      "Azure Database for PostgreSQL flexible server, version 16",
+      "Azure Cache for Redis (TLS: <code>rediss://:&lt;access key&gt;@&lt;name&gt;.redis.cache.windows.net:6380</code>)",
+      "An encryption key: <code>base64:</code> + <code>openssl rand -base64 32</code>",
+    ],
+    steps: [
+      `Azure Container Apps: a container app with image <code>docker.io/${IMAGE}</code>, ingress external, target port <code>9000</code>.`,
+      "Secrets: the encryption key, the database password and the Redis URL; reference them as <code>SECUREONE_ENCRYPTION_KEY</code>, <code>SECUREONE_DB_PASSWORD</code>, <code>SECUREONE_REDIS_URL</code>.",
+      "Environment: <code>SECUREONE_PUBLIC_BASE_URL</code> (your custom domain), <code>SECUREONE_DB_URL</code> (add <code>&amp;sslmode=require</code>), <code>SECUREONE_DB_USERNAME</code>.",
+      "Scale: minimum 1 replica (background jobs run in the server); 1 CPU and 2 GiB.",
+      "Custom domain with a managed certificate on the container app.",
+    ],
+    guide: "/docs/install/deployment/",
+  },
+  {
+    id: "gcp",
+    label: "Google Cloud",
+    tested: false,
+    create: [
+      "Cloud SQL for PostgreSQL 16, reachable over private IP",
+      "Memorystore for Redis 7 in the same VPC",
+      "Secrets in Secret Manager: the encryption key (<code>base64:</code> + <code>openssl rand -base64 32</code>) and the database password",
+    ],
+    code: `gcloud run deploy secureone \\
+  --image docker.io/${IMAGE} --port 9000 \\
+  --min-instances 1 --no-cpu-throttling --memory 2Gi --cpu 1 \\
+  --network <vpc> --subnet <subnet> --vpc-egress private-ranges-only \\
+  --set-env-vars SECUREONE_PUBLIC_BASE_URL=https://id.example.com,\\
+SECUREONE_DB_URL=jdbc:postgresql://<cloud-sql-ip>:5432/secureone?currentSchema=platform,\\
+SECUREONE_DB_USERNAME=secureone,SECUREONE_REDIS_URL=redis://<memorystore-ip>:6379 \\
+  --set-secrets SECUREONE_ENCRYPTION_KEY=secureone-key:latest,\\
+SECUREONE_DB_PASSWORD=secureone-db-password:latest \\
+  --allow-unauthenticated`,
+    note: "Cloud Run must keep one instance with CPU always on (<code>--min-instances 1 --no-cpu-throttling</code>): SecureOne runs background jobs and cannot scale to zero.",
+    guide: "/docs/install/deployment/",
+  },
+  {
+    id: "paas",
+    label: "Render / Railway",
+    tested: false,
+    create: ["A PostgreSQL database and a Redis (Render Key Value, or Railway's Redis) from the same provider"],
+    steps: [
+      `New service from an existing image: <code>docker.io/${IMAGE}</code>, port <code>9000</code>.`,
+      "Variables: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code> (<code>jdbc:postgresql://&lt;host&gt;:&lt;port&gt;/&lt;db&gt;?currentSchema=platform</code>), <code>SECUREONE_DB_USERNAME</code>, <code>SECUREONE_DB_PASSWORD</code>, <code>SECUREONE_REDIS_URL</code>.",
+      "A persistent disk or volume at <code>/var/lib/secureone</code>, or set <code>SECUREONE_ENCRYPTION_KEY</code> as a secret variable.",
+      "At least 2 GB memory; keep one instance always running.",
+      "Add your custom domain; the platform provides HTTPS.",
+    ],
+    guide: "/docs/install/deployment/",
+  },
+];
+---
+
+<Site title="Deploy" description="Run SecureOne on Docker, Docker Desktop, Kubernetes, AWS, Azure, Google Cloud, Render or Railway.">
+  <PageHead
+    eyebrow="Deploy"
+    title="Run SecureOne where you run"
+    lead="One image for Intel/AMD and ARM. Give it PostgreSQL, Redis and your address; it creates its own secrets, and you finish setup in the browser."
+  />
+
+  <section class="section" style="padding-top:24px">
+    <div class="container">
+      <div class="deploy-tabs" role="tablist" aria-label="Platforms">
+        {platforms.map((p, i) => (
+          <button role="tab" id={`tab-${p.id}`} aria-controls={`panel-${p.id}`} aria-selected={i === 0 ? "true" : "false"} data-deploy={p.id}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {platforms.map((p, i) => (
+        <div class="deploy-panel" role="tabpanel" id={`panel-${p.id}`} aria-labelledby={`tab-${p.id}`} hidden={i !== 0}>
+          <div class="split" style="align-items:start">
+            <div>
+              <h2 class="h3" style="margin:0 0 12px">What you need</h2>
+              <ul class="ticks" style="margin-top:0">
+                {p.create.map((c) => <li set:html={c} />)}
+              </ul>
+              {p.steps && (
+                <>
+                  <h2 class="h3" style="margin:28px 0 12px">Steps</h2>
+                  <ol class="deploy-steps">{p.steps.map((s) => <li set:html={s} />)}</ol>
+                </>
+              )}
+              {p.note && <p class="deploy-note" set:html={p.note} />}
+              <p class="muted" style="font-size:14px;margin-top:24px">
+                {p.tested ? "Tested end to end by the SecureOne team." : "Follows the platform's documented setup; not yet tested end to end by the SecureOne team."}
+              </p>
+              <a class="btn btn-ghost" style="margin-top:8px" href={p.guide}>Full guide <Icon name="arrow" /></a>
+            </div>
+            <div>
+              {p.code ? (
+                <div class="code"><pre>{p.code}</pre></div>
+              ) : (
+                <div class="card">
+                  <h3 class="h3">After it starts</h3>
+                  <p>Read the setup code from the log, open <code>https://&lt;your address&gt;/admin/setup</code>, and follow the steps: check the installation, set up email, back up the encryption key, create the first operator.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div class="help" style="margin-top:48px">
+        <div>
+          <h3 class="h3">Every platform, the same five settings</h3>
+          <p>
+            <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code>, <code>SECUREONE_DB_USERNAME</code>,
+            <code>SECUREONE_DB_PASSWORD</code>, <code>SECUREONE_REDIS_URL</code>, plus a volume at <code>/var/lib/secureone</code>
+            or <code>SECUREONE_ENCRYPTION_KEY</code>.
+          </p>
+        </div>
+        <a class="btn btn-ghost" href="/docs/install/deployment/#all-settings">All settings</a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>("[data-deploy]")];
+    function show(id: string) {
+      tabs.forEach((t) => t.setAttribute("aria-selected", String(t.dataset.deploy === id)));
+      document.querySelectorAll<HTMLElement>(".deploy-panel").forEach((p) => (p.hidden = p.id !== `panel-${id}`));
+    }
+    tabs.forEach((t) => t.addEventListener("click", () => {
+      show(t.dataset.deploy!);
+      history.replaceState(null, "", `#${t.dataset.deploy}`);
+    }));
+    const wanted = location.hash.slice(1);
+    if (tabs.some((t) => t.dataset.deploy === wanted)) show(wanted);
+  </script>
+</Site>

@@ -31,6 +31,9 @@ spec:
         prometheus.io/port: {{ .Values.management.port | quote }}
       {{- end }}
     spec:
+      # No SERVICENAME_PORT-style variables: a Service named "secureone" would set SECUREONE_PORT=tcp://..., which is
+      # SecureOne's own port setting.
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
       containers:

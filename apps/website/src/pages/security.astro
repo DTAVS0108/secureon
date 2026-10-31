@@ -40,12 +40,11 @@ const layers = [
       <div class="reveal">
         <span class="eyebrow">Production mode</span>
         <h2 class="h2">It will not start unsafely</h2>
-        <p class="lead" style="margin-top:16px">The image runs in production mode. If something that keeps you safe is missing, it stops at start-up and the log names the setting.</p>
+        <p class="lead" style="margin-top:16px">The image runs in production mode. It creates its own secrets on the first start, and stops with a clear message if something that keeps you safe is missing.</p>
         <ul class="ticks">
-          <li>https addresses for the issuer and public URL</li>
-          <li>An encryption key for stored secrets</li>
-          <li>A token-signing key shared by every instance</li>
-          <li>A secret pepper for one-time codes</li>
+          <li>An https public address</li>
+          <li>An encryption key kept outside the database (created in its volume, or yours)</li>
+          <li>A token-signing key and a code pepper, created once and shared by every instance</li>
           <li>No development shortcuts such as the emergency test account</li>
         </ul>
       </div>

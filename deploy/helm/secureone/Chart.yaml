@@ -1,6 +1,21 @@
 apiVersion: v2
 name: secureone
-description: "SecureOne IAM platform (one image: auth-server with the admin console at /admin)"
+description: "SecureOne: sign-in, single sign-on, MFA, users, roles and permissions for every application (one image, admin console at /admin)"
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.1.0
+appVersion: "1.1.0"
+home: https://secureone-website.vercel.app
+icon: https://secureone-website.vercel.app/favicon.svg
+keywords:
+  - identity
+  - oauth
+  - openid-connect
+  - saml
+  - scim
+  - sso
+  - mfa
+annotations:
+  artifacthub.io/license: LicenseRef-SecureOne-Proprietary
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://secureone-website.vercel.app/docs/install/kubernetes/

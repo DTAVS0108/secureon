@@ -1,7 +1,7 @@
 ---
 title: Configuration as code and upgrades
 summary: Tenant setup in files, upgrades and rollback
-order: 3
+order: 4
 audience: public
 ---
 
@@ -209,7 +209,8 @@ The Helm chart does this for you: `migrationJob.enabled: true` (the default) run
 
 ```bash
 # Docker, by hand
-docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only dmtavs0108/secureone:1.0.1
+docker run --rm -e SECUREONE_DB_URL=... -e SECUREONE_DB_USERNAME=... -e SECUREONE_DB_PASSWORD=... \
+  -v secureone-data:/var/lib/secureone -e SECUREONE_DB_MIGRATE=only dmtavs0108/secureone:<new version>
 ```
 
 ### Upgrade checklist

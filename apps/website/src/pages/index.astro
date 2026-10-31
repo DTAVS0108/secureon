@@ -27,7 +27,7 @@ const facts = [
   ["1", "container image"],
   ["2", "dependencies: PostgreSQL and Redis"],
   ["4", "open standards: OAuth, OIDC, SAML, SCIM"],
-  ["0", "SQL to run by hand"],
+  ["0", "secrets or SQL to create by hand"],
 ];
 const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passkeys (WebAuthn)", "PKCE", "Device flow", "Dynamic client registration"];
 ---
@@ -36,7 +36,7 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
   <section class="hero">
     <div class="container">
       <div>
-        <span class="pill"><b>1.0</b> SecureOne 1.0 is here</span>
+        <span class="pill"><b>1.1</b> New: install with a few variables</span>
         <h1 class="h1">Identity and access for <span class="gradient-text">every app</span> you build</h1>
         <p class="lead" style="margin-top:22px">
           SecureOne gives your applications sign-in, single sign-on, multi-factor authentication, users, roles and
@@ -123,7 +123,7 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
         <span class="eyebrow">How it works</span>
         <h2 class="h2">Running in minutes, connected in an afternoon</h2>
         <div class="grid steps" style="margin-top:36px;gap:28px">
-          <div class="step"><h3 class="h3">Run one container</h3><p class="muted" style="margin:8px 0 0">Point it at PostgreSQL and Redis. The database schema creates and upgrades itself.</p></div>
+          <div class="step"><h3 class="h3">Run one container</h3><p class="muted" style="margin:8px 0 0">Point it at PostgreSQL and Redis. It creates its tables and its own secrets.</p></div>
           <div class="step"><h3 class="h3">Connect your app</h3><p class="muted" style="margin:8px 0 0">The console's <b>Connect an app</b> wizard gives you the client ID and settings, and tests sign-in for you.</p></div>
           <div class="step"><h3 class="h3">Sign users in</h3><p class="muted" style="margin:8px 0 0">Use any OpenID Connect library. Your app receives standard tokens with roles and permissions.</p></div>
         </div>
@@ -150,7 +150,7 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
         <span class="eyebrow">Security</span>
         <h2 class="h2">Secure defaults, not settings to remember</h2>
         <ul class="ticks">
-          <li>Production mode refuses to start without https addresses, an encryption key and a signing key.</li>
+          <li>Secrets are created on the first start; the encryption key stays outside the database, and production refuses to start without one.</li>
           <li>In production, console administrators sign in in two steps, and sensitive actions ask them to verify again.</li>
           <li>Rate limits, CAPTCHA and IP rules protect sign-in from automated attacks.</li>
           <li>High-impact changes, such as deleting an OAuth client, wait for a second administrator.</li>
@@ -165,29 +165,28 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
       <div class="section-head center reveal">
         <span class="eyebrow">Install</span>
         <h2 class="h2">From image to first sign-in in three steps</h2>
-        <p class="lead">SecureOne is one container image. Give it PostgreSQL, Redis and a few secrets, start it, and do everything else in the console.</p>
+        <p class="lead">SecureOne is one container image. Give it PostgreSQL, Redis and your address, start it, and do everything else in the browser.</p>
       </div>
       <div class="install">
         <div class="install-step reveal">
-          <h3 class="h3">Write the settings</h3>
-          <p>Your address, the first operator, the database and the secrets, in one env file.</p>
-          <pre><span class="c"># secureone.env</span>
-SECUREONE_ISSUER_URL=https://id.example.com
+          <h3 class="h3">Set a few variables</h3>
+          <p>Your address, your database and Redis. No secrets to create, no file to edit.</p>
+          <pre>SECUREONE_PUBLIC_BASE_URL=https://id.example.com
 SECUREONE_DB_URL=jdbc:postgresql://…
 SECUREONE_REDIS_URL=redis://redis:6379</pre>
         </div>
         <div class="install-step reveal">
           <h3 class="h3">Start the container</h3>
-          <p>The database tables create and upgrade themselves. No SQL by hand.</p>
+          <p>It waits for the database, creates its tables and its own secrets. No SQL by hand.</p>
           <pre>docker compose up -d
 docker compose logs -f secureone
 <span class="c"># Started AuthServerApplication</span></pre>
         </div>
         <div class="install-step reveal">
-          <h3 class="h3">Sign in and connect</h3>
-          <p>Open the console, choose your password, then run <b>Connect an app</b>.</p>
+          <h3 class="h3">Finish in the browser</h3>
+          <p>The setup wizard checks the installation, sets up email and creates your account.</p>
           <pre><span class="c"># in your browser</span>
-https://id.example.com/admin</pre>
+https://id.example.com/admin/setup</pre>
         </div>
       </div>
       <div class="center hero-actions" style="justify-content:center">

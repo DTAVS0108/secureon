@@ -1,6 +1,6 @@
 {
   "name": "secureone",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "SecureOne — centralized Identity & Access Management platform (JS workspaces).",
   "packageManager": "pnpm@9.15.9",

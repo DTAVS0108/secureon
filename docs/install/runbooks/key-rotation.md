@@ -7,11 +7,11 @@ audience: operator
 
 # Key rotation
 
-Which secrets exist, where they live, and how to rotate each without breaking sign-in. Environment variables are listed in [Deployment § Generate secrets](../deployment.md#a2--generate-secrets).
+Which secrets exist, where they live, and how to rotate each without breaking sign-in. Which are created on the first start and which you can supply: [Deployment § Secrets](../deployment.md#a2--secrets-created-on-the-first-start).
 
 ## OAuth / OIDC signing key (JWT)
 
-Source: `SECUREONE_JWK_PRIVATE_KEY_PEM` (required in production), otherwise `platform_setting` key `oauth2_signing_jwk` (generated once, private key encrypted). The JWKS `kid` of an env key is derived from its PEM.
+Source: `SECUREONE_JWK_PRIVATE_KEY_PEM` when set, otherwise `platform_setting` key `oauth2_signing_jwk` (generated on the first start, private key encrypted with the encryption key). The JWKS `kid` of an env key is derived from its PEM.
 
 Overlapping rotation (no token is rejected early):
 
@@ -21,7 +21,7 @@ Overlapping rotation (no token is rejected early):
 4. Wait at least the longest token lifetime that can still be in use (access token TTL; ID tokens are only checked at sign-in) plus resource-server JWKS cache time (typically ≤ 1 h).
 5. Remove `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM` and restart. Refresh tokens are opaque and unaffected.
 
-Rotating away from a key SecureOne generated (only in non-production; production requires the env key): there is deliberately no private-key export. Either switch in a quiet window — tokens signed by the old key are rejected after the restart, users and apps simply sign in / refresh again — or, if you still have that key's PEM from when it was created, put it in `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM`; the auth-server recognises it as the stored key and keeps publishing it under its original `kid`.
+A key SecureOne generated is rotated in the console (**Signing keys**), with the same overlap. To move from it to a key of your own: there is deliberately no private-key export. Either switch in a quiet window — tokens signed by the old key are rejected after the restart, users and apps simply sign in / refresh again — or, if you still have that key's PEM from when it was created, put it in `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM`; the auth-server recognises it as the stored key and keeps publishing it under its original `kid`.
 
 ## SAML SP key (signing + decryption)
 
@@ -49,7 +49,7 @@ Encrypts stored secrets: SMTP/SMS credentials, IdP client secrets, MFA seeds, an
 
 ## OTP pepper (`SECUREONE_OTP_PEPPER`)
 
-Rotating invalidates unconsumed OTP hashes.
+Generated on the first start when not set, stored encrypted. Rotating invalidates unconsumed OTP hashes **and MFA recovery codes**: avoid it, and once you have set the variable, keep it.
 
 1. Schedule maintenance window.
 2. Update secret in vault/Kubernetes secret.

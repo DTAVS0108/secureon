@@ -88,7 +88,7 @@ Enable **SMS OTP** under **Authentication → MFA** (`m_sms`) and **Email OTP** 
 
 ```dotenv
 SECUREONE_REDIS_URL=redis://redis:6379
-SECUREONE_OTP_PEPPER=change-me-in-production   # hashes OTP codes at rest
+SECUREONE_OTP_PEPPER=                          # optional: hashes OTP codes at rest; generated on the first start when empty
 ```
 
 Redis is required for OTP hot storage and Spring Session (shared sessions across auth-server instances).

@@ -28,23 +28,33 @@ resources:
     cpu: "1"
     memory: 1536Mi
 
-# Non-secret settings. Secrets (database password, encryption key, signing keys, OTP pepper, ...)
-# come from existingSecret; see docs/install/deployment.md "Generate secrets".
+# The address users and applications open (https). Also the token issuer. Usually the ingress host.
+publicUrl: https://id.example.com
+
+# Your PostgreSQL (an empty database and a user that owns it).
+database:
+  url: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+  username: secureone
+  # Stored in the Secret the chart creates. Leave empty when existingSecret provides SECUREONE_DB_PASSWORD.
+  password: ""
+
+# Your Redis. With a password: redis://:<password>@host:6379 (or put SECUREONE_REDIS_URL in existingSecret).
+redis:
+  url: redis://redis:6379
+
+# Secrets. Empty (the default): the chart creates "<release>-secrets" once, with a random encryption key and the
+# database password above. It is kept on upgrades and on `helm uninstall` (without the key, a database backup
+# cannot be restored): back it up with `kubectl get secret <release>-secrets -o yaml`. The token signing key and
+# the code pepper are created by SecureOne and stored encrypted in the database.
+# Or name a Secret of your own with any SECUREONE_* variables (at least SECUREONE_ENCRYPTION_KEY and
+# SECUREONE_DB_PASSWORD). The settings above win over the same names in that Secret: set them to "" when the
+# Secret provides them (for example a Redis URL with a password).
+existingSecret: ""
+
+# More settings as plain variables (docs: Deployment, "All settings").
 env:
-  SPRING_PROFILES_ACTIVE: prod
-  SECUREONE_ENV: production
-  SECUREONE_SWAGGER_ENABLED: "false"
-  SECUREONE_DEV_AUTH_ENABLED: "false"
-  # Public URL users and apps see (https in production). Usually the ingress host.
-  SECUREONE_ISSUER_URL: https://id.example.com
-  SECUREONE_PUBLIC_BASE_URL: https://id.example.com
   # The ingress controller's pod range: only it may send X-Forwarded-For (addresses or /8, /16, /24, /32 ranges).
   SECUREONE_TRUSTED_PROXIES: "10.0.0.0/8"
-  SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
-  SECUREONE_REDIS_URL: redis://redis:6379
-
-# Kubernetes Secret with the SECUREONE_* secrets, loaded with envFrom.
-existingSecret: secureone
 
 # Database upgrades (docs/install/configuration-and-upgrades.md). Enabled: a Job upgrades the database once before every install and upgrade
 # (helm hook), and the pods refuse to start if it did not run. Disabled: each pod upgrades at start.

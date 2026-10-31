@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1.7
 # SecureOne: one image with the auth-server and the admin console.
 #
-#   docker build -f deploy/Dockerfile -t dmtavs0108/secureone:1.0.0 .        (from the repo root)
+#   docker build -f deploy/Dockerfile -t dmtavs0108/secureone:<version> .        (from the repo root)
+#
+# Release images carry only the user documentation (no developer pages or developer blocks). For a developer
+# image with every page: --build-arg SECUREONE_DOCS=all. Settings are never build arguments: they are
+# environment variables read when the container starts.
 #
 # One process to run and one port (9000): the auth-server serves OAuth/OIDC, SAML, SCIM, the hosted
 # sign-in pages and the APIs, and the admin console at /admin (it starts the console itself on
@@ -32,6 +36,13 @@ RUN pnpm run build \
     && cp -r public .next/standalone/apps/admin-web/public \
     && mv .next/standalone /console
 
+# ---- Documentation shown in the console --------------------------------------------------------
+FROM node:22-alpine AS docs
+ARG SECUREONE_DOCS=user
+COPY docs /src/docs
+COPY scripts/docs/user-docs.mjs /src/user-docs.mjs
+RUN if [ "$SECUREONE_DOCS" = "all" ]; then cp -r /src/docs /docs; else node /src/user-docs.mjs /src/docs /docs; fi
+
 # ---- Auth-server (Spring Boot jar) ------------------------------------------------------------
 FROM eclipse-temurin:25-jdk-alpine AS auth
 WORKDIR /src
@@ -47,10 +58,21 @@ RUN ./gradlew --no-daemon bootJar -x test \
 
 # ---- Runtime -----------------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-alpine
+ARG SECUREONE_VERSION=1.1.0
+LABEL org.opencontainers.image.title="SecureOne" \
+      org.opencontainers.image.description="Sign-in, single sign-on, MFA, users, roles and permissions for every application" \
+      org.opencontainers.image.version="${SECUREONE_VERSION}" \
+      org.opencontainers.image.vendor="SecureOne" \
+      org.opencontainers.image.url="https://secureone-website.vercel.app" \
+      org.opencontainers.image.documentation="https://secureone-website.vercel.app/docs/" \
+      org.opencontainers.image.licenses="LicenseRef-SecureOne-Proprietary"
 # Node.js runs the console (same musl build as the console stage); tini forwards signals and reaps.
 RUN apk add --no-cache libstdc++ libgcc tini \
     # Numeric UID so Kubernetes runAsNonRoot can verify it.
-    && adduser -D -H -u 10001 -h /opt/secureone secureone
+    && adduser -D -H -u 10001 -h /opt/secureone secureone \
+    # Data folder for the generated encryption key. Not a VOLUME: an anonymous volume is easily lost with its
+    # container, so the key is only created when the user mounts a volume here (-v secureone-data:/var/lib/secureone).
+    && mkdir -p /var/lib/secureone && chown 10001:0 /var/lib/secureone && chmod 770 /var/lib/secureone
 COPY --from=console /usr/local/bin/node /usr/local/bin/node
 COPY --from=console /console /opt/secureone/console
 COPY --from=auth /app /opt/secureone/app
@@ -97,7 +119,7 @@ chmod 444 /opt/secureone/app.aot
 TRAIN
 
 # After the training run, which does not need them: a docs-only change rebuilds in seconds.
-COPY docs /opt/secureone/docs
+COPY --from=docs /docs /opt/secureone/docs
 
 # SECUREONE_MANAGEMENT_PORT: health, info and Prometheus only on 9001 (probes, metrics scraper); never publish it.
 ENV SPRING_PROFILES_ACTIVE=prod \

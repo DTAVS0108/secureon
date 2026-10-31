@@ -23,6 +23,7 @@ apps/admin-web/.env*
 apps/admin-web/*.tsbuildinfo
 
 !docs/
+!scripts/docs/user-docs.mjs
 
 # Public website (deploy/website.Dockerfile) and the nginx config it copies
 !apps/website/

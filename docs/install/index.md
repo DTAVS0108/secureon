@@ -7,14 +7,16 @@ audience: public
 
 # Install and operate
 
-SecureOne ships as **one container image**, `dmtavs0108/secureone:1.0.0`. It needs PostgreSQL 16 or later and
-Redis 7 or later, and every setting is read when the container starts.
+SecureOne ships as **one container image**, `dmtavs0108/secureone:1.1.0`, for Intel/AMD and ARM. It needs
+PostgreSQL 16 or later and Redis 7 or later. You start it with a few variables; it creates its own secrets and you
+finish setup in the browser.
 
 | Task | Read |
 |---|---|
 | Try it on one machine | [Quickstart](../get-started/quickstart.md) |
-| Install it on a server, step by step | [Installation](installation.md) |
-| Every setting: your own database, secrets, TLS, Kubernetes, backups | [Deployment](deployment.md) |
+| Install it with Docker or Docker Desktop | [Installation](installation.md) |
+| Install it on Kubernetes (Helm) | [Install on Kubernetes](kubernetes.md) |
+| Every setting: secrets, TLS, several instances, backups | [Deployment](deployment.md) |
 | Keep tenants in files, upgrade and roll back | [Configuration as code and upgrades](configuration-and-upgrades.md) |
 | Step-by-step procedures | [Runbooks](runbooks/index.md) |
 | How settings combine across levels | [Settings governance](settings-governance.md), [Admin control](admin-control.md) |

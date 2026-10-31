@@ -270,12 +270,8 @@ public class OAuth2SigningKeyService {
         if (stored != null) {
             return stored;
         }
-        if (environment.isProduction()) {
-            throw new IllegalStateException(
-                    "No OAuth2 signing key configured for production. Set SECUREONE_JWK_PRIVATE_KEY_PEM "
-                            + "or seed platform_setting key '" + SETTING_KEY + "'.");
-        }
-        // Several replicas may start at once: one generates the key, the others read it.
+        // None configured: create one and store it encrypted (in production with the key kept outside the database,
+        // which EncryptionKeySource requires). Several replicas may start at once: one generates it, the others read it.
         return initLock.readOrCreate(SETTING_KEY, this::readStored, () -> {
             RSAKey generated = generateRsaKey();
             persistKey(generated);

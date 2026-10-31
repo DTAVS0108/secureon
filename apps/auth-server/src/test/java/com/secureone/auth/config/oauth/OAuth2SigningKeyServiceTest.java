@@ -175,12 +175,13 @@ class OAuth2SigningKeyServiceTest {
     }
 
     @Test
-    void productionRequiresConfiguredKey() {
-        PlatformSettingsService settings = mock(PlatformSettingsService.class);
-        when(settings.get("oauth2_signing_jwk")).thenReturn(new HashMap<>());
-
-        OAuth2SigningKeyService service = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), prodEnv(), "", "");
-        assertThrows(IllegalStateException.class, service::loadOrCreateSigningKey);
+    void productionCreatesAndKeepsAKeyWhenNoneIsConfigured() {
+        PlatformSettingsService settings = storedSettings();
+        RSAKey created = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), prodEnv(), "", "")
+                .loadOrCreateSigningKey();
+        RSAKey again = new OAuth2SigningKeyService(settings, SECRETS, inlineLock(), prodEnv(), "", "")
+                .loadOrCreateSigningKey();
+        assertEquals(created.getKeyID(), again.getKeyID(), "the next start uses the stored key");
     }
 
     private static SecureOneEnvironmentProperties devEnv() {

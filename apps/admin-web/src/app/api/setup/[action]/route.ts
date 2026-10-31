@@ -3,7 +3,7 @@ import { authServerInternalUrl } from "@/lib/config";
 import { forwardedHeadersFrom } from "@/lib/api/server-auth";
 
 // First-run setup: forwards to the auth-server's public /api/v1/setup API (no console session yet).
-const ACTIONS = new Set(["status", "verify", "complete"]);
+const ACTIONS = new Set(["status", "verify", "installation", "email", "complete"]);
 
 async function forward(request: Request, action: string) {
   if (!ACTIONS.has(action)) return NextResponse.json({ detail: "Not found." }, { status: 404 });

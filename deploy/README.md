@@ -27,24 +27,33 @@ From the **repository root**:
 
 ```powershell
 cd "C:\path\to\secureone"
-docker build -f deploy/Dockerfile -t dmtavs0108/secureone:1.0.0 .
+docker build -f deploy/Dockerfile -t dmtavs0108/secureone:1.1.0 .
 ```
 
 - Pick a new version number each time (`1.0.0`, `1.0.1`, …) so you can always roll back.
 - A full build takes **8–10 minutes**: the console build, the Java build, then a start-up training step that
   launches the server once to record a start-up cache (this is why the container starts in about 10 seconds).
-- The build ends with `naming to docker.io/dmtavs0108/secureone:1.0.0 done`. Check with
+- The build ends with `naming to docker.io/dmtavs0108/secureone:1.1.0 done`. Check with
   `docker images dmtavs0108/secureone`.
+- The image carries only the user documentation (no developer pages or developer blocks). For a developer image
+  with every page: `--build-arg SECUREONE_DOCS=all`. Never pass settings or secrets as build arguments: they are
+  container variables.
 
-## 2. Publish it (optional)
+## 2. Release: publish the image and the Helm chart
 
-Only needed if other machines pull the image from Docker Hub (`docker login` first):
+`scripts/release.sh` (Git Bash or Linux/macOS) takes the version from `apps/auth-server/build.gradle.kts`; keep
+`appVersion` in `deploy/helm/secureone/Chart.yaml` the same.
 
-```powershell
-docker push dmtavs0108/secureone:1.0.0
-docker tag  dmtavs0108/secureone:1.0.0 dmtavs0108/secureone:latest
-docker push dmtavs0108/secureone:latest
+```bash
+scripts/release.sh build      # local image for this machine (same as section 1)
+scripts/release.sh chart      # Helm chart into apps/website/public/charts; then deploy the website
+docker login
+scripts/release.sh publish    # Intel/AMD + ARM image, pushed as <version> and latest
 ```
+
+`publish` builds both architectures in one image name (ARM is emulated on an Intel PC, so it takes longer). Users
+then install with `docker run dmtavs0108/secureone:<version>` or
+`helm repo add secureone https://secureone-website.vercel.app/charts`.
 
 ---
 
@@ -112,7 +121,7 @@ When the new version works:
 
 ```powershell
 docker rm secureone-old
-docker rmi dmtavs0108/secureone:1.0.0         # the previous version, if you no longer need it
+docker rmi dmtavs0108/secureone:1.1.0         # the previous version, if you no longer need it
 docker builder prune -f                       # build cache (can be several GB)
 ```
 
@@ -178,7 +187,7 @@ do { Start-Sleep 2 } until ((docker exec secureone-db pg_isready -U secureone -d
 
 docker run -d --name secureone --network secureone-net -p 9000:9000 --restart unless-stopped `
   --env-file C:\secureone\secureone.env `
-  dmtavs0108/secureone:1.0.0
+  dmtavs0108/secureone:1.1.0
 ```
 
 The database password must be the same in `POSTGRES_PASSWORD` and `SECUREONE_DB_PASSWORD`.

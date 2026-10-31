@@ -348,7 +348,7 @@ export default nextConfig;
 ```json
 {
   "name": "admin-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
@@ -381,7 +381,7 @@ export default nextConfig;
 ```json
 {
   "name": "secureone",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "SecureOne — centralized Identity & Access Management platform (JS workspaces).",
   "packageManager": "pnpm@9.15.9",
@@ -417,7 +417,7 @@ plugins {
 }
 
 group = "com.secureone"
-version = "1.0.0"
+version = "1.1.0"
 
 java {
 	toolchain {

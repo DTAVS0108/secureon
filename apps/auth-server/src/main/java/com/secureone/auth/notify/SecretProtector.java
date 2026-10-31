@@ -14,10 +14,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * AES-GCM encryption for secrets stored in the database (SMTP/SMS credentials, IdP client secrets, the
- * OAuth and SAML signing keys). The key is {@code SECUREONE_ENCRYPTION_KEY} ({@code base64:<32 bytes>}) when set, so
- * a database copy alone cannot decrypt anything; otherwise a key generated into the platform settings
- * (development). Values written under the database key still decrypt after the environment key is set,
- * and are re-encrypted under it when next saved.
+ * OAuth and SAML signing keys). The key is kept outside the database ({@link EncryptionKeySource}:
+ * {@code SECUREONE_ENCRYPTION_KEY} or the key file in the data volume), so a database copy alone cannot decrypt
+ * anything; without one, a key generated into the platform settings (development only). Values written under the
+ * database key still decrypt after an outside key is set, and are re-encrypted under it when next saved.
  */
 @Component
 public class SecretProtector {
@@ -31,9 +31,13 @@ public class SecretProtector {
     private final SecretKey environmentKey;
     private volatile SecretKey cachedKey;
 
-    public SecretProtector(
-            PlatformSettingsService settings,
-            @org.springframework.beans.factory.annotation.Value("${SECUREONE_ENCRYPTION_KEY:}") String environmentKey) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public SecretProtector(PlatformSettingsService settings, EncryptionKeySource keySource) {
+        this(settings, keySource.value());
+    }
+
+    /** {@code environmentKey}: the outside key ({@code base64:<32 bytes>}), or blank for the database key. */
+    public SecretProtector(PlatformSettingsService settings, String environmentKey) {
         this.settings = settings;
         this.environmentKey = parseEnvironmentKey(environmentKey);
     }
@@ -50,10 +54,10 @@ public class SecretProtector {
         try {
             bytes = Base64.getDecoder().decode(value);
         } catch (IllegalArgumentException ex) {
-            throw new IllegalStateException("SECUREONE_ENCRYPTION_KEY must be base64 (32 random bytes).");
+            throw new IllegalStateException("The encryption key (SECUREONE_ENCRYPTION_KEY or the key file) must be base64 (32 random bytes).");
         }
         if (bytes.length != 32) {
-            throw new IllegalStateException("SECUREONE_ENCRYPTION_KEY must decode to 32 bytes (AES-256).");
+            throw new IllegalStateException("The encryption key (SECUREONE_ENCRYPTION_KEY or the key file) must decode to 32 bytes (AES-256).");
         }
         return new SecretKeySpec(bytes, "AES");
     }
@@ -62,12 +66,13 @@ public class SecretProtector {
     void warnWithoutEnvironmentKey() {
         if (environmentKey == null) {
             org.slf4j.LoggerFactory.getLogger(SecretProtector.class).warn(
-                    "SECUREONE_ENCRYPTION_KEY is not set: stored secrets and signing keys are encrypted with a key kept "
-                            + "in the database. Set it (base64:<32 random bytes>) in production.");
+                    "No encryption key outside the database: stored secrets and signing keys are encrypted with a key "
+                            + "kept in the database. Mount a volume at SECUREONE_DATA_DIR (/var/lib/secureone) or set "
+                            + "SECUREONE_ENCRYPTION_KEY; production requires one.");
         }
     }
 
-    /** True when secrets are protected by a key kept outside the database. */
+    /** True when secrets are protected by a key kept outside the database (variable or key file). */
     public boolean usesEnvironmentKey() {
         return environmentKey != null;
     }

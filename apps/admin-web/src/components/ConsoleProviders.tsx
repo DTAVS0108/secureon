@@ -14,11 +14,12 @@ export function ConsoleProviders({
   adminContext: AdminContext;
 }) {
   const pathname = usePathname();
-  const isLogin = pathname === "/login";
+  // Pages before sign-in (as in the root layout): no console frame.
+  const isBare = pathname === "/login" || pathname.startsWith("/login/") || pathname === "/setup";
   const isDocs =
     pathname === "/documentation" || pathname.startsWith("/documentation/");
 
-  if (isLogin) {
+  if (isBare) {
     return <>{children}</>;
   }
 

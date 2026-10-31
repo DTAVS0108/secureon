@@ -18,7 +18,8 @@ What SecureOne is, a five-minute quickstart and the key ideas
 
 Install SecureOne from its image, configure it, upgrade it and keep it running
 
-- [Installation](install/installation.md): Install SecureOne on one server from its image, step by step
+- [Installation](install/installation.md): Install SecureOne from its image with a few variables, then finish setup in the browser
+- [Install on Kubernetes](install/kubernetes.md): Install SecureOne on any Kubernetes cluster with its Helm chart
 - [Deployment](install/deployment.md): Run the SecureOne image with your database, Redis, secrets and domain
 - [Configuration as code and upgrades](install/configuration-and-upgrades.md): Tenant setup in files, upgrades and rollback
 - [Environment and operations](install/environment-and-operations.md) *(developers)*: Settings, schedulers, health checks and troubleshooting

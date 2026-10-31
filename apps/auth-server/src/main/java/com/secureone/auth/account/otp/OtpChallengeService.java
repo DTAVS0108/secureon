@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +21,13 @@ public class OtpChallengeService {
     private final OtpChallengeRepository challenges;
     private final OtpRedisStore redis;
     private final VerificationPolicyService verificationPolicy;
-    private final String pepper;
+    private final OtpPepper pepper;
 
     public OtpChallengeService(
             OtpChallengeRepository challenges,
             OtpRedisStore redis,
             VerificationPolicyService verificationPolicy,
-            @Value("${secureone.otp.pepper:change-me-in-production}") String pepper) {
+            OtpPepper pepper) {
         this.challenges = challenges;
         this.redis = redis;
         this.verificationPolicy = verificationPolicy;
@@ -85,7 +84,7 @@ public class OtpChallengeService {
         row.setPurpose(purpose.name());
         row.setChannel(channel.name());
         row.setDestination(destination);
-        row.setCodeHash(OtpHasher.hash(challengeId, code, pepper));
+        row.setCodeHash(OtpHasher.hash(challengeId, code, pepper.value()));
         row.setMaxAttempts(maxAttempts);
         row.setExpiresAt(Instant.now().plusSeconds(ttlSeconds));
         row.setIpAddress(ipAddress);
@@ -130,7 +129,7 @@ public class OtpChallengeService {
         if (expected == null) {
             expected = challenge.getCodeHash();
         }
-        String actual = OtpHasher.hash(challengeId, code.trim(), pepper);
+        String actual = OtpHasher.hash(challengeId, code.trim(), pepper.value());
         if (!OtpHasher.constantTimeEquals(expected, actual)) {
             challenge.setAttempts(attempts);
             challenges.save(challenge);

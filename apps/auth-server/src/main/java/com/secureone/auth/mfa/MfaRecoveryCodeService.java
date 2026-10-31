@@ -22,12 +22,12 @@ public class MfaRecoveryCodeService {
 
     private final MfaFactorRepository factors;
     private final PasswordEncoder passwordEncoder;
-    private final String pepper;
+    private final com.secureone.auth.account.otp.OtpPepper pepper;
 
     public MfaRecoveryCodeService(
             MfaFactorRepository factors,
             PasswordEncoder passwordEncoder,
-            @org.springframework.beans.factory.annotation.Value("${secureone.otp.pepper:change-me-in-production}") String pepper) {
+            com.secureone.auth.account.otp.OtpPepper pepper) {
         this.factors = factors;
         this.passwordEncoder = passwordEncoder;
         this.pepper = pepper;
@@ -35,13 +35,13 @@ public class MfaRecoveryCodeService {
 
     /**
      * Backup codes are checked against every unused code, so their hash must be fast: HMAC-SHA256 keyed with the
-     * server pepper (not stored in the database, so a leaked database cannot be searched offline), bound to the user.
+     * server pepper (never readable from the database alone, so a leaked database cannot be searched offline), bound to the user.
      * A slow password hash here (Argon2id) would cost seconds of CPU per guess.
      */
     String hash(UUID userId, String code) {
         try {
             javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
-            mac.init(new javax.crypto.spec.SecretKeySpec(pepper.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(new javax.crypto.spec.SecretKeySpec(pepper.value().getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] out = mac.doFinal((userId + ":" + code).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return HMAC_PREFIX + java.util.HexFormat.of().formatHex(out);
         } catch (java.security.GeneralSecurityException e) {

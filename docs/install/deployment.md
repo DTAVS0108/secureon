@@ -1,7 +1,7 @@
 ---
 title: Deployment
 summary: Run the SecureOne image with your database, Redis, secrets and domain
-order: 2
+order: 3
 audience: public
 ---
 
@@ -13,7 +13,7 @@ audience: public
 
 ---
 
-SecureOne is installed from its container image, `dmtavs0108/secureone:1.0.0`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
+SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.0`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
 
 <!-- developer -->
 ## Which path should I use?
@@ -25,7 +25,7 @@ SecureOne is installed from its container image, `dmtavs0108/secureone:1.0.0`, w
 
 Both paths end the same way: **admin login → create tenants / applications / OAuth clients → connect your products**.
 
-**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.0.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
+**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.1.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
 
 **Just evaluating?** One command starts SecureOne with PostgreSQL, Redis and a mail catcher on your machine:
 
@@ -100,14 +100,16 @@ On first start, **Flyway** creates the schema from `V1__baseline.sql` on the emp
 
 # Install from the image
 
-SecureOne is delivered as a **container image**: configure it with an env file, start the container, then manage applications and OAuth clients in the admin console.
+SecureOne is delivered as a **container image**: start it with a few variables and a volume, then finish setup in
+the browser and manage applications and OAuth clients in the admin console. [Installation](installation.md) is the
+short version of this section.
 
 ### What you need
 
-- The image `dmtavs0108/secureone:1.0.0` (Docker Hub, or your registry)
-- Your Postgres, Redis, SMTP
+- The image `dmtavs0108/secureone:1.1.0` (Docker Hub, or your registry)
+- Your Postgres, Redis and (optionally) SMTP
 - DNS + TLS for one host, e.g. `id.example.com` (or a reverse proxy)
-- An env file — **no SecureOne Java/TS code on the host**
+- A volume for the encryption key; **no SecureOne code or settings file on the host**
 
 ### A1 — Prepare Postgres
 
@@ -116,88 +118,65 @@ psql -h pg.internal -U postgres -c "CREATE USER secureone WITH PASSWORD 'StrongD
 psql -h pg.internal -U postgres -c "CREATE DATABASE secureone OWNER secureone;"
 ```
 
-### A2 — Generate secrets
+### A2 — Secrets: created on the first start
 
-```bash
-openssl rand -hex 32          # → SECUREONE_OTP_PEPPER
-openssl rand -base64 32       # → SECUREONE_ENCRYPTION_KEY=base64:<value>
+You do not generate anything. On the first start SecureOne creates:
 
-# OAuth/OIDC token signing key (required when SECUREONE_ENV=production)
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwk.pem      # → SECUREONE_JWK_PRIVATE_KEY_PEM
+| Secret | Kept in | Supply your own with |
+|--------|---------|----------------------|
+| Encryption key (AES-256-GCM) for every secret stored in the database: SMTP/SMS credentials, IdP client secrets, the signing keys below | The volume at `/var/lib/secureone/encryption.key` (`SECUREONE_DATA_DIR`), **outside** the database, so a database copy alone decrypts nothing. Created only when that folder is a mounted volume: a key inside the container would be lost with it | `SECUREONE_ENCRYPTION_KEY=base64:<32 random bytes>` (`openssl rand -base64 32`) |
+| Token signing key (RSA; JWKS `kid` derived from it) | The database, encrypted with the encryption key | `SECUREONE_JWK_PRIVATE_KEY_PEM` |
+| One-time code and recovery code pepper | The database, encrypted with the encryption key | `SECUREONE_OTP_PEPPER` |
+| SAML SP signing/decryption key and certificate | The database, encrypted, at the first SAML use | `SECUREONE_SAML_SP_KEY_PEM`, `SECUREONE_SAML_SP_CERT_PEM` |
 
-# SAML SP signing/decryption key + certificate (optional; generated once and stored encrypted if unset)
-openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=SecureOne SAML SP" \
-  -keyout saml-sp.key -out saml-sp.crt                                          # → SECUREONE_SAML_SP_KEY_PEM / _CERT_PEM
-```
+Production refuses to start without an encryption key: either the volume or `SECUREONE_ENCRYPTION_KEY`.
+First-run setup shows a generated key once so you can **back it up separately from the database**; without it, a
+database backup cannot be restored. Several replicas: give them all the same key through
+`SECUREONE_ENCRYPTION_KEY` (a Kubernetes Secret) rather than a volume, unless the volume is shared.
 
-| Secret | What it protects | If you lose / change it |
-|--------|------------------|--------------------------|
-| `SECUREONE_ENCRYPTION_KEY` | AES-256-GCM key for secrets stored in the database (SMTP/SMS credentials, IdP client secrets, and the JWT / SAML private keys when they are not supplied by env). Kept **outside** the database, so a DB copy alone decrypts nothing. Startup fails on a malformed value; a warning is logged when it is missing. | Values written with it can no longer be decrypted: keep it in your secret manager and back it up separately from the database. Values written before you first set it still decrypt (database fallback key) and are re-encrypted when next saved. |
-| `SECUREONE_JWK_PRIVATE_KEY_PEM` | Signs access / ID tokens (JWKS `kid` derived from the key) | Rotate with overlap: set the new key here and the old one in `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM` (published + accepted, never used to sign) — see the [key-rotation runbook](runbooks/key-rotation.md) |
-| `SECUREONE_SAML_SP_KEY_PEM` + `SECUREONE_SAML_SP_CERT_PEM` | Signs SAML AuthnRequests / LogoutRequests and decrypts encrypted assertions; the certificate is in the SP metadata | IdPs must re-import the SP metadata (or the new certificate) |
-| `SECUREONE_OTP_PEPPER` | Hashes one-time codes | Outstanding codes stop working |
+| If you change it later | Effect |
+|------------------------|--------|
+| Encryption key | Values written with it can no longer be decrypted. Values written before you first set one still decrypt (database fallback key) and are re-encrypted when next saved |
+| Signing key | Rotate with overlap instead: new key in `SECUREONE_JWK_PRIVATE_KEY_PEM`, old one in `SECUREONE_JWK_PREVIOUS_PRIVATE_KEY_PEM` (published + accepted, never used to sign), or **Signing keys** in the console — see the [key-rotation runbook](runbooks/key-rotation.md) |
+| Pepper | Outstanding codes and MFA recovery codes stop working |
+| SAML SP key | IdPs must re-import the SP metadata (or the new certificate) |
 
-### A3 — Create `/opt/secureone/secureone.env`
+PEM values passed as variables keep their BEGIN/END lines; real line breaks (`-e VAR="$(cat key.pem)"`) and `\n`
+both work. Any variable can also be a file named after it in `/run/secrets` (`SECUREONE_SECRETS_DIR`).
 
-```bash
-mkdir -p /opt/secureone
-cat > /opt/secureone/secureone.env <<'EOF'
-# The image runs in production mode (SECUREONE_ENV=production): https URLs and the secrets below are required.
+### A3 — The variables
 
-# First platform operator, created at the first start (temporary password: the first sign-in replaces it)
-SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com
-SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Change-This-Strong-Password-1!
+| Variable | Example |
+|----------|---------|
+| `SECUREONE_PUBLIC_BASE_URL` | `https://id.example.com` (also the token issuer unless `SECUREONE_ISSUER_URL` is set; https is required in production) |
+| `SECUREONE_DB_URL` | `jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform` |
+| `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | `secureone`, `StrongDbPass!` |
+| `SECUREONE_REDIS_URL` | `redis://redis.internal:6379` |
+| Optional: `SECUREONE_SMTP_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`, `_AUTH`, `_STARTTLS` | Email from the first start; otherwise set it in setup or **Settings › Notifications** (saved settings win) |
+| Optional: `SECUREONE_BOOTSTRAP_ADMIN_EMAIL`, `_PASSWORD` | Creates the first operator without the browser step (see below) |
+| Optional: `SECUREONE_CORS_ALLOWED_ORIGINS` | Other browser origins that call SecureOne APIs directly; registered redirect URIs are allowed automatically |
+| Optional: `SECUREONE_STARTUP_WAIT` | Seconds to wait for PostgreSQL and Redis at start-up (default `120`, `0` = off) |
 
-# Public URLs
-SECUREONE_ISSUER_URL=https://id.example.com
-SECUREONE_PUBLIC_BASE_URL=https://id.example.com
-# The console is at <public URL>/admin; set SECUREONE_ADMIN_WEB_URL only if you serve it elsewhere.
-# Origins of registered redirect URIs are allowed automatically; list only other browser origins
-# that call SecureOne APIs directly (optional):
-SECUREONE_CORS_ALLOWED_ORIGINS=
-
-# Your Postgres
-SECUREONE_DB_URL=jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform
-SECUREONE_DB_USERNAME=secureone
-SECUREONE_DB_PASSWORD=StrongDbPass!
-
-# Your Redis
-SECUREONE_REDIS_URL=redis://redis.internal:6379
-
-# Secrets
-SECUREONE_OTP_PEPPER=replace-with-long-random-string
-SECUREONE_ENCRYPTION_KEY=base64:replace-with-32-byte-key
-# PEM values: keep the BEGIN/END lines (use \n for line breaks in a one-line env file)
-SECUREONE_JWK_PRIVATE_KEY_PEM=
-# Optional (SAML SSO): otherwise generated once and stored encrypted
-SECUREONE_SAML_SP_KEY_PEM=
-SECUREONE_SAML_SP_CERT_PEM=
-
-# Your SMTP (used from the first start; once SMTP is saved under Platform settings → Notifications, that wins)
-SECUREONE_SMTP_HOST=email-smtp.example.com
-SECUREONE_SMTP_PORT=587
-SECUREONE_SMTP_USERNAME=smtp-user
-SECUREONE_SMTP_PASSWORD=smtp-secret
-SECUREONE_SMTP_AUTH=true
-SECUREONE_SMTP_STARTTLS=true
-SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=false
-
-EOF
-chmod 600 /opt/secureone/secureone.env
-```
+The image runs in production mode (`SECUREONE_ENV=production`). Pass the variables with `-e`, an `--env-file`, the
+Compose `environment:` section, Docker Desktop's **Environment variables**, or your platform's settings.
 
 ### A4 — Run SecureOne
 
 ```bash
 docker run -d \
   --name secureone \
-  --env-file /opt/secureone/secureone.env \
   -p 9000:9000 \
+  -v secureone-data:/var/lib/secureone \
+  -e SECUREONE_PUBLIC_BASE_URL=https://id.example.com \
+  -e SECUREONE_DB_URL="jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform" \
+  -e SECUREONE_DB_USERNAME=secureone \
+  -e SECUREONE_DB_PASSWORD='StrongDbPass!' \
+  -e SECUREONE_REDIS_URL=redis://redis.internal:6379 \
   --restart unless-stopped \
-  dmtavs0108/secureone:1.0.0
+  dmtavs0108/secureone:1.1.0
 
 docker logs -f secureone
-# Wait for "Started AuthServerApplication" and "Admin console started ... served at /admin"
+# "Waiting for PostgreSQL ..." until it is reachable, then "Started AuthServerApplication" and the setup code
 ```
 
 One container, one process tree: the auth-server (Java) starts the console (Node.js) on `127.0.0.1` inside the container, restarts it if it exits, and stops it on shutdown. Console output appears in the same log under the `console` logger.
@@ -205,21 +184,31 @@ One container, one process tree: the auth-server (Java) starts the console (Node
 ### A5 — Optional Compose (DB/Redis external)
 
 ```yaml
-# /opt/secureone/docker-compose.yml
+# docker-compose.yml
 services:
   secureone:
-    image: dmtavs0108/secureone:1.0.0
-    env_file: ./secureone.env
+    image: dmtavs0108/secureone:1.1.0
     ports:
       - "9000:9000"
+    environment:
+      SECUREONE_PUBLIC_BASE_URL: https://id.example.com
+      SECUREONE_DB_URL: jdbc:postgresql://pg.internal:5432/secureone?currentSchema=platform
+      SECUREONE_DB_USERNAME: secureone
+      SECUREONE_DB_PASSWORD: StrongDbPass!
+      SECUREONE_REDIS_URL: redis://redis.internal:6379
+    volumes:
+      - secureone-data:/var/lib/secureone
     restart: unless-stopped
+volumes:
+  secureone-data:
 ```
 
 ```bash
-cd /opt/secureone
 docker compose up -d
 docker compose logs -f secureone
 ```
+
+With PostgreSQL and Redis in the same file, see [Installation](installation.md#option-a-docker-compose-database-and-cache-included).
 
 ### A6 — Console settings (optional)
 
@@ -329,8 +318,8 @@ cd apps/admin-web && npm install && npm run dev
 From repo root:
 
 ```bash
-docker build -f deploy/Dockerfile -t your-registry/secureone:1.0.0 .
-docker push your-registry/secureone:1.0.0
+docker build -f deploy/Dockerfile -t your-registry/secureone:1.1.0 .
+docker push your-registry/secureone:1.1.0
 ```
 
 Give the builder about 4 GB of memory (the console's type check and the Gradle build run in parallel, and the last step starts the application once with a temporary PostgreSQL and Redis to record the start-up cache). With Docker Desktop's 2 GB default, build the console stage first and the rest reuses it: `docker build --target console -f deploy/Dockerfile .` then the command above.
@@ -381,7 +370,7 @@ Create `prod-values.yaml` (example):
 ```yaml
 image:
   repository: dmtavs0108/secureone
-  tag: "1.0.0"
+  tag: "1.1.0"
 replicaCount: 2
 existingSecret: secureone
 env:
@@ -460,8 +449,13 @@ Two ways; pick one.
 
 1. Open `https://id.example.com/admin/setup` (the sign-in page also links there while setup is open).
 2. Enter the setup code. It proves you can read the server's log; 10 wrong codes from one address lock it for 15 minutes.
-3. Create the first platform operator: name, work email, password (platform password policy).
-4. Sign in under **Platform operator**. In production the first sign-in also adds an authenticator app and shows recovery codes once.
+3. **Check your installation**: the public address (a warning when it is not https), where the encryption key is
+   kept and whether email is set up.
+4. **Email** (optional): the platform SMTP server, with a test message. Same as **Settings › Notifications**.
+5. **Back up the encryption key**, when SecureOne created it in the volume: copy or download it and confirm you
+   stored it. It is shown only during setup.
+6. Create the first platform operator: name, work email, password (platform password policy).
+7. Sign in under **Platform operator**. In production the first sign-in also adds an authenticator app and shows recovery codes once.
 
 After that, setup is closed for good (`/admin/setup` redirects to sign-in; the API answers `410 Gone`). Add more operators from **Access review → Platform operators**. For automated installs, set `SECUREONE_SETUP_CODE` instead of reading the log.
 
@@ -478,19 +472,20 @@ The image starts in **production mode** (`SECUREONE_ENV=production` inside the i
 | `SECUREONE_DB_URL` | `jdbc:postgresql://db:5432/secureone?currentSchema=platform` (keep `currentSchema=platform`) |
 | `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | Owner of the empty database; needs `CREATEROLE` on the first start (it creates the `secureone_app` role used for tenant isolation), or a DBA creates that role first |
 | `SECUREONE_REDIS_URL` | `redis://redis:6379`; password and TLS: `rediss://:PASSWORD@host:6380` |
-| `SECUREONE_ISSUER_URL` | The public address apps and users see, e.g. `https://id.example.com` |
-| `SECUREONE_PUBLIC_BASE_URL` | Usually the same as the issuer |
+| `SECUREONE_PUBLIC_BASE_URL` | The public address apps and users see, e.g. `https://id.example.com` (https in production; a TLS reverse proxy or load balancer in front of port 9000) |
+| `SECUREONE_ISSUER_URL` | Optional: the token issuer, when it must differ from the public address |
+| Volume at `/var/lib/secureone` (`SECUREONE_DATA_DIR`) | Holds the encryption key SecureOne creates on the first start; required in production unless `SECUREONE_ENCRYPTION_KEY` is set |
 
-**Required in production**
+**Secrets (optional: created on the first start, see [A2](#a2--secrets-created-on-the-first-start))**
 
-| Setting | How to create |
-|---------|---------------|
+| Setting | To supply your own |
+|---------|--------------------|
 | `SECUREONE_ENCRYPTION_KEY` | `echo "base64:$(openssl rand -base64 32)"`. Encrypts stored secrets. **Keep a copy apart from the database backups**: without it they cannot be read |
 | `SECUREONE_OTP_PEPPER` | `openssl rand -hex 32` |
 | `SECUREONE_JWK_PRIVATE_KEY_PEM` | `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048` (PKCS#8). Signs tokens; best as a secret file (several lines) |
-| https URLs | `SECUREONE_ISSUER_URL` and `SECUREONE_PUBLIC_BASE_URL` start with `https://`; a TLS reverse proxy or load balancer in front of port 9000 |
 
-Every instance must use the **same** encryption key, OTP pepper and signing key; the commands in A2 create them.
+Every instance must use the **same** encryption key; the generated pepper and signing key are shared through the
+database. With several replicas, pass the key as `SECUREONE_ENCRYPTION_KEY` (or share the volume).
 
 **First admin** (first start only, see [First-run setup](#1-first-run-setup-create-the-first-operator))
 
@@ -696,14 +691,13 @@ Signup / OTP: see [Application integration](../integrate/integration-guide.md) a
 # Logs (auth-server and console in one stream)
 docker logs -f secureone
 
-# Restart after env change
+# Change a variable: recreate the container with the same volume and the new value
 docker rm -f secureone
-docker run -d --name secureone --env-file /opt/secureone/secureone.env \
-  -p 9000:9000 dmtavs0108/secureone:1.0.0
+docker run -d --name secureone -v secureone-data:/var/lib/secureone -e ... -p 9000:9000 dmtavs0108/secureone:1.1.0
 
 # Upgrade: back up the database, then swap the image tag; the database is upgraded at start
-docker pull dmtavs0108/secureone:1.0.1
-# then recreate the container with the new tag
+docker pull dmtavs0108/secureone:<new version>
+# then recreate the container with the new tag (same variables, same volume)
 
 # Health
 curl -s https://id.example.com/api/info
@@ -720,8 +714,8 @@ At start-up the platform migrations and every application schema are brought to 
 
 - [ ] Postgres / Redis / SMTP reachable  
 - [ ] Images pulled  
-- [ ] `secureone.env` filled (URLs, secrets, bootstrap admin)
-- [ ] `SECUREONE_ENCRYPTION_KEY` and `SECUREONE_JWK_PRIVATE_KEY_PEM` generated and kept in your secret store  
+- [ ] Variables set (public address, database, Redis) and a volume at `/var/lib/secureone`
+- [ ] First-run setup done at `/admin/setup`; the encryption key it showed is in your secret store  
 - [ ] SecureOne healthy (management port 9001) and console at `/admin/login`; port 9001 not published
 - [ ] TLS for the one public host  
 

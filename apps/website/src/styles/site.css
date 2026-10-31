@@ -1155,3 +1155,61 @@ details.faq p {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Deploy page: platform tabs */
+.deploy-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.deploy-tabs button {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.deploy-tabs button:hover {
+  color: var(--text);
+}
+.deploy-tabs button[aria-selected="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.deploy-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-2);
+}
+.deploy-steps li {
+  margin: 8px 0;
+}
+.deploy-panel code,
+.help code {
+  font-size: 0.88em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+.deploy-panel .code pre {
+  white-space: pre;
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+.deploy-note {
+  margin-top: 20px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--text-2);
+  font-size: 15px;
+}

@@ -4,6 +4,26 @@ import PageHead from "../components/PageHead.astro";
 
 const releases = [
   {
+    version: "1.1.0",
+    title: "Install with a few variables",
+    groups: [
+      ["Installation", [
+        "Secrets are created on the first start: the encryption key in a volume outside the database, the token signing key and the code pepper stored encrypted. Supplying your own still works.",
+        "Only the public address, the database and Redis need to be set; the token issuer follows the public address.",
+        "SecureOne waits for PostgreSQL and Redis at start-up instead of failing, so it can start together with them.",
+      ]],
+      ["First-run setup", [
+        "A setup wizard in the browser: check the installation, set up email with a test message, back up the encryption key, create the first operator.",
+      ]],
+      ["Image", [
+        "The image carries the user documentation only, and standard labels (version, documentation, licence).",
+      ]],
+      ["Upgrading from 1.0.0", [
+        "Nothing to change: installations that set their secrets keep them. Keep any secret you set; do not remove it.",
+      ]],
+    ],
+  },
+  {
     version: "1.0.0",
     title: "First release",
     groups: [
