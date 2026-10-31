@@ -76,7 +76,7 @@ See [Database strategy](../../docs/developer/database.md) and [Applications & OA
 
 ## Related docs
 
-- [Installation](../../docs/install/installation.md)
+- [Local development setup](../../docs/developer/local-setup.md)
 - [Environment & operations](../../docs/install/environment-and-operations.md)
 - [Verification & OTP](../../docs/integrate/verification-and-one-time-codes.md)
 - [API documentation](../../docs/api/swagger-and-openapi.md)

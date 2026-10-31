@@ -134,4 +134,4 @@ SECUREONE_DB_USERNAME=secureone
 SECUREONE_DB_PASSWORD=...
 ```
 
-See [Installation](../install/installation.md).
+See [Local development setup](local-setup.md).

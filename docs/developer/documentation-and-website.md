@@ -12,7 +12,7 @@ audience: internal
 | Where | Shows | Built by |
 |---|---|---|
 | Console, `/admin/documentation` | Every page the reader may see, with search | `apps/admin-web/src/lib/documentation/` (reads `docs/` at runtime) |
-| Public website, `/docs/` | Pages marked `audience: public` only | `apps/website/scripts/sync-docs.mjs`, then Astro and Starlight |
+| Public website, `/docs/` | Every page except `audience: internal`, without developer blocks | `apps/website/scripts/sync-docs.mjs`, then Astro and Starlight |
 | GitHub | Every file; `docs/README.md` is the index | `python scripts/docs/docs_tool.py index` |
 
 ## Spaces and pages
@@ -32,8 +32,8 @@ audience: public        # public | operator | internal
 | `audience` | Console | Website |
 |---|---|---|
 | `public` | Everyone | Published |
-| `operator` | Signed-in operators; others see the page locked | Not published; links to it become plain text |
-| `internal` | Platform operators only; hidden for others | Not published |
+| `operator` | Signed-in operators; others see the page locked | Published (operator guides and runbooks are user guides) |
+| `internal` | Platform operators only; hidden for others | Not published; links to it become plain text |
 
 A page with a missing or unknown `audience` is treated as `internal`, so nothing is published by accident.
 
@@ -72,4 +72,19 @@ docker compose -f deploy/docker-compose.website.yml up -d --build   # http://loc
 ```
 
 Product pages live in `apps/website/src/pages/`; the documentation section is generated, never edited by hand.
-Set `SITE_URL` to the website's public address when it moves to its own domain.
+Build-time settings: `SITE_URL` (public address, used in canonical links and the sitemap) and `SUPPORT_EMAIL`
+(shown on Support and Security and published in `/.well-known/security.txt`; without it neither appears). Pass them
+as build arguments or environment variables; they are not kept in the repository.
+
+### Vercel
+
+`apps/website/vercel.json` holds the build and the same security headers as `deploy/website-nginx.conf`. Either
+connect the repository in Vercel with **Root Directory** `apps/website` (the build reads `docs/` from the parent
+folder) and set `SITE_URL` and `SUPPORT_EMAIL` as project environment variables, or build locally and upload:
+
+```bash
+cd apps/website
+vercel link                                                   # once: choose or create the project
+SITE_URL=https://<project>.vercel.app SUPPORT_EMAIL=<address> vercel build --prod
+vercel deploy --prebuilt --prod
+```

@@ -52,3 +52,4 @@ redisdata/
 docker-compose.override.yml
 # Backups written by the example Compose file's backup service
 backups/
+.vercel/

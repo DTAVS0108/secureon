@@ -106,7 +106,9 @@ SecureOne treats MFA as a **graded ladder** and steers users toward phishing-res
 
 **Secure recovery** — recovery requires a verified second factor or audited admin-assisted flow; **never** an email-only reset that silently bypasses MFA.
 
+<!-- developer -->
 Data model: see `mfa_factor` and `mfa_policy` in [Data Model](../developer/data-model.md#domain-5--mfa). Libraries: Yubico **java-webauthn-server** for WebAuthn/FIDO2, RFC 6238 for TOTP.
+<!-- /developer -->
 
 ## Federation & brokering (enterprise — Phase 3)
 

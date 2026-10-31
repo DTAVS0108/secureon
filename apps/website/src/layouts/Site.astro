@@ -1,5 +1,6 @@
 ---
 import "../styles/site.css";
+import Icon from "../components/Icon.astro";
 
 interface Props {
   title: string;
@@ -17,7 +18,7 @@ const nav = [
   { href: "/how-it-works/", label: "How it works" },
   { href: "/integrations/", label: "Integrations" },
   { href: "/docs/", label: "Docs" },
-  { href: "/releases/", label: "Releases" },
+  { href: "/support/", label: "Support" },
 ];
 ---
 
@@ -39,6 +40,19 @@ const nav = [
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <script is:inline>
+      // Theme before first paint. Same key as the documentation pages, so the choice carries over.
+      (() => {
+        let choice = "";
+        try {
+          choice = localStorage.getItem("starlight-theme") || "";
+        } catch {}
+        const root = document.documentElement;
+        root.classList.add("js");
+        root.dataset.themeChoice = choice || "system";
+        if (choice === "light" || choice === "dark") root.dataset.theme = choice;
+      })();
+    </script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -52,11 +66,18 @@ const nav = [
           {nav.map((item) => (
             <a href={item.href} aria-current={path.startsWith(item.href) ? "page" : undefined}>{item.label}</a>
           ))}
+          <a class="nav-extra" href="/docs/install/installation/">Install</a>
+          <a class="nav-extra" href="/get-started/">Get started</a>
         </nav>
         <div class="header-cta">
-          <a class="btn btn-ghost btn-sm" href="/docs/">Documentation</a>
+          <a class="btn btn-ghost btn-sm" href="/docs/install/installation/">Install</a>
           <a class="btn btn-primary btn-sm" href="/get-started/">Get started</a>
         </div>
+        <button class="theme-btn" type="button" aria-label="Theme: system" title="Theme">
+          <span data-icon="system"><Icon name="monitor" /></span>
+          <span data-icon="light"><Icon name="sun" /></span>
+          <span data-icon="dark"><Icon name="moon" /></span>
+        </button>
         <button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false">Menu</button>
       </div>
     </header>
@@ -80,6 +101,7 @@ const nav = [
               <li><a href="/features/">Features</a></li>
               <li><a href="/security/">Security</a></li>
               <li><a href="/how-it-works/">How it works</a></li>
+              <li><a href="/integrations/">Integrations</a></li>
               <li><a href="/releases/">Releases</a></li>
             </ul>
           </div>
@@ -87,8 +109,10 @@ const nav = [
             <h4>Documentation</h4>
             <ul>
               <li><a href="/get-started/">Get started</a></li>
-              <li><a href="/docs/install/">Install and operate</a></li>
-              <li><a href="/integrations/">Integrations</a></li>
+              <li><a href="/docs/install/installation/">Installation</a></li>
+              <li><a href="/docs/integrate/integration-guide/">Connect an application</a></li>
+              <li><a href="/docs/guide/">Admin console guide</a></li>
+              <li><a href="/docs/install/runbooks/">Runbooks</a></li>
               <li><a href="/docs/api/">API reference</a></li>
             </ul>
           </div>
@@ -111,6 +135,20 @@ const nav = [
     <script>
       const header = document.querySelector(".site-header");
       const button = header?.querySelector(".menu-btn");
+      const themeButton = document.querySelector(".theme-btn");
+      const order = ["system", "light", "dark"];
+      themeButton?.setAttribute("aria-label", `Theme: ${document.documentElement.dataset.themeChoice}`);
+      themeButton?.addEventListener("click", () => {
+        const root = document.documentElement;
+        const next = order[(order.indexOf(root.dataset.themeChoice ?? "system") + 1) % order.length];
+        root.dataset.themeChoice = next;
+        if (next === "system") delete root.dataset.theme;
+        else root.dataset.theme = next;
+        themeButton.setAttribute("aria-label", `Theme: ${next}`);
+        try {
+          localStorage.setItem("starlight-theme", next === "system" ? "" : next);
+        } catch {}
+      });
       button?.addEventListener("click", () => {
         const open = header?.getAttribute("data-open") !== "true";
         header?.setAttribute("data-open", String(open));
@@ -124,7 +162,7 @@ const nav = [
               observer.unobserve(e.target);
             }
           }),
-        { threshold: 0.12 },
+        { threshold: 0.08, rootMargin: "0px 0px -40px 0px" },
       );
       document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
     </script>

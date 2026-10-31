@@ -9,7 +9,7 @@ audience: public
 
 How end-user sign-in works when you use **SecureOne hosted pages**, the **admin integration console**, or your **application’s own UI**.
 
-Related: [Auth standards](../architecture/auth-standards.md), [API documentation](../api/swagger-and-openapi.md), [Settings governance](../install/settings-governance.md), [Installation — dev flows](../install/installation.md#8-email--notifications-dev).
+Related: [Auth standards](../architecture/auth-standards.md), [API documentation](../api/swagger-and-openapi.md), [Settings governance](../install/settings-governance.md), [Installation](../install/installation.md).
 
 ## Three surfaces
 
@@ -102,7 +102,7 @@ Pass `applicationId` on hosted pages when you want app-scoped context in links:
 The sign-in page also shows **Continue with …** buttons for the app's federation providers (Google, GitHub, OIDC, **SAML**), and `/login.html?signedOut=1` confirms a sign-out (used after single logout).
 
 <!-- developer -->
-See [Installation — dev flows](../install/installation.md#8-email--notifications-dev) for local URLs and MailHog testing.
+See [Local development setup](../developer/local-setup.md#8-email--notifications-dev) for local URLs and MailHog testing.
 <!-- /developer -->
 
 ## Native / custom app UI

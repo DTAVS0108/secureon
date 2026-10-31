@@ -172,7 +172,9 @@ A key set with `SECUREONE_JWK_PRIVATE_KEY_PEM` is rotated in the environment ins
 ## Runbooks
 
 - [Custom domain](../install/runbooks/custom-domain.md)
+<!-- developer -->
 - [OpenID certification and penetration test](../developer/oidc-conformance-and-pentest.md)
+<!-- /developer -->
 <!-- developer -->
 - SDK publishing: push a tag `sdk-vX.Y.Z` matching `packages/secureone-client/package.json`; `.github/workflows/publish-sdk.yml` publishes to npm (needs the `NPM_TOKEN` secret).
 <!-- /developer -->

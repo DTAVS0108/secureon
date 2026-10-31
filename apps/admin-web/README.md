@@ -5,7 +5,7 @@ Next.js admin console and platform operator UI for SecureOne.
 ## Prerequisites
 
 - Node.js 20+
-- **auth-server** running on `http://localhost:9000` (see [Installation](../../docs/install/installation.md))
+- **auth-server** running on `http://localhost:9000` (see [Installation](../../docs/developer/local-setup.md))
 - Platform super-admin credentials (dev default: `admin` / `admin`)
 
 ## Setup

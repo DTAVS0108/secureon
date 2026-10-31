@@ -140,4 +140,6 @@ All admin endpoints enforce the admin's scopes + boundary, and emit audit events
 - **Admins & delegation** → admin roles, scopes, boundaries.
 - **Audit log** → searchable, filter by actor/target/action.
 
+<!-- developer -->
 See the data model in [Data Model § Domain 8](../developer/data-model.md#domain-8--administration--configuration).
+<!-- /developer -->

@@ -9,7 +9,7 @@ audience: public
 
 How SecureOne verifies accounts and signs users in using **email links**, **email/phone OTP codes**, **password**, **magic link**, and **OAuth sessions**.
 
-Related: [Auth UI integration](hosted-and-native-sign-in.md), [Auth standards](../architecture/auth-standards.md), [Environment & operations](../install/environment-and-operations.md), [Settings governance](../install/settings-governance.md).
+Related: [Auth UI integration](hosted-and-native-sign-in.md), [Auth standards](../architecture/auth-standards.md), [Settings governance](../install/settings-governance.md).
 
 ---
 

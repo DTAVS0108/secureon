@@ -1,9 +1,9 @@
 /**
- * Copies the public documentation from the repository's docs/ into the website (src/content/docs/docs/).
+ * Copies the user documentation from the repository's docs/ into the website (src/content/docs/docs/).
  *
- * docs/ is the single source: the console shows every page; the website shows only pages whose front matter says
- * `audience: public`, without their developer blocks (<!-- developer --> ... <!-- /developer -->). Links to operator
- * or developer pages and to source files become plain text, so nothing internal leaks.
+ * docs/ is the single source. The website is the complete guide for users: it shows every page except developer
+ * pages (`audience: internal`), without their developer blocks (<!-- developer --> ... <!-- /developer -->). Links to
+ * developer pages and to source files become plain text, so nothing internal leaks.
  * Run by `pnpm build` and `pnpm dev`; never edit the generated folder.
  */
 import fs from "node:fs";
@@ -47,7 +47,8 @@ for (const rel of walk(DOCS)) {
   const { fields, body } = frontMatter(raw);
   pages.set(rel, { rel, fields, body });
 }
-const isPublic = (rel) => pages.get(rel)?.fields.audience === "public";
+// Public and operator pages (operator guides and runbooks) are for users; internal pages are for developers.
+const onSite = (rel) => pages.has(rel) && pages.get(rel).fields.audience !== "internal";
 
 /** /docs/<slug>/ for a docs file: folder index.md is the folder. */
 function route(rel) {
@@ -119,7 +120,7 @@ function convert(page) {
       if (target.startsWith("..")) return bang ? "" : text; // a source file: never linked from the website
       if (target.endsWith(".md")) {
         if (target === "README.md") return `${bang}[${text}](/docs/)`;
-        if (!isPublic(target)) return text; // operator or developer page: not on the public site
+        if (!onSite(target)) return text; // developer page: not on the website
         return `${bang}[${text}](${route(target)}${anchor ? `#${anchor}` : ""})`;
       }
       return bang ? "" : text; // diagram sources and other files: not published
@@ -133,7 +134,7 @@ function convert(page) {
 fs.rmSync(OUT, { recursive: true, force: true });
 let count = 0;
 for (const page of pages.values()) {
-  if (!isPublic(page.rel)) continue;
+  if (!onSite(page.rel)) continue;
   const { title, summary, order } = page.fields;
   const fm = [
     "---",
@@ -154,12 +155,12 @@ for (const page of pages.values()) {
 
 // Docs home: the spaces, from their index pages.
 const spaces = [...pages.values()]
-  .filter((p) => /^[^/]+\/index\.md$/.test(p.rel) && isPublic(p.rel))
+  .filter((p) => /^[^/]+\/index\.md$/.test(p.rel) && onSite(p.rel))
   .sort((a, b) => (Number(a.fields.order) || 999) - (Number(b.fields.order) || 999));
 const home = [
   "---",
   'title: "SecureOne documentation"',
-  'description: "Install SecureOne, connect your applications and find every API."',
+  'description: "Install SecureOne, run it, connect your applications and find every API."',
   "template: splash",
   "hero:",
   '  title: "SecureOne documentation"',
@@ -168,6 +169,9 @@ const home = [
   '    - text: "Quickstart"',
   '      link: "/docs/get-started/quickstart/"',
   "      icon: right-arrow",
+  '    - text: "Installation"',
+  '      link: "/docs/install/installation/"',
+  "      variant: secondary",
   '    - text: "Integration guide"',
   '      link: "/docs/integrate/integration-guide/"',
   "      variant: minimal",
@@ -183,4 +187,4 @@ const home = [
   "",
 ];
 fs.writeFileSync(path.join(OUT, "index.mdx"), home.join("\n"));
-console.log(`sync-docs: ${count} public pages from ${DOCS}`);
+console.log(`sync-docs: ${count} pages from ${DOCS}`);

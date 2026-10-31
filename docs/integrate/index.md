@@ -24,4 +24,4 @@ your language. SAML 2.0 and SCIM 2.0 are available for company single sign-on an
 |---|---|
 | Email and phone verification, one-time codes, SMS | [Verification and one-time codes](verification-and-one-time-codes.md) |
 | Every endpoint with examples | [API reference](../api/index.md) |
-| Roles, permissions and groups in the console | [Application roles and permissions](application-rbac.md) (signed-in operators) |
+| Roles, permissions and groups in the console | [Application roles and permissions](application-rbac.md) |

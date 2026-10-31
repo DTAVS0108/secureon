@@ -9,7 +9,7 @@ audience: internal
 
 End-to-end guide for **running SecureOne locally**, configuring environment variables, understanding **Flyway migrations**, **startup bootstrap**, and **scheduled background jobs**.
 
-For a shorter first-time walkthrough, see [09 â€” Installation](installation.md). For database layout, see [06 â€” Database Strategy](../developer/database.md).
+For a shorter first-time walkthrough, see [Local development setup](../developer/local-setup.md). For database layout, see [Database Strategy](../developer/database.md).
 
 ---
 
@@ -71,7 +71,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Catches outbound email in dev â€” web UI at http://localhost:8025
+  # Catches outbound email in dev — web UI at http://localhost:8025
   mailhog:
     image: mailhog/mailhog:latest
     container_name: secureone-mailhog
@@ -241,7 +241,7 @@ management:
 info:
   app:
     name: SecureOne Auth Server
-    description: Centralized IAM platform â€” authorization server
+    description: Centralized IAM platform — authorization server
 
 springdoc:
   api-docs:
@@ -250,7 +250,7 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui.html
-    # Required when disable-swagger-default-url is true â€” springdoc 3.x may omit urls[] from swagger-config.
+    # Required when disable-swagger-default-url is true — springdoc 3.x may omit urls[] from swagger-config.
     url: /v3/api-docs/all
     urls-primary-name: all
     disable-swagger-default-url: true
@@ -383,7 +383,7 @@ export default nextConfig;
   "name": "secureone",
   "version": "1.0.0",
   "private": true,
-  "description": "SecureOne â€” centralized Identity & Access Management platform (JS workspaces).",
+  "description": "SecureOne — centralized Identity & Access Management platform (JS workspaces).",
   "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=20"
@@ -586,7 +586,7 @@ SECUREONE_BREAK_GLASS_SESSION_MAX=1h
 SECUREONE_PASSWORD_EXPIRY_SCHEDULER=true
 SECUREONE_PASSWORD_EXPIRY_CRON=0 0 */6 * * *
 
-# Email (dev â€” MailHog)
+# Email (dev — MailHog)
 SECUREONE_SMTP_HOST=localhost
 SECUREONE_SMTP_PORT=1025
 SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE=true
@@ -654,7 +654,7 @@ Drops the local Postgres volume and starts again; the setup wizard then creates 
 
 ## Startup bootstrap
 
-These run on **`ApplicationReadyEvent`** â€” they are **not** cron jobs. They repair or seed data after migrations or manual table truncation.
+These run on **`ApplicationReadyEvent`** — they are **not** cron jobs. They repair or seed data after migrations or manual table truncation.
 
 | Component | Class | What it does |
 |-----------|-------|--------------|
@@ -666,7 +666,7 @@ These run on **`ApplicationReadyEvent`** â€” they are **not** cron jobs. Th
 | Signing keys | `OAuth2SigningKeyService`, `SamlSpCredentialService` | Load keys from env, else from `platform_setting` (encrypted); create once if missing, under a Redis lock so replicas agree. Older plaintext keys are re-encrypted in place |
 | Encryption key check | `SecretProtector` | Fails startup on a malformed `SECUREONE_ENCRYPTION_KEY`; warns when it is not set |
 
-**Scheduling is separate** â€” see below. Bootstrap only runs once per process start (and on explicit create flows).
+**Scheduling is separate** — see below. Bootstrap only runs once per process start (and on explicit create flows).
 
 ---
 
@@ -687,7 +687,7 @@ The only production scheduled job today. Sends **password expiring soon** and **
 |------|--------|
 | Class | `com.secureone.auth.account.PasswordExpiryScheduler` |
 | Service | `PasswordExpiryService.processScheduledNotifications()` |
-| Default cron | `0 0 */6 * * *` â€” every 6 hours (00:00, 06:00, 12:00, 18:00 server time) |
+| Default cron | `0 0 */6 * * *` — every 6 hours (00:00, 06:00, 12:00, 18:00 server time) |
 | Spring cron | **6 fields:** `second minute hour day-of-month month day-of-week` |
 
 **Configuration** (`application.yml`):
@@ -718,11 +718,11 @@ SECUREONE_PASSWORD_EXPIRY_SCHEDULER=false
 | `0 0 9 * * *` | Daily at 09:00 |
 | `0 */30 * * * *` | Every 30 minutes (testing only) |
 
-There is **no admin UI** for the scheduler â€” configure via YAML or environment variables only.
+There is **no admin UI** for the scheduler — configure via YAML or environment variables only.
 
 **Logging:** search auth-server logs for `PasswordExpiryScheduler` or `PasswordExpiryService`.
 
-Full behaviour (warning windows, idempotency, multi-replica): [10 â€” Settings governance Â§ Scheduled job](settings-governance.md#scheduled-job-passwordexpiryscheduler).
+Full behaviour (warning windows, idempotency, multi-replica): [Settings governance Â§ Scheduled job](settings-governance.md#scheduled-job-passwordexpiryscheduler).
 
 ### Future schedulers
 
@@ -779,7 +779,7 @@ Additional background jobs (audit shipping, session cleanup, token rotation swee
 - Use managed Postgres + Redis, TLS termination, secrets manager for `SECUREONE_DEV_PASSWORD` replacement.
 - Pin Flyway migrations in release artifacts; run `flywayMigrate` in deploy pipeline before or during rolling restarts.
 
-See [07 â€” Security](../architecture/security.md) and [03 â€” Architecture Â§ Deployment](../architecture/architecture.md).
+See [Security](../architecture/security.md) and [Architecture Â§ Deployment](../architecture/architecture.md).
 
 ---
 
@@ -787,10 +787,10 @@ See [07 â€” Security](../architecture/security.md) and [03 â€” Archite
 
 | Topic | Document |
 |-------|----------|
-| Short install walkthrough | [09 â€” Installation](installation.md) |
-| Flyway layout & schemas | [06 â€” Database Strategy](../developer/database.md) |
-| Application schema provision | [15 â€” Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) |
-| Password expiry scheduler detail | [10 â€” Settings governance](settings-governance.md) |
+| Short install walkthrough | [Local development setup](../developer/local-setup.md) |
+| Flyway layout & schemas | [Database Strategy](../developer/database.md) |
+| Application schema provision | [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) |
+| Password expiry scheduler detail | [Settings governance](settings-governance.md) |
 | Docker Compose & image | `deploy/docker-compose.yml`, `deploy/docker-compose.quickstart.yml`, `deploy/Dockerfile`, `.dockerignore` |
 | Configuration files (full) | `application.yml`, `.env.example`, `.env.local.example`, `build.gradle.kts`, `package.json`, `next.config.ts` |
 | Flyway migration files | [Flyway migration files](../developer/migrations.md) |

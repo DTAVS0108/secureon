@@ -9,7 +9,7 @@ audience: public
 
 How SecureOne separates **application products** (IAM/console scope) from **OAuth clients** (protocol credentials), provisions per-app database schemas, and registers both from the admin console.
 
-Related: [Data model](../developer/data-model.md), [Database strategy](../developer/database.md), [Installation](../install/installation.md), [API documentation](../api/swagger-and-openapi.md).
+Related: [Installation](../install/installation.md), [Roles and permissions in an application](application-rbac.md), [API documentation](../api/swagger-and-openapi.md).
 
 ---
 
@@ -207,7 +207,7 @@ If PostgreSQL is reachable and auth-server starts successfully:
 1. Flyway applies platform migrations (`V1__baseline.sql` on an empty database).
 2. Registering an application **automatically** creates the PostgreSQL schema and IAM tables — no manual SQL.
 
-Requirements: Docker Compose (`postgres`, `redis`), `gradlew bootRun` (auth-server), `npm run dev` (admin-web). See [Installation](../install/installation.md).
+Requirements: Docker Compose (`postgres`, `redis`), `gradlew bootRun` (auth-server), `npm run dev` (admin-web). See [Local development setup](../developer/local-setup.md) and [Database strategy](../developer/database.md).
 <!-- /developer -->
 
 ---

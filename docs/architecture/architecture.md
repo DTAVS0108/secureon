@@ -322,4 +322,4 @@ flowchart TB
 - Signing keys/secrets always in a KMS/Vault in production — never env files. The auth-server reads `SECUREONE_ENCRYPTION_KEY`, `SECUREONE_JWK_PRIVATE_KEY_PEM` and `SECUREONE_SAML_SP_KEY_PEM`/`_CERT_PEM` from the secret store; keys it generates itself are stored encrypted and created once per cluster (Redis lock).
 - All flow state (sessions, SAML requests, device polling, rate limits) is in Redis, so any replica can serve any step.
 
-See [Security](security.md) for hardening and [Installation](../install/installation.md) for setup.
+See [Security](security.md) for hardening and [Local development setup](../developer/local-setup.md) for setup.

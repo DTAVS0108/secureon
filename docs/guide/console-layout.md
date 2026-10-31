@@ -72,7 +72,7 @@ Old addresses such as `/users`, `/roles`, `/audit`, `/sessions`, `/logs` and `/t
 
 - **i** icons beside field labels show an explanation on hover or keyboard focus.
 - The three action buttons on the OAuth clients page show a tooltip explaining when to use each one.
-- **SecureOne Documentation** offers **Download PDF** (the current page) and **All docs PDF** (every page in one file). The documentation is public: anyone can read it at `/admin/documentation` without signing in, for example to share a page with a developer.
+- **SecureOne Documentation** offers **Download PDF** (the current page) and **All docs PDF** (every page in one file). The same guides are in the product at `/admin/documentation`: public pages without signing in, operator pages after sign-in, and developer pages only for platform operators.
 
 ## Common controls
 

@@ -18,7 +18,7 @@ What SecureOne is, a five-minute quickstart and the key ideas
 
 Install SecureOne from its image, configure it, upgrade it and keep it running
 
-- [Installation](install/installation.md) *(developers)*: Run SecureOne locally for development and evaluation
+- [Installation](install/installation.md): Install SecureOne on one server from its image, step by step
 - [Deployment](install/deployment.md): Run the SecureOne image with your database, Redis, secrets and domain
 - [Configuration as code and upgrades](install/configuration-and-upgrades.md): Tenant setup in files, upgrades and rollback
 - [Environment and operations](install/environment-and-operations.md) *(developers)*: Settings, schedulers, health checks and troubleshooting
@@ -96,6 +96,7 @@ How SecureOne fits together, the standards it follows and how it protects data
 
 Internals for people who work on SecureOne itself
 
+- [Local development setup](developer/local-setup.md) *(developers)*: Run SecureOne from source on your machine for development
 - [Data model](developer/data-model.md) *(developers)*: Entities, relationships and tables
 - [Database strategy](developer/database.md) *(developers)*: Platform and application schemas
 - [Database schemas and tables](developer/database-schemas.md) *(developers)*: Tables, keys and connections

@@ -139,7 +139,7 @@ Open **http://localhost:9000/admin**. In local development you can sign in with 
 | `SECUREONE_PUBLIC_BASE_URL` | `http://localhost:9000` | Links in emails |
 | `SECUREONE_DEV_USER` / `_PASSWORD` | `admin` / `admin` | Platform admin API auth |
 
-Full list: [Installation](../install/installation.md), [Environment & operations](../install/environment-and-operations.md).
+Full list: [Local development setup](../developer/local-setup.md), [Environment & operations](../install/environment-and-operations.md).
 <!-- /developer -->
 
 ---

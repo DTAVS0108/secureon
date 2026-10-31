@@ -25,7 +25,19 @@ export default defineConfig({
       sidebar: [
         { label: "Documentation home", link: "/docs/" },
         space("Get started", "get-started"),
-        space("Install and operate", "install"),
+        {
+          // Listed by hand so the runbooks group gets a proper name and comes last.
+          label: "Install and operate",
+          items: [
+            { label: "Overview", link: "/docs/install/" },
+            "docs/install/installation",
+            "docs/install/deployment",
+            "docs/install/configuration-and-upgrades",
+            "docs/install/settings-governance",
+            "docs/install/admin-control",
+            { label: "Runbooks", collapsed: true, autogenerate: { directory: "docs/install/runbooks" } },
+          ],
+        },
         space("Integrate applications", "integrate"),
         space("Admin console guide", "guide"),
         space("API reference", "api"),

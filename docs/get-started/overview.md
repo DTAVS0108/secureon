@@ -30,7 +30,7 @@ One central system provides:
 ## Non-goals (initially)
 
 - Being a general-purpose CRM or user-profile product.
-- Supporting arbitrary/NoSQL database engines (relational only — see [Database Strategy](../developer/database.md)).
+- Supporting arbitrary/NoSQL database engines (relational only: PostgreSQL).
 - Hand-rolling the OAuth/OIDC protocol (we build **on top of** Spring Authorization Server, a certified engine).
 
 ## Key concepts & glossary
@@ -54,7 +54,7 @@ One central system provides:
 - **Multi-application support** — many apps share one identity system; each **application product** defines its own roles/permissions; **OAuth clients** are registered separately (see [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md)).
 - **User / admin / super-admin management** — full lifecycle (create, disable, lock, delete), with three distinct trust tiers.
 - **Application-specific roles & permissions** — RBAC scoped per application, so the same role name can differ between apps.
-- **Tenant / organization support** — multi-tenancy with app-layer isolation (see [Architecture](../architecture/architecture.md)).
+- **Tenant / organization support** — multi-tenancy with app-layer isolation (see [How SecureOne fits together](../architecture/overview.md)).
 - **OAuth2 & OIDC** — Authorization Code + PKCE, Client Credentials, refresh-token rotation, discovery, JWKS.
 - **JWT access + refresh tokens** — short-lived signed JWTs; refresh tokens server-side and revocable.
 - **Enterprise SSO & identity brokering** — Google, GitHub, any OIDC IdP and **SAML 2.0** IdPs (any standards-compliant company IdP): SP- and IdP-initiated sign-in, single logout, encrypted assertions; JIT accounts or link-by-email. LDAP / AD sync is Phase 3+.

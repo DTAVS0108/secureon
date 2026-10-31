@@ -2,6 +2,7 @@
 import Site from "../layouts/Site.astro";
 import Icon from "../components/Icon.astro";
 import CodeTabs from "../components/CodeTabs.astro";
+import { SUPPORT_EMAIL } from "../site";
 
 const features = [
   { icon: "browser", title: "Hosted or your own sign-in", text: "Send users to polished hosted pages, or draw your own screens on top of the sign-in APIs." },
@@ -13,6 +14,20 @@ const features = [
   { icon: "audit", title: "Audit and sessions", text: "An append-only audit log, live sessions you can end, and streaming to your log platform." },
   { icon: "sync", title: "SCIM and webhooks", text: "Provision users from a company directory and react to changes with signed webhooks." },
   { icon: "file", title: "Configuration as code", text: "Keep tenants, applications and roles in files; preview and apply them, or load them at start-up." },
+];
+const docs = [
+  { icon: "bolt", title: "Quickstart", text: "SecureOne on your laptop in five minutes.", href: "/docs/get-started/quickstart/" },
+  { icon: "container", title: "Installation", text: "Install it on a server, step by step.", href: "/docs/install/installation/" },
+  { icon: "code", title: "Connect an application", text: "Add sign-in to a web, mobile or back-end app.", href: "/docs/integrate/integration-guide/" },
+  { icon: "console", title: "Admin console guide", text: "Tenants, applications, users and settings.", href: "/docs/guide/" },
+  { icon: "runbook", title: "Runbooks", text: "Deploy, roll back, rotate keys, handle incidents.", href: "/docs/install/runbooks/" },
+  { icon: "book", title: "API reference", text: "Every endpoint, with requests and responses.", href: "/docs/api/" },
+];
+const facts = [
+  ["1", "container image"],
+  ["2", "dependencies: PostgreSQL and Redis"],
+  ["4", "open standards: OAuth, OIDC, SAML, SCIM"],
+  ["0", "SQL to run by hand"],
 ];
 const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passkeys (WebAuthn)", "PKCE", "Device flow", "Dynamic client registration"];
 ---
@@ -74,6 +89,9 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
     <div class="container center">
       <p class="muted" style="font-size:14px;margin:0 0 16px">Built on open standards</p>
       <div class="standards">{standards.map((s) => <span>{s}</span>)}</div>
+      <div class="facts reveal" style="margin-top:48px;text-align:left">
+        {facts.map(([n, t]) => <div><b>{n}</b><span>{t}</span></div>)}
+      </div>
     </div>
   </section>
 
@@ -145,27 +163,75 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
   <section class="section">
     <div class="container">
       <div class="section-head center reveal">
-        <span class="eyebrow">Deploy anywhere</span>
-        <h2 class="h2">Your infrastructure, your data</h2>
-        <p class="lead">SecureOne runs where you run: a laptop, a single server or a Kubernetes cluster. Every setting is read when the container starts.</p>
+        <span class="eyebrow">Install</span>
+        <h2 class="h2">From image to first sign-in in three steps</h2>
+        <p class="lead">SecureOne is one container image. Give it PostgreSQL, Redis and a few secrets, start it, and do everything else in the console.</p>
       </div>
-      <div class="grid grid-3">
-        <a class="card reveal" href="/docs/get-started/quickstart/"><div class="icon"><Icon name="bolt" /></div><h3 class="h3">Quickstart</h3><p>One Compose file starts SecureOne with its database and cache on one machine, for trying it out.</p><span class="more">Five-minute quickstart <Icon name="arrow" /></span></a>
-        <a class="card reveal" href="/docs/install/deployment/"><div class="icon"><Icon name="container" /></div><h3 class="h3">Docker</h3><p>The image, an environment file and your PostgreSQL and Redis. Secrets can come from files.</p><span class="more">Deployment guide <Icon name="arrow" /></span></a>
-        <a class="card reveal" href="/docs/architecture/overview/#running-it"><div class="icon"><Icon name="cloud" /></div><h3 class="h3">Several instances</h3><p>Run more containers behind a load balancer; they share PostgreSQL and Redis, so any one can serve any request.</p><span class="more">How it scales <Icon name="arrow" /></span></a>
+      <div class="install">
+        <div class="install-step reveal">
+          <h3 class="h3">Write the settings</h3>
+          <p>Your address, the first operator, the database and the secrets, in one env file.</p>
+          <pre><span class="c"># secureone.env</span>
+SECUREONE_ISSUER_URL=https://id.example.com
+SECUREONE_DB_URL=jdbc:postgresql://…
+SECUREONE_REDIS_URL=redis://redis:6379</pre>
+        </div>
+        <div class="install-step reveal">
+          <h3 class="h3">Start the container</h3>
+          <p>The database tables create and upgrade themselves. No SQL by hand.</p>
+          <pre>docker compose up -d
+docker compose logs -f secureone
+<span class="c"># Started AuthServerApplication</span></pre>
+        </div>
+        <div class="install-step reveal">
+          <h3 class="h3">Sign in and connect</h3>
+          <p>Open the console, choose your password, then run <b>Connect an app</b>.</p>
+          <pre><span class="c"># in your browser</span>
+https://id.example.com/admin</pre>
+        </div>
+      </div>
+      <div class="center hero-actions" style="justify-content:center">
+        <a class="btn btn-primary" href="/docs/install/installation/">Installation guide <Icon name="arrow" /></a>
+        <a class="btn btn-ghost" href="/docs/get-started/quickstart/">Try it on your laptop</a>
       </div>
     </div>
   </section>
 
-  <section style="padding:24px 0 112px">
+  <section class="section section-soft">
+    <div class="container">
+      <div class="section-head reveal">
+        <span class="eyebrow">Documentation</span>
+        <h2 class="h2">Everything you need, in one place</h2>
+        <p class="lead">Guides for installing, running and connecting SecureOne, written for the people who use it.</p>
+      </div>
+      <div class="hub reveal">
+        {docs.map((d) => (
+          <a href={d.href}>
+            <div class="icon"><Icon name={d.icon} /></div>
+            <b>{d.title}</b>
+            <span>{d.text}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:88px 0 112px">
     <div class="container">
       <div class="cta reveal">
         <h2 class="h2" style="margin:0;color:#fff">Give every app a secure front door</h2>
-        <p class="lead" style="margin-top:14px">Start SecureOne locally, connect your first application and see a real sign-in, all in a few minutes.</p>
+        <p class="lead" style="margin-top:14px">Install SecureOne, connect your first application and see a real sign-in, all in an afternoon.</p>
         <div class="hero-actions">
           <a class="btn btn-ghost" style="background:#fff;color:#312e81;border-color:#fff" href="/get-started/">Get started</a>
           <a class="btn btn-ghost" href="/docs/integrate/integration-guide/">Integration guide</a>
         </div>
+      </div>
+      <div class="help reveal" style="margin-top:24px">
+        <div>
+          <h3 class="h3">Need a hand?</h3>
+          <p>{SUPPORT_EMAIL ? <>Write to <a class="link" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> and we will help you set it up.</> : "Contact the team that provides SecureOne to you."}</p>
+        </div>
+        <a class="btn btn-ghost" href="/support/"><Icon name="help" /> Support</a>
       </div>
     </div>
   </section>

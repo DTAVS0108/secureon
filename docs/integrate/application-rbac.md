@@ -9,7 +9,7 @@ audience: operator
 
 How operators manage **groups**, **roles**, and **permissions** for an integrated application in the admin console.
 
-Related: [Data model — Authorization](../developer/data-model.md#domain-3--authorization-rbac--composite-roles), [Admin control](../install/admin-control.md), [Applications & OAuth clients](applications-and-oauth-clients.md).
+Related: [Admin control](../install/admin-control.md), [Applications & OAuth clients](applications-and-oauth-clients.md).
 
 ## Where RBAC data lives
 

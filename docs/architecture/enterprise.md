@@ -121,7 +121,7 @@ mindmap
 ---
 
 ## Data-model additions implied (future phases)
-These are **not** in the MVP schema; noted so [Data Model](../developer/data-model.md) can grow predictably:
+These are **not** in the MVP schema; noted so the data model can grow predictably:
 
 - `organization`, `group`, `group_role`, `group_membership` (orgs + nested groups)
 - `identity_provider`, `idp_mapper` (federation/brokering config)

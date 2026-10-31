@@ -9,7 +9,7 @@ audience: public
 
 **Audience:** Platform owners, DevOps, and architects who need to **deploy SecureOne as a central IdP** and then **register applications** from the admin console.
 
-**Related:** [Operator getting started](../get-started/operator-getting-started.md) · [Environment & operations](environment-and-operations.md) · [Deploy](runbooks/deploy.md) · [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) · [Application integration](../integrate/integration-guide.md)
+**Related:** [Installation](installation.md) · [Operator getting started](../get-started/operator-getting-started.md) · [Deploy runbook](runbooks/deploy.md) · [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) · [Application integration](../integrate/integration-guide.md)
 
 ---
 
@@ -83,7 +83,7 @@ Replace these with your own values. Everything SecureOne serves is on one host (
 
 ---
 
-## Target runtime (both paths)
+## What SecureOne needs
 
 You provide (or compose) these services. SecureOne does **not** embed production Postgres/Redis.
 
@@ -98,9 +98,9 @@ On first start, **Flyway** creates the schema from `V1__baseline.sql` on the emp
 
 ---
 
-# Path A — Images + env only (no source on server)
+# Install from the image
 
-Use this when SecureOne is delivered as **Docker images**: configure with env, start containers, manage applications and OAuth clients in the admin UI.
+SecureOne is delivered as a **container image**: configure it with an env file, start the container, then manage applications and OAuth clients in the admin console.
 
 ### What you need
 
@@ -280,7 +280,7 @@ Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"stat
 ---
 
 <!-- developer -->
-# Path B — Enterprise: you have the code and deploy for the whole organization
+# Path B — Build from source (developers)
 
 Use this when your team **owns the SecureOne monorepo**, builds images in CI, and runs SecureOne as shared enterprise IAM for many products (web, mobile, back-end services, …).
 
@@ -619,7 +619,7 @@ Save and copy:
 
 In your application's configuration only (not SecureOne source):
 
-```env
+```ini
 SECUREONE_ISSUER=https://id.example.com
 SECUREONE_APPLICATION_ID=<uuid-from-admin>
 SECUREONE_CLIENT_ID=exampleapp-web
@@ -716,7 +716,7 @@ At start-up the platform migrations and every application schema are brought to 
 
 ## Checklist
 
-### Path A (image + env)
+### Install from the image
 
 - [ ] Postgres / Redis / SMTP reachable  
 - [ ] Images pulled  

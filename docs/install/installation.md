@@ -1,152 +1,170 @@
 ---
 title: Installation
-summary: Run SecureOne locally for development and evaluation
+summary: Install SecureOne on one server from its image, step by step
 order: 1
-audience: internal
+audience: public
 ---
 
 # Installation
 
-Local development setup for **auth-server** and **admin-web**.
+SecureOne is installed from one container image, `dmtavs0108/secureone:1.0.0`. You do not build anything: you give
+it a database, a cache and a few secrets, start it, and do everything else in the admin console.
 
-> **Full operations guide** (one-command start, Flyway migrations, startup bootstrap, scheduled jobs): [Environment & operations](environment-and-operations.md).
+This page installs SecureOne on **one server** with Docker Compose. For your own PostgreSQL and Redis, Kubernetes,
+TLS and every setting, see [Deployment](deployment.md). To try SecureOne on your laptop first, use the
+[Quickstart](../get-started/quickstart.md).
 
-## Prerequisites
+## What you need
 
-| Tool | Version | For |
-|---|---|---|
-| JDK | 21+ (25 tested) | auth-server |
-| Gradle | wrapper in `apps/auth-server` | Backend build |
-| Node.js | 20+ LTS | admin-web |
-| Docker + Compose | latest | Postgres, Redis, MailHog |
-| PostgreSQL | 16+ | System of record |
-| Redis | 7+ | Sessions, cache |
-
-## 1. Clone & infrastructure
-
-**One-command start (Windows):** `.\scripts\start-all.ps1` — see [Environment & operations](environment-and-operations.md).
-
-```bash
-git clone <repo-url> secureone
-cd secureone
-docker compose -f deploy/docker-compose.yml up -d
-```
-
-Starts **PostgreSQL** (`5432`), **Redis** (`6379`), **MailHog** (SMTP `1025`, UI `http://localhost:8025`).
-
-## 2. Configure auth-server
-
-Environment variables (or `apps/auth-server` defaults in `application.yml`):
-
-```dotenv
-SECUREONE_DB_URL=jdbc:postgresql://localhost:5432/secureone?currentSchema=platform
-SECUREONE_DB_USERNAME=secureone
-SECUREONE_DB_PASSWORD=secureone
-SECUREONE_REDIS_URL=redis://localhost:6379
-SECUREONE_ISSUER_URL=http://localhost:9000
-SECUREONE_DEV_USER=admin
-SECUREONE_DEV_PASSWORD=admin
-```
-
-> Never commit production secrets. See [Security](../architecture/security.md).
-
-## 3. Start auth-server
-
-```bash
-cd apps/auth-server
-./gradlew bootRun          # Windows: .\gradlew bootRun
-```
-
-- Listens on **http://localhost:9000**
-- **Flyway** applies `db/migration/postgresql` on boot (`V1__baseline.sql` on an empty database)
-- API docs: **http://localhost:9000/docs**
-- Health: `GET /api/info`
-
-## 4. Start admin-web
-
-```bash
-cd apps/admin-web
-npm install
-npm run dev
-```
-
-Open **http://localhost:9000/admin** (the auth-server serves the admin-web dev server there; hot reload also at http://localhost:3001/admin). Sign in as platform super-admin: **`admin` / `admin`**.
-
-Set `AUTH_SERVER_URL=http://localhost:9000` in `.env.local` if the default differs.
-
-## 5. Register your first application
-
-1. Go to **/applications**
-2. Click **+ Register application & OAuth client**
-3. Fill application (name, tenant, slug) and OAuth client (template, redirect URIs)
-4. Copy the **client secret** if shown (confidential clients only)
-
-This provisions a **PostgreSQL schema** for the app and seeds default RBAC. See [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md).
-
-## 6. End-to-end operator test
-
-1. Sign in as platform admin (`admin` / `admin`, no tenant slug).
-2. **Tenants** → create a tenant (note slug, e.g. `myorg`).
-3. **Applications** → **Register application & OAuth client** for that tenant.
-4. **Tenants** → open tenant → **+ Add user** (Active).
-5. **Grant access** → Tenant Super Admin (or app-scoped role).
-6. **Applications** → **Application console →** Users → set password.
-7. Sign out → sign in with tenant slug `myorg`, user email, password.
-
-## 7. Database maintenance
-
-| Situation | Command |
-|-----------|---------|
-| Empty database / start fresh | `.\scripts\reset-database.ps1` |
-| Truncated catalog tables only | Restart auth-server (the startup bootstrap re-seeds the catalog) |
-| Repair after partial migration | Restart auth-server; check `platform.flyway_schema_history` |
-
-**Platform super admin** (dev): the break-glass account `admin` / `admin` (console sign-in page → **Emergency access**; not stored in Postgres). Add named platform operators under **Access review** for daily use. See [Roles and access](../integrate/roles-and-access.md).
-
-### Legacy application isolation
-
-If an app has `schema_name = NULL` (seeded before schema isolation), platform super-admins can run **Isolate application** from the OAuth client detail page or `POST /api/admin/v1/applications/{id}/isolate`.
-
-## 8. Email & notifications (dev)
-
-MailHog catches outbound mail. Configure in **Settings → Notifications**, then test flows (verify email, password reset). Links log to auth-server console if SMTP is down (`SECUREONE_MAIL_LOG_WHEN_UNAVAILABLE`).
-
-## 9. Admin console layout
-
-| Area | Who | URL |
-|------|-----|-----|
-| **Application console** | Super admin + app operators | `/app/{applicationId}/users` |
-| **OAuth client registry** | Platform super-admin | `/applications` |
-| **Platform settings** | Super-admin | `/settings` |
-| **Tenants** | Platform / tenant super-admin | `/tenants` |
-| **SecureOne Documentation** | All signed-in operators | `/documentation` (sidebar opens **new tab**; standalone docs UI) |
-
-## 10. Verify
-
-| Check | URL |
-|-------|-----|
-| Discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
-| Documentation discovery | `GET http://localhost:9000/api/v1/documentation` |
-| SecureOne Documentation UI | http://localhost:9000/admin/documentation |
-| JWKS | `GET http://localhost:9000/oauth2/jwks` |
-| Admin UI | http://localhost:9000/admin |
-| MailHog | `http://localhost:8025` |
-| App schema (SQL) | `SELECT name, schema_name FROM platform.application;` |
-
-## Production (summary)
-
-Docker/Kubernetes, managed Postgres + Redis, TLS, KMS for secrets. See [Architecture](../architecture/architecture.md) and [Security](../architecture/security.md).
-
-## Configuration reference
-
-| Variable | Purpose |
+| Item | Details |
 |---|---|
-| `SECUREONE_DB_URL` | JDBC URL (`currentSchema=platform`) |
-| `SECUREONE_DB_USERNAME` / `_PASSWORD` | DB credentials |
-| `SECUREONE_REDIS_URL` | Redis |
-| `SECUREONE_ISSUER_URL` | OIDC issuer |
-| `SECUREONE_DEV_USER` / `_PASSWORD` | Admin API Basic auth |
-| `SECUREONE_ADMIN_WEB_URL` | Console URL for Documentation links in `/api/info` (default `<SECUREONE_PUBLIC_BASE_URL>/admin`) |
-| `SECUREONE_CONSOLE_UPSTREAM_URL` | Where the auth-server forwards `/admin` in development (`http://localhost:3001`; set by `start-all.ps1`) |
-| `SECUREONE_PUBLIC_BASE_URL` | Links in emails |
-| `SECUREONE_SMTP_*` | Outbound email |
+| A Linux server | 2 CPU and 2 GB memory is enough to start; Docker with Compose installed |
+| A domain name | For example `id.example.com`, pointing at the server |
+| HTTPS | A reverse proxy or load balancer with a certificate in front of port 9000 |
+| Email (SMTP) | For verification, password reset and invitations; you can add it later in the console |
+
+SecureOne uses **PostgreSQL 16+** and **Redis 7+**. The Compose file below runs both next to SecureOne; you can use
+managed services instead.
+
+## 1. Create the secrets
+
+On the server, in a new folder such as `/opt/secureone`:
+
+```bash
+mkdir -p /opt/secureone && cd /opt/secureone
+openssl rand -hex 32                                                   # one-time code pepper
+openssl rand -base64 32                                                # encryption key
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwk.pem   # token signing key
+```
+
+Keep these values in your password manager or secret store. **Back up the encryption key separately from the
+database**: secrets stored by SecureOne cannot be read without it.
+
+## 2. Write the settings file
+
+Save this as `/opt/secureone/secureone.env`, with your own values:
+
+```bash
+# Your public address (https)
+SECUREONE_ISSUER_URL=https://id.example.com
+SECUREONE_PUBLIC_BASE_URL=https://id.example.com
+
+# First platform operator: the first sign-in asks for a new password
+SECUREONE_BOOTSTRAP_ADMIN_EMAIL=owner@example.com
+SECUREONE_BOOTSTRAP_ADMIN_PASSWORD=Change-This-Strong-Password-1!
+
+# Database and cache (the services in docker-compose.yml)
+SECUREONE_DB_URL=jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+SECUREONE_DB_USERNAME=secureone
+SECUREONE_DB_PASSWORD=choose-a-database-password
+SECUREONE_REDIS_URL=redis://redis:6379
+
+# Secrets from step 1
+SECUREONE_OTP_PEPPER=<the hex value>
+SECUREONE_ENCRYPTION_KEY=base64:<the base64 value>
+# The whole jwk.pem on one line, with \n for each line break
+SECUREONE_JWK_PRIVATE_KEY_PEM=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+
+# Email (optional now; can also be set later under Settings › Notifications)
+SECUREONE_SMTP_HOST=smtp.example.com
+SECUREONE_SMTP_PORT=587
+SECUREONE_SMTP_USERNAME=smtp-user
+SECUREONE_SMTP_PASSWORD=smtp-password
+SECUREONE_SMTP_AUTH=true
+SECUREONE_SMTP_STARTTLS=true
+```
+
+```bash
+chmod 600 /opt/secureone/secureone.env
+```
+
+## 3. Write the Compose file
+
+Save this as `/opt/secureone/docker-compose.yml`. Use the same database password as in the settings file:
+
+```yaml
+name: secureone
+
+services:
+  secureone:
+    image: dmtavs0108/secureone:1.0.0
+    env_file: ./secureone.env
+    ports:
+      - "127.0.0.1:9000:9000"        # your HTTPS proxy forwards to this port
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: secureone
+      POSTGRES_USER: secureone
+      POSTGRES_PASSWORD: choose-a-database-password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secureone -d secureone"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+```
+
+## 4. Start SecureOne
+
+```bash
+cd /opt/secureone
+docker compose up -d
+docker compose logs -f secureone
+```
+
+SecureOne is ready when the log shows `Started AuthServerApplication`. The first start creates the database tables
+by itself; you never run SQL by hand.
+
+## 5. Put HTTPS in front
+
+Point your reverse proxy or load balancer for `id.example.com` at `http://127.0.0.1:9000` and forward the
+`X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For` headers. Everything is on this one address: sign-in
+pages, APIs and the admin console at `/admin`. See [Deployment](deployment.md#a7--tls--reverse-proxy) for details.
+
+## 6. Sign in to the console
+
+1. Open `https://id.example.com/admin`.
+2. Choose **Platform operator** and sign in with the email and password from the settings file.
+3. Choose your own password, then set up an authenticator app. Save the recovery codes it shows.
+4. Remove `SECUREONE_BOOTSTRAP_ADMIN_PASSWORD` from the settings file. It is only used once.
+
+## 7. Check that everything works
+
+```bash
+curl -s https://id.example.com/api/info                              # "status":"UP", "version":"1.0.0"
+curl -s https://id.example.com/.well-known/openid-configuration      # sign-in discovery document
+docker compose ps                                                    # secureone is "healthy"
+```
+
+## Keep it running
+
+| Task | How |
+|---|---|
+| Back up | `docker compose exec postgres pg_dump -U secureone -Fc secureone > secureone-$(date +%F).dump`, plus the settings file and encryption key |
+| Upgrade | Change the image version in `docker-compose.yml`, then `docker compose pull && docker compose up -d`. The database upgrades itself; back up first |
+| Read the log | `docker compose logs --since 1h secureone` |
+| Restart | `docker compose restart secureone` |
+| Stop | `docker compose down` (keeps the data; `down -v` deletes it) |
+
+## Next steps
+
+- [Operator getting started](../get-started/operator-getting-started.md): tenants, applications and operators
+- [Integration guide](../integrate/integration-guide.md): connect your first application
+- [Configuration as code and upgrades](configuration-and-upgrades.md): keep tenants in files, upgrade and roll back
+- [Runbooks](runbooks/index.md): step-by-step procedures for day-to-day operations
