@@ -4,46 +4,50 @@ import PageHead from "../components/PageHead.astro";
 
 const releases = [
   {
-    version: "0.1.3",
-    title: "Documentation spaces and the public website",
-    items: [
-      "Documentation organised in spaces (Get started, Install and operate, Integrate applications, Admin console guide, API reference, Architecture and security), each with an overview page.",
-      "A new documentation reader in the console: page tree, breadcrumbs, “On this page”, search across every page (Ctrl K), note and warning panels, copy buttons on code.",
-      "Pages are marked public, for operators or for developers: operator pages need a console sign-in, developer pages are for platform operators.",
-      "Swagger UI groups the API by category (public, authentication, OAuth and SAML, account, machine-to-machine, and the admin areas).",
-      "This website, built from the same documentation.",
-    ],
-  },
-  {
-    version: "0.1.2",
-    title: "Logo and profile pictures",
-    items: [
-      "The SecureOne logo in the console, on sign-in pages and as the browser icon.",
-      "Profile pictures for console operators: PNG, JPEG or WebP, cropped and resized in the browser, checked by content on the server.",
-      "Browsers no longer show their own password dialog for unknown addresses.",
-    ],
-  },
-  {
-    version: "0.1.0",
-    title: "A fresh start",
-    items: [
-      "Version numbers restart at 0.1.0 with a single database baseline; databases from earlier releases are refused with a clear message.",
-      "No sample data: an installation starts empty and the first operator comes from the setup wizard or the bootstrap settings.",
-      "Neutral examples and labels throughout the console and the documentation.",
+    version: "1.0.0",
+    title: "First release",
+    groups: [
+      ["Sign-in", [
+        "Hosted sign-in pages with each application's name, logo and colours, or your own screens on the sign-in APIs.",
+        "Passwords with a configurable policy and a leaked-password check, passkeys, one-time codes by email or SMS, and magic links.",
+        "Two-step verification with authenticator apps, passkeys, codes and recovery codes, required or optional per application.",
+        "Device sign-in for TVs and command-line tools, and self-service sign-up with email verification.",
+      ]],
+      ["Standards and single sign-on", [
+        "OAuth 2.1 and OpenID Connect provider: authorization code with PKCE, refresh token rotation, UserInfo, back-channel logout.",
+        "SAML 2.0 identity provider for your apps, and sign-in through company SAML and OpenID Connect providers.",
+        "SCIM 2.0 provisioning, dynamic client registration and custom sign-in domains per tenant.",
+      ]],
+      ["Administration", [
+        "Admin console for platform, tenant and application administrators, each seeing only what they manage.",
+        "Roles, permissions and groups per application, delivered in the tokens; access requests, access reviews and change approvals.",
+        "Append-only audit log with streaming, session management, signed webhooks, service accounts and configuration as code.",
+        "Documentation in the console, organised in spaces, with search.",
+      ]],
+      ["Operations", [
+        "One container image with the console built in; PostgreSQL and Redis alongside.",
+        "Production mode refuses unsafe settings; stored secrets are encrypted; tenants are isolated in the database.",
+        "The database schema is created on first start and upgraded automatically by later releases.",
+      ]],
     ],
   },
 ];
 ---
 
-<Site title="Releases" description="What changed in each SecureOne release.">
-  <PageHead eyebrow="Releases" title="Release notes" lead="What changed in each release. Upgrades within 0.1.x happen automatically when the new image starts." />
+<Site title="Releases" description="What is in each SecureOne release.">
+  <PageHead eyebrow="Releases" title="Release notes" lead="What each release contains. Upgrading is a matter of backing up the database and starting the new image." />
   <section class="section" style="padding-top:24px">
     <div class="container prose">
       {releases.map((r) => (
         <article class="release reveal">
           <span class="tag">{r.version}</span>
           <h2 style="margin-top:12px">{r.title}</h2>
-          <ul>{r.items.map((i) => <li>{i}</li>)}</ul>
+          {r.groups.map(([title, items]) => (
+            <>
+              <h3>{title}</h3>
+              <ul>{(items as string[]).map((i) => <li>{i}</li>)}</ul>
+            </>
+          ))}
           <p class="muted" style="font-size:14px">Image: <code>dmtavs0108/secureone:{r.version}</code></p>
         </article>
       ))}

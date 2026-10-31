@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Admin API: sign-in and operator
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 Getting a console session token (sign-in plus MFA), the admin context (who am I, what can I open) and the signed-in operator's own profile and authenticators.
 

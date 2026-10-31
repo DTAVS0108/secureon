@@ -35,19 +35,21 @@ SecureOne documents its HTTP API three ways. They describe the same endpoints:
 | [Admin API: platform settings and configuration as code](admin-platform-settings.md) |
 | [Data models](data-models.md) |
 
+<!-- developer -->
 The section pages are generated from the OpenAPI document (`scripts/api-docs/generate_api_reference.py`), so they
 match the running code. See [Keeping this reference current](index.md#keeping-this-reference-current).
+<!-- /developer -->
 
 ## Turn on Swagger UI and the OpenAPI document
 
-They follow `SECUREONE_ENV`: **on** in development (from source, or the image with `SECUREONE_ENV=development`) and
+They follow `SECUREONE_ENV`: **on** in development (the image with `SECUREONE_ENV=development`) and
 **off** in production, which is the image's default. Turn them on in production with one setting:
 
 ```dotenv
 SECUREONE_SWAGGER_ENABLED=true
 ```
 
-Add it to the container's env file (see [deploy/README.md](../../deploy/README.md#31-save-the-containers-settings-once))
+Add it to the container's env file (see [Deployment](../install/deployment.md))
 and replace the container. Check:
 
 ```bash
@@ -117,16 +119,18 @@ The same steps with curl: [Getting started › Admin API](getting-started.md#adm
 curl -s $SECUREONE_URL/v3/api-docs/all -o secureone-openapi.json
 ```
 
+<!-- developer -->
 ## Configuration
 
 - `apps/auth-server/src/main/resources/application.yml` → `springdoc.*`, `secureone.swagger-enabled`
   (default from `SecureOneEnvironmentDefaults`: on unless `SECUREONE_ENV=production`)
-- The document's title, version (the build version, e.g. `0.1.3`) and link to SecureOne Documentation:
+- The document's title, version (the build version, e.g. `1.0.0`) and link to SecureOne Documentation:
   `OpenApiConfig`
 - Java: `com.secureone.auth.config.openapi.ApiCategory` (the categories and their tags), `OpenApiConfig`
   (definitions, security schemes),
   `OAuth2OpenApiDocumentation` (protocol endpoints), `SwaggerAccessFilter`
 - Endpoint texts: `@Tag`, `@Operation` and `@Parameter` on the controllers
+<!-- /developer -->
 
 ## SecureOne Documentation APIs (admin console)
 

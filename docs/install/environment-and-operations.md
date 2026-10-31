@@ -2,7 +2,7 @@
 title: Environment and operations
 summary: Settings, schedulers, health checks and troubleshooting
 order: 4
-audience: operator
+audience: internal
 ---
 
 # Environment and operations
@@ -29,14 +29,13 @@ For a shorter first-time walkthrough, see [09 â€” Installation](installatio
 
 Source files live under **`deploy/`**. In local dev, **`docker-compose.yml` runs only infrastructure** (Postgres, Redis, MailHog). **auth-server** and **admin-web** are started on the host by `scripts/start-all.ps1` (Gradle + Node), and the auth-server forwards `/admin` to the console dev server. For production there is **one image** (`deploy/Dockerfile`) containing both.
 
-```
-deploy/
-├── docker-compose.yml             ← dev: Postgres, Redis, MailHog
-├── docker-compose.quickstart.yml  ← evaluation: the SecureOne image + Postgres, Redis, MailHog
-├── Dockerfile                     ← the single SecureOne image (auth-server + console at /admin)
-└── helm/secureone                 ← Kubernetes chart (one Deployment, Service, Ingress)
-.dockerignore                      ← allow-list for the image build (repo root)
-```
+| File | What it is |
+|---|---|
+| `deploy/docker-compose.yml` | Development: PostgreSQL, Redis, MailHog |
+| `deploy/docker-compose.quickstart.yml` | Evaluation: the SecureOne image with PostgreSQL, Redis and MailHog |
+| `deploy/Dockerfile` | The single SecureOne image (auth-server with the console at `/admin`) |
+| `deploy/helm/secureone` | Kubernetes chart (one Deployment, Service, Ingress) |
+| `.dockerignore` | Allow-list for the image build (repository root) |
 
 ### `deploy/docker-compose.yml` (development infrastructure)
 
@@ -153,19 +152,14 @@ Builds the image and runs it with its own Postgres, Redis and MailHog, in develo
 
 Source-of-truth paths in the monorepo. Copy values into environment variables or local env files as needed.
 
-```
-secureone/
-├── .env.example                              ← production-oriented env template (repo root)
-├── pnpm-workspace.yaml                       ← JS monorepo workspaces
-├── package.json                              ← root scripts (turbo / pnpm)
-├── apps/auth-server/
-│   ├── build.gradle.kts                      ← Java 25, Spring Boot, Flyway deps
-│   └── src/main/resources/application.yml    ← auth-server defaults + scheduler cron
-└── apps/admin-web/
-    ├── package.json                          ← Next.js scripts (dev :3001, served under /admin)
-    ├── next.config.ts
-    └── .env.local.example                    ← copy to .env.local
-```
+| File | What it is |
+|---|---|
+| `.env.example` | Production-oriented environment template (repository root) |
+| `pnpm-workspace.yaml`, `package.json` | JavaScript workspaces and root scripts |
+| `apps/auth-server/build.gradle.kts` | Java 25, Spring Boot and Flyway dependencies |
+| `apps/auth-server/src/main/resources/application.yml` | Auth-server defaults and scheduler timings |
+| `apps/admin-web/package.json`, `next.config.ts` | Console scripts (development on :3001, served under `/admin`) |
+| `apps/admin-web/.env.local.example` | Copy to `.env.local` for development |
 
 ### `apps/auth-server/src/main/resources/application.yml`
 
@@ -354,7 +348,7 @@ export default nextConfig;
 ```json
 {
   "name": "admin-web",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
@@ -387,7 +381,7 @@ export default nextConfig;
 ```json
 {
   "name": "secureone",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "private": true,
   "description": "SecureOne â€” centralized Identity & Access Management platform (JS workspaces).",
   "packageManager": "pnpm@9.15.9",
@@ -423,7 +417,7 @@ plugins {
 }
 
 group = "com.secureone"
-version = "0.1.3"
+version = "1.0.0"
 
 java {
 	toolchain {

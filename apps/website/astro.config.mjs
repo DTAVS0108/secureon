@@ -14,7 +14,6 @@ export default defineConfig({
       description: "Sign-in, single sign-on, MFA, users, roles and permissions for every application.",
       logo: { src: "./src/assets/secureone-mark.svg", alt: "SecureOne" },
       favicon: "/favicon.svg",
-      social: [{ icon: "github", label: "Source code", href: "https://github.com/DTAVS0108/secureon" }],
       customCss: ["./src/styles/docs.css"],
       disable404Route: true,
       lastUpdated: false,

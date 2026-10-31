@@ -2,7 +2,8 @@
  * Copies the public documentation from the repository's docs/ into the website (src/content/docs/docs/).
  *
  * docs/ is the single source: the console shows every page; the website shows only pages whose front matter says
- * `audience: public`. Links to operator or developer pages become plain text, so nothing internal leaks.
+ * `audience: public`, without their developer blocks (<!-- developer --> ... <!-- /developer -->). Links to operator
+ * or developer pages and to source files become plain text, so nothing internal leaks.
  * Run by `pnpm build` and `pnpm dev`; never edit the generated folder.
  */
 import fs from "node:fs";
@@ -12,7 +13,8 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DOCS = process.env.SECUREONE_DOCS_DIR || path.resolve(here, "../../../docs");
 const OUT = path.resolve(here, "../src/content/docs/docs");
-const REPO = "https://github.com/DTAVS0108/secureon/blob/main";
+// Developer-only parts of a page (local setup, source builds) never reach the website.
+const DEVELOPER_BLOCK = /<!--\s*developer\s*-->[\s\S]*?<!--\s*\/developer\s*-->[^\S\n]*\n?/g;
 
 const FRONT = /^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n/;
 const HTML_OK = new Set(["br", "details", "summary", "sup", "sub", "kbd", "img", "a", "p", "div", "span", "b", "i", "em", "strong", "code", "pre", "table", "thead", "tbody", "tr", "td", "th", "ul", "ol", "li", "hr"]);
@@ -69,7 +71,7 @@ function escapeAngles(line) {
 
 function convert(page) {
   const dir = path.posix.dirname(page.rel);
-  const lines = page.body.replace(/^\s*#\s+[^\n]*\n+/, "").split("\n");
+  const lines = page.body.replace(DEVELOPER_BLOCK, "").replace(/^\s*#\s+[^\n]*\n+/, "").split("\n");
   const out = [];
   let fence = null; // "code" | "mermaid"
   let aside = null;
@@ -114,16 +116,13 @@ function convert(page) {
       if (href.startsWith("$")) return m;
       const [file, anchor] = href.split("#");
       const target = path.posix.normalize(path.posix.join(dir, file));
-      if (target.startsWith("..")) {
-        const repoPath = path.posix.normalize(path.posix.join("docs", dir, file));
-        return `${bang}[${text}](${REPO}/${repoPath}${anchor ? `#${anchor}` : ""})`;
-      }
+      if (target.startsWith("..")) return bang ? "" : text; // a source file: never linked from the website
       if (target.endsWith(".md")) {
         if (target === "README.md") return `${bang}[${text}](/docs/)`;
         if (!isPublic(target)) return text; // operator or developer page: not on the public site
         return `${bang}[${text}](${route(target)}${anchor ? `#${anchor}` : ""})`;
       }
-      return `${bang}[${text}](${REPO}/docs/${target})`; // diagrams and other files: view on GitHub
+      return bang ? "" : text; // diagram sources and other files: not published
     });
     out.push(escapeAngles(line));
   }

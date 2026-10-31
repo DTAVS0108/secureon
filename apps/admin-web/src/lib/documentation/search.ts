@@ -1,7 +1,7 @@
 import "server-only";
 
 import { allNodes, trail } from "./catalog";
-import { readBody } from "./loader";
+import { applyDeveloperBlocks, readBody } from "./loader";
 import { canRead, plainText, type DocsViewer } from "./types";
 
 export type SearchEntry = {
@@ -20,7 +20,7 @@ export async function searchIndex(viewer: DocsViewer): Promise<SearchEntry[]> {
   const out: SearchEntry[] = [];
   for (const node of await allNodes()) {
     if (!canRead(node.audience, viewer)) continue;
-    const body = await readBody(node.file).catch(() => "");
+    const body = applyDeveloperBlocks(await readBody(node.file).catch(() => ""), viewer.platformOperator);
     const headings: string[] = [];
     const text: string[] = [];
     let inCode = false;

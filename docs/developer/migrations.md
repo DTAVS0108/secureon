@@ -15,16 +15,15 @@ Related: [Database schemas & tables](database-schemas.md) · [Database strategy]
 
 ## Files
 
-```
-apps/auth-server/src/main/resources/db/migration/
-├── postgresql/
-│   ├── V1__baseline.sql            ← complete platform schema + built-in reference rows
-│   └── R__z_repair_catalog.sql     ← idempotent catalog repair (repeatable)
-└── application-schema/
-    ├── V1__app_core.sql            ← per-application schema
-    ├── V2__user_application_created_at.sql
-    └── V3__two_step_mode.sql
-```
+Under `apps/auth-server/src/main/resources/db/migration/`:
+
+| File | What it is |
+|---|---|
+| `postgresql/V1__baseline.sql` | The complete platform schema and the built-in reference rows |
+| `postgresql/R__z_repair_catalog.sql` | Idempotent catalog repair (repeatable) |
+| `application-schema/V1__app_core.sql` | The per-application schema |
+| `application-schema/V2__user_application_created_at.sql` | Per-application change |
+| `application-schema/V3__two_step_mode.sql` | Per-application change |
 
 | Path | Mechanism | History |
 |------|-----------|---------|

@@ -25,12 +25,17 @@ Related: [Data model](../developer/data-model.md), [Database strategy](../develo
 
 ---
 
+<!-- developer -->
 ## Database layout
 
-```
-secureone (PostgreSQL database)
-├── platform.*                     ← shared: tenant, application registry, oauth_client, identity, governance, Flyway log
-└── {app_slug}.*                   ← per-app IAM (role, permission, user_application, settings, groups, logs)
+```mermaid
+flowchart LR
+    subgraph db["PostgreSQL database: secureone"]
+        direction LR
+        platform["<b>platform</b><br/>tenants, applications, OAuth clients,<br/>users, governance, migration history"]
+        app["<b>one schema per application</b><br/>its roles, permissions, settings,<br/>groups and logs"]
+    end
+    platform -. "application registry" .-> app
 ```
 
 - **Schema name** = `slugify(application.slug)` with hyphens → underscores (e.g. slug `test-web` → schema `test_web`).
@@ -49,6 +54,7 @@ For requests scoped to an application (`/api/admin/v1/applications/{id}/*`, `/ap
    (or `platform` only when `schema_name` is null).
 
 JPA queries for app-scoped entities (`role`, `permission`, `user_application`, etc.) resolve to the correct schema without code changes per table.
+<!-- /developer -->
 
 ---
 
@@ -155,6 +161,7 @@ OAuth clients remain in `platform.oauth_client`. This cannot be undone automatic
 
 ---
 
+<!-- developer -->
 ## Migrations & provisioning
 
 | Location | Purpose |
@@ -172,6 +179,7 @@ On auth-server boot, Flyway applies pending platform migrations. **Application s
 spring.datasource.url: jdbc:postgresql://localhost:5432/secureone?currentSchema=platform
 # hibernate.default_schema is NOT set — search_path handles app-scoped tables
 ```
+<!-- /developer -->
 
 ---
 
@@ -191,6 +199,7 @@ See [Application RBAC management](application-rbac.md).
 
 ---
 
+<!-- developer -->
 ## New machine / fresh database
 
 If PostgreSQL is reachable and auth-server starts successfully:
@@ -199,6 +208,7 @@ If PostgreSQL is reachable and auth-server starts successfully:
 2. Registering an application **automatically** creates the PostgreSQL schema and IAM tables — no manual SQL.
 
 Requirements: Docker Compose (`postgres`, `redis`), `gradlew bootRun` (auth-server), `npm run dev` (admin-web). See [Installation](../install/installation.md).
+<!-- /developer -->
 
 ---
 

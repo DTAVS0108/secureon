@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Machine-to-machine and SCIM
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 Calls made by other systems: service accounts with API keys, and SCIM 2.0 user and group provisioning from an identity provider.
 

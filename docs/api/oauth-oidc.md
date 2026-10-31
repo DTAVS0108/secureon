@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › OAuth 2.1, OpenID Connect and SAML
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 The authorization server protocol: discovery, authorize, token, revoke, introspect, JWKS, UserInfo, device flow and OAuth extensions. Most apps only need discovery, authorize, token and UserInfo; an OIDC library calls them for you.
 

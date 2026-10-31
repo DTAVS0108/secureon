@@ -2,7 +2,7 @@
 title: Installation
 summary: Run SecureOne locally for development and evaluation
 order: 1
-audience: public
+audience: internal
 ---
 
 # Installation

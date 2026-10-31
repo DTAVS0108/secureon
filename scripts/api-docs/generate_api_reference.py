@@ -567,8 +567,10 @@ def main(spec_path: str, out_dir: str) -> None:
             "",
             "[API reference](index.md) › " + title,
             "",
-            "> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by "
+            "<!-- developer -->",
+            "Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by "
             "hand: change the controllers and regenerate.",
+            "<!-- /developer -->",
             "",
             intro,
             "",
@@ -601,7 +603,7 @@ def main(spec_path: str, out_dir: str) -> None:
 
     models = [*front_matter("Data models", "Every request and response type", len(SECTIONS) + 3),
               "# Data models", "", "[API reference](index.md) › Data models", "",
-              "> Generated from the OpenAPI document. Request and response types used by the endpoints, A to Z.", ""]
+              "Request and response types used by the endpoints, A to Z.", ""]
     for name in sorted(spec.get("components", {}).get("schemas", {}), key=str.lower):
         schema = spec["components"]["schemas"][name]
         models += [f"## {name}", ""]

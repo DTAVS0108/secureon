@@ -2,7 +2,7 @@
 title: Tech stack
 summary: What SecureOne is built with, and why
 order: 2
-audience: public
+audience: internal
 ---
 
 # Tech stack

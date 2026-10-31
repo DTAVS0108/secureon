@@ -1,6 +1,6 @@
 ---
 title: Operator getting started
-summary: Install, set up and run SecureOne on your machine, step by step
+summary: What SecureOne is, its parts, and your first hour running it as an operator
 order: 3
 audience: public
 ---
@@ -12,7 +12,7 @@ audience: public
 **Not this guide?**
 
 - Building a product frontend (e.g. an online store) and need signup/login APIs → **[Application integration guide](../integrate/integration-guide.md)**
-- Deploying SecureOne with Docker images + env, or enterprise from source/Helm → **[Deployment: image + env & enterprise](../install/deployment.md)**
+- Installing SecureOne from the image on your own servers → **[Deployment](../install/deployment.md)**
 
 ---
 
@@ -39,11 +39,11 @@ flowchart LR
     subgraph container["SecureOne container · port 9000"]
         direction TB
         console["<b>Admin console</b><br/>/admin<br/>tenants, users, apps, settings<br/>+ Documentation"]
-        auth["<b>Auth server</b><br/>OAuth 2.1 · OpenID Connect · SAML · SCIM<br/>hosted sign-in pages · APIs"]
-        console -- "admin API" --> auth
+        auth["<b>Sign-in and APIs</b><br/>OAuth 2.1 · OpenID Connect · SAML · SCIM<br/>hosted sign-in pages"]
+        console --> auth
     end
 
-    postgres[("<b>PostgreSQL</b><br/>tenants, users, tokens,<br/>per-app schemas")]
+    postgres[("<b>PostgreSQL</b><br/>tenants, users, settings,<br/>audit log")]
     redis[("<b>Redis</b><br/>sessions, codes,<br/>rate limits")]
 
     operator -- "manage" --> console
@@ -56,6 +56,7 @@ flowchart LR
 The console and the auth server run in **one container** and share port 9000: the console is the `/admin` path.
 PostgreSQL holds everything that must last; Redis holds short-lived state that several SecureOne instances share.
 
+<!-- developer -->
 | Component | URL (dev) | Who uses it |
 |-----------|-----------|-------------|
 | **admin-web** | http://localhost:9000/admin | Platform admins, tenant admins, app operators |
@@ -63,6 +64,7 @@ PostgreSQL holds everything that must last; Redis holds short-lived state that s
 | **Swagger / OpenAPI** | http://localhost:9000/docs | API exploration |
 | **SecureOne Documentation** | http://localhost:9000/admin/documentation | In-app documentation browser |
 | **MailHog** (dev email) | http://localhost:8025 | Catches verification/reset emails |
+<!-- /developer -->
 
 ---
 
@@ -73,7 +75,7 @@ PostgreSQL holds everything that must last; Redis holds short-lived state that s
 | **Tenant** | An organization (e.g. `tenant-a`, `exampleapp`). Users belong to a tenant. |
 | **Application (product)** | A product registered in SecureOne (e.g. “Example App Web”, “Billing Portal”). Has its own roles, permissions, and database schema. |
 | **OAuth client** | Protocol credentials (`client_id`, redirect URIs) used to obtain tokens. One application can have several clients (web, mobile, M2M). |
-| **Platform super-admin** | Runs the whole deployment. Dev login: `admin` / `admin` (no tenant slug). |
+| **Platform super-admin** | Runs the whole deployment and signs in on the **Platform operator** tab. |
 | **Tenant admin** | Manages users and apps inside one tenant. Login: `tenantSlug:email`. |
 | **End user** | Someone who signs into your product (e.g. a Example App customer). |
 | **Hosted UI** | SecureOne’s built-in pages (`login.html`, `signup.html`, …) on auth-server. |
@@ -83,6 +85,7 @@ More detail: [Overview](overview.md), [Applications & OAuth clients](../integrat
 
 ---
 
+<!-- developer -->
 ## First-time setup (local development)
 
 ### Prerequisites
@@ -137,6 +140,7 @@ Open **http://localhost:9000/admin**. In local development you can sign in with 
 | `SECUREONE_DEV_USER` / `_PASSWORD` | `admin` / `admin` | Platform admin API auth |
 
 Full list: [Installation](../install/installation.md), [Environment & operations](../install/environment-and-operations.md).
+<!-- /developer -->
 
 ---
 
@@ -175,7 +179,7 @@ Open **Application console → Settings** for Example App Web:
 | **Integration** | Hosted vs native UI, redirect URIs checklist, API reference |
 | **Authentication** | Password, magic link, email/SMS OTP |
 | **Verification & OTP** | Signup link vs OTP, recovery mode |
-| **Notifications** | SMTP (use MailHog in dev: host `localhost`, port `1025`) |
+| **Notifications** | The SMTP server SecureOne sends email through |
 | **Feature flags** | Enable **Self Registration** if users can sign up |
 | **Public manifest** | Enable so frontends can call `GET /api/v1/applications/{id}` |
 
@@ -183,10 +187,10 @@ Open **Application console → Settings** for Example App Web:
 
 | Test | How |
 |------|-----|
-| Hosted login | Open `http://localhost:9000/login.html?applicationId={your-app-uuid}` |
+| Hosted login | Open `/login.html?applicationId={your-app-uuid}` on your SecureOne address |
 | Admin as tenant user | Sign out → login with `exampleapp:customer@example.com` |
 | OAuth PKCE | **Connect an app** → **Test sign-in** |
-| Email | Trigger password reset → check http://localhost:8025 |
+| Email | Trigger a password reset and check the inbox |
 
 ---
 
@@ -227,6 +231,7 @@ flowchart LR
 
 Detail: [Admin control](../install/admin-control.md), [Application RBAC](../integrate/application-rbac.md).
 
+<!-- developer -->
 ### Database layout
 
 - **`platform` schema** — tenants, application registry, OAuth clients, global identity
@@ -235,6 +240,7 @@ Detail: [Admin control](../install/admin-control.md), [Application RBAC](../inte
 Detail: [Database strategy](../developer/database.md), [Schemas & tables](../developer/database-schemas.md).
 
 ---
+<!-- /developer -->
 
 ## Day-to-day operations
 
@@ -264,10 +270,13 @@ Detail: [Database strategy](../developer/database.md), [Schemas & tables](../dev
 | Sign-in on TVs / CLIs | Applications → OAuth client → Grant types → `device_code` ([23](../integrate/integration-guide.md#device-sign-in-tvs-consoles-clis--rfc-8628)) |
 | Rotate signing keys | [Key rotation runbook](../install/runbooks/key-rotation.md) |
 
+<!-- developer -->
 ### Email in development
 
 All outbound mail goes to **MailHog** when SMTP points to `localhost:1025`. Open http://localhost:8025 to read verification links, OTP codes (if using log provider, check auth-server console instead), and password resets.
+<!-- /developer -->
 
+<!-- developer -->
 ### Health checks
 
 | Check | Command / URL |
@@ -276,6 +285,7 @@ All outbound mail goes to **MailHog** when SMTP points to `localhost:1025`. Open
 | OIDC discovery | `GET http://localhost:9000/.well-known/openid-configuration` |
 | Database migrations | Restart auth-server; check logs for Flyway success |
 | Integration probes | App console → Settings → Integration → Run health checks |
+<!-- /developer -->
 
 ### Troubleshooting
 
@@ -283,28 +293,24 @@ All outbound mail goes to **MailHog** when SMTP points to `localhost:1025`. Open
 |---------|------------|
 | Cannot sign in as tenant admin | Use `tenantSlug:email` format on login form |
 | Public manifest 404 | Enable public manifest + public API exposure in platform/app settings |
-| Emails not arriving | Check MailHog; verify app SMTP settings |
+| Emails not arriving | Check SMTP under **Settings › Notifications** and send a test email |
 | OAuth redirect mismatch | Add exact callback URL to OAuth client redirect URIs |
 | Session lost between requests | Ensure Redis is running; check `SECUREONE_REDIS_URL` |
-| Fresh database | `.\scripts\reset-database.ps1` (dev only) |
 
 ---
 
 ## Production deployment (summary)
 
-For local dev, Docker Compose + `bootRun` / `npm run dev` is enough.
+To install SecureOne from the image with your own database, secrets and domain, see:
 
-For **image+env deploy** or **enterprise source/Helm deploy** (including admin credentials at deploy time and registering clients after go-live), see:
-
-**[Deployment: image + env & enterprise](../install/deployment.md)**
+**[Deployment](../install/deployment.md)**
 
 Production hardening also includes:
 
 1. **TLS** on auth-server and admin-web
 2. **Managed PostgreSQL + Redis** (not single-node dev containers)
 3. **Secrets** via vault/KMS — never commit `.env` with production passwords
-4. **Helm chart** — `deploy/helm/secureone/` for Kubernetes
-5. **Runbooks** — backup, key rotation, incident response in `docs/runbooks/`
+4. **Runbooks** — backup, key rotation and incident response, under Install and operate › Runbooks
 
 Detail: [Security](../architecture/security.md), [Deploy](../install/runbooks/deploy.md).
 
@@ -314,16 +320,17 @@ Detail: [Security](../architecture/security.md), [Deploy](../install/runbooks/de
 
 | Goal | Document |
 |------|----------|
-| Image+env deploy or enterprise from source | **[Deployment: image + env & enterprise](../install/deployment.md)** |
+| Installing from the image | **[Deployment](../install/deployment.md)** |
 | Wire your own frontend | **[Application integration guide](../integrate/integration-guide.md)** |
 | Hosted vs custom login UI | [Auth UI integration](../integrate/hosted-and-native-sign-in.md) |
 | Signup, OTP, phone auth | [Verification & OTP](../integrate/verification-and-one-time-codes.md) |
 | OAuth clients & schemas | [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) |
-| All API endpoints | [API documentation](../api/swagger-and-openapi.md) + http://localhost:9000/docs |
+| All API endpoints | [API reference](../api/index.md) and Swagger UI at `/docs` |
 | Settings inheritance | [Settings governance](../install/settings-governance.md) |
 
 ---
 
+<!-- developer -->
 ## Quick reference card
 
 ```
@@ -340,3 +347,4 @@ Mail (dev):  http://localhost:8025
 Tenant login format:  {tenantSlug}:{email}
 Platform admin:       admin / admin (no slug)
 ```
+<!-- /developer -->

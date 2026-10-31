@@ -18,14 +18,14 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   if (!canRead(node.audience, viewer)) {
     return NextResponse.json({ error: "Sign in to read this page" }, { status: 401 });
   }
-  const doc = await loadDoc(slug);
+  const doc = await loadDoc(slug, viewer);
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({
     slug,
     title: node.title,
     summary: node.summary,
     audience: node.audience,
-    file: node.file,
+    ...(viewer.platformOperator ? { file: node.file } : {}),
     format: "markdown",
     content: doc.content,
     headings: doc.headings,

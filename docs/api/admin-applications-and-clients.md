@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Admin API: applications and OAuth clients
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth client returns 202 with a change request; another admin approves it).
 

@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Account self-service
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions, email change, connected apps and privacy (export, delete request).
 

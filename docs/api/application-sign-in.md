@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Application sign-in and sign-up
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 For apps that draw their own sign-in screens instead of redirecting to the hosted page: application manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in.
 

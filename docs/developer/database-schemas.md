@@ -33,19 +33,25 @@ SECUREONE_DB_PASSWORD=secureone
 
 ## Schema layout
 
-```
-secureone (database)
-├── platform
-│   ├── flyway_schema_history          ← Flyway migration log
-│   ├── tenant, application, oauth_client, application_schema
-│   ├── user_account, user_credential, email_token, mfa_factor
-│   ├── tenant_rbac*, admin_console_*, platform_setting, audit_log, …
-│   └── legacy app IAM (when application.schema_name IS NULL)
-└── {app_slug}                       ← one schema per isolated application
-    ├── permission, role, role_permission, role_composite, user_role
-    ├── user_application, application_setting
-    ├── rbac_group, rbac_group_role, rbac_group_member
-    └── application_log
+```mermaid
+flowchart TB
+    subgraph db["PostgreSQL database: secureone"]
+        direction TB
+        subgraph platform["platform schema"]
+            p1["flyway_schema_history"]
+            p2["tenant · application · oauth_client · application_schema"]
+            p3["user_account · user_credential · email_token · mfa_factor"]
+            p4["tenant_rbac* · admin_console_* · platform_setting · audit_log …"]
+            p5["legacy application IAM<br/>(application.schema_name IS NULL)"]
+        end
+        subgraph app["one schema per isolated application ({app_slug})"]
+            a1["permission · role · role_permission · role_composite · user_role"]
+            a2["user_application · application_setting"]
+            a3["rbac_group · rbac_group_role · rbac_group_member"]
+            a4["application_log"]
+        end
+    end
+    p2 -. "schema_name" .-> app
 ```
 
 ```mermaid

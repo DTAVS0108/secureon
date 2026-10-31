@@ -15,18 +15,25 @@ Run on **PostgreSQL**, configured at install time, while keeping the data layer 
 
 ## Physical layout (implemented)
 
-```
-secureone (database)
-├── public
-│   └── flyway_schema_history     ← Flyway only; never moved to platform
-├── platform
-│   ├── tenant, application, oauth_client, application_schema
-│   ├── user_account, audit_log, platform_setting, …
-│   └── legacy app IAM rows (schema_name IS NULL)
-└── {app_slug}                    ← one schema per isolated application
-    ├── role, permission, user_application, application_setting
-    ├── rbac_group, rbac_group_role, rbac_group_member
-    └── application_log
+```mermaid
+flowchart TB
+    subgraph db["PostgreSQL database: secureone"]
+        direction TB
+        subgraph platform["platform schema"]
+            p1["flyway_schema_history"]
+            p2["tenant · application · oauth_client · application_schema"]
+            p3["user_account · user_credential · email_token · mfa_factor"]
+            p4["tenant_rbac* · admin_console_* · platform_setting · audit_log …"]
+            p5["legacy application IAM<br/>(application.schema_name IS NULL)"]
+        end
+        subgraph app["one schema per isolated application ({app_slug})"]
+            a1["permission · role · role_permission · role_composite · user_role"]
+            a2["user_application · application_setting"]
+            a3["rbac_group · rbac_group_role · rbac_group_member"]
+            a4["application_log"]
+        end
+    end
+    p2 -. "schema_name" .-> app
 ```
 
 Migration **V45** moves shared tables from `public` → `platform` and introduces `oauth_client` + `application.schema_name`. Per-app DDL is applied at runtime from `db/migration/application-schema/V1__app_core.sql`.
@@ -82,12 +89,12 @@ See [Data Model](data-model.md).
 
 ## Migrations — Flyway
 
-```
-apps/auth-server/src/main/resources/db/migration/
-├── postgresql/                    ← platform migrations (V1__baseline.sql, R__z_repair_catalog.sql)
-└── application-schema/
-    └── V1__app_core.sql          ← template DDL (not Flyway-versioned per app)
-```
+Under `apps/auth-server/src/main/resources/db/migration/`:
+
+| Folder or file | What it is |
+|---|---|
+| `postgresql/` | Platform migrations: `V1__baseline.sql`, then `V2__…`; `R__z_repair_catalog.sql` (repeatable) |
+| `application-schema/V1__app_core.sql` … | The per-application schema, applied when an application is registered |
 
 - **Platform:** `V1__baseline.sql` creates the schema; later versioned scripts run before auth-server starts; history in **`platform.flyway_schema_history`**.
 - **Per-app:** `ApplicationSchemaProvisioner` runs `CREATE SCHEMA` + `V1__app_core.sql` inside the new schema; recorded in `platform.application_schema`.

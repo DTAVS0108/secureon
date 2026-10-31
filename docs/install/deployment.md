@@ -1,6 +1,6 @@
 ---
 title: Deployment
-summary: Run the image with your settings, or build from source and deploy with Helm
+summary: Run the SecureOne image with your database, Redis, secrets and domain
 order: 2
 audience: public
 ---
@@ -13,6 +13,9 @@ audience: public
 
 ---
 
+SecureOne is installed from its container image, `dmtavs0108/secureone:1.0.0`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
+
+<!-- developer -->
 ## Which path should I use?
 
 | Path | When to use | Do you need the SecureOne source tree on the server? | Code change required? |
@@ -22,7 +25,7 @@ audience: public
 
 Both paths end the same way: **admin login → create tenants / applications / OAuth clients → connect your products**.
 
-**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `0.1.3`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
+**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.0.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
 
 **Just evaluating?** One command starts SecureOne with PostgreSQL, Redis and a mail catcher on your machine:
 
@@ -60,6 +63,7 @@ flowchart TB
     B3 --> S1
     S1 --> S2 --> S3 --> S4
 ```
+<!-- /developer -->
 
 ---
 
@@ -90,7 +94,7 @@ You provide (or compose) these services. SecureOne does **not** embed production
 | **SMTP** | Verification, reset, invites | `587` / `465` |
 | **SecureOne** (`dmtavs0108/secureone`) | OAuth/OIDC, SAML, SCIM, hosted pages, APIs, Flyway; admin console at `/admin` | `9000` |
 
-On first start, **Flyway** creates the schema from `V1__baseline.sql` on the empty database; later releases upgrade it at start-up. You do not run SQL by hand. A database created by a release before 0.1.0 cannot be upgraded: start 0.1.x on an empty database.
+On first start, **Flyway** creates the schema from `V1__baseline.sql` on the empty database; later releases upgrade it at start-up. You do not run SQL by hand.
 
 ---
 
@@ -100,7 +104,7 @@ Use this when SecureOne is delivered as **Docker images**: configure with env, s
 
 ### What you need
 
-- The image `dmtavs0108/secureone:0.1.3` (Docker Hub, or your registry)
+- The image `dmtavs0108/secureone:1.0.0` (Docker Hub, or your registry)
 - Your Postgres, Redis, SMTP
 - DNS + TLS for one host, e.g. `id.example.com` (or a reverse proxy)
 - An env file — **no SecureOne Java/TS code on the host**
@@ -190,7 +194,7 @@ docker run -d \
   --env-file /opt/secureone/secureone.env \
   -p 9000:9000 \
   --restart unless-stopped \
-  dmtavs0108/secureone:0.1.3
+  dmtavs0108/secureone:1.0.0
 
 docker logs -f secureone
 # Wait for "Started AuthServerApplication" and "Admin console started ... served at /admin"
@@ -204,7 +208,7 @@ One container, one process tree: the auth-server (Java) starts the console (Node
 # /opt/secureone/docker-compose.yml
 services:
   secureone:
-    image: dmtavs0108/secureone:0.1.3
+    image: dmtavs0108/secureone:1.0.0
     env_file: ./secureone.env
     ports:
       - "9000:9000"
@@ -223,12 +227,13 @@ docker compose logs -f secureone
 |----------|----------------------|---------|
 | `SECUREONE_CONSOLE_DIR` | `/opt/secureone/console/apps/admin-web` | Built console the auth-server runs; empty = no console in this container (API-only nodes) |
 | `SECUREONE_CONSOLE_PORT` | `3001` | Internal port on `127.0.0.1` (never published) |
-| `SECUREONE_CONSOLE_UPSTREAM_URL` | — | Forward `/admin` to a console running elsewhere instead (development uses `http://localhost:3001`) |
+| `SECUREONE_CONSOLE_UPSTREAM_URL` | — | Forward `/admin` to a console running elsewhere instead |
 | `SECUREONE_ADMIN_WEB_URL` | `<SECUREONE_PUBLIC_BASE_URL>/admin` | Console URL shown in `/api/info` and the docs discovery API |
 | `SECUREONE_DOCS_DIR` | `/opt/secureone/docs` | Documentation shown in the console (SecureOne Documentation) |
 | `SECUREONE_MANAGEMENT_PORT` | `9001` | Health, info and Prometheus metrics, served **only** on this port (no authentication there). Do not publish it: probes and the metrics scraper reach it inside your network. `/actuator` is not served on 9000 |
 | `JAVA_TOOL_OPTIONS` | `-XX:+UseG1GC -XX:MaxRAMPercentage=75 …` | JVM options. Keep `-XX:+UseG1GC`: the start-up cache below is only used with the collector it was recorded with |
 
+<!-- developer -->
 **SecureOne logo.** The mark is a set of fixed files, not a setting: Appearance settings, tenant and application
 branding never change it (application logos only brand that application's hosted sign-in pages). To use another
 mark, replace the files at the same paths, keeping the names:
@@ -244,6 +249,7 @@ mark, replace the files at the same paths, keeping the names:
 Rebuild the image after replacing them. Without rebuilding, the console files can be swapped in a running
 installation with a read-only mount, e.g. `-v /opt/secureone/brand:/opt/secureone/console/apps/admin-web/public/brand:ro`
 (the folder must contain every file listed for `public/brand`).
+<!-- /developer -->
 
 **Start-up cache.** The image carries a JDK 25 ahead-of-time cache (`/opt/secureone/app.aot`), recorded at build time by starting the application once against a throw-away database. The JVM uses it automatically, so a new container or pod is ready noticeably sooner (see the timings in the CI log or `Started AuthServerApplication in … seconds`). If the JVM version or flags no longer match, it starts normally without it; `-e JDK_JAVA_OPTIONS=-XX:AOTMode=off` turns it off for comparison.
 
@@ -273,6 +279,7 @@ Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"stat
 
 ---
 
+<!-- developer -->
 # Path B — Enterprise: you have the code and deploy for the whole organization
 
 Use this when your team **owns the SecureOne monorepo**, builds images in CI, and runs SecureOne as shared enterprise IAM for many products (web, mobile, back-end services, …).
@@ -322,8 +329,8 @@ cd apps/admin-web && npm install && npm run dev
 From repo root:
 
 ```bash
-docker build -f deploy/Dockerfile -t your-registry/secureone:0.1.3 .
-docker push your-registry/secureone:0.1.3
+docker build -f deploy/Dockerfile -t your-registry/secureone:1.0.0 .
+docker push your-registry/secureone:1.0.0
 ```
 
 Give the builder about 4 GB of memory (the console's type check and the Gradle build run in parallel, and the last step starts the application once with a temporary PostgreSQL and Redis to record the start-up cache). With Docker Desktop's 2 GB default, build the console stage first and the rest reuses it: `docker build --target console -f deploy/Dockerfile .` then the command above.
@@ -374,7 +381,7 @@ Create `prod-values.yaml` (example):
 ```yaml
 image:
   repository: dmtavs0108/secureone
-  tag: "0.1.3"
+  tag: "1.0.0"
 replicaCount: 2
 existingSecret: secureone
 env:
@@ -415,12 +422,13 @@ The chart runs one Deployment (rolling update with `maxUnavailable: 0`), one Ser
 | Observability | Health and Prometheus on the management port 9001 (pod-internal; the chart's probes and `prometheus.io/port` annotation use it) |
 
 ### B7 — Continue at [Shared post-deploy flow](#shared-post-deploy-flow)
+<!-- /developer -->
 
 ---
 
 # Shared post-deploy flow
 
-Once SecureOne is healthy (Path A or B), operators use the **same** admin workflow.
+Once SecureOne is healthy, operators use the admin workflow below.
 
 ## 1. First-run setup: create the first operator
 
@@ -482,7 +490,7 @@ The image starts in **production mode** (`SECUREONE_ENV=production` inside the i
 | `SECUREONE_JWK_PRIVATE_KEY_PEM` | `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048` (PKCS#8). Signs tokens; best as a secret file (several lines) |
 | https URLs | `SECUREONE_ISSUER_URL` and `SECUREONE_PUBLIC_BASE_URL` start with `https://`; a TLS reverse proxy or load balancer in front of port 9000 |
 
-Every instance must use the **same** encryption key, OTP pepper and signing key. `deploy/generate-secrets.sh` creates all of them.
+Every instance must use the **same** encryption key, OTP pepper and signing key; the commands in A2 create them.
 
 **First admin** (first start only, see [First-run setup](#1-first-run-setup-create-the-first-operator))
 
@@ -527,17 +535,19 @@ Ports: publish **9000**; keep **9001** (`/actuator/health`, `/actuator/prometheu
 
 A Docker volume keeps the database when the container is replaced, but it is not a backup: a failed disk, a deleted volume or a bad change takes it with it. Back up **two things**:
 
-1. **The database.** `deploy/docker-compose.example.yml` has a `backup` service that writes `./backups/secureone-<time>.dump` daily (`pg_dump`, custom format) and deletes copies older than `BACKUP_KEEP_DAYS` (14). Copy `./backups` to another machine or storage too. With a managed database, use its automatic snapshots instead. The user that runs `pg_dump` must be a superuser or have `BYPASSRLS` (tenant tables force row-level security).
-2. **The secrets** (above all `SECUREONE_ENCRYPTION_KEY` and the signing key): `./secrets` in the example. Keep them separate from the database backups.
+1. **The database.** Dump it daily with `pg_dump` in custom format (`-Fc`) and keep at least two weeks of copies, on another machine or storage too. With a managed database, use its automatic snapshots instead. The user that runs `pg_dump` must be a superuser or have `BYPASSRLS` (tenant tables force row-level security).
+2. **The secrets** (above all `SECUREONE_ENCRYPTION_KEY` and the signing key). Keep them separate from the database backups.
 
 Restore into an empty database, then start SecureOne with the same secrets:
 
 ```bash
-docker compose -f docker-compose.example.yml stop secureone
-# The backup container sees ./backups as /backups and has the database password.
-docker compose -f docker-compose.example.yml exec backup sh -c \
-  'PGPASSWORD="$(cat /run/secrets/SECUREONE_DB_PASSWORD)" pg_restore -h postgres -U secureone -d secureone --clean --if-exists /backups/secureone-20261016-020000.dump'
-docker compose -f docker-compose.example.yml start secureone
+# Back up (daily)
+pg_dump -h db.internal -U secureone -d secureone -Fc -f secureone-$(date +%Y%m%d).dump
+
+# Restore: stop SecureOne, restore into the empty database, start SecureOne with the same secrets
+docker stop secureone
+pg_restore -h db.internal -U secureone -d secureone --clean --if-exists secureone-20261016.dump
+docker start secureone
 ```
 
 Redis needs no backup: it holds sessions and short-lived codes. After losing it, people sign in again.
@@ -562,7 +572,7 @@ Every setting is read when the container starts; nothing is baked into the image
 2. **Secret files**: a file named like the setting, holding its value, in `/run/secrets` (where Docker and Kubernetes put secrets). `/run/secrets/SECUREONE_DB_PASSWORD` sets `SECUREONE_DB_PASSWORD`; a trailing newline is ignored. Another folder: `SECUREONE_SECRETS_DIR`. An environment variable with the same name wins.
 3. **Configuration files** for tenants and applications (`SECUREONE_CONFIG_IMPORT`, see [26](configuration-and-upgrades.md)), applied at every start.
 
-So one `docker compose up` can bring up SecureOne with its database, Redis, the first admin and your tenants. [`deploy/docker-compose.example.yml`](../../deploy/docker-compose.example.yml) shows all three.
+So a single start can bring up SecureOne with its first admin and your tenants.
 
 ## 2. Platform settings
 
@@ -674,7 +684,9 @@ Signup / OTP: see [Application integration](../integrate/integration-guide.md) a
 | `SECUREONE_ENCRYPTION_KEY` | Encrypts all stored secrets and generated private keys (earlier versions documented it but did not read it) | Set it before first boot; back it up separately from the database |
 | SAML SP key | Generated on first SAML use when not in env (encrypted, cluster-safe) | Prefer supplying it from the secret so IdP trust survives a restore into a new environment |
 
+<!-- developer -->
 **Code change required?** No, for Path A and Path B, including the production profile.
+<!-- /developer -->
 
 ---
 
@@ -683,22 +695,19 @@ Signup / OTP: see [Application integration](../integrate/integration-guide.md) a
 ```bash
 # Logs (auth-server and console in one stream)
 docker logs -f secureone
-# or
-kubectl -n secureone logs -f deploy/secureone
 
 # Restart after env change
 docker rm -f secureone
 docker run -d --name secureone --env-file /opt/secureone/secureone.env \
-  -p 9000:9000 dmtavs0108/secureone:0.1.3
+  -p 9000:9000 dmtavs0108/secureone:1.0.0
 
 # Upgrade: back up the database, then swap the image tag; the database is upgraded at start
-docker pull dmtavs0108/secureone:0.1.4
-# recreate the container, or: helm upgrade secureone deploy/helm/secureone --reuse-values --set image.tag=0.1.4
-# (the chart's pre-upgrade job migrates once; the pods then only check)
+docker pull dmtavs0108/secureone:1.0.1
+# then recreate the container with the new tag
 
 # Health
 curl -s https://id.example.com/api/info
-kubectl -n secureone exec deploy/secureone -- wget -qO- http://127.0.0.1:9001/actuator/health
+docker exec secureone wget -qO- http://127.0.0.1:9001/actuator/health
 ```
 
 At start-up the platform migrations and every application schema are brought to the new release; an older image refuses a database a newer release has upgraded. Details, `SECUREONE_DB_MIGRATE` (auto / only / validate) and rollback: [Configuration as code and upgrades](configuration-and-upgrades.md#part-2--upgrades).
@@ -716,6 +725,7 @@ At start-up the platform migrations and every application schema are brought to 
 - [ ] SecureOne healthy (management port 9001) and console at `/admin/login`; port 9001 not published
 - [ ] TLS for the one public host  
 
+<!-- developer -->
 ### Path B (enterprise / source)
 
 - [ ] Repo cloned / CI builds images  
@@ -724,6 +734,7 @@ At start-up the platform migrations and every application schema are brought to 
 - [ ] CI can reach the Shibboleth Maven repository (or a mirror)  
 - [ ] Helm release healthy (≥ 2 replicas)  
 - [ ] Ingress + TLS  
+<!-- /developer -->
 
 ### Shared
 
@@ -741,7 +752,6 @@ At start-up the platform migrations and every application schema are brought to 
 | Topic | Document |
 |-------|----------|
 | First operator walkthrough | [Operator getting started](../get-started/operator-getting-started.md) |
-| Env vars, MailHog, schedulers | [Environment & operations](environment-and-operations.md) |
 | Short deploy notes | [Deploy](runbooks/deploy.md) |
 | Tenant configuration files, upgrades, rollback | [Configuration as code and upgrades](configuration-and-upgrades.md) |
 | Apps vs OAuth clients | [Applications & OAuth clients](../integrate/applications-and-oauth-clients.md) |

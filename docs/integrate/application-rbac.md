@@ -32,11 +32,21 @@ All three require `role:read` and their matching console feature (`console:group
 
 ## Effective access model
 
+```mermaid
+flowchart LR
+    user(["User"])
+    group["Group"]
+    role["Role"]
+    perm["Permission"]
+    user -- "assigned directly" --> role
+    user -- "member of" --> group
+    group -- "grants" --> role
+    role -- "contains" --> perm
+    role -. "can include other roles" .-> role
 ```
-user_account
-  ├── user_role ──► role ──► role_permission ──► permission
-  └── rbac_group_member ──► rbac_group ──► rbac_group_role ──► role
-```
+
+A user's permissions are those of every role they hold, directly or through their groups (tables: `user_role`,
+`rbac_group_member`, `rbac_group_role`, `role_permission`).
 
 **Effective permissions** for an operator in the admin console = union of:
 

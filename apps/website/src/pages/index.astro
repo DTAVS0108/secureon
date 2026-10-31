@@ -21,7 +21,7 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
   <section class="hero">
     <div class="container">
       <div>
-        <span class="pill"><b>0.1</b> Fresh start: new docs, profile pictures and more</span>
+        <span class="pill"><b>1.0</b> SecureOne 1.0 is here</span>
         <h1 class="h1">Identity and access for <span class="gradient-text">every app</span> you build</h1>
         <p class="lead" style="margin-top:22px">
           SecureOne gives your applications sign-in, single sign-on, multi-factor authentication, users, roles and
@@ -150,9 +150,9 @@ const standards = ["OAuth 2.1", "OpenID Connect", "SAML 2.0", "SCIM 2.0", "Passk
         <p class="lead">SecureOne runs where you run: a laptop, a single server or a Kubernetes cluster. Every setting is read when the container starts.</p>
       </div>
       <div class="grid grid-3">
-        <a class="card reveal" href="/docs/get-started/quickstart/"><div class="icon"><Icon name="bolt" /></div><h3 class="h3">Quickstart</h3><p>One command starts SecureOne with its database, cache and a mail catcher for trying it out.</p><span class="more">Five-minute quickstart <Icon name="arrow" /></span></a>
+        <a class="card reveal" href="/docs/get-started/quickstart/"><div class="icon"><Icon name="bolt" /></div><h3 class="h3">Quickstart</h3><p>One Compose file starts SecureOne with its database and cache on one machine, for trying it out.</p><span class="more">Five-minute quickstart <Icon name="arrow" /></span></a>
         <a class="card reveal" href="/docs/install/deployment/"><div class="icon"><Icon name="container" /></div><h3 class="h3">Docker</h3><p>The image, an environment file and your PostgreSQL and Redis. Secrets can come from files.</p><span class="more">Deployment guide <Icon name="arrow" /></span></a>
-        <a class="card reveal" href="/docs/install/deployment/#b5--helm-install"><div class="icon"><Icon name="cloud" /></div><h3 class="h3">Kubernetes</h3><p>A Helm chart with replicas, an upgrade job before rollout and health checks on a private port.</p><span class="more">Helm install <Icon name="arrow" /></span></a>
+        <a class="card reveal" href="/docs/architecture/overview/#running-it"><div class="icon"><Icon name="cloud" /></div><h3 class="h3">Several instances</h3><p>Run more containers behind a load balancer; they share PostgreSQL and Redis, so any one can serve any request.</p><span class="more">How it scales <Icon name="arrow" /></span></a>
       </div>
     </div>
   </section>

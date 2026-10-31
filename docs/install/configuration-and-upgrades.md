@@ -177,7 +177,9 @@ Every apply is recorded in the audit log as `config.imported`.
 
 ## Part 2 — Upgrades
 
+<!-- developer -->
 > **0.1.0 is a fresh start.** Version numbers restarted at 0.1.0 with a new schema baseline: every earlier migration was squashed into one `V1__baseline.sql`. A database created by an earlier release (0.3.x and before) cannot be upgraded in place: 0.1.0 refuses to start on it. Install 0.1.0 on an empty database and set it up again (export tenants as configuration files first if you want to re-apply them). Upgrades from 0.1.0 onwards work as described below.
+<!-- /developer -->
 
 ### How an upgrade works
 
@@ -207,7 +209,7 @@ The Helm chart does this for you: `migrationJob.enabled: true` (the default) run
 
 ```bash
 # Docker, by hand
-docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only dmtavs0108/secureone:0.1.1
+docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only dmtavs0108/secureone:1.0.1
 ```
 
 ### Upgrade checklist
@@ -221,9 +223,11 @@ docker run --rm --env-file secureone.env -e SECUREONE_DB_MIGRATE=only dmtavs0108
 
 Migrations are forward-only. Before an upgrade, an older image runs fine; after the database was upgraded, the older image refuses to start (step 1 above). To roll back after an upgrade, restore the backup from step 1, then start the older image. See [Rollback](runbooks/rollback.md).
 
+<!-- developer -->
 ### Rules for writing migrations (contributors)
 
 - Never edit a released migration file; add a new one.
 - **Platform schema:** add `V<n>__description.sql` under `db/migration/postgresql`.
 - **Application schemas:** add `V<n>__description.sql` under `db/migration/application-schema` **and** list it in `ApplicationSchemaMigrations.ALL`. New applications get every migration when they are created; existing ones get the missing ones at the next start.
 - **Old and new pods overlap during a rolling update**, so a release's migrations only add (tables, columns with defaults, indexes). Removing or renaming a column takes two releases: stop using it, then remove it in the next release.
+<!-- /developer -->

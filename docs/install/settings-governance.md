@@ -219,6 +219,7 @@ flowchart LR
 
 Failures for a single user (e.g. SMTP misconfiguration) are logged at **WARN** and do not stop the rest of the batch. Uncaught errors in the job are caught and logged at **WARN** so the scheduler keeps running on the next tick.
 
+<!-- developer -->
 #### Configuration
 
 Defined in `apps/auth-server/src/main/resources/application.yml`:
@@ -253,6 +254,7 @@ There is **no admin UI** for the scheduler — only YAML or environment variable
 ```dotenv
 SECUREONE_PASSWORD_EXPIRY_SCHEDULER=false
 ```
+<!-- /developer -->
 
 #### Scheduler vs login-triggered email
 
@@ -277,6 +279,7 @@ Each credential stores `expiry_warning_sent_at` and `expiry_expired_notice_sent_
 
 Search auth-server logs for `PasswordExpiryScheduler` or `PasswordExpiryService` when debugging missed notifications.
 
+<!-- developer -->
 ### Data model (`user_credential`)
 
 | Column | Purpose |
@@ -284,12 +287,15 @@ Search auth-server logs for `PasswordExpiryScheduler` or `PasswordExpiryService`
 | `expires_at` | Absolute expiry instant; `NULL` when policy had `expiryDays = 0` at set time |
 | `expiry_warning_sent_at` | When the approaching-expiry email was sent (null = not yet sent) |
 | `expiry_expired_notice_sent_at` | When the post-expiry reset email was sent (null = not yet sent) |
+<!-- /developer -->
 
+<!-- developer -->
 ### Implementation notes
 
 - **Login enforcement:** `PasswordExpiryService.enforceLoginAllowed` (used by `TenantPasswordAuthenticationProvider` after password match).
 - **Scheduled processing:** `PasswordExpiryScheduler` → `PasswordExpiryService.processScheduledNotifications` (see [Scheduled job](#scheduled-job-passwordexpiryscheduler) above).
 - **Change password while logged in:** `PasswordPolicyService.assertNotExpired` still applies if a session somehow holds a credential that expired mid-session; normal expired users cannot sign in to reach that path.
+<!-- /developer -->
 
 ## Enforcement status
 |------|----------------|---------------------------|
@@ -343,7 +349,9 @@ For hosted vs native/custom end-user UI (OAuth, magic link, session login, email
 
 **Until email is verified**, password sign-in is blocked. Application admins can open a user → **Security** → **Verify email (allow sign-in)** (or resend the verification link). API: `POST /api/admin/v1/applications/{applicationId}/users/{userId}/email/verify`.
 
+<!-- developer -->
 ## Operations
 
 - After new migrations, restart **auth-server** (`./gradlew bootRun` in `apps/auth-server`).
 - Dev login: `admin` / `admin` (no `SECUREONE_ACT_AS_EMAIL` for platform work); example app: `22222222-2222-2222-2222-222222222201`.
+<!-- /developer -->

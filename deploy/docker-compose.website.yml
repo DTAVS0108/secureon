@@ -12,6 +12,7 @@ services:
       dockerfile: deploy/website.Dockerfile
       args:
         SITE_URL: ${SITE_URL:-http://localhost:8080}
+        SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
     image: secureone-website:local
     container_name: secureone-website
     ports:

@@ -37,6 +37,7 @@ const CALLOUTS = {
   important: "Important",
   warning: "Warning",
   caution: "Caution",
+  developer: "Developer only · not shown to users or on the website",
 } as const;
 
 /** GitHub-style alerts (> [!NOTE], > [!TIP], > [!WARNING] …) become coloured panels. */
@@ -45,7 +46,7 @@ function remarkCallouts() {
     if (node.type === "blockquote") {
       const first = node.children?.[0];
       const text = first?.type === "paragraph" ? first.children?.[0] : undefined;
-      const m = text?.type === "text" ? /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\S\n]*\n?/i.exec(text.value ?? "") : null;
+      const m = text?.type === "text" ? /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|DEVELOPER)\][^\S\n]*\n?/i.exec(text.value ?? "") : null;
       if (m && text && first) {
         text.value = (text.value ?? "").slice(m[0].length);
         if (!text.value && first.children) first.children.shift();

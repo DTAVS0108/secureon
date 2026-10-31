@@ -4,11 +4,14 @@
 #   docker build -f deploy/website.Dockerfile -t secureone-website:<version> .      (from the repository root)
 #   docker run -d --name secureone-website -p 8080:8080 secureone-website:<version>
 #
-# SITE_URL sets the public address used in canonical links and the sitemap (default http://localhost:8080).
+# SITE_URL sets the public address used in canonical links and the sitemap (default http://localhost:8080);
+# SUPPORT_EMAIL the contact shown for help and security reports.
 
 FROM node:22-alpine AS build
 ARG SITE_URL=http://localhost:8080
-ENV SITE_URL=${SITE_URL} ASTRO_TELEMETRY_DISABLED=1
+# Where users ask for help and report security problems (optional; shown on Support and Security).
+ARG SUPPORT_EMAIL=
+ENV SITE_URL=${SITE_URL} SUPPORT_EMAIL=${SUPPORT_EMAIL} ASTRO_TELEMETRY_DISABLED=1
 WORKDIR /src
 RUN corepack enable
 # Every workspace manifest, so the frozen lockfile matches; only the website's dependencies are installed.

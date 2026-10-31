@@ -95,7 +95,7 @@ How SecureOne sends email. Platform SMTP is the default; an application can use 
 |-------|---------------|
 | **Host** | Your mail provider's SMTP host. |
 | **Port** | Usually 587 (STARTTLS) or 465 (SSL). |
-| **Security** | **SSL (port 465)**, **STARTTLS (port 587)**, or **None** (only for a local test server such as MailHog). |
+| **Security** | **SSL (port 465)**, **STARTTLS (port 587)**, or **None** (only for a local test mail server). |
 | **SMTP authentication** | On when the server needs a login (almost always). |
 | **Username** | The mailbox login, for example `you@example.com`. |
 | **Password** | The mailbox password or an app password. Stored encrypted; leave blank to keep the saved one. |

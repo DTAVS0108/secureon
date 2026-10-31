@@ -1,11 +1,11 @@
 ---
-title: Architecture
-summary: Components, flows and deployment shapes
+title: Architecture internals
+summary: Components, frameworks, request flows, data layers and deployment details
 order: 1
-audience: public
+audience: internal
 ---
 
-# Architecture
+# Architecture internals
 
 ## System components
 
@@ -218,10 +218,14 @@ sequenceDiagram
 
 IAM data for each application product can live in a **dedicated PostgreSQL schema** (derived from the application slug). Shared platform data (tenants, application registry, `oauth_client`, user accounts) stays in the **`platform`** schema.
 
-```
-secureone DB
-├── platform.*          ← tenants, applications, oauth_client, identity, governance, flyway_schema_history
-└── {app_slug}.*        ← per-app role, permission, settings, groups (when isolated)
+```mermaid
+flowchart LR
+    subgraph db["PostgreSQL database: secureone"]
+        direction LR
+        platform["<b>platform</b><br/>tenants, applications, OAuth clients,<br/>users, governance, migration history"]
+        app["<b>one schema per application</b><br/>its roles, permissions, settings,<br/>groups and logs"]
+    end
+    platform -. "application registry" .-> app
 ```
 
 - **New applications** — schema provisioned automatically on register.

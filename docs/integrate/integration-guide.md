@@ -369,7 +369,7 @@ the person signing up is told by email. Do not build UX on "email already regist
 Errors: `400` for an invalid email, phone or a password that fails the policy (`detail` says which rule);
 `403` when self-registration is off; `429` when one client signs up too often.
 
-**Link verification:** user clicks email link (MailHog in dev).
+**Link verification:** the user clicks the link in the email.
 
 **OTP verification:**
 

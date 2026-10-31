@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Public endpoints and setup
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 Server information, the one-time setup of a new installation, documentation discovery, custom-domain checks and the CAPTCHA settings the sign-in pages use. No authentication.
 
@@ -143,7 +145,7 @@ SecureOne Documentation discovery
 
 `GET /api/v1/documentation`
 
-Lists documentation pages by category and links to the SecureOne Documentation UI (standalone docs browser on admin-web) and session-gated content API. Diagrams render inline on doc pages.
+Where the documentation is: the reader UI, the catalog of spaces and pages, each page's Markdown, and search. Paths are relative to this server. Public pages need no sign-in; pages for operators need a console session.
 
 **Authentication:** None (public)
 

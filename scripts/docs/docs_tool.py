@@ -9,7 +9,9 @@ Every page under docs/ (except docs/README.md) starts with front matter:
     audience: public        # public | operator | internal
     ---
 
-A folder is a space (top level) or a section; its index.md describes it. Run:
+A folder is a space (top level) or a section; its index.md describes it. Inside any page, content between
+<!-- developer --> and <!-- /developer --> (local setup, source builds, repository paths) is shown only to signed-in
+developers in the console and never published on the website. Run:
 
     python scripts/docs/docs_tool.py check      # front matter, links, audience rules
     python scripts/docs/docs_tool.py index      # rewrite docs/README.md
@@ -88,6 +90,10 @@ def check() -> int:
             warnings.append(f"{page.path}: no summary")
         if re.match(r"^\d", page.title):
             errors.append(f"{page.path}: title starts with a number")
+        opens = len(re.findall(r"<!--\s*developer\s*-->", page.body))
+        closes = len(re.findall(r"<!--\s*/developer\s*-->", page.body))
+        if opens != closes:
+            errors.append(f"{page.path}: {opens} <!-- developer --> but {closes} <!-- /developer -->")
         folder = posixpath.dirname(page.path)
         for href in links(page):
             if re.match(r"^(https?:|mailto:|#|/|\$)", href):

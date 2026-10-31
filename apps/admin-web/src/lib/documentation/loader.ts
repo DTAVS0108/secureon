@@ -2,9 +2,9 @@ import "server-only";
 
 import fs from "fs/promises";
 import path from "path";
-import { drawioDocumentSlug, findNode, slugForFile, splitFrontMatter } from "./catalog";
+import { allNodes, drawioDocumentSlug, findNode, slugForFile, splitFrontMatter } from "./catalog";
 import { docsRoot } from "./assets";
-import { createSlugger, plainText, type DocsHeading, type DocsNode } from "./types";
+import { canRead, createSlugger, plainText, type DocsHeading, type DocsNode, type DocsViewer } from "./types";
 
 export async function docsRootExists(): Promise<boolean> {
   try {
@@ -71,8 +71,29 @@ function processDrawioEmbeds(content: string, pageFile: string): string {
   return out.join("\n");
 }
 
-/** Relative links between pages become console links; images and other files go through the assets route. */
-function rewriteLinks(content: string, pageFile: string): string {
+const DEVELOPER_BLOCK = /<!--\s*developer\s*-->[^\S\n]*\n?([\s\S]*?)<!--\s*\/developer\s*-->[^\S\n]*\n?/g;
+
+/**
+ * Developer-only parts of a page (between <!-- developer --> and <!-- /developer -->): local setup, source builds,
+ * repository paths. Developers see them in a marked panel; everyone else never receives them.
+ */
+export function applyDeveloperBlocks(body: string, developer: boolean): string {
+  return body.replace(DEVELOPER_BLOCK, (_m, inner: string) => {
+    if (!developer) return "";
+    const quoted = inner
+      .replace(/\n+$/, "")
+      .split("\n")
+      .map((line) => (line ? `> ${line}` : ">"))
+      .join("\n");
+    return `> [!DEVELOPER]\n${quoted}\n\n`;
+  });
+}
+
+/**
+ * Relative links between pages become console links; images and other files go through the assets route.
+ * Links the reader could not open (developer pages, files outside docs/) become plain text.
+ */
+function rewriteLinks(content: string, pageFile: string, hidden: Set<string>, developer: boolean): string {
   const pageDir = path.posix.dirname(pageFile);
   return content.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (match, bang: string, text: string, href: string) => {
     if (/^(https?:|mailto:|#|\/|\$)/.test(href)) return match;
@@ -81,19 +102,21 @@ function rewriteLinks(content: string, pageFile: string): string {
     if (target.startsWith("..")) return bang ? match : text; // outside docs/: no console page to open
     if (/\.md$/i.test(target)) {
       const slug = target === "README.md" ? "" : slugForFile(target);
+      if (hidden.has(slug)) return text;
       return `${bang}[${text}](/documentation${slug ? `/${slug}` : ""}${anchor ? `#${anchor}` : ""})`;
     }
-    if (/\.drawio$/i.test(target)) return match;
+    if (/\.drawio$/i.test(target)) return developer ? match : text;
     return `${bang}[${text}](/api/documentation/assets/${target})`;
   });
 }
 
-/** h2 and h3 headings outside code blocks, with the ids the renderer gives them. */
+/** h2 and h3 headings outside code blocks (also inside developer panels), with the ids the renderer gives them. */
 function headingsOf(content: string): DocsHeading[] {
   const slug = createSlugger();
   const out: DocsHeading[] = [];
   let inCode = false;
-  for (const line of content.split("\n")) {
+  for (const raw of content.split("\n")) {
+    const line = raw.replace(/^>\s?/, "");
     if (/^\s*```/.test(line)) inCode = !inCode;
     if (inCode) continue;
     const m = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
@@ -117,13 +140,19 @@ export async function readBody(file: string): Promise<string> {
   return splitFrontMatter(raw).body.replace(/\r\n/g, "\n").replace(/^\s*#\s+[^\n]*\n+/, "");
 }
 
-export async function loadDoc(slug: string, options?: { embedDrawio?: boolean }): Promise<LoadedDoc | null> {
+export async function loadDoc(
+  slug: string,
+  viewer: DocsViewer,
+  options?: { embedDrawio?: boolean },
+): Promise<LoadedDoc | null> {
   const node = await findNode(slug);
   if (!node) return null;
   try {
-    const body = await readBody(node.file);
-    const withDrawio = options?.embedDrawio === false ? body : processDrawioEmbeds(body, node.file);
-    const content = rewriteLinks(withDrawio, node.file);
+    const developer = viewer.platformOperator;
+    const body = applyDeveloperBlocks(await readBody(node.file), developer);
+    const withDrawio = options?.embedDrawio === false || !developer ? body : processDrawioEmbeds(body, node.file);
+    const hidden = new Set((await allNodes()).filter((n) => !canRead(n.audience, viewer)).map((n) => n.slug));
+    const content = rewriteLinks(withDrawio, node.file, hidden, developer);
     return { node, content, headings: headingsOf(content) };
   } catch {
     return null;

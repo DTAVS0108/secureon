@@ -2,6 +2,7 @@
 import Site from "../layouts/Site.astro";
 import PageHead from "../components/PageHead.astro";
 import Icon from "../components/Icon.astro";
+import { SUPPORT_EMAIL } from "../site";
 
 const layers = [
   { icon: "database", title: "Tenant isolation in the database", text: "Every request runs as a database role without bypass rights, and row-level security limits it to its tenant's rows. Application data can live in a schema of its own." },
@@ -68,9 +69,13 @@ SECUREONE_ISSUER_URL=<span class="s">https://id.example.com</span>
       <div class="section-head center reveal">
         <span class="eyebrow">Responsible disclosure</span>
         <h2 class="h2">Found a vulnerability?</h2>
-        <p class="lead">Please report it privately through the project's security advisories instead of a public issue, so it can be fixed before details are shared.</p>
+        <p class="lead">Please report it privately, never in public, so it can be fixed before details are shared.</p>
       </div>
-      <a class="btn btn-primary" href="https://github.com/DTAVS0108/secureon/security/advisories/new" rel="noopener">Report privately</a>
+      {SUPPORT_EMAIL ? (
+        <a class="btn btn-primary" href={`mailto:${SUPPORT_EMAIL}?subject=Security%20report`}>Report privately</a>
+      ) : (
+        <p class="muted">Contact the team that provides SecureOne to you.</p>
+      )}
       <a class="btn btn-ghost" style="margin-left:10px" href="/docs/architecture/security/">Security documentation</a>
     </div>
   </section>

@@ -133,10 +133,11 @@ export function LockedNotice({ node, slug }: { node: DocsNode; slug: string }) {
   );
 }
 
-export function PageFooter({ node }: { node: DocsNode }) {
+/** The source path is for developers only: readers never see where the files live. */
+export function PageFooter({ node, developer }: { node: DocsNode; developer: boolean }) {
   return (
     <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 text-xs text-faint">
-      <span className="font-mono">docs/{node.file}</span>
+      <span className="font-mono">{developer ? `docs/${node.file}` : ""}</span>
       <a
         href={withBasePath(`/documentation/print/${node.slug}`)}
         target="_blank"

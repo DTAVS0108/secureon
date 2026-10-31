@@ -240,6 +240,16 @@ body {
 .docs-callout-caution {
   --callout: #dc2626;
 }
+/* Developer-only content: dashed, striped edge, so developers can tell what users never see. */
+.docs-callout-developer {
+  --callout: #0891b2;
+  border-style: dashed;
+  border-left-width: 4px;
+  border-left-style: solid;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 10px, color-mix(in srgb, var(--callout) 4%, transparent) 10px 20px),
+    color-mix(in srgb, var(--callout) 6%, var(--ui-surface));
+}
 .docs-hero {
   background:
     radial-gradient(circle at 85% 15%, rgb(255 255 255 / 0.18), transparent 40%),

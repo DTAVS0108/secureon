@@ -2,18 +2,27 @@
 import Site from "../layouts/Site.astro";
 import PageHead from "../components/PageHead.astro";
 import Icon from "../components/Icon.astro";
-const repo = "https://github.com/DTAVS0108/secureon";
+import { SUPPORT_EMAIL } from "../site";
 ---
 
-<Site title="Support" description="Where to find answers, report a problem or a security vulnerability.">
-  <PageHead eyebrow="Support" title="How to get help" lead="Most answers are in the documentation. If something is wrong, tell us." />
+<Site title="Support" description="Where to find answers and how to get help with SecureOne.">
+  <PageHead eyebrow="Support" title="How to get help" lead="Most answers are in the documentation and the FAQ. If you are stuck, contact us." />
   <section class="section section-soft">
     <div class="container">
       <div class="grid grid-3">
         <a class="card reveal" href="/docs/"><div class="icon"><Icon name="book" /></div><h3 class="h3">Documentation</h3><p>Installation, integration, every console page and every API, with search.</p><span class="more">Open the docs <Icon name="arrow" /></span></a>
-        <a class="card reveal" href={`${repo}/issues`} rel="noopener"><div class="icon"><Icon name="code" /></div><h3 class="h3">Report a problem</h3><p>Open an issue with what you did, what you expected and what happened, plus the release you run.</p><span class="more">Issues <Icon name="arrow" /></span></a>
-        <a class="card reveal" href={`${repo}/security/advisories/new`} rel="noopener"><div class="icon"><Icon name="shield" /></div><h3 class="h3">Security vulnerability</h3><p>Report it privately, never in a public issue, so it can be fixed first.</p><span class="more">Report privately <Icon name="arrow" /></span></a>
+        <a class="card reveal" href="/faq/"><div class="icon"><Icon name="code" /></div><h3 class="h3">FAQ</h3><p>Short answers to what people ask most.</p><span class="more">Read the FAQ <Icon name="arrow" /></span></a>
+        <div class="card reveal">
+          <div class="icon"><Icon name="mail" /></div>
+          <h3 class="h3">Contact</h3>
+          {SUPPORT_EMAIL ? (
+            <p>Write to <a href={`mailto:${SUPPORT_EMAIL}`} style="color:var(--brand);font-weight:600">{SUPPORT_EMAIL}</a> with what you did, what you expected, what happened and the release you run.</p>
+          ) : (
+            <p>Contact the team that provides SecureOne to you, with what you did, what you expected, what happened and the release you run.</p>
+          )}
+        </div>
       </div>
+      <p class="muted reveal" style="margin-top:28px">Found a security problem? Report it privately, never in public, so it can be fixed first. See <a href="/security/" style="color:var(--brand);font-weight:600">Security</a>.</p>
     </div>
   </section>
 </Site>

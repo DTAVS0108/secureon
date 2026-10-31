@@ -101,7 +101,9 @@ Pass `applicationId` on hosted pages when you want app-scoped context in links:
 
 The sign-in page also shows **Continue with …** buttons for the app's federation providers (Google, GitHub, OIDC, **SAML**), and `/login.html?signedOut=1` confirms a sign-out (used after single logout).
 
+<!-- developer -->
 See [Installation — dev flows](../install/installation.md#8-email--notifications-dev) for local URLs and MailHog testing.
+<!-- /developer -->
 
 ## Native / custom app UI
 
@@ -258,7 +260,7 @@ Integration settings (OAuth client ID, application UUID, API catalog, `authUiMod
 | `clientUrls.forgotPassword` | Application → Integration (native) | Documentation / your forgot-password page URL |
 | `clientUrls.passwordReset` | Application → Integration (native) | Reset email link base URL |
 | `clientUrls.magicLink` | Application → Integration (native) | Magic-link email link base URL |
-| Federation providers | Application or Tenant → Authentication → Add provider | Google, GitHub, OIDC, SAML 2.0 (see [23](integration-guide.md#enterprise-sso-saml-20)) |
+| Federation providers | Application or Tenant → Authentication → Add provider | Google, GitHub, OIDC, SAML 2.0 (see [Integration guide](integration-guide.md#enterprise-sso-saml-20)) |
 | `SECUREONE_PUBLIC_BASE_URL` | auth-server env | Base for all email links (default your SecureOne address) |
 | Public API exposure | Platform + application settings | Whether `GET /api/v1/applications/{id}` is available unauthenticated |
 | Auth methods | Platform + application Authentication | Password, magic link, email OTP, SMS OTP (`m_email_otp`, `m_sms`) |

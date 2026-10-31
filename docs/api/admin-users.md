@@ -9,7 +9,9 @@ audience: public
 
 [API reference](index.md) › Admin API: users
 
-> Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- developer -->
+Generated from the OpenAPI document by `scripts/api-docs/generate_api_reference.py`. Do not edit by hand: change the controllers and regenerate.
+<!-- /developer -->
 
 User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, unlock and impersonation.
 

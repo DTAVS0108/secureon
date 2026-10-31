@@ -20,8 +20,10 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ slug: string[] }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const node = await findNode((await params).slug.join("/"));
-  return node ? { title: `${node.title} · SecureOne Documentation`, description: node.summary } : {};
+  const node = await findNode((await params).slug.map(decodeURIComponent).join("/"));
+  // Developer pages do not exist for other readers, not even their title.
+  if (!node || (node.audience === "internal" && !(await getDocsViewer()).platformOperator)) return {};
+  return { title: `${node.title} · SecureOne Documentation`, description: node.summary };
 }
 
 export default async function DocPage({ params }: Params) {
@@ -39,7 +41,7 @@ export default async function DocPage({ params }: Params) {
   const visible = space ? flatten([space]) : [];
   const here = visible.findIndex((n) => n.slug === slug);
   const readable = canRead(node.audience, viewer);
-  const doc = readable ? await loadDoc(slug) : null;
+  const doc = readable ? await loadDoc(slug, viewer) : null;
   if (readable && !doc) notFound();
   const visibleNode = visible[here] ?? node;
 
@@ -53,7 +55,7 @@ export default async function DocPage({ params }: Params) {
           <ChildCards nodes={visibleNode.children} heading={node.kind === "space" ? "Pages in this space" : "In this section"} />
         )}
         <PrevNext prev={here > 0 ? visible[here - 1] : undefined} next={here >= 0 ? visible[here + 1] : undefined} />
-        {doc && <PageFooter node={node} />}
+        {doc && <PageFooter node={node} developer={viewer.platformOperator} />}
       </div>
     </DocsShell>
   );

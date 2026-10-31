@@ -87,7 +87,7 @@ Enable **SMS OTP** under **Authentication → MFA** (`m_sms`) and **Email OTP** 
 ### Environment variables
 
 ```dotenv
-SECUREONE_REDIS_URL=redis://localhost:6379
+SECUREONE_REDIS_URL=redis://redis:6379
 SECUREONE_OTP_PEPPER=change-me-in-production   # hashes OTP codes at rest
 ```
 
@@ -153,7 +153,7 @@ Content-Type: application/json
 | `verificationMode` | No | `link` or `otp`; must be in `allowedModes` |
 | `verificationChannel` | No | `email` or `phone` / `sms` when mode is `otp` |
 
-**Link mode response** — same as before (`verificationEmailSent`, check MailHog at `http://localhost:8025` in dev).
+**Link mode response** — same as before (`verificationEmailSent`).
 
 **OTP mode response:**
 
@@ -391,6 +391,7 @@ sequenceDiagram
 
 ---
 
+<!-- developer -->
 ## Database & migrations
 
 | Object | Purpose |
@@ -402,6 +403,7 @@ sequenceDiagram
 | `user_account.phone`, `phone_verified` | Phone identity |
 
 Flyway runs on `bootRun`. See [Flyway migration files](../developer/migrations.md).
+<!-- /developer -->
 
 ---
 
@@ -415,6 +417,7 @@ Flyway runs on `bootRun`. See [Flyway migration files](../developer/migrations.m
 
 ---
 
+<!-- developer -->
 ## Local dev checklist
 
 1. `.\scripts\start-all.ps1` — Postgres, Redis, MailHog, auth-server, admin-web.
@@ -424,6 +427,7 @@ Flyway runs on `bootRun`. See [Flyway migration files](../developer/migrations.m
 5. **Email OTP**: check MailHog `http://localhost:8025`.
 6. **SMS OTP**: check auth-server console logs (`LoggingSmsProvider`).
 7. Confirm with `POST …/verify/otp/confirm`, then `POST …/auth/session/login`.
+<!-- /developer -->
 
 ---
 

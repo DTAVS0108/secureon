@@ -53,6 +53,7 @@ Every endpoint has the same parts, in this order:
 | **Responses** | The success status and its body type. The common errors (400, 401, 403, 404, 409) are the same everywhere and described once in [Getting started › Errors](getting-started.md#errors). |
 | `curl` | A command to copy. It uses the shell variables from [Getting started](getting-started.md#set-up-your-shell); replace `{placeholders}` with real values. Example values in request bodies (`Tenant A Shop`, `user@example.com`) are only examples. |
 
+<!-- developer -->
 ## Keeping this reference current
 
 The section pages are **generated** from the server's OpenAPI document, so they always match the code:
@@ -70,3 +71,4 @@ table above is filled in by the generator).
 Related: [API documentation overview](swagger-and-openapi.md) ·
 [Application integration guide](../integrate/integration-guide.md) ·
 [User guide](../guide/index.md)
+<!-- /developer -->

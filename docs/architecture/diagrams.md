@@ -1,11 +1,11 @@
 ---
-title: Diagrams
+title: Diagram sources
 summary: Architecture and sign-in flow diagrams
 order: 7
-audience: public
+audience: internal
 ---
 
-# Diagrams
+# Diagram sources
 
 Every architecture/flow diagram exists in two forms:
 

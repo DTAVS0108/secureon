@@ -23,7 +23,7 @@ export default async function DocsPrintPage({ params }: { params: Promise<{ scop
   const docs: PrintDoc[] = [];
   for (const node of nodes) {
     // draw.io iframes cannot print; their Mermaid twins and links remain.
-    const doc = await loadDoc(node!.slug, { embedDrawio: false });
+    const doc = await loadDoc(node!.slug, viewer, { embedDrawio: false });
     if (doc) docs.push({ ...doc, where: (await trail(node!.slug)).slice(0, -1).map((n) => n.title).join(" › ") });
   }
   if (docs.length === 0) notFound();
@@ -40,7 +40,7 @@ export default async function DocsPrintPage({ params }: { params: Promise<{ scop
           <h1 className="mt-1 text-3xl font-semibold text-ui">{title}</h1>
           <p className="mt-2 text-sm text-muted">
             Exported {generatedAt}
-            {scope === "all" ? ` · ${docs.length} pages` : ` · docs/${docs[0].node.file}`}
+            {scope === "all" ? ` · ${docs.length} pages` : viewer.platformOperator ? ` · docs/${docs[0].node.file}` : ""}
           </p>
         </header>
 

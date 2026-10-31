@@ -9,7 +9,7 @@ audience: public
 
 [API reference](index.md) › Data models
 
-> Generated from the OpenAPI document. Request and response types used by the endpoints, A to Z.
+Request and response types used by the endpoints, A to Z.
 
 ## AddOperatorRequest
 
