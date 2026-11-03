@@ -137,6 +137,7 @@ SECUREONE_DB_PASSWORD=secureone-db-password:latest \\
     tested: false,
     create: ["A PostgreSQL database and a Redis (Render Key Value, or Railway's Redis) from the same provider"],
     steps: [
+      `One click on Render: <a href="https://render.com/deploy?repo=https://github.com/DTAVS0108/secureone-deploy">Deploy to Render</a> creates the service, the database and Redis, and generates the encryption key; it only asks for <code>SECUREONE_PUBLIC_BASE_URL</code>. Or by hand:`,
       `New service from an existing image: <code>docker.io/${IMAGE}</code>, port <code>9000</code>.`,
       "Variables: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code> (the database's <code>postgres://</code> connection URL from the provider; it carries the user and password), <code>SECUREONE_REDIS_URL</code> (the Redis connection URL), <code>PORT</code> = <code>9000</code>.",
       "<code>SECUREONE_ENCRYPTION_KEY</code> as a secret variable: the output of <code>openssl rand -base64 32</code> (Render can generate one). Keep a copy with your backups.",
