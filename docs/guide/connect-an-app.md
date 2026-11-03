@@ -24,7 +24,12 @@ audience: public
 | **Web app with a server** | Pages rendered or backed by your server, which keeps a client secret | Next.js, Spring Boot, Express, ASP.NET Core | Confidential; authorization code + refresh token; PKCE; secret sent with HTTP Basic |
 | **Single-page app** | Runs entirely in the browser; no secret, sign-in uses PKCE | React, Angular, plain JavaScript | Public; authorization code + refresh token; PKCE |
 | **Mobile app** | iOS or Android app; sign-in opens the system browser and returns to the app | React Native, Android, iOS, Flutter | Public; authorization code + refresh token; PKCE |
+<!-- not on website -->
 | **Desktop app** | Windows, macOS or Linux app; sign-in opens the system browser and returns to a local loopback address | Electron, .NET (WPF, WinUI, MAUI), Python | Public; authorization code + refresh token; PKCE; loopback redirect `http://127.0.0.1:<port>/callback` |
+<!-- /not on website -->
+<!-- website only -->
+| **Desktop app** | Windows, macOS or Linux app; sign-in opens the system browser and returns to the app | Electron, .NET (WPF, WinUI, MAUI), Python | Public; authorization code + refresh token; PKCE |
+<!-- /website only -->
 | **Backend service** | A server calling your APIs as itself, with no user (machine-to-machine) | Batch jobs, integrations, internal services | Confidential; client credentials |
 | **TV or command-line app** | No keyboard or browser: the user approves on their phone or computer with a short code | Smart TVs, consoles, CLIs | Public; device code + refresh token; scopes `profile email` |
 | **API that accepts SecureOne tokens** | Your API checks the access tokens your apps send | Spring Boot, Node.js, ASP.NET Core, Python | **Nothing is registered**; you only get validation code |
@@ -33,6 +38,18 @@ Web, single-page and mobile apps request the scopes `openid profile email`.
 
 ## Step 2: Framework
 
+<!-- website only -->
+**Framework** picks the setup code you receive and the redirect path for your app's address.
+
+| Kind | Frameworks (redirect path) |
+|------|-----------|
+| Web app | Next.js (NextAuth.js) `/api/auth/callback/secureone`; Spring Boot `/login/oauth2/code/secureone`; Node.js / Express `/callback`; ASP.NET Core `/signin-oidc`; Python (Flask) `/auth/callback`; Python (Django) `/oidc/callback/`; **Python backend + any frontend (FastAPI)** `/auth/callback` |
+| Single-page app | React `/`; Angular `/`; Vue `/callback`; Plain JavaScript `/callback.html` |
+| Mobile app | React Native, Android (Kotlin), iOS (Swift), Flutter |
+| Desktop app | Electron, .NET (WPF, WinUI, MAUI), Python: `/callback` |
+| Backend service | curl, Node.js, Java (Spring), Python |
+<!-- /website only -->
+<!-- not on website -->
 **Framework** picks the setup code you receive. Choosing one also fills sensible local URLs.
 
 | Kind | Frameworks (default app URL → redirect path) |
@@ -42,6 +59,7 @@ Web, single-page and mobile apps request the scopes `openid profile email`.
 | Mobile app | React Native, Android (Kotlin), iOS (Swift), Flutter |
 | Desktop app | Electron, .NET (WPF, WinUI, MAUI), Python — all `http://127.0.0.1:8765` → `/callback` |
 | Backend service | curl, Node.js, Java (Spring), Python |
+<!-- /not on website -->
 | TV or command-line app | curl / shell, Node.js CLI, Python CLI |
 | API | Spring Boot, Node.js (Express), ASP.NET Core, Python (FastAPI), Python (any framework) |
 
@@ -50,7 +68,7 @@ Web, single-page and mobile apps request the scopes `openid profile email`.
 | You are building | Choose | How it works |
 |------------------|--------|--------------|
 | A Python website that renders its own pages | **Web app › Python (Flask)** or **Python (Django)** | Python signs users in and keeps them in a session. |
-| A Python backend **and** a separate frontend (React, Vue, Angular…) | **Web app › Python backend + any frontend (FastAPI)** | Backend-for-frontend: Python is the OAuth client and keeps the secret and tokens; the frontend calls Python (`/api/...`) with an HttpOnly session cookie and never sees a token. In development the frontend's dev server proxies `/auth` and `/api` to Python so both share one origin. The safest choice for browser apps. |
+| A Python backend **and** a separate frontend (React, Vue, Angular…) | **Web app › Python backend + any frontend (FastAPI)** | Backend-for-frontend: Python is the OAuth client and keeps the secret and tokens; the frontend calls Python (`/api/...`) with an HttpOnly session cookie and never sees a token. Serve the frontend and Python on one origin (one domain, with a proxy routing `/auth` and `/api` to Python). The safest choice for browser apps. |
 | A frontend that holds its own tokens, calling a Python API | **Single-page app** for the frontend, then **API › Python (FastAPI)** for the API | The frontend sends `Authorization: Bearer <token>`; the API checks the token and its `permissions`. |
 | A Python job with no user | **Backend service › Python** | Client credentials. |
 | A Python desktop tool or CLI | **Desktop app › Python** or **TV or command-line app › Python CLI** | Loopback redirect, or a short code approved on another device. |
@@ -58,7 +76,12 @@ Web, single-page and mobile apps request the scopes `openid profile email`.
 ### Mobile and desktop are set up differently
 
 - **Mobile** apps return through their own URL scheme (`com.example.app:/oauthredirect`) registered with the operating system; enter it in **App scheme**.
+<!-- not on website -->
 - **Desktop** apps listen on a loopback address (`http://127.0.0.1:8765/callback`) only while signing in; enter it in **Redirect URL**. If that port is busy on users' machines, register another port on the client.
+<!-- /not on website -->
+<!-- website only -->
+- **Desktop** apps receive the sign-in on the user's own computer, only while signing in; enter the address your desktop library uses in **Redirect URL**.
+<!-- /website only -->
 - Both are public clients: no secret, PKCE, the system browser (never an embedded web view), and the refresh token kept in the operating system's secure store.
 
 ## Step 3: Register the app
@@ -71,7 +94,12 @@ The card is titled **Register the app** (**Your API** for the API kind).
 | **Application** | An existing application, or **New application…** to create one. Tenant Admins can only pick applications assigned to them. |
 | **Application name** | Shown when **New application…** is chosen: *what users see when signing in*, for example `Example App`. |
 | **Client ID** | *Your app sends this; lowercase and dashes*, for example `demo-store-web`. Must be unique. |
+<!-- not on website -->
 | **App URL** | *Where the app runs*, for example `http://localhost:3000`. Web and single-page apps. |
+<!-- /not on website -->
+<!-- website only -->
+| **App URL** | *Where the app runs*, for example `https://app.example.com`. Web and single-page apps. |
+<!-- /website only -->
 | **Redirect URL** | *After sign-in*. Filled from the app URL and the framework's callback path. *Must match what the app sends exactly. Add production URLs later on the client page.* |
 | **After sign-out URL** | Where users land after signing out. |
 | **App scheme** | Mobile apps only: *reverse domain of your app id*, for example `com.example.shop`. *Sign-in returns to the app through this URL scheme (RFC 8252).* The redirect becomes `com.example.shop:/oauthredirect`. |

@@ -42,8 +42,10 @@ match the running code. See [Keeping this reference current](index.md#keeping-th
 
 ## Turn on Swagger UI and the OpenAPI document
 
-They follow `SECUREONE_ENV`: **on** in development (the image with `SECUREONE_ENV=development`) and
-**off** in production, which is the image's default. Turn them on in production with one setting:
+They are **off** by default. Turn them on with one setting:
+<!-- not on website -->
+(They follow `SECUREONE_ENV`: **on** in development, the image with `SECUREONE_ENV=development`.)
+<!-- /not on website -->
 
 ```dotenv
 SECUREONE_SWAGGER_ENABLED=true
@@ -108,7 +110,7 @@ The same steps with curl: [Getting started › Admin API](getting-started.md#adm
 |---------|---------------|
 | `/docs` or `/v3/api-docs/all` returns **404** | Swagger is off (production): set `SECUREONE_SWAGGER_ENABLED=true` (above) and restart. |
 | Swagger UI: *No API definition provided* | Open `/docs` or `/swagger-ui/index.html?url=/v3/api-docs/all`. |
-| Swagger UI: *Failed to fetch* | Open Swagger on the same host as the API (`localhost` vs `127.0.0.1` matters) and choose the server **Current host** (`/`). Check `GET /api/info` says `UP`. |
+| Swagger UI: *Failed to fetch* | Open Swagger on exactly the same host name as the API and choose the server **Current host** (`/`). Check `GET /api/info` says `UP`. |
 | Admin call returns **401** | No token, or it expired (30 minutes idle, 8 hours at most) or was signed out. Sign in again. |
 | Admin call returns **403** | The account's role does not allow it (for example a tenant admin calling platform settings). |
 | `DELETE /api/admin/v1/oauth-clients/{id}` returns **202** and the client is still there | Expected: deleting a client needs another admin's approval (Access review › Pending approvals). |

@@ -118,7 +118,7 @@ Application (and platform) settings are limited so they cannot drift below the u
 
 | Area | Rule | Standard |
 |------|------|----------|
-| Integration › client URLs | Forgot-password, password-reset and magic-link pages must be `https://` (plain `http://` only for localhost) on a site the application's OAuth clients redirect to (`ClientUrlPolicy`). Others are refused on save and skipped when sending (links then use the hosted pages). | OWASP ASVS; RFC 9700 |
+| Integration › client URLs | Forgot-password, password-reset and magic-link pages must be `https://` on a site the application's OAuth clients redirect to (`ClientUrlPolicy`). Others are refused on save and skipped when sending (links then use the hosted pages). | OWASP ASVS; RFC 9700 |
 | Email templates | Emails carrying a reset/sign-in link or a code never have CC/BCC. Security notices (password changed, sign-in changes, account locked) are always sent, whatever the template switch or "User email" says. Values are HTML-escaped in HTML bodies. | ASVS V2.5, V5.3; NIST SP 800-63B §6.1.2.3 |
 | Verification codes | 6–8 digits, valid 1–10 minutes (two-step codes too). | NIST SP 800-63B §5.1.3 |
 | Password policy | Defaults: 12+ characters, leaked-password check on, no character-type rules, no expiry. Up to 128 characters. New passwords are hashed with Argon2id; bcrypt hashes from before still work and are replaced at the next sign-in. The editor warns when an application has 2FA off and a minimum under 15. | NIST SP 800-63B §3.1.1; OWASP Password Storage |

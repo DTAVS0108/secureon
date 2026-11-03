@@ -136,7 +136,7 @@ curl -H "$AUTH" -X POST $SECUREONE_URL/api/admin/v1/oauth-clients \
   -H "Content-Type: application/json" \
   -d '{"applicationId":"<app-uuid>","clientId":"my-app-web","type":"web","status":"active",
        "grantTypes":["authorization_code","refresh_token"],"scopes":["openid","profile","email"],
-       "redirectUris":["http://localhost:5173/callback"],"pkceRequired":true}'
+       "redirectUris":["https://app.example.com/callback"],"pkceRequired":true}'
 ```
 
 ---

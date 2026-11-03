@@ -130,7 +130,7 @@ Browser redirect flow. Requires an authenticated end-user session. Use `response
 ```bash
 # Opened in the browser by your app (an OIDC library builds this URL). curl only shows the redirect:
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" \
-  "$SECUREONE_URL/oauth2/authorize?response_type=code&client_id=$CLIENT_ID&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fcallback&scope=openid%20profile%20email&state={state}&code_challenge={pkce_challenge}&code_challenge_method=S256"
+  "$SECUREONE_URL/oauth2/authorize?response_type=code&client_id=$CLIENT_ID&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback&scope=openid%20profile%20email&state={state}&code_challenge={pkce_challenge}&code_challenge_method=S256"
 ```
 
 ### Device authorization (RFC 8628)
@@ -257,7 +257,7 @@ Exchange credentials for tokens. Supports `authorization_code`, `refresh_token`,
 curl -s -X POST "$SECUREONE_URL/oauth2/token" \
   --data-urlencode "grant_type=authorization_code" \
   --data-urlencode "code={authorization_code}" \
-  --data-urlencode "redirect_uri=http://localhost:5173/callback" \
+  --data-urlencode "redirect_uri=https://app.example.com/callback" \
   --data-urlencode "client_id=$CLIENT_ID" \
   --data-urlencode "code_verifier={pkce_verifier}"
 
@@ -266,7 +266,7 @@ curl -s -X POST "$SECUREONE_URL/oauth2/token" \
   -u "$CLIENT_ID:$CLIENT_SECRET" \
   --data-urlencode "grant_type=authorization_code" \
   --data-urlencode "code={authorization_code}" \
-  --data-urlencode "redirect_uri=http://localhost:3000/auth/callback"
+  --data-urlencode "redirect_uri=https://app.example.com/auth/callback"
 
 # 3. Refresh tokens
 curl -s -X POST "$SECUREONE_URL/oauth2/token" \

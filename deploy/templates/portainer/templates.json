@@ -1,0 +1,46 @@
+{
+  "version": "3",
+  "templates": [
+    {
+      "id": 1,
+      "type": 3,
+      "title": "SecureOne",
+      "name": "secureone",
+      "description": "Sign-in, single sign-on, MFA, users, roles and permissions for every application. Includes PostgreSQL and Redis.",
+      "note": "Open <b>PUBLIC_URL/admin/setup</b> when the stack is up. Production mode needs an https address (a reverse proxy in front of the port). The encryption key is created in the secureone-data volume: back it up.",
+      "categories": ["security", "identity"],
+      "platform": "linux",
+      "logo": "https://secureone-website.vercel.app/apple-touch-icon.png",
+      "repository": {
+        "url": "https://github.com/DTAVS0108/secureone-deploy",
+        "stackfile": "portainer/docker-compose.yml"
+      },
+      "env": [
+        {
+          "name": "PUBLIC_URL",
+          "label": "Public address",
+          "description": "The address people will use, for example https://id.example.com"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "label": "Database password",
+          "description": "Choose a long random password"
+        },
+        {
+          "name": "HTTP_PORT",
+          "label": "Port",
+          "default": "9000"
+        },
+        {
+          "name": "SECUREONE_ENV",
+          "label": "Mode",
+          "description": "Development allows http and has an emergency admin/admin account: for a trial only",
+          "select": [
+            { "text": "Production", "value": "production", "default": true },
+            { "text": "Development (trial only)", "value": "development" }
+          ]
+        }
+      ]
+    }
+  ]
+}

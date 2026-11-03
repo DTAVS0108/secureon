@@ -7,7 +7,7 @@ audience: public
 
 # Install on Kubernetes
 
-The SecureOne Helm chart runs the same image as Docker, `dmtavs0108/secureone:1.1.0`, on any Kubernetes cluster
+The SecureOne Helm chart runs the same image as Docker, `dmtavs0108/secureone:1.1.1`, on any Kubernetes cluster
 (EKS, AKS, GKE, k3s, on-premises), on Intel/AMD (x86-64) nodes. On clusters that also have ARM nodes, the chart
 places SecureOne on the x86-64 ones (`nodeSelector`).
 

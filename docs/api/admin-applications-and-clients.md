@@ -320,10 +320,10 @@ curl -s -X POST "$SECUREONE_URL/api/admin/v1/oauth-clients" \
   "jwksUri": "https://app.example.com",
   "pkceRequired": true,
   "postLogoutRedirectUris": [
-    "http://localhost:5173/"
+    "https://app.example.com/"
   ],
   "redirectUris": [
-    "http://localhost:5173/callback"
+    "https://app.example.com/callback"
   ],
   "scopes": [
     "openid",
@@ -414,10 +414,10 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/oauth-clients/{id}" \
   "jwksUri": "https://app.example.com",
   "pkceRequired": true,
   "postLogoutRedirectUris": [
-    "http://localhost:5173/"
+    "https://app.example.com/"
   ],
   "redirectUris": [
-    "http://localhost:5173/callback"
+    "https://app.example.com/callback"
   ],
   "scopes": [
     "openid",

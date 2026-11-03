@@ -7,7 +7,7 @@ audience: public
 
 # Installation
 
-SecureOne is installed from one container image, `dmtavs0108/secureone:1.1.0`. There is nothing to build and no
+SecureOne is installed from one container image, `dmtavs0108/secureone:1.1.1`. There is nothing to build and no
 file to edit: you start it with a few variables, and do the rest in your browser.
 
 | Before it starts | After it starts, in the browser |
@@ -16,8 +16,11 @@ file to edit: you start it with a few variables, and do the rest in your browser
 | Your public address (`https://id.example.com`) | Back up the encryption key |
 | A volume for its encryption key | Create the first operator, then connect applications |
 
-To try SecureOne on your laptop first, use the [Quickstart](../get-started/quickstart.md). For Kubernetes, every
-setting and the details behind each step, see [Deployment](deployment.md).
+<!-- not on website -->
+To try SecureOne on your laptop first, use the [Quickstart](../get-started/quickstart.md).
+<!-- /not on website -->
+For Kubernetes, see [Install on Kubernetes](kubernetes.md). Every setting and the details behind each step are in
+[Deployment](deployment.md).
 
 ## What you need
 
@@ -35,7 +38,7 @@ name: secureone
 
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.0
+    image: dmtavs0108/secureone:1.1.1
     ports:
       - "127.0.0.1:9000:9000"        # your HTTPS proxy forwards to this port
     environment:
@@ -94,12 +97,12 @@ docker run -d --name secureone --restart unless-stopped \
   -e SECUREONE_DB_USERNAME=secureone \
   -e SECUREONE_DB_PASSWORD=your-database-password \
   -e SECUREONE_REDIS_URL=redis://redis.example.internal:6379 \
-  dmtavs0108/secureone:1.1.0
+  dmtavs0108/secureone:1.1.1
 
 docker logs -f secureone        # wait for the setup code
 ```
 
-**Docker Desktop:** in **Images**, choose **Run** on `dmtavs0108/secureone:1.1.0`, open **Optional settings**, add
+**Docker Desktop:** in **Images**, choose **Run** on `dmtavs0108/secureone:1.1.1`, open **Optional settings**, add
 the same variables under **Environment variables**, map port `9000`, and add a volume with container path
 `/var/lib/secureone`.
 
@@ -108,8 +111,8 @@ the same variables under **Environment variables**, map port `9000`, and add a v
 | Variable | Required | What it is |
 |---|---|---|
 | `SECUREONE_PUBLIC_BASE_URL` | Yes | The address users open, with `https://`. It goes into tokens and sign-in links: choose it before you connect applications |
-| `SECUREONE_DB_URL` | Yes | `jdbc:postgresql://<host>:<port>/<database>?currentSchema=platform` |
-| `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | Yes | The database user SecureOne connects as |
+| `SECUREONE_DB_URL` | Yes | `jdbc:postgresql://<host>:<port>/<database>?currentSchema=platform`, or the `postgres://<user>:<password>@<host>:<port>/<database>` address a hosting platform gives you |
+| `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | Yes, unless they are in a `postgres://` address | The database user SecureOne connects as |
 | `SECUREONE_REDIS_URL` | Yes | `redis://<host>:6379` (`rediss://` with TLS, `redis://:<password>@<host>:6379` with a password) |
 | Volume at `/var/lib/secureone` | Yes | Where SecureOne keeps the encryption key it creates. Use a named volume or a host folder, never nothing |
 
@@ -150,7 +153,7 @@ Then connect your first application: [Integration guide](../integrate/integratio
 ## Check that everything works
 
 ```bash
-curl -s https://id.example.com/api/info                              # "status":"UP", "version":"1.1.0"
+curl -s https://id.example.com/api/info                              # "status":"UP", "version":"1.1.1"
 curl -s https://id.example.com/.well-known/openid-configuration      # sign-in discovery document
 docker compose ps                                                    # secureone is "healthy"
 ```

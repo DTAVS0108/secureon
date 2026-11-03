@@ -3,7 +3,7 @@ import Site from "../layouts/Site.astro";
 import PageHead from "../components/PageHead.astro";
 import Icon from "../components/Icon.astro";
 
-const IMAGE = "dmtavs0108/secureone:1.1.0";
+const IMAGE = "dmtavs0108/secureone:1.1.1";
 
 // Each platform: what to create, then the exact steps. "tested": run end to end by the SecureOne team.
 const platforms = [
@@ -97,7 +97,7 @@ kubectl -n secureone get secret secureone-secrets \\
     tested: false,
     create: [
       "Azure Database for PostgreSQL flexible server, version 16",
-      "Azure Cache for Redis (TLS: <code>rediss://:&lt;access key&gt;@&lt;name&gt;.redis.cache.windows.net:6380</code>)",
+      "Azure Managed Redis with the Enterprise clustering policy and access keys on (TLS: <code>rediss://:&lt;access key&gt;@&lt;name&gt;.&lt;region&gt;.redis.azure.net:10000</code>). Azure Cache for Redis no longer accepts new caches.",
       "An encryption key: <code>base64:</code> + <code>openssl rand -base64 32</code>",
     ],
     steps: [
@@ -138,8 +138,8 @@ SECUREONE_DB_PASSWORD=secureone-db-password:latest \\
     create: ["A PostgreSQL database and a Redis (Render Key Value, or Railway's Redis) from the same provider"],
     steps: [
       `New service from an existing image: <code>docker.io/${IMAGE}</code>, port <code>9000</code>.`,
-      "Variables: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code> (<code>jdbc:postgresql://&lt;host&gt;:&lt;port&gt;/&lt;db&gt;?currentSchema=platform</code>), <code>SECUREONE_DB_USERNAME</code>, <code>SECUREONE_DB_PASSWORD</code>, <code>SECUREONE_REDIS_URL</code>.",
-      "A persistent disk or volume at <code>/var/lib/secureone</code>, or set <code>SECUREONE_ENCRYPTION_KEY</code> as a secret variable.",
+      "Variables: <code>SECUREONE_PUBLIC_BASE_URL</code>, <code>SECUREONE_DB_URL</code> (the database's <code>postgres://</code> connection URL from the provider; it carries the user and password), <code>SECUREONE_REDIS_URL</code> (the Redis connection URL), <code>PORT</code> = <code>9000</code>.",
+      "<code>SECUREONE_ENCRYPTION_KEY</code> as a secret variable: the output of <code>openssl rand -base64 32</code> (Render can generate one). Keep a copy with your backups.",
       "At least 2 GB memory; keep one instance always running.",
       "Add your custom domain; the platform provides HTTPS.",
     ],

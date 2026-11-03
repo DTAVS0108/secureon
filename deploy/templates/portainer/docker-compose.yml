@@ -1,0 +1,55 @@
+# SecureOne with PostgreSQL and Redis, for Portainer (App Templates or Stacks -> Add stack).
+# Variables: PUBLIC_URL (the address people will use, https://...), DB_PASSWORD, HTTP_PORT, SECUREONE_ENV.
+# Then open PUBLIC_URL/admin/setup.
+
+services:
+  secureone:
+    image: dmtavs0108/secureone:1.1.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-9000}:9000"
+    environment:
+      SECUREONE_ENV: ${SECUREONE_ENV:-production}
+      SECUREONE_PUBLIC_BASE_URL: ${PUBLIC_URL:?set PUBLIC_URL, for example https://id.example.com}
+      SECUREONE_DB_URL: jdbc:postgresql://postgres:5432/secureone?currentSchema=platform
+      SECUREONE_DB_USERNAME: secureone
+      SECUREONE_DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      SECUREONE_REDIS_URL: redis://redis:6379
+    # The encryption key is created here on the first start: back up this volume.
+    volumes:
+      - secureone-data:/var/lib/secureone
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: secureone
+      POSTGRES_USER: secureone
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secureone -d secureone"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  secureone-data:
+  pgdata:
+  redisdata:

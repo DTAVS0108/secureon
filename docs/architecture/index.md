@@ -10,10 +10,12 @@ audience: public
 | Topic | Read |
 |---|---|
 | The parts, how a sign-in works, and how it runs | [How SecureOne fits together](overview.md) |
+<!-- not on website -->
 | OAuth 2.1, OpenID Connect, tokens, MFA | [Auth standards](auth-standards.md) |
 | Security practices and protections | [Security](security.md) |
 | Federation, SCIM, webhooks, attack protection | [Security and integration features](security-and-integration-features.md) |
 | Capabilities for large organisations | [Enterprise capabilities](enterprise.md) |
+<!-- /not on website -->
 
 <!-- developer -->
 For developers: [Architecture internals](architecture.md) (components, frameworks, request flows, data layers),

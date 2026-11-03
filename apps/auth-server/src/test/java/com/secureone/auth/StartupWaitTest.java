@@ -16,6 +16,9 @@ class StartupWaitTest {
         // Several hosts: the first one is enough to know the database is up.
         assertEquals(new StartupWait.Endpoint("PostgreSQL", "a", 5432),
                 StartupWait.database("jdbc:postgresql://a:5432,b:5432/secureone"));
+        // A provider's postgres:// URL (the server converts it to JDBC).
+        assertEquals(new StartupWait.Endpoint("PostgreSQL", "dpg-abc", 5432),
+                StartupWait.database("postgresql://user:secret@dpg-abc/secureone"));
         assertNull(StartupWait.database("not a url"));
     }
 

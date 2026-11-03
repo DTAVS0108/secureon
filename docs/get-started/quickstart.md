@@ -3,6 +3,7 @@ title: Quickstart
 summary: SecureOne running on one machine in about five minutes, from the published image
 order: 2
 audience: public
+website: false
 ---
 
 # Quickstart
@@ -24,7 +25,7 @@ name: secureone-trial
 
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.0
+    image: dmtavs0108/secureone:1.1.1
     ports:
       - "9000:9000"
     environment:

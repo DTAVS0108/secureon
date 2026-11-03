@@ -53,3 +53,9 @@ docker-compose.override.yml
 # Backups written by the example Compose file's backup service
 backups/
 .vercel/
+# Terraform working files and state (the state holds secrets); the provider lock files are kept
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

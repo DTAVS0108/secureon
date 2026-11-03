@@ -1,0 +1,4 @@
+project_id = "my-project"
+region     = "europe-west1"
+# public_base_url      = "https://id.example.com"
+# db_high_availability = true

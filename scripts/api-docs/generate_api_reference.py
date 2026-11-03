@@ -255,8 +255,8 @@ def type_of(spec: dict, schema: dict) -> str:
 FIELD_EXAMPLES = {
     "grantTypes": ["authorization_code", "refresh_token"],
     "scopes": ["openid", "profile", "email"],
-    "redirectUris": ["http://localhost:5173/callback"],
-    "postLogoutRedirectUris": ["http://localhost:5173/"],
+    "redirectUris": ["https://app.example.com/callback"],
+    "postLogoutRedirectUris": ["https://app.example.com/"],
     "type": "spa",
     "subjectType": "public",
     "tokenEndpointAuthMethod": "none",
@@ -291,7 +291,7 @@ FIELD_EXAMPLES = {
 EXAMPLE_BY_NAME = [
     (r"email", "user@example.com"), (r"password", "Choose-a-Strong-Pass-1!"), (r"^slug$|tenantslug", "tenant-a"),
     (r"^name$|displayname|applicationname", "Tenant A Shop"), (r"firstname", "First"), (r"lastname", "Last"),
-    (r"clientid", "{clientId}"), (r"redirecturis?$", "http://localhost:5173/callback"), (r"url|uri", "https://app.example.com"),
+    (r"clientid", "{clientId}"), (r"redirecturis?$", "https://app.example.com/callback"), (r"url|uri", "https://app.example.com"),
     (r"phone", "+14155552671"), (r"code$", "123456"), (r"reason|note|description", "Short explanation"),
     (r"scope", "openid profile email"), (r"key$", "key"), (r"token", "{token}"), (r"status", "ACTIVE"),
 ]
@@ -357,7 +357,7 @@ CURLS = {
 curl -s -X POST "$SECUREONE_URL/oauth2/token" \
   --data-urlencode "grant_type=authorization_code" \
   --data-urlencode "code={authorization_code}" \
-  --data-urlencode "redirect_uri=http://localhost:5173/callback" \
+  --data-urlencode "redirect_uri=https://app.example.com/callback" \
   --data-urlencode "client_id=$CLIENT_ID" \
   --data-urlencode "code_verifier={pkce_verifier}"
 
@@ -366,7 +366,7 @@ curl -s -X POST "$SECUREONE_URL/oauth2/token" \
   -u "$CLIENT_ID:$CLIENT_SECRET" \
   --data-urlencode "grant_type=authorization_code" \
   --data-urlencode "code={authorization_code}" \
-  --data-urlencode "redirect_uri=http://localhost:3000/auth/callback"
+  --data-urlencode "redirect_uri=https://app.example.com/auth/callback"
 
 # 3. Refresh tokens
 curl -s -X POST "$SECUREONE_URL/oauth2/token" \
@@ -387,7 +387,7 @@ curl -s -X POST "$SECUREONE_URL/oauth2/token" \
   --data-urlencode "client_id=$CLIENT_ID"''',
     ("get", "/oauth2/authorize"): r'''# Opened in the browser by your app (an OIDC library builds this URL). curl only shows the redirect:
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" \
-  "$SECUREONE_URL/oauth2/authorize?response_type=code&client_id=$CLIENT_ID&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fcallback&scope=openid%20profile%20email&state={state}&code_challenge={pkce_challenge}&code_challenge_method=S256"''',
+  "$SECUREONE_URL/oauth2/authorize?response_type=code&client_id=$CLIENT_ID&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback&scope=openid%20profile%20email&state={state}&code_challenge={pkce_challenge}&code_challenge_method=S256"''',
     ("post", "/oauth2/revoke"): r'''curl -s -X POST "$SECUREONE_URL/oauth2/revoke" \
   --data-urlencode "token={refresh_token}" \
   --data-urlencode "token_type_hint=refresh_token" \

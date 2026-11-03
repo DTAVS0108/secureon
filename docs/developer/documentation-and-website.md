@@ -12,7 +12,7 @@ audience: internal
 | Where | Shows | Built by |
 |---|---|---|
 | Console, `/admin/documentation` | Every page the reader may see, with search | `apps/admin-web/src/lib/documentation/` (reads `docs/` at runtime) |
-| Public website, `/docs/` | Every page except `audience: internal`, without developer blocks | `apps/website/scripts/sync-docs.mjs`, then Astro and Starlight |
+| Public website, `/docs/` | Production only: every page except `audience: internal` and `website: false`, without developer and website-hidden blocks | `apps/website/scripts/sync-docs.mjs`, then Astro and Starlight; `check-production.mjs` fails the build on development content |
 | GitHub | Every file; `docs/README.md` is the index | `python scripts/docs/docs_tool.py index` |
 
 ## Spaces and pages
@@ -37,12 +37,29 @@ audience: public        # public | operator | internal
 
 A page with a missing or unknown `audience` is treated as `internal`, so nothing is published by accident.
 
+### Production-only website
+
+The website is for people running SecureOne in production. The SecureOne documentation (console and image) also
+covers development: the quickstart, development mode, local addresses and design notes. Keep those out of the
+website with:
+
+| Marker | SecureOne documentation | Website |
+|---|---|---|
+| `website: false` in the front matter | The page as usual | Not published; links to it become plain text |
+| `<!-- not on website -->` ... `<!-- /not on website -->` | Shown (the marker lines are removed) | Removed |
+| `<!-- website only -->` ... `<!-- /website only -->` | Removed | Shown: the production wording of a passage kept above |
+
+Markers go on their own lines, also between table rows. Developer blocks are separate: source code and
+contributor notes, shown to platform operators in the console only. After `astro build`,
+`apps/website/scripts/check-production.mjs` fails the build if a page shows development mode, the quickstart,
+`localhost`, developer tools or roadmap notes (only the production `127.0.0.1:9000` port binding is allowed).
+
 ## Writing
 
 - Titles have no numbers; the order comes from `order`.
 - Link between pages with relative paths (`../install/deployment.md#all-settings`).
-- Console addresses are paths (`/admin/documentation`); examples use `$SECUREONE_URL`. Only local development
-  pages use `http://localhost:9000`.
+- Console addresses are paths (`/admin/documentation`); examples use `$SECUREONE_URL`, and application examples
+  `https://app.example.com`. Only local development pages use `http://localhost:9000`.
 - Panels use GitHub's syntax, rendered by the console and the website alike:
 
 ```markdown

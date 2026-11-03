@@ -17,6 +17,10 @@ if (!source || !target) {
 }
 const FRONT = /^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n/;
 const DEVELOPER_BLOCK = /<!--\s*developer\s*-->[\s\S]*?<!--\s*\/developer\s*-->[^\S\n]*\r?\n?/g;
+// The production wording the website shows instead of a passage the documentation keeps (<!-- not on website -->).
+const WEBSITE_ONLY_BLOCK = /<!--\s*website only\s*-->[\s\S]*?<!--\s*\/website only\s*-->[^\S\n]*\r?\n?/g;
+// What the website leaves out stays here; only its marker lines go (they would split a table).
+const NOT_ON_WEBSITE_MARKERS = /^[^\S\n]*<!--\s*\/?not on website\s*-->[^\S\n]*\r?\n/gm;
 // Images a user page may show; everything else (diagram sources, scripts) is for developers.
 const ASSETS = new Set([".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"]);
 
@@ -46,7 +50,7 @@ function copy(dir, rel = "") {
         continue;
       }
       fs.mkdirSync(path.dirname(to), { recursive: true });
-      fs.writeFileSync(to, raw.replace(DEVELOPER_BLOCK, ""));
+      fs.writeFileSync(to, raw.replace(DEVELOPER_BLOCK, "").replace(WEBSITE_ONLY_BLOCK, "").replace(NOT_ON_WEBSITE_MARKERS, ""));
       pages++;
     } else if (ASSETS.has(ext)) {
       fs.mkdirSync(path.dirname(to), { recursive: true });

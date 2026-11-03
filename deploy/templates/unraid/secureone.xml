@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>SecureOne</Name>
+  <Repository>dmtavs0108/secureone:1.1.1</Repository>
+  <Registry>https://hub.docker.com/r/dmtavs0108/secureone</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://secureone-website.vercel.app/docs/</Support>
+  <Project>https://secureone-website.vercel.app</Project>
+  <Overview>Sign-in, single sign-on, MFA, users, roles and permissions for every application. Needs a PostgreSQL 16 and a Redis container (install both from Community Apps first), and an https address in front of the port (for example a reverse proxy). Then open the public address + /admin/setup.</Overview>
+  <Category>Security: Network:Other</Category>
+  <WebUI>http://[IP]:[PORT:9000]/admin/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/DTAVS0108/secureone-deploy/main/unraid/secureone.xml</TemplateURL>
+  <Icon>https://secureone-website.vercel.app/apple-touch-icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <Requires>PostgreSQL 16 and Redis containers, reachable from this one.</Requires>
+  <Config Name="Port" Target="9000" Default="9000" Mode="tcp" Description="Web interface and sign-in (put your https reverse proxy in front of it)" Type="Port" Display="always" Required="true" Mask="false">9000</Config>
+  <Config Name="Public address" Target="SECUREONE_PUBLIC_BASE_URL" Default="" Mode="" Description="The address people will use, for example https://id.example.com" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database URL" Target="SECUREONE_DB_URL" Default="" Mode="" Description="postgres://user:password@SERVER-IP:5432/secureone (an empty database on your PostgreSQL 16)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Redis URL" Target="SECUREONE_REDIS_URL" Default="redis://SERVER-IP:6379" Mode="" Description="redis://SERVER-IP:6379 (redis://:password@SERVER-IP:6379 with a password)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Encryption key" Target="SECUREONE_ENCRYPTION_KEY" Default="" Mode="" Description="Run: openssl rand -base64 32 in the Unraid terminal and paste the result. Keep a copy: without it, a database backup cannot be used." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Trusted proxies" Target="SECUREONE_TRUSTED_PROXIES" Default="" Mode="" Description="Your reverse proxy's address (for example 172.17.0.0/16), so SecureOne sees each visitor's own address" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

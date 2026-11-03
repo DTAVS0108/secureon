@@ -79,7 +79,7 @@ kubectl -n secureone exec deploy/secureone -- wget -qO- http://127.0.0.1:9001/ac
 
 - `:9001/actuator/health` → UP (management port, pod-internal; `/actuator` is not served on the public port)
 - `:9001/actuator/prometheus` → metrics (scraped through the `prometheus.io/port` annotation)
-- Admin login + audit log shows real client IP (not `127.0.0.1`)
+- Admin login + audit log shows real client IP (not your proxy's address)
 - No `SECUREONE_ENCRYPTION_KEY is not set` warning in the auth-server log
 - `/.well-known/openid-configuration` and `/.well-known/oauth-protected-resource` show `https://` URLs (forwarded headers work)
 - If SAML is used: `/api/v1/auth/federation/saml/{alias}/metadata?applicationId=…` shows `https://` ACS/SLO URLs, and an SSO sign-in plus sign-out at the IdP both work through the proxy (no CORS rules on `/saml/acs/*`, `/saml/slo/*`)

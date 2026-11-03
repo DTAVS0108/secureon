@@ -13,7 +13,7 @@ audience: public
 
 ---
 
-SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.0`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
+SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.1`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
 
 <!-- developer -->
 ## Which path should I use?
@@ -25,7 +25,7 @@ SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.0`, w
 
 Both paths end the same way: **admin login → create tenants / applications / OAuth clients → connect your products**.
 
-**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.1.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
+**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.1.1`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
 
 **Just evaluating?** One command starts SecureOne with PostgreSQL, Redis and a mail catcher on your machine:
 
@@ -106,7 +106,7 @@ short version of this section.
 
 ### What you need
 
-- The image `dmtavs0108/secureone:1.1.0` (Docker Hub, or your registry)
+- The image `dmtavs0108/secureone:1.1.1` (Docker Hub, or your registry)
 - Your Postgres, Redis and (optionally) SMTP
 - DNS + TLS for one host, e.g. `id.example.com` (or a reverse proxy)
 - A volume for the encryption key; **no SecureOne code or settings file on the host**
@@ -173,13 +173,15 @@ docker run -d \
   -e SECUREONE_DB_PASSWORD='StrongDbPass!' \
   -e SECUREONE_REDIS_URL=redis://redis.internal:6379 \
   --restart unless-stopped \
-  dmtavs0108/secureone:1.1.0
+  dmtavs0108/secureone:1.1.1
 
 docker logs -f secureone
 # "Waiting for PostgreSQL ..." until it is reachable, then "Started AuthServerApplication" and the setup code
 ```
 
+<!-- not on website -->
 One container, one process tree: the auth-server (Java) starts the console (Node.js) on `127.0.0.1` inside the container, restarts it if it exits, and stops it on shutdown. Console output appears in the same log under the `console` logger.
+<!-- /not on website -->
 
 ### A5 — Optional Compose (DB/Redis external)
 
@@ -187,7 +189,7 @@ One container, one process tree: the auth-server (Java) starts the console (Node
 # docker-compose.yml
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.0
+    image: dmtavs0108/secureone:1.1.1
     ports:
       - "9000:9000"
     environment:
@@ -215,12 +217,14 @@ With PostgreSQL and Redis in the same file, see [Installation](installation.md#o
 | Variable | Default in the image | Meaning |
 |----------|----------------------|---------|
 | `SECUREONE_CONSOLE_DIR` | `/opt/secureone/console/apps/admin-web` | Built console the auth-server runs; empty = no console in this container (API-only nodes) |
+<!-- not on website -->
 | `SECUREONE_CONSOLE_PORT` | `3001` | Internal port on `127.0.0.1` (never published) |
 | `SECUREONE_CONSOLE_UPSTREAM_URL` | — | Forward `/admin` to a console running elsewhere instead |
+<!-- /not on website -->
 | `SECUREONE_ADMIN_WEB_URL` | `<SECUREONE_PUBLIC_BASE_URL>/admin` | Console URL shown in `/api/info` and the docs discovery API |
 | `SECUREONE_DOCS_DIR` | `/opt/secureone/docs` | Documentation shown in the console (SecureOne Documentation) |
 | `SECUREONE_MANAGEMENT_PORT` | `9001` | Health, info and Prometheus metrics, served **only** on this port (no authentication there). Do not publish it: probes and the metrics scraper reach it inside your network. `/actuator` is not served on 9000 |
-| `JAVA_TOOL_OPTIONS` | `-XX:+UseG1GC -XX:MaxRAMPercentage=75 …` | JVM options. Keep `-XX:+UseG1GC`: the start-up cache below is only used with the collector it was recorded with |
+| `JAVA_TOOL_OPTIONS` | `-XX:+UseG1GC -XX:MaxRAMPercentage=75 …` | JVM options. Keep `-XX:+UseG1GC`: the image's start-up cache, which makes SecureOne start faster, only works with it |
 
 <!-- developer -->
 **SecureOne logo.** The mark is a set of fixed files, not a setting: Appearance settings, tenant and application
@@ -240,7 +244,9 @@ installation with a read-only mount, e.g. `-v /opt/secureone/brand:/opt/secureon
 (the folder must contain every file listed for `public/brand`).
 <!-- /developer -->
 
+<!-- not on website -->
 **Start-up cache.** The image carries a JDK 25 ahead-of-time cache (`/opt/secureone/app.aot`), recorded at build time by starting the application once against a throw-away database. The JVM uses it automatically, so a new container or pod is ready noticeably sooner (see the timings in the CI log or `Started AuthServerApplication in … seconds`). If the JVM version or flags no longer match, it starts normally without it; `-e JDK_JAVA_OPTIONS=-XX:AOTMode=off` turns it off for comparison.
+<!-- /not on website -->
 
 ### A7 — TLS / reverse proxy
 
@@ -318,8 +324,8 @@ cd apps/admin-web && npm install && npm run dev
 From repo root:
 
 ```bash
-docker build -f deploy/Dockerfile -t your-registry/secureone:1.1.0 .
-docker push your-registry/secureone:1.1.0
+docker build -f deploy/Dockerfile -t your-registry/secureone:1.1.1 .
+docker push your-registry/secureone:1.1.1
 ```
 
 Give the builder about 4 GB of memory (the console's type check and the Gradle build run in parallel, and the last step starts the application once with a temporary PostgreSQL and Redis to record the start-up cache). With Docker Desktop's 2 GB default, build the console stage first and the rest reuses it: `docker build --target console -f deploy/Dockerfile .` then the command above.
@@ -370,7 +376,7 @@ Create `prod-values.yaml` (example):
 ```yaml
 image:
   repository: dmtavs0108/secureone
-  tag: "1.1.0"
+  tag: "1.1.1"
 replicaCount: 2
 existingSecret: secureone
 env:
@@ -435,7 +441,11 @@ Two ways; pick one.
 - If the values cannot be used (no `@` in the email, password against the policy), the server **does not start** and the log names the setting: an automated install never comes up without the admin it asked for.
 - Several instances starting together create the admin once.
 - The bootstrap password is temporary: the first sign-in (Platform operator tab) asks for a new password, which is stored only in the database; the environment value is never used again.
-- Console MFA follows `SECUREONE_ENV`: required in production (the first sign-in then also sets up an authenticator app), off in development. `SECUREONE_ADMIN_MFA_REQUIRED` overrides it. API docs (Swagger) likewise: off in production, on in development; `SECUREONE_SWAGGER_ENABLED` overrides it.
+- Console sign-in requires an authenticator app (the first sign-in sets it up) and the API docs (Swagger) are off;
+  `SECUREONE_ADMIN_MFA_REQUIRED` and `SECUREONE_SWAGGER_ENABLED` change that.
+<!-- not on website -->
+- Both follow `SECUREONE_ENV`: the above is production; in development console MFA is off and the API docs are on.
+<!-- /not on website -->
 
 **B. In the browser with a setup code.** On a new installation without A, the server says so in its log:
 
@@ -469,7 +479,7 @@ The image starts in **production mode** (`SECUREONE_ENV=production` inside the i
 
 | Setting | Example / how to create |
 |---------|-------------------------|
-| `SECUREONE_DB_URL` | `jdbc:postgresql://db:5432/secureone?currentSchema=platform` (keep `currentSchema=platform`) |
+| `SECUREONE_DB_URL` | `jdbc:postgresql://db:5432/secureone?currentSchema=platform` (keep `currentSchema=platform`). A `postgres://user:password@host:port/database` address (as Render, Railway or DigitalOcean provide it) also works: SecureOne converts it, adds `currentSchema=platform` and takes the user and password from it unless the two settings below are set |
 | `SECUREONE_DB_USERNAME`, `SECUREONE_DB_PASSWORD` | Owner of the empty database; needs `CREATEROLE` on the first start (it creates the `secureone_app` role used for tenant isolation), or a DBA creates that role first |
 | `SECUREONE_REDIS_URL` | `redis://redis:6379`; password and TLS: `rediss://:PASSWORD@host:6380` |
 | `SECUREONE_PUBLIC_BASE_URL` | The public address apps and users see, e.g. `https://id.example.com` (https in production; a TLS reverse proxy or load balancer in front of port 9000) |
@@ -512,8 +522,8 @@ database. With several replicas, pass the key as `SECUREONE_ENCRYPTION_KEY` (or 
 | `SECUREONE_SAML_SP_KEY_PEM`, `SECUREONE_SAML_SP_CERT_PEM` | generated and stored | SAML sign-in with a certificate you control |
 | `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` | private address ranges | Your proxy is not on a private network (e.g. a CDN): a regular expression of its addresses, so client addresses and https are read from `X-Forwarded-*` |
 | `SECUREONE_ADMIN_SESSION_IDLE`, `_MAX` | `30m`, `8h` | Console session lengths |
-| `SECUREONE_ADMIN_MFA_REQUIRED` | `true` in production, `false` otherwise | Console sign-in with an authenticator app |
-| `SECUREONE_SWAGGER_ENABLED` | `false` in production, `true` otherwise | API docs: Swagger UI at `/docs` (`/swagger-ui.html`), OpenAPI at `/v3/api-docs/all` (groups: `/v3/api-docs/{group}`) |
+| `SECUREONE_ADMIN_MFA_REQUIRED` | `true` | Console sign-in with an authenticator app |
+| `SECUREONE_SWAGGER_ENABLED` | `false` | API docs: Swagger UI at `/docs` (`/swagger-ui.html`), OpenAPI at `/v3/api-docs/all` (groups: `/v3/api-docs/{group}`) |
 | `SECUREONE_DB_POOL_SIZE` | `20` | Database connections per instance; keep instances × pool size under PostgreSQL's `max_connections` |
 | `SECUREONE_DB_POOL_TIMEOUT_MS` | `10000` | How long a request waits for a free connection before failing |
 | `SECUREONE_CACHE_CONFIG_TTL` | `30s` | Clients, applications and settings used by every OAuth request are cached in memory this long. Changes made through the console or admin API apply at once on every instance (Redis message); other changes (direct SQL) within this time. `0` turns the cache off |
@@ -557,7 +567,7 @@ Redis holds console and sign-in sessions, one-time codes, MFA challenges, rate l
 | restarts without persistence | everyone signs in again; codes in flight must be requested again |
 | is down | sign-in and the console stop working until it is back; apps keep using tokens they already have |
 
-For production with several instances, use a Redis with automatic failover behind one address: AWS ElastiCache (Multi-AZ), Azure Cache for Redis (Standard or Premium), Google Memorystore (Standard tier), Upstash, or Redis Enterprise. `SECUREONE_REDIS_URL` points at that address (`rediss://` for TLS). On Kubernetes, a Redis chart with replicas and Sentinel can be used.
+For production with several instances, use a Redis with automatic failover behind one address: AWS ElastiCache (Multi-AZ), Azure Managed Redis (high availability on, Enterprise clustering policy), Google Memorystore (Standard tier), Upstash, or Redis Enterprise. `SECUREONE_REDIS_URL` points at that address (`rediss://` for TLS). On Kubernetes, a Redis chart with replicas and Sentinel can be used.
 
 ### Everything at container creation
 
@@ -674,7 +684,7 @@ Signup / OTP: see [Application integration](../integrate/integration-guide.md) a
 | Topic | Current behavior | Guidance |
 |-------|------------------|----------|
 | First operator via env | `SECUREONE_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD`, used once; the first sign-in replaces the password | Remove the password from the environment after the first start |
-| `SECUREONE_ENV=production` | **Refuses to start** with `SECUREONE_DEV_AUTH_ENABLED=true`, the default OTP pepper, a non-`https://` `SECUREONE_ISSUER_URL` / `SECUREONE_PUBLIC_BASE_URL`, no `SECUREONE_ENCRYPTION_KEY`, or (only when break-glass is on) default `admin/admin` credentials; the message names the setting | Ready for production: the first operator is created by first-run setup |
+| `SECUREONE_ENV=production` | **Refuses to start** with `SECUREONE_DEV_AUTH_ENABLED=true`, the default OTP pepper, a non-`https://` `SECUREONE_ISSUER_URL` / `SECUREONE_PUBLIC_BASE_URL`, no `SECUREONE_ENCRYPTION_KEY`, or (only when the emergency account is on) its default credentials; the message names the setting | Ready for production: the first operator is created by first-run setup |
 | First operator | **First-run setup** (`/admin/setup` with the code from the log or `SECUREONE_SETUP_CODE`) | No emergency account or env credentials needed |
 | `SECUREONE_ENCRYPTION_KEY` | Encrypts all stored secrets and generated private keys (earlier versions documented it but did not read it) | Set it before first boot; back it up separately from the database |
 | SAML SP key | Generated on first SAML use when not in env (encrypted, cluster-safe) | Prefer supplying it from the secret so IdP trust survives a restore into a new environment |
@@ -693,7 +703,7 @@ docker logs -f secureone
 
 # Change a variable: recreate the container with the same volume and the new value
 docker rm -f secureone
-docker run -d --name secureone -v secureone-data:/var/lib/secureone -e ... -p 9000:9000 dmtavs0108/secureone:1.1.0
+docker run -d --name secureone -v secureone-data:/var/lib/secureone -e ... -p 9000:9000 dmtavs0108/secureone:1.1.1
 
 # Upgrade: back up the database, then swap the image tag; the database is upgraded at start
 docker pull dmtavs0108/secureone:<new version>

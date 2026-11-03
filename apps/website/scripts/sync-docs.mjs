@@ -1,9 +1,11 @@
 /**
  * Copies the user documentation from the repository's docs/ into the website (src/content/docs/docs/).
  *
- * docs/ is the single source. The website is the complete guide for users: it shows every page except developer
- * pages (`audience: internal`), without their developer blocks (<!-- developer --> ... <!-- /developer -->). Links to
- * developer pages and to source files become plain text, so nothing internal leaks.
+ * docs/ is the single source. The website is the guide for users running SecureOne in production: it shows every
+ * page except developer pages (`audience: internal`) and pages marked `website: false`, without developer blocks
+ * (<!-- developer --> ... <!-- /developer -->) and website-hidden blocks (<!-- not on website --> ...
+ * <!-- /not on website -->: development mode, local addresses, design notes). The SecureOne image's documentation
+ * keeps both. Links to pages that are not on the website and to source files become plain text.
  * Run by `pnpm build` and `pnpm dev`; never edit the generated folder.
  */
 import fs from "node:fs";
@@ -15,6 +17,11 @@ const DOCS = process.env.SECUREONE_DOCS_DIR || path.resolve(here, "../../../docs
 const OUT = path.resolve(here, "../src/content/docs/docs");
 // Developer-only parts of a page (local setup, source builds) never reach the website.
 const DEVELOPER_BLOCK = /<!--\s*developer\s*-->[\s\S]*?<!--\s*\/developer\s*-->[^\S\n]*\n?/g;
+// The website is for production only: development mode, local addresses and design notes stay in the
+// SecureOne documentation (<!-- not on website --> ... <!-- /not on website -->, or `website: false` for a page).
+const NOT_ON_WEBSITE = /<!--\s*not on website\s*-->[\s\S]*?<!--\s*\/not on website\s*-->[^\S\n]*\n?/g;
+// Its production wording (<!-- website only --> ... <!-- /website only -->) is shown on the website only.
+const WEBSITE_ONLY_MARKERS = /^[^\S\n]*<!--\s*\/?website only\s*-->[^\S\n]*\n/gm;
 
 const FRONT = /^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n/;
 const HTML_OK = new Set(["br", "details", "summary", "sup", "sub", "kbd", "img", "a", "p", "div", "span", "b", "i", "em", "strong", "code", "pre", "table", "thead", "tbody", "tr", "td", "th", "ul", "ol", "li", "hr"]);
@@ -48,7 +55,8 @@ for (const rel of walk(DOCS)) {
   pages.set(rel, { rel, fields, body });
 }
 // Public and operator pages (operator guides and runbooks) are for users; internal pages are for developers.
-const onSite = (rel) => pages.has(rel) && pages.get(rel).fields.audience !== "internal";
+const onSite = (rel) =>
+  pages.has(rel) && pages.get(rel).fields.audience !== "internal" && pages.get(rel).fields.website !== "false";
 
 /** /docs/<slug>/ for a docs file: folder index.md is the folder. */
 function route(rel) {
@@ -72,7 +80,7 @@ function escapeAngles(line) {
 
 function convert(page) {
   const dir = path.posix.dirname(page.rel);
-  const lines = page.body.replace(DEVELOPER_BLOCK, "").replace(/^\s*#\s+[^\n]*\n+/, "").split("\n");
+  const lines = page.body.replace(DEVELOPER_BLOCK, "").replace(NOT_ON_WEBSITE, "").replace(WEBSITE_ONLY_MARKERS, "").replace(/^\s*#\s+[^\n]*\n+/, "").split("\n");
   const out = [];
   let fence = null; // "code" | "mermaid"
   let aside = null;
@@ -166,11 +174,11 @@ const home = [
   '  title: "SecureOne documentation"',
   '  tagline: "Install it, set it up, add sign-in to your applications and find every API."',
   "  actions:",
-  '    - text: "Quickstart"',
-  '      link: "/docs/get-started/quickstart/"',
-  "      icon: right-arrow",
   '    - text: "Installation"',
   '      link: "/docs/install/installation/"',
+  "      icon: right-arrow",
+  '    - text: "Deploy"',
+  '      link: "/deploy/"',
   "      variant: secondary",
   '    - text: "Integration guide"',
   '      link: "/docs/integrate/integration-guide/"',

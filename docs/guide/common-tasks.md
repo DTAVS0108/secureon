@@ -38,7 +38,7 @@ Details: [OAuth clients](oauth-clients.md#register-application--oauth-client).
 ## Go live with production URLs
 
 1. Open the client page (**OAuth clients** → the client ID).
-2. **Edit client**: add the production **Redirect URIs** and **Post-logout redirect URIs**, one per line. Remove `localhost` entries you no longer need.
+2. **Edit client**: add the production **Redirect URIs** and **Post-logout redirect URIs**, one per line. Remove test entries you no longer need.
 3. **Save changes**.
 
 ## A client secret leaked

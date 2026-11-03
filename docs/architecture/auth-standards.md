@@ -3,6 +3,7 @@ title: Auth standards
 summary: OAuth 2.1, OpenID Connect, tokens and MFA
 order: 3
 audience: public
+website: false
 ---
 
 # Auth standards

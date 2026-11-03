@@ -95,7 +95,7 @@ When no client exists at all, the page also shows **Register an OAuth client fir
 | **Client ID** | No | The identifier your app sends, for example `exampleapp-web`. *Optional — defaults to application slug.* Use lowercase and dashes; it must be unique. |
 | **Grant types** | Yes | How the client obtains tokens; tick one or more (see [Grant types](#grant-types)). Filled by the template. |
 | **Scopes** | Usually | *Comma-separated OIDC scopes*, for example `openid, profile, email`. Empty for machine-to-machine. |
-| **Redirect URIs** | For browser sign-in | *One per line.* Where SecureOne sends the user after sign-in, for example `https://app.example.com/callback`. Must match exactly what your app sends (scheme, host, port, path). Add every environment: local, staging, production. |
+| **Redirect URIs** | For browser sign-in | *One per line.* Where SecureOne sends the user after sign-in, for example `https://app.example.com/callback`. Must match exactly what your app sends (scheme, host, port, path). Add every environment your app runs in, for example staging and production. |
 | **Post-logout redirect URIs** | No | *One per line.* Where users may be sent after signing out. |
 | **Require PKCE** | | Proof Key for Code Exchange. Keep it on for every client that uses `authorization_code`. Off only for machine-to-machine. |
 | *Auth at token endpoint* | (readout) | How the client proves itself when exchanging a code for tokens: `client_secret_basic` for confidential clients, *none (public client)* for SPA and native. |
@@ -113,7 +113,7 @@ Press **Register application & client**. The result shows the client details and
 | Client ID | `exampleapp-web` |
 | Grant types | authorization_code, refresh_token |
 | Scopes | `openid, profile, email` |
-| Redirect URIs | `http://localhost:3000/api/auth/callback/secureone` and `https://shop.example.com/api/auth/callback/secureone` |
+| Redirect URIs | `https://shop.example.com/api/auth/callback/secureone` |
 | Post-logout redirect URIs | `https://shop.example.com/` |
 | Require PKCE | On |
 

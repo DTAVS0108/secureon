@@ -207,7 +207,7 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 | Field | What to enter |
 |-------|---------------|
 | **Enabled** | Turns SMS sending on. |
-| **Provider** | **log** (codes are written to the server log, for development), **Twilio**, **AWS SNS** or **MSG91**. |
+| **Provider** | **Twilio**, **AWS SNS** or **MSG91**. (**log** writes codes to the server log instead of sending them: never use it in production.) |
 | Twilio | **Account SID**, **From number** (E.164, for example `+15551234567`), **Auth token** |
 | AWS SNS | **Region**, **Access key ID**, **Secret access key**, **Sender ID (optional)** |
 | MSG91 | **Sender ID**, **Template ID**, **API key** |

@@ -1,6 +1,6 @@
 ---
 title: Get started
-summary: What SecureOne is, a five-minute quickstart and the key ideas
+summary: What SecureOne is, the key ideas and your first steps
 order: 1
 audience: public
 ---
@@ -14,7 +14,9 @@ SCIM 2.0) and runs as a single container next to PostgreSQL and Redis.
 | If you want to… | Read |
 |---|---|
 | Understand what SecureOne does | [What is SecureOne](overview.md) |
+<!-- not on website -->
 | See it running in five minutes | [Quickstart](quickstart.md) |
+<!-- /not on website -->
 | Learn the words used everywhere | [Key concepts](concepts.md) |
 | Set it up properly and look around | [Operator getting started](operator-getting-started.md) |
 

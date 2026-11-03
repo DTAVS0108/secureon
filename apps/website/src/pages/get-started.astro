@@ -4,22 +4,22 @@ import PageHead from "../components/PageHead.astro";
 import Icon from "../components/Icon.astro";
 ---
 
-<Site title="Get started" description="Try SecureOne in five minutes, install it for real, or connect your first application.">
-  <PageHead eyebrow="Get started" title="Pick your path" lead="Whether you are evaluating, installing for your team or connecting an application, start here." />
+<Site title="Get started" description="Choose where to run SecureOne, install it, or connect your first application.">
+  <PageHead eyebrow="Get started" title="Pick your path" lead="Whether you are installing SecureOne for your team or connecting an application, start here." />
 
   <section class="section section-soft">
     <div class="container">
       <div class="grid grid-3">
-        <a class="card reveal" href="/docs/get-started/quickstart/">
-          <div class="icon"><Icon name="bolt" /></div>
-          <h3 class="h3">Try it in five minutes</h3>
-          <p>One command starts SecureOne with its database, cache and a mail catcher on your machine.</p>
-          <span class="more">Quickstart <Icon name="arrow" /></span>
+        <a class="card reveal" href="/deploy/">
+          <div class="icon"><Icon name="cloud" /></div>
+          <h3 class="h3">Choose where to run it</h3>
+          <p>Docker, Kubernetes, AWS, Azure, Google Cloud, Render or Railway: the steps for each.</p>
+          <span class="more">Deploy <Icon name="arrow" /></span>
         </a>
         <a class="card reveal" href="/docs/install/installation/">
           <div class="icon"><Icon name="container" /></div>
-          <h3 class="h3">Install it for real</h3>
-          <p>The image with PostgreSQL, Redis, your secrets and your domain, on one server, step by step.</p>
+          <h3 class="h3">Install it on a server</h3>
+          <p>The image with PostgreSQL, Redis and your domain, on one server, step by step.</p>
           <span class="more">Installation guide <Icon name="arrow" /></span>
         </a>
         <a class="card reveal" href="/docs/integrate/integration-guide/">
@@ -35,23 +35,27 @@ import Icon from "../components/Icon.astro";
   <section class="section">
     <div class="container split">
       <div class="reveal">
-        <span class="eyebrow">Quickstart</span>
-        <h2 class="h2">From zero to a real sign-in</h2>
+        <span class="eyebrow">First steps</span>
+        <h2 class="h2">From image to a real sign-in</h2>
         <div class="grid steps" style="margin-top:32px;gap:26px">
-          <div class="step"><h3 class="h3">Start everything</h3><p class="muted" style="margin:8px 0 0">Save the quickstart Compose file and start it: SecureOne, PostgreSQL and Redis.</p></div>
-          <div class="step"><h3 class="h3">Sign in to the console</h3><p class="muted" style="margin:8px 0 0">Open <code>/admin</code> and sign in as the platform operator; choose your own password.</p></div>
+          <div class="step"><h3 class="h3">Start the image</h3><p class="muted" style="margin:8px 0 0">With your public address, your PostgreSQL and Redis, and a volume for its encryption key.</p></div>
+          <div class="step"><h3 class="h3">Finish setup in the browser</h3><p class="muted" style="margin:8px 0 0">Open <code>/admin/setup</code> with the code from the log: check the installation, set up email, back up the key and create your operator account.</p></div>
           <div class="step"><h3 class="h3">Connect an app</h3><p class="muted" style="margin:8px 0 0">Use the wizard, then <b>Test sign-in</b> to see the whole flow.</p></div>
         </div>
       </div>
       <div class="code reveal">
         <div class="code-tabs"><button aria-selected="true">Terminal</button></div>
-        <pre><span class="c"># In a folder with the quickstart docker-compose.yml</span>
-docker compose up -d
-docker compose logs -f secureone
+        <pre>docker run -d --name secureone --restart unless-stopped \
+  -p 127.0.0.1:9000:9000 -v secureone-data:/var/lib/secureone \
+  -e SECUREONE_PUBLIC_BASE_URL=https://id.example.com \
+  -e SECUREONE_DB_URL=jdbc:postgresql://db:5432/secureone?currentSchema=platform \
+  -e SECUREONE_DB_USERNAME=secureone -e SECUREONE_DB_PASSWORD=… \
+  -e SECUREONE_REDIS_URL=redis://redis:6379 \
+  dmtavs0108/secureone:1.1.1
 
-<span class="c"># When the log says "Started AuthServerApplication":</span>
-<span class="c">#   console   http://localhost:9000/admin</span>
-<span class="c">#   email     admin@example.com</span></pre>
+docker logs -f secureone
+<span class="c"># "Started AuthServerApplication" and the setup code, then:</span>
+<span class="c">#   https://id.example.com/admin/setup</span></pre>
       </div>
     </div>
   </section>
@@ -66,7 +70,7 @@ docker compose logs -f secureone
         <div class="card reveal"><h3 class="h3">PostgreSQL 16+</h3><p>The system of record. The schema creates and upgrades itself.</p></div>
         <div class="card reveal"><h3 class="h3">Redis 7+</h3><p>Sessions, codes and rate limits, shared between instances.</p></div>
         <div class="card reveal"><h3 class="h3">1 GB memory</h3><p>Per SecureOne container; it starts in seconds.</p></div>
-        <div class="card reveal"><h3 class="h3">HTTPS</h3><p>For production: a TLS proxy or load balancer in front of port 9000.</p></div>
+        <div class="card reveal"><h3 class="h3">HTTPS</h3><p>A TLS proxy or load balancer in front of port 9000, on your own domain.</p></div>
       </div>
     </div>
   </section>

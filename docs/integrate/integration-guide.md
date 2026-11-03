@@ -47,8 +47,8 @@ Throughout this guide we use a fictional **Example App Web** app:
 | Application name | Example App Web |
 | Application ID | `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee` (UUID from admin) |
 | OAuth client ID | `exampleapp-web` |
-| Frontend dev URL | `http://localhost:5173` |
-| OAuth callback | `http://localhost:5173/callback` |
+| Frontend URL | `https://app.example.com` |
+| OAuth callback | `https://app.example.com/callback` |
 | Auth-server (issuer) | your SecureOne address |
 
 Replace these with your real values from **Admin → Applications → your app → Settings → Integration**.
@@ -216,7 +216,7 @@ sequenceDiagram
 GET $SECUREONE_URL/oauth2/authorize
   ?response_type=code
   &client_id=exampleapp-web
-  &redirect_uri=http://localhost:5173/callback
+  &redirect_uri=https://app.example.com/callback
   &scope=openid profile email
   &state={random}
   &code_challenge={BASE64URL_SHA256_verifier}
@@ -231,7 +231,7 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=authorization_code
 &code={authorization_code}
-&redirect_uri=http://localhost:5173/callback
+&redirect_uri=https://app.example.com/callback
 &client_id=exampleapp-web
 &code_verifier={original_verifier}
 ```
@@ -483,7 +483,10 @@ from `X-Forwarded-For` only when it comes from a trusted proxy (`server.forward-
 
 ## Public API reference (no admin auth)
 
-All paths are relative to auth-server (your SecureOne address). CORS allows `localhost` origins with credentials for session cookies.
+All paths are relative to auth-server (your SecureOne address). CORS allows your clients' registered origins with credentials for session cookies (see [CORS and cookies](#cors-and-cookies-native-mode)).
+<!-- not on website -->
+In development, `localhost` origins are allowed too.
+<!-- /not on website -->
 
 ### Discovery & manifest
 
@@ -594,7 +597,7 @@ async function buildAuthorizeUrl() {
   const params = new URLSearchParams({
     response_type: "code",
     client_id: "exampleapp-web",
-    redirect_uri: "http://localhost:5173/callback",
+    redirect_uri: "https://app.example.com/callback",
     scope: "openid profile email",
     state: crypto.randomUUID(),
     code_challenge: challenge,
@@ -609,7 +612,9 @@ async function buildAuthorizeUrl() {
 ## CORS and cookies (native mode)
 
 - The origins of your client's **registered redirect and post-logout URIs** are allowed automatically (any active, user-facing client; refreshed within 30 seconds, immediately on the node that saved the change). `SECUREONE_CORS_ALLOWED_ORIGINS` is only needed for other origins.
+<!-- not on website -->
 - In development, `http://localhost:*` is also allowed, with `allowCredentials: true`
+<!-- /not on website -->
 - Session cookie (`JSESSIONID`) requires your frontend to send `credentials: 'include'`
 - For production SPAs on a different domain, prefer **OAuth PKCE** (tokens, no session cookie) or place a **BFF** (backend-for-frontend) on the same origin as the auth-server
 - Detail: [Auth UI integration](hosted-and-native-sign-in.md)

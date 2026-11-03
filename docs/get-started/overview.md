@@ -24,9 +24,12 @@ One central system provides:
 2. **Standards-first** — OAuth 2.1, OIDC, SAML 2.0, SCIM — so existing client libraries "just work."
 3. **Multi-tenant by design** — one deployment serves many organizations with strict isolation.
 4. **Secure by default** — strong hashing, encryption of secrets, short-lived tokens, auditability.
+<!-- not on website -->
 5. **Operable & portable** — runs on PostgreSQL, deployable from a single VM up to Kubernetes; data layer abstracted so other engines can be added later.
+<!-- /not on website -->
 6. **Developer-friendly** — clean admin UI, OpenAPI, SDKs, and documentation.
 
+<!-- not on website -->
 ## Non-goals (initially)
 
 - Being a general-purpose CRM or user-profile product.
@@ -48,6 +51,7 @@ One central system provides:
 | **Role** | A named bundle of permissions, scoped to an application. |
 | **Permission** | An atomic capability declared by an application (e.g. `invoice:read`). |
 | **Session** | A server-side login session (backs SSO and the hosted login UI). |
+<!-- /not on website -->
 
 ## Core features (definitions)
 
@@ -57,17 +61,22 @@ One central system provides:
 - **Tenant / organization support** — multi-tenancy with app-layer isolation (see [How SecureOne fits together](../architecture/overview.md)).
 - **OAuth2 & OIDC** — Authorization Code + PKCE, Client Credentials, refresh-token rotation, discovery, JWKS.
 - **JWT access + refresh tokens** — short-lived signed JWTs; refresh tokens server-side and revocable.
-- **Enterprise SSO & identity brokering** — Google, GitHub, any OIDC IdP and **SAML 2.0** IdPs (any standards-compliant company IdP): SP- and IdP-initiated sign-in, single logout, encrypted assertions; JIT accounts or link-by-email. LDAP / AD sync is Phase 3+.
+- **Enterprise SSO & identity brokering** — Google, GitHub, any OIDC IdP and **SAML 2.0** IdPs (any standards-compliant company IdP): SP- and IdP-initiated sign-in, single logout, encrypted assertions; JIT accounts or link-by-email.
+<!-- not on website -->
+  LDAP / AD sync is Phase 3+.
+<!-- /not on website -->
 - **Every kind of client** — hosted SecureOne pages or the app's own (native) screens, SPAs and BFFs (code + PKCE), machines (client credentials, API keys), and **TVs / CLIs (device sign-in, RFC 8628)**.
 - **MFA/2FA — passkeys-first** — phishing-resistant WebAuthn/FIDO2 (incl. passwordless), with TOTP, **SMS OTP**, **email OTP**, and push fallbacks; recovery codes; per-tenant MFA policy, AAL levels, and step-up.
 - **Password reset & email verification** — single-use, short-lived, hashed tokens.
 - **Audit logs & login history** — append-only audit trail + per-user login outcomes.
 - **API keys / service accounts** — M2M access mapped onto the same RBAC engine.
 - **Admin dashboard & self-service portal** — manage tenants, apps, users, roles, clients, sessions, audit; end-user self-service for security/MFA/sessions.
+<!-- not on website -->
 - **Developer docs & SDKs** — OpenAPI spec, **SecureOne Documentation** (in-app platform docs on admin-web), and a TypeScript SDK (more in later phases). See [Authentication UI integration](../integrate/hosted-and-native-sign-in.md) for hosted vs custom end-user login.
 - **Flexible database setup** — PostgreSQL connection configured at install; the data layer is abstracted (repository interfaces) so other engines can be added later.
 
 > Beyond the core above, SecureOne has a full **enterprise capability roadmap** (governance/IGA, fine-grained authorization, adaptive auth, compliance, multi-region scale). See [Enterprise Capabilities](../architecture/enterprise.md).
+<!-- /not on website -->
 
 ## Primary user personas
 

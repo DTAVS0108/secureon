@@ -1,0 +1,57 @@
+# SecureOne on Render: the published image, a Render Postgres database and a Render Key Value (Redis).
+# Deploy: https://render.com/deploy?repo=<public repository holding this file>
+# Render asks for SECUREONE_PUBLIC_BASE_URL: the address people will use, https://<service name>.onrender.com
+# or your own domain (add the domain to the service afterwards).
+#
+# Plans are paid on purpose: the free web plan sleeps (sign-in would stall) and free databases expire.
+# Keep all three in the same region.
+
+services:
+  - type: web
+    name: secureone
+    runtime: image
+    image:
+      url: docker.io/dmtavs0108/secureone:1.1.1
+    plan: 1c-2g
+    region: oregon
+    healthCheckPath: /api/info
+    envVars:
+      - key: SECUREONE_PUBLIC_BASE_URL
+        sync: false
+      # Render's postgresql://user:password@host:port/database URL; SecureOne reads the user and password from it.
+      - key: SECUREONE_DB_URL
+        fromDatabase:
+          name: secureone-db
+          property: connectionString
+      - key: SECUREONE_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: secureone-cache
+          property: connectionString
+      # 32 random bytes, kept by Render instead of a disk. Copy it from the Environment page and keep it safe:
+      # without it, a database backup cannot be used.
+      - key: SECUREONE_ENCRYPTION_KEY
+        generateValue: true
+      # Render routes web traffic to this port.
+      - key: PORT
+        value: "9000"
+      # Render's proxy: lets SecureOne see each visitor's own address (rate limits, IP rules).
+      - key: SECUREONE_TRUSTED_PROXIES
+        value: 10.0.0.0/8
+
+  - type: keyvalue
+    name: secureone-cache
+    plan: 256mb
+    region: oregon
+    maxmemoryPolicy: noeviction
+    # Private network only.
+    ipAllowList: []
+
+databases:
+  - name: secureone-db
+    databaseName: secureone
+    user: secureone
+    plan: 0.5c-1g
+    region: oregon
+    postgresMajorVersion: "16"
+    ipAllowList: []

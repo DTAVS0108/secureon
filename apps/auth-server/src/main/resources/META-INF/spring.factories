@@ -1,2 +1,3 @@
 org.springframework.boot.EnvironmentPostProcessor=\
-com.secureone.auth.config.SecureOneEnvironmentDefaults
+com.secureone.auth.config.SecureOneEnvironmentDefaults,\
+com.secureone.auth.config.SecureOneDatabaseUrl

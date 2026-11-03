@@ -1,13 +1,13 @@
 {
   "name": "website",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "SecureOne public website: product pages and the public documentation (from docs/).",
   "scripts": {
     "sync-docs": "node scripts/sync-docs.mjs",
     "dev": "node scripts/sync-docs.mjs && astro dev --port 4321",
-    "build": "node scripts/sync-docs.mjs && astro build",
+    "build": "node scripts/sync-docs.mjs && astro build && node scripts/check-production.mjs",
     "preview": "astro preview --port 8080"
   },
   "dependencies": {

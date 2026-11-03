@@ -1,5 +1,6 @@
 package com.secureone.auth;
 
+import com.secureone.auth.config.SecureOneDatabaseUrl;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -43,6 +44,16 @@ final class StartupWait {
     record Endpoint(String name, String host, int port) {}
 
     static Endpoint database(String url) {
+        SecureOneDatabaseUrl.Converted converted;
+        try {
+            converted = SecureOneDatabaseUrl.convert(url);
+        } catch (IllegalStateException e) {
+            // The server reports the bad URL itself.
+            return null;
+        }
+        if (converted != null) {
+            url = converted.jdbcUrl();
+        }
         Matcher m = JDBC_HOST.matcher(url == null ? "" : url.trim());
         if (!m.find()) {
             return null;

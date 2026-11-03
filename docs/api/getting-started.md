@@ -210,8 +210,11 @@ The same API is described as OpenAPI 3 and can be tried in Swagger UI:
 | OpenAPI JSON, everything | `$SECUREONE_URL/v3/api-docs/all` |
 | OpenAPI JSON by category | `/v3/api-docs/public`, `/auth`, `/oauth-oidc`, `/account`, `/machine`, `/admin-sign-in`, `/admin-tenants`, `/admin-applications`, `/admin-security`, `/admin-settings` ([categories](swagger-and-openapi.md#categories)) |
 
-They are **off in production** (the image's default `SECUREONE_ENV`) until you set `SECUREONE_SWAGGER_ENABLED=true`
-on the server, and on in development. They only describe the API; every call still needs its normal credential. In Swagger UI,
+They are **off** until you set `SECUREONE_SWAGGER_ENABLED=true` on the server.
+<!-- not on website -->
+In development (`SECUREONE_ENV=development`) they are on.
+<!-- /not on website -->
+They only describe the API; every call still needs its normal credential. In Swagger UI,
 sign in with the auth calls above, then **Authorize** with `SecureOne-Admin-Session <sessionToken>`.
 
 ```bash

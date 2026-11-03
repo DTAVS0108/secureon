@@ -72,13 +72,17 @@ function processDrawioEmbeds(content: string, pageFile: string): string {
 }
 
 const DEVELOPER_BLOCK = /<!--\s*developer\s*-->[^\S\n]*\n?([\s\S]*?)<!--\s*\/developer\s*-->[^\S\n]*\n?/g;
+const WEBSITE_ONLY_BLOCK = /<!--\s*website only\s*-->[\s\S]*?<!--\s*\/website only\s*-->[^\S\n]*\n?/g;
+// Passages the website leaves out are shown here; only their marker lines go (they would split a table).
+const NOT_ON_WEBSITE_MARKERS = /^[^\S\n]*<!--\s*\/?not on website\s*-->[^\S\n]*\r?\n/gm;
 
 /**
  * Developer-only parts of a page (between <!-- developer --> and <!-- /developer -->): local setup, source builds,
- * repository paths. Developers see them in a marked panel; everyone else never receives them.
+ * repository paths. Developers see them in a marked panel; everyone else never receives them. Website-only parts
+ * (<!-- website only --> ... <!-- /website only -->, the production wording of a passage) are never shown here.
  */
 export function applyDeveloperBlocks(body: string, developer: boolean): string {
-  return body.replace(DEVELOPER_BLOCK, (_m, inner: string) => {
+  return body.replace(WEBSITE_ONLY_BLOCK, "").replace(NOT_ON_WEBSITE_MARKERS, "").replace(DEVELOPER_BLOCK, (_m, inner: string) => {
     if (!developer) return "";
     const quoted = inner
       .replace(/\n+$/, "")

@@ -86,7 +86,10 @@ If a person holds several console roles, the highest one decides the view.
 ### Platform super admin
 
 - **How you get it:** an existing platform super admin adds you under **Access review → Platform operators**. You get an account in the reserved `platform` tenant and an email to set your password; you set up an authenticator app at first sign-in.
-- **Break-glass account:** the account configured at install (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`; `admin` / `admin` in local dev). In production it works only while `SECUREONE_BREAK_GLASS_ENABLED=true`, its password must be a bcrypt hash, sessions last 1 hour, and every sign-in is audited and emailed to platform admins. Use it to recover when no named operator can sign in.
+- **Break-glass account:** the account configured at install (`SECUREONE_DEV_USER` / `SECUREONE_DEV_PASSWORD`). It works only while `SECUREONE_BREAK_GLASS_ENABLED=true`, its password must be a bcrypt hash, sessions last 1 hour, and every sign-in is audited and emailed to platform admins. Use it to recover when no named operator can sign in.
+<!-- not on website -->
+  In local development it is `admin` / `admin` and always on.
+<!-- /not on website -->
 - **Sidebar:** Application console (every app) · OAuth clients · Platform settings · Access review · SecureOne Documentation · Tenant → Tenants, Roles & Permissions.
 - **Can:** create, edit, suspend and delete tenants (not the reserved `platform` tenant); create applications and OAuth clients, rotate secrets; change platform settings, feature flags, MFA, password and token policy; add and remove platform operators (not themselves); grant or revoke any console role; run the platform-wide access review; see audit, logs and sessions across all tenants; delete users; everything a tenant super admin can do, in any tenant.
 

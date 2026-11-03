@@ -58,7 +58,7 @@ RUN ./gradlew --no-daemon bootJar -x test \
 
 # ---- Runtime -----------------------------------------------------------------------------------
 FROM eclipse-temurin:25-jre-alpine
-ARG SECUREONE_VERSION=1.1.0
+ARG SECUREONE_VERSION=1.1.1
 LABEL org.opencontainers.image.title="SecureOne" \
       org.opencontainers.image.description="Sign-in, single sign-on, MFA, users, roles and permissions for every application" \
       org.opencontainers.image.version="${SECUREONE_VERSION}" \

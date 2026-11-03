@@ -158,7 +158,7 @@ Follow this sequence once after install. It mirrors a real onboarding.
 
 1. Admin → **Applications** → **+ Register application & OAuth client**
 2. **Application:** tenant = Example App, name = `Example App Web`, slug = `exampleapp-web`
-3. **OAuth client:** type = SPA or Web, client ID = `exampleapp-web`, redirect URI = `http://localhost:5173/callback`, PKCE enabled
+3. **OAuth client:** type = SPA or Web, client ID = `exampleapp-web`, redirect URI = `https://app.example.com/callback`, PKCE enabled
 4. **Copy** the application UUID and client secret (if confidential)
 
 SecureOne provisions a dedicated PostgreSQL schema (`exampleapp_web`) and seeds default roles.
