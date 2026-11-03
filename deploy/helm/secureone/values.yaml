@@ -12,6 +12,11 @@ image:
 # Two or more replicas: sessions and caches live in Redis, generated keys are created once (cluster lock).
 replicaCount: 2
 
+# The image is built for x86-64 (amd64) only, so pods go to those nodes on clusters that also have ARM nodes.
+nodeSelector:
+  kubernetes.io/arch: amd64
+tolerations: []
+
 service:
   port: 9000
 

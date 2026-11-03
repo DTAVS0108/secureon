@@ -7,7 +7,7 @@ audience: public
 
 # Install and operate
 
-SecureOne ships as **one container image**, `dmtavs0108/secureone:1.1.0`, for Intel/AMD and ARM. It needs
+SecureOne ships as **one container image**, `dmtavs0108/secureone:1.1.0`, for Intel/AMD (x86-64) machines. It needs
 PostgreSQL 16 or later and Redis 7 or later. You start it with a few variables; it creates its own secrets and you
 finish setup in the browser.
 

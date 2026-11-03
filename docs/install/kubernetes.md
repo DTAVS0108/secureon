@@ -8,7 +8,8 @@ audience: public
 # Install on Kubernetes
 
 The SecureOne Helm chart runs the same image as Docker, `dmtavs0108/secureone:1.1.0`, on any Kubernetes cluster
-(EKS, AKS, GKE, k3s, on-premises). It works on Intel/AMD and ARM nodes.
+(EKS, AKS, GKE, k3s, on-premises), on Intel/AMD (x86-64) nodes. On clusters that also have ARM nodes, the chart
+places SecureOne on the x86-64 ones (`nodeSelector`).
 
 ## What you need
 
@@ -115,6 +116,7 @@ running. See [Configuration as code and upgrades](configuration-and-upgrades.md)
 | `redis.url` | `redis://redis:6379` | Your Redis |
 | `existingSecret` | `""` | Your own Secret instead of the generated one |
 | `replicaCount` | `2` | SecureOne pods |
+| `nodeSelector`, `tolerations` | x86-64 nodes | Where the pods and the upgrade job run |
 | `image.tag` | the chart's version | Pin a version; never `latest` in production |
 | `ingress.enabled`, `.className`, `.host`, `.tlsSecretName` | off | Ingress for your address |
 | `env` | `SECUREONE_TRUSTED_PROXIES` | Any other setting from [Deployment](deployment.md#all-settings) |

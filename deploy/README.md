@@ -48,11 +48,22 @@ docker build -f deploy/Dockerfile -t dmtavs0108/secureone:1.1.0 .
 scripts/release.sh build      # local image for this machine (same as section 1)
 scripts/release.sh chart      # Helm chart into apps/website/public/charts; then deploy the website
 docker login
-scripts/release.sh publish    # Intel/AMD + ARM image, pushed as <version> and latest
+scripts/release.sh publish    # Intel/AMD image, pushed as <version> and latest
 ```
 
-`publish` builds both architectures in one image name (ARM is emulated on an Intel PC, so it takes longer). Users
-then install with `docker run dmtavs0108/secureone:<version>` or
+Also push to GitHub Container Registry (log in there first: `docker login ghcr.io`, with a token that may write
+packages; then make the package public in GitHub):
+
+```bash
+MIRROR=ghcr.io/<owner>/secureone scripts/release.sh publish
+```
+
+**ARM** is not released yet. Emulated on an Intel PC the ARM build is too slow to be practical (the Gradle
+download step alone timed out after an hour). On a machine that builds ARM natively (an ARM CI runner, an AWS
+Graviton or other ARM VM, an Apple Silicon Mac): `PLATFORMS=linux/amd64,linux/arm64 scripts/release.sh publish`.
+Then update the docs (Install and operate, Install on Kubernetes) and the website's Deploy page, which say x86-64.
+
+Users install with `docker run dmtavs0108/secureone:<version>` or
 `helm repo add secureone https://secureone-website.vercel.app/charts`.
 
 ---

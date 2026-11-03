@@ -26,6 +26,7 @@ spec:
     spec:
       restartPolicy: Never
       enableServiceLinks: false   # see deployment.yaml
+      {{- include "secureone.scheduling" . | nindent 6 }}
       securityContext:
         runAsNonRoot: true
       containers:

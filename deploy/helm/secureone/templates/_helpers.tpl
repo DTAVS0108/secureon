@@ -3,6 +3,18 @@
 "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
 {{- end }}
 
+{{/* Where the pods and the migration job may run (nodeSelector, tolerations). */}}
+{{- define "secureone.scheduling" -}}
+{{- with .Values.nodeSelector }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.tolerations }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}
+
 {{/* The Secret the pods read: yours, or the one the chart creates (secret.yaml). */}}
 {{- define "secureone.secretName" -}}
 {{- .Values.existingSecret | default (printf "%s-secrets" .Release.Name) -}}
