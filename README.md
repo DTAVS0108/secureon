@@ -220,3 +220,37 @@ secureone/
 ## Stack
 
 Java 25 · Spring Boot 4 · Spring Authorization Server · PostgreSQL 16 (Flyway, row-level security) · Redis 7 · Next.js 16 · TypeScript · Tailwind · Astro. Details: [Tech stack](docs/architecture/tech-stack.md).
+
+---
+
+## Licence (to be decided)
+
+SecureOne has **no licence yet**. Until one is chosen, all rights are reserved. The image and the chart carry the
+placeholder `LicenseRef-SecureOne-Proprietary` (`deploy/Dockerfile` label `org.opencontainers.image.licenses`,
+`deploy/helm/secureone/Chart.yaml` annotation `artifacthub.io/license`). There is no `LICENSE` file.
+
+The licence covers the published image on Docker Hub, which is public even though this repository is private.
+
+| Option | What users may do | Fits if you… |
+|---|---|---|
+| Proprietary, free to use (own end-user licence) | Run it for free, also commercially; no copying, reselling or reverse-engineering | Want full control and may charge later |
+| Proprietary, paid (licence key or contract) | Use it only with a paid licence | Want to sell it from the start |
+| Elastic License 2.0 (`Elastic-2.0`) | Use it for free, but not offer it to others as a hosted service | Want free use and to protect a future hosted SecureOne |
+| Business Source License 1.1 (`BUSL-1.1`) | As above; it becomes open source after a set period (often 3–4 years) | Want to go open source later, on your terms |
+| Open source: Apache-2.0, or AGPL-3.0 | Almost anything; AGPL also requires sharing changes made by anyone running it as a service | Want community adoption and accept competitors |
+
+Suggested: "Proprietary, free to use" or Elastic License 2.0 for SecureOne; have the final text checked by a lawyer,
+above all for a custom licence.
+
+**The templates repository** ([DTAVS0108/secureone-deploy](https://github.com/DTAVS0108/secureone-deploy)) is
+separate: its licence covers only the template files, and Unraid Community Apps requires one. Suggested: MIT.
+
+**When the licence is chosen:**
+
+1. Add `LICENSE` here (and an end-user licence text for a proprietary licence).
+2. Replace the placeholder in `deploy/Dockerfile` and `deploy/helm/secureone/Chart.yaml` with the SPDX identifier
+   (for example `Elastic-2.0`) or `LicenseRef-SecureOne-EULA`.
+3. Add a licence section to this README, the website (footer and Releases) and the image documentation.
+4. Release a new version (for example 0.1.1); do not change the licence of the 0.1.0 image already published.
+5. Add `LICENSE` (MIT) to `deploy/templates/` and push it to secureone-deploy, then submit it to Unraid
+   (their starter repository also asks for `ca_profile.xml` and an icon).
