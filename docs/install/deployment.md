@@ -13,7 +13,7 @@ audience: public
 
 ---
 
-SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.1`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
+SecureOne is installed from its container image, `dmtavs0108/secureone:0.1.0`, with your own PostgreSQL, Redis and secrets. Configure everything with environment variables, then manage tenants, applications and OAuth clients in the admin console.
 
 <!-- developer -->
 ## Which path should I use?
@@ -25,7 +25,7 @@ SecureOne is installed from its container image, `dmtavs0108/secureone:1.1.1`, w
 
 Both paths end the same way: **admin login → create tenants / applications / OAuth clients → connect your products**.
 
-**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `1.1.1`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
+**One image, one port, one host.** SecureOne ships as a single container image, `dmtavs0108/secureone` (current version `0.1.0`). It serves OAuth/OIDC, SAML, SCIM, the hosted sign-in pages and the APIs, and the **admin console at `/admin`** on the same host (the auth-server starts the console itself and forwards `/admin` to it). Every setting is an environment variable read at start-up, so the same image serves every installation.
 
 **Just evaluating?** One command starts SecureOne with PostgreSQL, Redis and a mail catcher on your machine:
 
@@ -106,7 +106,7 @@ short version of this section.
 
 ### What you need
 
-- The image `dmtavs0108/secureone:1.1.1` (Docker Hub, or your registry)
+- The image `dmtavs0108/secureone:0.1.0` (Docker Hub, or your registry)
 - Your Postgres, Redis and (optionally) SMTP
 - DNS + TLS for one host, e.g. `id.example.com` (or a reverse proxy)
 - A volume for the encryption key; **no SecureOne code or settings file on the host**
@@ -173,7 +173,7 @@ docker run -d \
   -e SECUREONE_DB_PASSWORD='StrongDbPass!' \
   -e SECUREONE_REDIS_URL=redis://redis.internal:6379 \
   --restart unless-stopped \
-  dmtavs0108/secureone:1.1.1
+  dmtavs0108/secureone:0.1.0
 
 docker logs -f secureone
 # "Waiting for PostgreSQL ..." until it is reachable, then "Started AuthServerApplication" and the setup code
@@ -189,7 +189,7 @@ One container, one process tree: the auth-server (Java) starts the console (Node
 # docker-compose.yml
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.1
+    image: dmtavs0108/secureone:0.1.0
     ports:
       - "9000:9000"
     environment:
@@ -324,8 +324,8 @@ cd apps/admin-web && npm install && npm run dev
 From repo root:
 
 ```bash
-docker build -f deploy/Dockerfile -t your-registry/secureone:1.1.1 .
-docker push your-registry/secureone:1.1.1
+docker build -f deploy/Dockerfile -t your-registry/secureone:0.1.0 .
+docker push your-registry/secureone:0.1.0
 ```
 
 Give the builder about 4 GB of memory (the console's type check and the Gradle build run in parallel, and the last step starts the application once with a temporary PostgreSQL and Redis to record the start-up cache). With Docker Desktop's 2 GB default, build the console stage first and the rest reuses it: `docker build --target console -f deploy/Dockerfile .` then the command above.
@@ -376,7 +376,7 @@ Create `prod-values.yaml` (example):
 ```yaml
 image:
   repository: dmtavs0108/secureone
-  tag: "1.1.1"
+  tag: "0.1.0"
 replicaCount: 2
 existingSecret: secureone
 env:
@@ -703,7 +703,7 @@ docker logs -f secureone
 
 # Change a variable: recreate the container with the same volume and the new value
 docker rm -f secureone
-docker run -d --name secureone -v secureone-data:/var/lib/secureone -e ... -p 9000:9000 dmtavs0108/secureone:1.1.1
+docker run -d --name secureone -v secureone-data:/var/lib/secureone -e ... -p 9000:9000 dmtavs0108/secureone:0.1.0
 
 # Upgrade: back up the database, then swap the image tag; the database is upgraded at start
 docker pull dmtavs0108/secureone:<new version>

@@ -39,7 +39,7 @@ run "plan" {
   command = apply
 
   assert {
-    condition     = jsondecode(aws_ecs_task_definition.main.container_definitions)[0].image == "dmtavs0108/secureone:1.1.1"
+    condition     = jsondecode(aws_ecs_task_definition.main.container_definitions)[0].image == "dmtavs0108/secureone:0.1.0"
     error_message = "Wrong image."
   }
   assert {

@@ -32,6 +32,7 @@ export default defineConfig({
             { label: "Overview", link: "/docs/install/" },
             "docs/install/installation",
             "docs/install/kubernetes",
+            "docs/install/hosting-platforms",
             "docs/install/deployment",
             "docs/install/configuration-and-upgrades",
             "docs/install/settings-governance",

@@ -39,6 +39,12 @@ then choose **SecureOne** under **App Templates**. Or paste
 [`unraid/secureone.xml`](unraid/secureone.xml). Install PostgreSQL 16 and Redis from Community Apps first, then
 SecureOne, and fill in the database URL, Redis URL and an encryption key (`openssl rand -base64 32`).
 
+## About this repository
+
+Hosting platforms read their templates from a public Git repository, so the templates live here on their own. This
+repository holds only the templates and this README: no source code and no secrets. Every template runs the
+published image `dmtavs0108/secureone:0.1.0`; a new SecureOne release updates the version here.
+
 ## Before going live
 
 - SecureOne needs an **https** address. The platforms above provide one. On Portainer and Unraid, put a reverse

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>SecureOne</Name>
-  <Repository>dmtavs0108/secureone:1.1.1</Repository>
+  <Repository>dmtavs0108/secureone:0.1.0</Repository>
   <Registry>https://hub.docker.com/r/dmtavs0108/secureone</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>

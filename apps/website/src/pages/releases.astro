@@ -4,39 +4,7 @@ import PageHead from "../components/PageHead.astro";
 
 const releases = [
   {
-    version: "1.1.1",
-    title: "Hosting platforms",
-    groups: [
-      ["Installation", [
-        "The database address may also be given as the postgres:// URL that hosting platforms provide (Render, Railway, DigitalOcean and others): SecureOne takes the user and password from it.",
-      ]],
-      ["Upgrading from 1.1.0", [
-        "Nothing to change.",
-      ]],
-    ],
-  },
-  {
-    version: "1.1.0",
-    title: "Install with a few variables",
-    groups: [
-      ["Installation", [
-        "Secrets are created on the first start: the encryption key in a volume outside the database, the token signing key and the code pepper stored encrypted. Supplying your own still works.",
-        "Only the public address, the database and Redis need to be set; the token issuer follows the public address.",
-        "SecureOne waits for PostgreSQL and Redis at start-up instead of failing, so it can start together with them.",
-      ]],
-      ["First-run setup", [
-        "A setup wizard in the browser: check the installation, set up email with a test message, back up the encryption key, create the first operator.",
-      ]],
-      ["Image", [
-        "The image carries the user documentation only, and standard labels (version, documentation, licence).",
-      ]],
-      ["Upgrading from 1.0.0", [
-        "Nothing to change: installations that set their secrets keep them. Keep any secret you set; do not remove it.",
-      ]],
-    ],
-  },
-  {
-    version: "1.0.0",
+    version: "0.1.0",
     title: "First release",
     groups: [
       ["Sign-in", [
@@ -56,8 +24,15 @@ const releases = [
         "Append-only audit log with streaming, session management, signed webhooks, service accounts and configuration as code.",
         "Documentation in the console, organised in spaces, with search.",
       ]],
-      ["Operations", [
+      ["Installation", [
         "One container image with the console built in; PostgreSQL and Redis alongside.",
+        "Only the public address, the database and Redis need to be set. The database address can also be the postgres:// URL a hosting platform provides.",
+        "Secrets are created on the first start: the encryption key in a volume outside the database, the token signing key and the code pepper stored encrypted. Supplying your own works too.",
+        "SecureOne waits for PostgreSQL and Redis at start-up, so it can start together with them.",
+        "A setup wizard in the browser: check the installation, set up email with a test message, back up the encryption key, create the first operator.",
+        "Docker, Docker Desktop, a Helm chart for Kubernetes, and one-click templates for Render, Portainer, Unraid and DigitalOcean.",
+      ]],
+      ["Operations", [
         "Production mode refuses unsafe settings; stored secrets are encrypted; tenants are isolated in the database.",
         "The database schema is created on first start and upgraded automatically by later releases.",
       ]],

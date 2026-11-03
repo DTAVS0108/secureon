@@ -4,7 +4,7 @@
 
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.1
+    image: dmtavs0108/secureone:0.1.0
     restart: unless-stopped
     depends_on:
       postgres:

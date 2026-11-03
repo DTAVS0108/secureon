@@ -31,7 +31,7 @@ variable "public_base_url" {
 variable "image" {
   description = "SecureOne image (Cloud Run pulls public Docker Hub images directly)."
   type        = string
-  default     = "docker.io/dmtavs0108/secureone:1.1.1"
+  default     = "docker.io/dmtavs0108/secureone:0.1.0"
 }
 
 variable "cpu" {

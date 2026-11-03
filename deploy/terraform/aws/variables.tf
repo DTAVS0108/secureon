@@ -39,7 +39,7 @@ variable "certificate_arn" {
 variable "image" {
   description = "SecureOne image."
   type        = string
-  default     = "dmtavs0108/secureone:1.1.1"
+  default     = "dmtavs0108/secureone:0.1.0"
 }
 
 variable "vpc_cidr" {

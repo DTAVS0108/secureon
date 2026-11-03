@@ -25,7 +25,7 @@ name: secureone-trial
 
 services:
   secureone:
-    image: dmtavs0108/secureone:1.1.1
+    image: dmtavs0108/secureone:0.1.0
     ports:
       - "9000:9000"
     environment:

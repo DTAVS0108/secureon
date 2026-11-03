@@ -126,7 +126,7 @@ curl -s $SECUREONE_URL/v3/api-docs/all -o secureone-openapi.json
 
 - `apps/auth-server/src/main/resources/application.yml` → `springdoc.*`, `secureone.swagger-enabled`
   (default from `SecureOneEnvironmentDefaults`: on unless `SECUREONE_ENV=production`)
-- The document's title, version (the build version, e.g. `1.0.0`) and link to SecureOne Documentation:
+- The document's title, version (the build version, e.g. `0.1.0`) and link to SecureOne Documentation:
   `OpenApiConfig`
 - Java: `com.secureone.auth.config.openapi.ApiCategory` (the categories and their tags), `OpenApiConfig`
   (definitions, security schemes),

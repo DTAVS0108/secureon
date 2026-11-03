@@ -11,7 +11,7 @@ services:
     name: secureone
     runtime: image
     image:
-      url: docker.io/dmtavs0108/secureone:1.1.1
+      url: docker.io/dmtavs0108/secureone:0.1.0
     plan: 1c-2g
     region: oregon
     healthCheckPath: /api/info
