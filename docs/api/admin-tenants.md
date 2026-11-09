@@ -1,6 +1,6 @@
 ---
 title: Admin API: tenants
-summary: Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, access requests and the tenant's SCIM token.
+summary: Tenants and everything inside one: workspace, tenant and console roles, access requests and the tenant's SCIM token.
 order: 9
 audience: public
 ---

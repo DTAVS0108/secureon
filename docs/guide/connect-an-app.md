@@ -1,6 +1,6 @@
 ---
 title: Connect an app
-summary: The guided wizard, field by field
+summary: The Connect an app wizard, field by field: register an application, choose its framework and get its setup code.
 order: 3
 audience: public
 ---

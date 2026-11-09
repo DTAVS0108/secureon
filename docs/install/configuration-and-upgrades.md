@@ -1,6 +1,6 @@
 ---
 title: Configuration as code and upgrades
-summary: Tenant setup in files, upgrades and rollback
+summary: Keep tenant setup in configuration files, upgrade SecureOne to a new release, and roll back safely when needed.
 order: 4
 audience: public
 ---

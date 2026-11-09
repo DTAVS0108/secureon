@@ -476,6 +476,23 @@ class Anchors:
         return base if count == 0 else f"{base}-{count}"
 
 
+# Summaries (search results, menus) for sections whose intro's first sentence is too long; at most about 160 characters.
+SHORT_SUMMARIES = {
+    "account.md": "What a signed-in user can do for themselves: password, email, profile, MFA, sessions, connected apps "
+                  "and privacy requests.",
+    "application-sign-in.md": "For apps with their own sign-in screens: manifest, password and code sign-in, sign-up, "
+                              "MFA, passkeys, federation and device sign-in.",
+    "admin-tenants.md": "Tenants and everything inside one: workspace, tenant and console roles, access requests and the "
+                        "tenant's SCIM token.",
+    "admin-applications-and-clients.md": "Application products, their OAuth clients, and the changes that wait for a "
+                                         "second admin's approval.",
+    "admin-security-and-governance.md": "Platform operators, access review, platform roles, federation, service "
+                                        "accounts, webhooks, the audit log and sessions.",
+    "admin-platform-settings.md": "Platform-wide settings (sign-in, password, MFA and token policies, email, SMS, "
+                                  "appearance, attack protection, logs) and configuration files.",
+}
+
+
 def front_matter(title: str, summary: str, order: int) -> list[str]:
     return ["---", f"title: {title}", f"summary: {summary}", f"order: {order}", "audience: public", "---", ""]
 
@@ -562,7 +579,7 @@ def main(spec_path: str, out_dir: str) -> None:
         ops = buckets[i - 1]
         ops.sort(key=lambda o: (tags.index(o[0]) if o[0] in tags else 99, o[1], o[2]))
         lines = [
-            *front_matter(title, intro.split(". ")[0].rstrip(".") + ".", i + 2),
+            *front_matter(title, SHORT_SUMMARIES.get(file) or intro.split(". ")[0].rstrip(".") + ".", i + 2),
             f"# {title}",
             "",
             "[API reference](index.md) › " + title,
@@ -601,7 +618,7 @@ def main(spec_path: str, out_dir: str) -> None:
         (out / file).write_text("\n".join(lines + [""] + body).rstrip() + "\n", encoding="utf-8")
         index_rows.append([f"[{title}]({file})", str(len(ops)), intro.split(". ")[0].rstrip(".") + "."])
 
-    models = [*front_matter("Data models", "Every request and response type", len(SECTIONS) + 3),
+    models = [*front_matter("Data models", "Every request and response type in the SecureOne API, with its fields, types and which ones are required.", len(SECTIONS) + 3),
               "# Data models", "", "[API reference](index.md) › Data models", "",
               "Request and response types used by the endpoints, A to Z.", ""]
     for name in sorted(spec.get("components", {}).get("schemas", {}), key=str.lower):

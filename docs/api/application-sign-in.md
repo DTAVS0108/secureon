@@ -1,6 +1,6 @@
 ---
 title: Application sign-in and sign-up
-summary: For apps that draw their own sign-in screens instead of redirecting to the hosted page: application manifest, password and one-time-code sign-in, sign-up, MFA, passkeys, federation and device sign-in.
+summary: For apps with their own sign-in screens: manifest, password and code sign-in, sign-up, MFA, passkeys, federation and device sign-in.
 order: 4
 audience: public
 ---

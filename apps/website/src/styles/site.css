@@ -901,7 +901,7 @@ details.faq p {
     grid-template-columns: 1fr 1fr;
   }
 }
-.site-footer h4 {
+.site-footer .footer-heading {
   margin: 0 0 14px;
   font-size: 13px;
   text-transform: uppercase;

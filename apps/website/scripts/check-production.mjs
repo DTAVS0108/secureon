@@ -1,7 +1,8 @@
 /**
  * The website is for people running SecureOne in production. After `astro build`, this fails the build when a page
  * shows development content: development mode, the trial quickstart, local addresses, developer tools, source builds
- * or roadmap notes. Put such passages in <!-- not on website --> blocks (or `website: false`) in docs/.
+ * or roadmap notes. Put such passages in <!-- not on website --> blocks (or `website: false`) in docs/. It also checks
+ * the search-result basics of every page: exactly one <h1>, and a description of 50 to 165 characters.
  *
  *   node scripts/check-production.mjs [dist folder]
  */
@@ -41,18 +42,33 @@ function pages(dir) {
   });
 }
 
+// Search-result basics: one main heading, and a description search engines show whole (the 404 page is not indexed).
+function pageBasics(html, url) {
+  const found = [];
+  const h1 = (html.match(/<h1\b/g) || []).length;
+  if (h1 !== 1) found.push(`${url}  [headings]  ${h1} <h1> elements (one per page)`);
+  const desc = /<meta name="description" content="([^"]*)"/.exec(html);
+  const length = desc ? desc[1].replace(/&[a-z#0-9]+;/g, "x").length : 0;
+  if (url !== "/404.html" && (length < 50 || length > 165)) {
+    found.push(`${url}  [description]  ${length} characters (50 to 165: front-matter summary or the page's description)`);
+  }
+  return found;
+}
+
 const problems = [];
 for (const file of pages(dist)) {
-  let text = mainText(fs.readFileSync(file, "utf8"));
+  const html = fs.readFileSync(file, "utf8");
+  let text = mainText(html);
   for (const allowed of ALLOWED) text = text.replace(allowed, " ");
   const url = "/" + path.relative(dist, file).split(path.sep).join("/").replace(/index\.html$/, "");
+  if (!url.startsWith("/pagefind/")) problems.push(...pageBasics(html, url));
   for (const [name, rule] of RULES) {
     const m = rule.exec(text);
     if (m) problems.push(`${url}  [${name}]  …${text.slice(Math.max(0, m.index - 60), m.index + m[0].length + 60).trim()}…`);
   }
 }
 if (problems.length) {
-  console.error(`check-production: ${problems.length} page(s) show development content:\n` + problems.join("\n"));
+  console.error(`check-production: ${problems.length} problem(s) (development content or page basics):\n` + problems.join("\n"));
   process.exit(1);
 }
-console.log(`check-production: ${pages(dist).length} pages, no development content`);
+console.log(`check-production: ${pages(dist).length} pages, no development content, page basics fine`);

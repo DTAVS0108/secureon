@@ -1,6 +1,6 @@
 ---
 title: Admin API: security and governance
-summary: Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log (search and CSV export), sessions and the console overview.
+summary: Platform operators, access review, platform roles, federation, service accounts, webhooks, the audit log and sessions.
 order: 13
 audience: public
 ---

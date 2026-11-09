@@ -1,6 +1,6 @@
 ---
 title: Common tasks
-summary: Step-by-step recipes
+summary: Step-by-step recipes for the admin console, from setting up a new organisation to a leaked secret or a locked-out user.
 order: 11
 audience: public
 ---

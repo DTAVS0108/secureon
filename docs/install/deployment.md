@@ -98,7 +98,7 @@ On first start, **Flyway** creates the schema from `V1__baseline.sql` on the emp
 
 ---
 
-# Install from the image
+## Install from the image
 
 SecureOne is delivered as a **container image**: start it with a few variables and a volume, then finish setup in
 the browser and manage applications and OAuth clients in the admin console. [Installation](installation.md) is the
@@ -275,7 +275,7 @@ Expected: discovery JSON, the console sign-in page at `/admin/login`, and `"stat
 ---
 
 <!-- developer -->
-# Path B — Build from source (developers)
+## Path B — Build from source (developers)
 
 Use this when your team **owns the SecureOne monorepo**, builds images in CI, and runs SecureOne as shared enterprise IAM for many products (web, mobile, back-end services, …).
 
@@ -421,7 +421,7 @@ The chart runs one Deployment (rolling update with `maxUnavailable: 0`), one Ser
 
 ---
 
-# Shared post-deploy flow
+## Shared post-deploy flow
 
 Once SecureOne is healthy, operators use the admin workflow below.
 

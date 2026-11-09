@@ -1,6 +1,6 @@
 ---
 title: Applications and OAuth clients
-summary: Products, clients, schemas and isolation
+summary: Application products and OAuth clients: how they relate, their database schemas and how each application is isolated.
 order: 3
 audience: public
 ---

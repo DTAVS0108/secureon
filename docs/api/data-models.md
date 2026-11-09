@@ -1,6 +1,6 @@
 ---
 title: Data models
-summary: Every request and response type
+summary: Every request and response type in the SecureOne API, with its fields, types and which ones are required.
 order: 15
 audience: public
 ---

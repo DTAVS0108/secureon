@@ -1,6 +1,6 @@
 ---
 title: Console layout and navigation
-summary: Top bar, sidebars and what each role sees
+summary: The admin console's top bar and sidebars, and what each kind of administrator can see and open.
 order: 2
 audience: public
 ---

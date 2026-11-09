@@ -1,6 +1,6 @@
 ---
 title: Verification and one-time codes
-summary: Email and phone verification, sign-in codes, SMS
+summary: Email and phone verification, one-time sign-in codes and SMS delivery: how they work and how to set them up.
 order: 4
 audience: public
 ---

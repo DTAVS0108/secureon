@@ -1,6 +1,6 @@
 ---
 title: Custom domains
-summary: Serve a tenant's sign-in on its own domain
+summary: Serve a tenant's sign-in pages on its own domain: DNS and TLS, the SecureOne settings and the applications that use it.
 order: 5
 audience: operator
 ---

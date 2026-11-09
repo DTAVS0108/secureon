@@ -1,0 +1,14 @@
+{
+  "name": "SecureOne",
+  "short_name": "SecureOne",
+  "description": "Sign-in, single sign-on, MFA, users, roles and permissions for every application.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

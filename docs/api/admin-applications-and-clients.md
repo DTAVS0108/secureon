@@ -1,6 +1,6 @@
 ---
 title: Admin API: applications and OAuth clients
-summary: Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth client returns 202 with a change request; another admin approves it).
+summary: Application products, their OAuth clients, and the changes that wait for a second admin's approval.
 order: 11
 audience: public
 ---

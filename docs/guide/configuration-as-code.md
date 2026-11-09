@@ -1,6 +1,6 @@
 ---
 title: Configuration as code
-summary: Export, preview and apply configuration files
+summary: Export, preview and apply configuration files, so tenants, applications and roles can live in version control.
 order: 9
 audience: public
 ---

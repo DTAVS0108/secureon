@@ -1,6 +1,6 @@
 ---
 title: Access review and operators
-summary: Privileged access review and platform operators
+summary: Review privileged access and manage platform operators: who can run the whole installation, and how to add them.
 order: 8
 audience: public
 ---

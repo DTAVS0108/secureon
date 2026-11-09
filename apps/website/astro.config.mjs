@@ -12,7 +12,8 @@ export default defineConfig({
     starlight({
       title: "SecureOne",
       description: "Sign-in, single sign-on, MFA, users, roles and permissions for every application.",
-      logo: { src: "./src/assets/secureone-mark.svg", alt: "SecureOne" },
+      // The site title is shown next to the logo, so the mark itself is decorative (no repeated alt text).
+      logo: { src: "./src/assets/secureone-mark.svg", alt: "" },
       favicon: "/favicon.svg",
       customCss: ["./src/styles/docs.css"],
       disable404Route: true,

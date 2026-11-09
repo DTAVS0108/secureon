@@ -1,6 +1,6 @@
 ---
 title: Settings
-summary: Platform and application settings, tab by tab
+summary: Platform and application settings in the admin console, tab by tab: sign-in, MFA, email, SMS, branding and more.
 order: 7
 audience: public
 ---

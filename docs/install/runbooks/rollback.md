@@ -1,6 +1,6 @@
 ---
 title: Rollback
-summary: Return to the previous release safely
+summary: Return to the previous SecureOne release safely: restore the database backup and start the earlier image.
 order: 2
 audience: operator
 ---

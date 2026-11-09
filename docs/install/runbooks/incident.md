@@ -1,6 +1,6 @@
 ---
 title: Incident response
-summary: What to do when something goes wrong
+summary: What to do when something goes wrong with SecureOne: how serious it is, the first steps, common cases and who to tell.
 order: 3
 audience: operator
 ---

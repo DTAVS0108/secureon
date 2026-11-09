@@ -11,6 +11,30 @@ const path = Astro.url.pathname;
 const pageTitle = title === "SecureOne" ? "SecureOne · Identity and access for every app" : `${title} · SecureOne`;
 const canonical = new URL(path, Astro.site).href;
 const og = new URL("/og.png", Astro.site).href;
+// Home page: structured data, so search engines can show SecureOne as a software product.
+const home = new URL("/", Astro.site).href;
+const structuredData =
+  path === "/"
+    ? JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            name: "SecureOne",
+            description,
+            url: home,
+            image: og,
+            applicationCategory: "SecurityApplication",
+            operatingSystem: "Linux (container image), Kubernetes",
+            softwareVersion: "0.1.0",
+            downloadUrl: "https://hub.docker.com/r/dmtavs0108/secureone",
+            softwareHelp: new URL("/docs/", Astro.site).href,
+            releaseNotes: new URL("/releases/", Astro.site).href,
+          },
+          { "@type": "WebSite", name: "SecureOne", url: home },
+        ],
+      })
+    : null;
 
 const nav = [
   { href: "/features/", label: "Features" },
@@ -40,6 +64,8 @@ const nav = [
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="manifest" href="/site.webmanifest" />
+    {structuredData && <script type="application/ld+json" set:html={structuredData} />}
     <script is:inline>
       // Theme before first paint. Same key as the documentation pages, so the choice carries over.
       (() => {
@@ -96,7 +122,7 @@ const nav = [
             </p>
           </div>
           <div>
-            <h4>Product</h4>
+            <h2 class="footer-heading">Product</h2>
             <ul>
               <li><a href="/features/">Features</a></li>
               <li><a href="/security/">Security</a></li>
@@ -107,7 +133,7 @@ const nav = [
             </ul>
           </div>
           <div>
-            <h4>Documentation</h4>
+            <h2 class="footer-heading">Documentation</h2>
             <ul>
               <li><a href="/get-started/">Get started</a></li>
               <li><a href="/docs/install/installation/">Installation</a></li>
@@ -118,7 +144,7 @@ const nav = [
             </ul>
           </div>
           <div>
-            <h4>Company</h4>
+            <h2 class="footer-heading">Company</h2>
             <ul>
               <li><a href="/about/">About</a></li>
               <li><a href="/faq/">FAQ</a></li>

@@ -1,6 +1,6 @@
 ---
 title: API reference
-summary: Every endpoint, section by section, with curl
+summary: Every SecureOne API endpoint, section by section, with curl examples and the request and response fields.
 order: 5
 audience: public
 ---

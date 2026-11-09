@@ -1,6 +1,6 @@
 ---
 title: What is SecureOne
-summary: Vision, goals and the problems SecureOne solves
+summary: What SecureOne is: its vision, goals, key concepts and the identity problems it solves for your applications.
 order: 1
 audience: public
 ---

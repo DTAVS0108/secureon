@@ -119,6 +119,9 @@ function convert(page) {
         aside = null;
       }
     }
+    // Checklists: GitHub task boxes become disabled checkboxes without a label (an accessibility error); show a
+    // box character in a plain list item instead.
+    line = line.replace(/^(\s*[-*]) \[ \] /, "$1 ☐ ").replace(/^(\s*[-*]) \[[xX]\] /, "$1 ☑ ");
     line = line.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (m, bang, text, href) => {
       if (/^(https?:|mailto:|#)/.test(href)) return m;
       if (href.startsWith("/")) return bang ? "" : `\`${text.replace(/`/g, "")}\``; // a SecureOne server path, not this site

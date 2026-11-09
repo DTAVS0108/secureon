@@ -1,6 +1,6 @@
 ---
 title: Account self-service
-summary: What a signed-in user can do for themselves: password reset and change, email verification, profile, MFA factors, sessions, email change, connected apps and privacy (export, delete request).
+summary: What a signed-in user can do for themselves: password, email, profile, MFA, sessions, connected apps and privacy requests.
 order: 6
 audience: public
 ---

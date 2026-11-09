@@ -1,6 +1,6 @@
 ---
 title: Admin API: platform settings
-summary: Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply).
+summary: Platform-wide settings (sign-in, password, MFA and token policies, email, SMS, appearance, attack protection, logs) and configuration files.
 order: 14
 audience: public
 ---
