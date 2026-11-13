@@ -11,7 +11,7 @@
   <Category>Security: Network:Other</Category>
   <WebUI>http://[IP]:[PORT:9000]/admin/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/DTAVS0108/secureone-deploy/main/unraid/secureone.xml</TemplateURL>
-  <Icon>https://secureone-website.vercel.app/apple-touch-icon.png</Icon>
+  <Icon>https://raw.githubusercontent.com/DTAVS0108/secureone-deploy/main/unraid/secureone.png</Icon>
   <ExtraParams/>
   <PostArgs/>
   <Requires>PostgreSQL 16 and Redis containers, reachable from this one.</Requires>

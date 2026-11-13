@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<Maintainer>
+  <Icon>https://raw.githubusercontent.com/DTAVS0108/secureone-deploy/main/unraid/secureone.png</Icon>
+  <Profile>SecureOne: sign-in, single sign-on, MFA, users, roles and permissions for every application, self-hosted on your own server. Free to use under the SecureOne licence.</Profile>
+  <WebPage>https://secureone-website.vercel.app</WebPage>
+</Maintainer>

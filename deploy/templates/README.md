@@ -42,8 +42,9 @@ SecureOne, and fill in the database URL, Redis URL and an encryption key (`opens
 ## About this repository
 
 Hosting platforms read their templates from a public Git repository, so the templates live here on their own. This
-repository holds only the templates and this README: no source code and no secrets. Every template runs the
-published image `dmtavs0108/secureone:0.1.0`; a new SecureOne release updates the version here.
+repository holds only the templates, their icon, the Unraid maintainer profile (`ca_profile.xml`), this README and
+the licence: no source code and no secrets. Every template runs the published image `dmtavs0108/secureone:0.1.0`; a
+new SecureOne release updates the version here.
 
 ## Before going live
 
