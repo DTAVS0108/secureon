@@ -22,6 +22,7 @@ COPY packages/secureone-client/package.json packages/secureone-client/
 RUN pnpm install --frozen-lockfile --filter website
 COPY apps/website apps/website
 COPY docs docs
+COPY LICENSE LICENSE
 RUN pnpm --filter website build
 
 FROM nginx:1.27-alpine

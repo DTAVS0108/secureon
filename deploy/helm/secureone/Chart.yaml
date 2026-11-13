@@ -15,7 +15,7 @@ keywords:
   - sso
   - mfa
 annotations:
-  artifacthub.io/license: LicenseRef-SecureOne-Proprietary
+  artifacthub.io/license: LicenseRef-SecureOne-EULA
   artifacthub.io/links: |
     - name: Documentation
       url: https://secureone-website.vercel.app/docs/install/kubernetes/

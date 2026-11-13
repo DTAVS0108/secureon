@@ -1,0 +1,88 @@
+SecureOne End User Licence Agreement
+Version 1.0, effective 13 November 2026
+
+Copyright (c) 2026 SecureOne. All rights reserved.
+
+SecureOne is free to use, including commercially and in production, under the terms below. By downloading,
+installing or running the Software you accept them. If you do not accept them, do not use the Software.
+
+1. Definitions
+
+   "Software" means the SecureOne container images, Helm chart, admin console, documentation and every update
+   to them that SecureOne publishes. "You" means the person or organisation that installs or runs the Software.
+
+2. Licence
+
+   SecureOne grants you a free, worldwide, non-exclusive, non-transferable and non-sublicensable licence to:
+
+   a. install and run the Software, for any purpose, including commercial use and production;
+   b. use it to provide sign-in, single sign-on and access management for your own applications and for the
+      users of those applications, including applications you offer to your own customers;
+   c. make the copies needed to do so, such as backups, replicas, test installations and copies of the
+      unmodified image in your own private registry; and
+   d. let your employees and contractors operate the Software for you, under these terms.
+
+3. Restrictions
+
+   You may not:
+
+   a. sell, rent, lease, sublicense or distribute the Software, or a modified version of it, to anyone else,
+      except as allowed in section 2;
+   b. offer the Software to third parties as a hosted or managed identity service in which the Software itself
+      is the product they use (providing sign-in for your own applications is allowed);
+   c. modify, adapt, decompile, disassemble or reverse-engineer the Software, except to the extent the law
+      expressly allows despite this restriction;
+   d. remove or change any copyright, licence or ownership notice in the Software; or
+   e. use the Software in breach of any law that applies to you.
+
+4. Third-party components
+
+   The Software includes open-source components that are licensed under their own terms. Those terms apply to
+   those components, and nothing in this agreement limits the rights they give you.
+
+5. Your data
+
+   Your data, and the data of your users, belong to you. The Software runs on infrastructure you choose and
+   stores its data in your database. It does not send usage data, telemetry or your data to SecureOne. Features
+   you turn on that connect to other services (for example email, SMS, CAPTCHA, social sign-in or leaked-password
+   checks) send data directly from your installation to those services, under their terms.
+
+6. Ownership
+
+   The Software is licensed, not sold. SecureOne keeps all rights, title and interest in the Software, including
+   all intellectual property rights. All rights not expressly granted are reserved.
+
+7. Updates and changes
+
+   SecureOne may publish updates and may change these terms for future versions. A version you have received stays
+   under the terms it was published with, unless you choose to use a later version.
+
+8. Support
+
+   SecureOne has no obligation to provide support, maintenance or updates. Any support is given at SecureOne's
+   discretion.
+
+9. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, SECURITY AND NON-INFRINGEMENT. You
+   are responsible for how you configure, secure, back up and operate the Software.
+
+10. Limitation of liability
+
+   TO THE FULLEST EXTENT ALLOWED BY LAW, SECUREONE IS NOT LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+   CONSEQUENTIAL OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF DATA, PROFITS, REVENUE OR BUSINESS, ARISING FROM THE
+   SOFTWARE OR THIS AGREEMENT, EVEN IF TOLD SUCH DAMAGES WERE POSSIBLE. SECUREONE'S TOTAL LIABILITY UNDER THIS
+   AGREEMENT IS LIMITED TO INR 5,000.
+
+11. Termination
+
+   This licence ends automatically if you breach these terms. When it ends you must stop using the Software and
+   delete your copies of it. Sections 4 to 6 and 9 to 12 continue after it ends.
+
+12. Governing law
+
+   This agreement is governed by the laws of India. The courts of India have exclusive jurisdiction over any
+   dispute arising from it.
+
+Questions about this licence: https://secureone-website.vercel.app/support/

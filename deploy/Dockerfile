@@ -65,7 +65,7 @@ LABEL org.opencontainers.image.title="SecureOne" \
       org.opencontainers.image.vendor="SecureOne" \
       org.opencontainers.image.url="https://secureone-website.vercel.app" \
       org.opencontainers.image.documentation="https://secureone-website.vercel.app/docs/" \
-      org.opencontainers.image.licenses="LicenseRef-SecureOne-Proprietary"
+      org.opencontainers.image.licenses="LicenseRef-SecureOne-EULA"
 # Node.js runs the console (same musl build as the console stage); tini forwards signals and reaps.
 RUN apk add --no-cache libstdc++ libgcc tini \
     # Numeric UID so Kubernetes runAsNonRoot can verify it.
@@ -76,6 +76,7 @@ RUN apk add --no-cache libstdc++ libgcc tini \
 COPY --from=console /usr/local/bin/node /usr/local/bin/node
 COPY --from=console /console /opt/secureone/console
 COPY --from=auth /app /opt/secureone/app
+COPY LICENSE /opt/secureone/LICENSE
 
 # G1 pinned: the start-up cache is only used when the runtime GC matches the training run, and the JVM
 # would otherwise pick a different collector on small containers.

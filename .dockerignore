@@ -22,6 +22,9 @@ apps/admin-web/.next/
 apps/admin-web/.env*
 apps/admin-web/*.tsbuildinfo
 
+# The licence: shipped in the image and shown on the website
+!LICENSE
+
 !docs/
 !scripts/docs/user-docs.mjs
 
