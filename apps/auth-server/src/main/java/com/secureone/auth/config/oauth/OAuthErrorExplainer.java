@@ -143,6 +143,14 @@ public final class OAuthErrorExplainer {
      * Spring validated the redirect URI, otherwise answer here (HTML page for browsers, JSON otherwise).
      */
     public static AuthenticationFailureHandler authorizationFailureHandler(RegisteredClientRepository clients, boolean production) {
+        return authorizationFailureHandler(clients, production, null);
+    }
+
+    /** As above; the page shown here uses the sign-in theme (templates/oauth-error.html or the theme's layout). */
+    public static AuthenticationFailureHandler authorizationFailureHandler(
+            RegisteredClientRepository clients,
+            boolean production,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.theme.ThemePages> themePages) {
         RedirectStrategy redirects = new DefaultRedirectStrategy();
         return (request, response, exception) -> {
             OAuth2Error error = ((OAuth2AuthenticationException) exception).getError();
@@ -155,7 +163,7 @@ public final class OAuthErrorExplainer {
                             : null;
             log.info("Authorization request refused ({}): {}", error.getErrorCode(), explanation);
             if (authorization == null || !StringUtils.hasText(authorization.getRedirectUri())) {
-                writeHere(request, response, error, explanation);
+                writeHere(request, response, error, explanation, themePages == null ? null : themePages.getIfAvailable());
                 return;
             }
             UriComponentsBuilder uri = UriComponentsBuilder.fromUriString(authorization.getRedirectUri())
@@ -172,8 +180,8 @@ public final class OAuthErrorExplainer {
     }
 
     /** No trustworthy redirect URI: RFC 6749 4.1.2.1 says tell the user, never redirect. */
-    private static void writeHere(HttpServletRequest request, HttpServletResponse response, OAuth2Error error, String explanation)
-            throws IOException {
+    private static void writeHere(HttpServletRequest request, HttpServletResponse response, OAuth2Error error, String explanation,
+            com.secureone.auth.theme.ThemePages pages) throws IOException {
         response.setStatus(HttpStatus.BAD_REQUEST.value());
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("X-Content-Type-Options", "nosniff");
@@ -184,8 +192,21 @@ public final class OAuthErrorExplainer {
             return;
         }
         response.setContentType("text/html;charset=UTF-8");
-        response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
         String requestId = MDC.get("requestId");
+        if (pages != null) {
+            // Theme files and SecureOne's own scripts only; nothing from other sites.
+            response.setHeader("Content-Security-Policy", com.secureone.auth.config.HostedPageSecurityHeadersFilter.POLICY);
+            String content = "<p>The app sent a sign-in request SecureOne cannot accept. Contact the app's support if this keeps happening.</p>"
+                    + "<div class=\"dev\"><strong>For the app's developer</strong> (<code>" + HtmlUtils.htmlEscape(error.getErrorCode())
+                    + "</code>)<br>" + HtmlUtils.htmlEscape(explanation) + "</div>"
+                    + "<p class=\"muted\">" + (requestId == null ? "" : "Request ID: " + HtmlUtils.htmlEscape(requestId)) + "</p>";
+            response.getWriter().write(pages.render(request, new com.secureone.auth.theme.ThemePages.Page(
+                    "oauth-error", "Sign-in cannot start", "This app cannot sign you in right now", content, true,
+                    java.util.Map.of("errorCode", error.getErrorCode(), "explanation", explanation,
+                            "requestId", requestId == null ? "" : requestId))));
+            return;
+        }
+        response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
         response.getWriter().write("""
                 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
                 <meta name="robots" content="noindex"><title>Sign-in cannot start · SecureOne</title>

@@ -11,7 +11,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ensureApplicationPolicyScope } from "@/lib/api/ensure-application-policy";
 import {
   fetchApplicationAppearance,
+  fetchApplicationThemes,
   saveApplicationAppearance,
+  type SignInThemeChoice,
 } from "@/lib/api/application-settings";
 import {
   mergeClientAppearance,
@@ -25,6 +27,8 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
   const { toast } = useToast();
   const [appearance, setAppearance] = useState<ClientAppearance>(DEFAULT_CLIENT_APPEARANCE);
   const [loaded, setLoaded] = useState(false);
+  const [themes, setThemes] = useState<SignInThemeChoice[]>([]);
+  const [defaultTheme, setDefaultTheme] = useState("base");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What the server holds now. A change equal to it (the theme editor normalising freshly loaded
   // values) is not saved; any real edit, including the very first, is.
@@ -33,6 +37,12 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
   const reload = useCallback(async () => {
     setLoaded(false);
     try {
+      fetchApplicationThemes(applicationId)
+        .then((t) => {
+          setThemes(t.themes ?? []);
+          setDefaultTheme(t.defaultTheme || "base");
+        })
+        .catch(() => setThemes([]));
       const data = await fetchApplicationAppearance(applicationId).catch(() => ({}));
       const current = mergeClientAppearance(stripAppearanceMeta(data as Record<string, unknown>));
       lastSaved.current = JSON.stringify(toClientAppearancePayload(normalizeClientAppearance(current)));
@@ -121,6 +131,47 @@ export function ApplicationAppearanceSettings({ applicationId }: { applicationId
                   {l.name}
                 </option>
               ))}
+            </Select>
+          </FieldRow>
+        </div>
+      </Card>
+
+      <Card padded={false}>
+        <CardHeader
+          title="Sign-in page theme"
+          description="Design of the hosted pages (sign-in, sign-up, password reset, account security, consent) for this application. Themes are folders installed on the server; colors and logo above still apply on top."
+          action={
+            <a
+              href={`/login.html?applicationId=${encodeURIComponent(applicationId)}${
+                appearance.theme ? `&theme=${encodeURIComponent(appearance.theme)}` : ""
+              }`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-brand hover:underline"
+            >
+              Preview sign-in page ↗
+            </a>
+          }
+        />
+        <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
+          <FieldRow
+            label="Theme"
+            hint={
+              themes.length <= 1
+                ? "Only the built-in theme is installed. Platform settings → Appearance → Sign-in themes explains how to add one."
+                : "Changes show on the next page load."
+            }
+          >
+            <Select value={appearance.theme} onChange={(e) => patch({ theme: e.target.value })}>
+              <option value="">Server default ({defaultTheme})</option>
+              {themes.map((t) => (
+                <option key={t.name} value={t.name}>
+                  {t.builtIn ? `${t.name} (built-in)` : t.description ? `${t.name} — ${t.description}` : t.name}
+                </option>
+              ))}
+              {appearance.theme && !themes.some((t) => t.name === appearance.theme) && (
+                <option value={appearance.theme}>{appearance.theme} (not installed: default used)</option>
+              )}
             </Select>
           </FieldRow>
         </div>

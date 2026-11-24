@@ -6,12 +6,47 @@
  *  - Language: ?lang=, then OIDC ui_locales, then the person's earlier choice, then the application's default,
  *    then the browser. A picker at the bottom of the page changes it. Texts come from i18n.js; anything not
  *    translated stays in English.
+ *  - Theme texts: the page's sign-in theme (/themes/<name>/messages.js, window.SecureOneTheme) can reword any text
+ *    in any language, English included, keyed by the English text, and add languages to the picker.
  */
 (function () {
   "use strict";
 
   var I18N = window.SecureOneI18n || { languages: [{ code: "en", name: "English" }], messages: {}, patterns: [] };
-  var SUPPORTED = I18N.languages.map(function (l) { return l.code; });
+  var THEME = window.SecureOneTheme || {};
+  var THEME_MESSAGES = THEME.messages && typeof THEME.messages === "object" ? THEME.messages : {};
+  var LANGUAGES = I18N.languages.slice();
+  (Array.isArray(THEME.languages) ? THEME.languages : []).forEach(function (l) {
+    if (l && l.code && l.name && !LANGUAGES.some(function (x) { return x.code === l.code; })) {
+      LANGUAGES.push({ code: String(l.code), name: String(l.name) });
+    }
+  });
+  var SUPPORTED = LANGUAGES.map(function (l) { return l.code; });
+  function has(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
+  // A theme with its own stylesheet styles the page: the application's colours are then only CSS variables.
+  var THEME_STYLES = !!document.querySelector('meta[name="secureone-theme-styles"]');
+
+  /** Theme texts with {1}…{9} (texts the page builds, such as "Sign in to {1}"), per language. */
+  var themePatterns = {};
+  function themePatternsFor(code) {
+    if (themePatterns[code]) return themePatterns[code];
+    var table = THEME_MESSAGES[code] || {};
+    themePatterns[code] = Object.keys(table)
+      .filter(function (k) { return /\{[1-9]\}/.test(k) && typeof table[k] === "string"; })
+      .map(function (k) {
+        var order = [];
+        var source = k.split(/(\{[1-9]\})/).map(function (part) {
+          var m = /^\{([1-9])\}$/.exec(part);
+          if (m) {
+            order.push(Number(m[1]));
+            return "(.+?)";
+          }
+          return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }).join("");
+        return { re: new RegExp("^" + source + "$"), order: order, out: table[k] };
+      });
+    return themePatterns[code];
+  }
   var STORAGE_KEY = "secureone.lang";
   var params = new URLSearchParams(location.search);
   var continueParams = (function () {
@@ -48,7 +83,23 @@
   var lang = explicitLanguage() || pick(navigator.languages || [navigator.language]) || "en";
 
   // ---- Translation ---------------------------------------------------------------------------------------------
+  /** Whether texts change at all: another language, or a theme that rewords the English ones. */
+  function translating() {
+    return lang !== "en" || has(THEME_MESSAGES, "en");
+  }
+
   function translateCore(text) {
+    var themed = THEME_MESSAGES[lang];
+    if (themed && has(themed, text) && typeof themed[text] === "string") return themed[text];
+    var tp = themed ? themePatternsFor(lang) : [];
+    for (var t = 0; t < tp.length; t++) {
+      var tm = text.match(tp[t].re);
+      if (tm) {
+        var values = {};
+        tp[t].order.forEach(function (n, i) { values[n] = tm[i + 1]; });
+        return tp[t].out.replace(/\{([1-9])\}/g, function (_, n) { return has(values, n) ? values[n] : ""; });
+      }
+    }
     if (lang === "en") return null;
     var table = I18N.messages[lang] || {};
     if (Object.prototype.hasOwnProperty.call(table, text)) return table[text];
@@ -87,7 +138,7 @@
     if (!record || current !== record.shown) {
       record = { en: current, shown: current };
     }
-    var next = lang === "en" ? record.en : tr(record.en);
+    var next = translating() ? tr(record.en) : record.en;
     record.shown = next;
     originals.set(node, record);
     if (current !== next) node.nodeValue = next;
@@ -101,7 +152,7 @@
       var key = "data-en-" + name;
       var value = el.getAttribute(name);
       if (!el.hasAttribute(key) || (el.getAttribute("data-shown-" + name) !== value)) el.setAttribute(key, value);
-      var shown = lang === "en" ? el.getAttribute(key) : tr(el.getAttribute(key));
+      var shown = translating() ? tr(el.getAttribute(key)) : el.getAttribute(key);
       el.setAttribute("data-shown-" + name, shown);
       if (value !== shown) el.setAttribute(name, shown);
     });
@@ -126,7 +177,7 @@
   var englishTitle = null;
   function translateTitle() {
     if (englishTitle === null || (document.title !== translatedTitle)) englishTitle = document.title;
-    translatedTitle = lang === "en" ? englishTitle : tr(englishTitle);
+    translatedTitle = translating() ? tr(englishTitle) : englishTitle;
     if (document.title !== translatedTitle) document.title = translatedTitle;
   }
   var translatedTitle = null;
@@ -147,7 +198,7 @@
 
   // ---- Language picker -----------------------------------------------------------------------------------------
   function addPicker() {
-    if (I18N.languages.length < 2 || document.getElementById("so-lang")) return;
+    if (LANGUAGES.length < 2 || document.getElementById("so-lang")) return;
     var wrap = document.createElement("div");
     wrap.id = "so-lang";
     wrap.className = "so-lang";
@@ -157,7 +208,7 @@
     var select = document.createElement("select");
     select.id = "so-lang-select";
     select.setAttribute("data-no-translate", "");
-    I18N.languages.forEach(function (l) {
+    LANGUAGES.forEach(function (l) {
       var o = document.createElement("option");
       o.value = l.code;
       o.textContent = l.name;
@@ -367,19 +418,20 @@
   };
 
   var style = document.createElement("style");
-  style.textContent = [
+  style.textContent = (THEME_STYLES ? [] : [
     "html.so-branded body { background: var(--so-bg); color: var(--so-text); }",
     "html.so-branded button:not(.fed-btn):not(.so-plain) { background: var(--so-primary); color: var(--so-button-text); border-radius: var(--so-radius); }",
     "html.so-branded a { color: var(--so-primary); }",
     "html.so-branded input, html.so-branded select { background: var(--so-input-bg); color: var(--so-input-text); border-color: var(--so-input-border); border-radius: var(--so-radius); }",
     "html.so-branded .fed-btn { border-radius: var(--so-radius); }",
+  ]).concat([
     ".so-captcha { margin: 0.25rem 0 0.75rem; min-height: 65px; }",
     ".so-logo { display: block; max-height: 48px; max-width: 200px; margin: 0 0 1rem; }",
     ".so-lang { margin: 2rem 0 1rem; font-size: 0.8rem; color: var(--so-muted, #6b7280); display: flex; gap: 0.5rem; align-items: center; }",
     ".so-lang label { margin: 0; display: inline; }",
     ".so-lang select { width: auto; padding: 0.25rem 0.5rem; margin: 0; font-size: 0.8rem; }",
     ".so-impersonation { position: sticky; top: 0; z-index: 50; margin: 0 0 1rem; padding: 0.6rem 1rem; background: #b45309; color: #fff; font-size: 0.85rem; text-align: center; }",
-  ].join("\n");
+  ]).join("\n");
   document.head.appendChild(style);
 
   /** An administrator signed in as this user: a banner says so on every page (account changes are refused). */
@@ -405,7 +457,7 @@
     showImpersonation();
     // Text the pages add or change later (messages, two-step dialogs) is translated as it appears.
     new MutationObserver(function (mutations) {
-      if (lang === "en") return;
+      if (!translating()) return;
       mutations.forEach(function (m) {
         if (m.type === "characterData") translateTextNode(m.target);
         else if (m.type === "attributes") translateElement(m.target);

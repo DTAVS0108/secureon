@@ -125,10 +125,19 @@ public class ApplicationPublicController {
     }
 
     @PostMapping("/{applicationId}/account/verify/otp/confirm")
-    public Map<String, Object> confirmSignupOtp(
-            @PathVariable UUID applicationId, @Valid @RequestBody ApplicationAccountDtos.OtpVerifyRequest body) {
-        return account.confirmSignupOtp(
-                applicationId, body.challengeId(), body.code(), body.channel() != null ? body.channel() : "email");
+    public ResponseEntity<?> confirmSignupOtp(
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody ApplicationAccountDtos.OtpVerifyRequest body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        String channel = body.channel() != null ? body.channel() : "email";
+        if (Boolean.TRUE.equals(body.signIn())) {
+            return account.confirmSignupOtpAndSignIn(
+                    applicationId, body.challengeId(), body.code(), channel, request, response);
+        }
+        Map<String, Object> out = account.confirmSignupOtp(applicationId, body.challengeId(), body.code(), channel);
+        out.remove("userId");
+        return ResponseEntity.ok(out);
     }
 
     @PostMapping("/{applicationId}/auth/session/login")

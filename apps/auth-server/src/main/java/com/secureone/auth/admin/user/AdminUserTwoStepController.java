@@ -135,7 +135,7 @@ public class AdminUserTwoStepController {
         UUID applicationId = body != null ? body.applicationId() : null;
         twoStep.reset(user, applicationId, method, operator(authentication, actAs));
         audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_reset", "user_account", user.getId(),
-                user.getEmail() + (method != null ? " · " + method.id() : " · all"), true);
+                user.getLoginKey() + (method != null ? " · " + method.id() : " · all"), true);
         return view(user, applicationId, authentication, actAs);
     }
 
@@ -161,7 +161,7 @@ public class AdminUserTwoStepController {
         }
         twoStep.extend(user, applicationId, days, operator(authentication, actAs));
         audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_extended", "user_account", user.getId(),
-                user.getEmail() + " · +" + days + " days" + (applicationId == null ? " · every application" : ""), true);
+                user.getLoginKey() + " · +" + days + " days" + (applicationId == null ? " · every application" : ""), true);
         return view(user, applicationId, authentication, actAs);
     }
 
@@ -187,7 +187,7 @@ public class AdminUserTwoStepController {
                 reason.length() > 500 ? reason.substring(0, 500) : reason, operator(authentication, actAs), request);
         if (outcome.applied()) {
             audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exempted", "user_account", user.getId(),
-                    user.getEmail() + " until " + until + (applicationId == null ? " · every application" : "") + ": " + reason, true);
+                    user.getLoginKey() + " until " + until + (applicationId == null ? " · every application" : "") + ": " + reason, true);
         }
         return view(user, applicationId, authentication, actAs);
     }
@@ -201,7 +201,7 @@ public class AdminUserTwoStepController {
         requireGovernance(authentication, actAs, user.getTenantId());
         twoStep.exempt(user, applicationId, null, null, null);
         audit.record(user.getTenantId(), applicationId, "admin", "user.two_step_exemption_ended", "user_account", user.getId(),
-                user.getEmail() + (applicationId == null ? " · every application" : ""), true);
+                user.getLoginKey() + (applicationId == null ? " · every application" : ""), true);
         return view(user, applicationId, authentication, actAs);
     }
 

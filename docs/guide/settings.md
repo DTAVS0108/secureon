@@ -129,6 +129,16 @@ Shown when the **Email test console** flag is on. Fill **To**, pick a **Template
 
 *Admin console theme only.* It does not affect client applications.
 
+**Sign-in themes** (below the console theme) lists the [sign-in page themes](sign-in-themes.md) installed on this
+server: the themes folder, the default theme, what each theme changes and any problem with it. **Preview** opens the
+sign-in page in a theme; **Reload themes** reads the themes folder again after you change a theme.
+
+### Sign-in page theme (application)
+
+| Field | What to enter |
+|-------|---------------|
+| **Theme** | The [sign-in theme](sign-in-themes.md) of this application's hosted pages (sign-in, sign-up, password reset, account security, consent). **Server default** uses `SECUREONE_THEME`. The application's colours and logo still apply on top. **Preview sign-in page** opens it in a new tab. |
+
 ### Application branding (application)
 
 *Name and logo returned in the public manifest appearance block.* Your app's login UI reads them from the [Public API](#public-api).
@@ -198,8 +208,8 @@ One-time codes (all channels): **OTP length** (digits), **OTP TTL (seconds)** (h
 
 | Card | Fields |
 |------|--------|
-| **Signup verification**: *How new accounts confirm email or phone after registration.* | **Default mode** (**Email link** / **OTP code**), **Allowed modes**, **Required channels** (email, phone), **Allow user channel choice** |
-| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes** (the one switch for sign-in by email code, text-message code or magic link; text-message codes also need an SMS provider), (whether a second step is required is set on the **Two Factor Authentication** tab) |
+| **Signup verification**: *How new accounts confirm email or phone after registration.* | **Default mode** (**Email link** / **OTP code**), **Allowed modes**, **Required channels** (email, phone), **Allow user channel choice**, **Allow sign-up with a phone number only** (people sign up with a mobile number and a texted code, no email or password; offered only when **Passwordless modes** includes text-message codes and an SMS provider is set up) |
+| **Login & passwordless**: *Email/phone identifiers and OTP or magic-link sign-in.* | **Identifier types** (email, phone, username), **Passwordless modes** (the one switch for sign-in by email code, text-message code or magic link; text-message codes also need an SMS provider, and magic link also needs its **Sign-in methods** switch), (whether a second step is required is set on the **Two Factor Authentication** tab) |
 | **Password recovery**: *Forgot-password via email link or OTP (email/SMS).* | **Allowed channels**, **Require verified email/phone**, **Fallback to link if OTP unavailable** |
 
 #### SMS provider

@@ -521,7 +521,7 @@ public class ApplicationSettingsService {
         requireExposed(com.secureone.auth.twostep.TwoStepPolicyResolver.OWN_SETTINGS_EXPOSURE, applicationId);
         if (!twoStepPolicy.hasOwnSettings(applicationId)) {
             throw new IllegalArgumentException(
-                    "Turn on Two Factor Authentication under this application's Settings → Feature flags first.");
+                    "Turn on Two Factor Authentication first: this application's Settings → Feature flags → Settings tabs.");
         }
         Map<String, Object> overrides = com.secureone.auth.mfa.MfaPolicyDefaults.sanitizeOverride(body);
         overrides.remove(com.secureone.auth.mfa.MfaPolicyDefaults.LOCKS);
@@ -609,8 +609,22 @@ public class ApplicationSettingsService {
         Map<String, Object> appearance = ClientAppearanceDefaults.stripMeta(body);
         appearance.keySet().retainAll(ClientAppearanceDefaults.PUBLIC_MANIFEST_KEYS);
         ClientAppearanceDefaults.requireValid(appearance);
+        requireInstalledTheme(appearance.get("theme"));
         saveAppMap(applicationId, "appearance", appearance);
         return getAppearance(applicationId);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.secureone.auth.theme.ThemeRegistry themes;
+
+    /** A sign-in theme can only be chosen when this server has it (SECUREONE_THEMES_DIR). */
+    private void requireInstalledTheme(Object theme) {
+        if (themes == null || !(theme instanceof String name) || name.isEmpty() || themes.exists(name)) {
+            return;
+        }
+        throw new IllegalArgumentException("Appearance: sign-in theme '" + name + "' is not installed on this server. "
+                + "Installed: " + String.join(", ", themes.themes().stream().map(com.secureone.auth.theme.ThemeRegistry.Theme::name).toList())
+                + ". Add it to the themes folder (SECUREONE_THEMES_DIR), then reload themes under Platform settings → Appearance → Sign-in themes.");
     }
 
     @Transactional(readOnly = true)

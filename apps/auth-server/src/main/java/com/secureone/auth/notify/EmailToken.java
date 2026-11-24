@@ -29,6 +29,10 @@ public class EmailToken {
     @Column(name = "type", nullable = false)
     private EmailTokenType type;
 
+    /** The application the link was sent for (magic links); null when sent outside an application. */
+    @Column(name = "application_id")
+    private UUID applicationId;
+
     @Column(name = "token_hash", nullable = false)
     private String tokenHash;
 

@@ -141,6 +141,35 @@ public class AuthOtpService {
         }
     }
 
+    /** Refuses (403) when sign-in by a code on {@code channel} ("sms"/"phone" or "email") is not allowed. */
+    public void requireCodeSignInAllowed(UUID applicationId, String channel) {
+        ensureLoginOtpAllowed(applicationId, resolveLoginChannel(channel, null));
+    }
+
+    /**
+     * Signs in an account whose phone or email a sign-up code has just verified: that code proves what a
+     * sign-in code proves. Same completion as {@link #verifyLoginOtp}: two-step applies (204 or 428).
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public ResponseEntity<?> signInVerifiedAccount(
+            UUID applicationId, UUID userId, HttpServletRequest request, HttpServletResponse response) {
+        UserAccount user = tenants.findUserById(userId).orElseThrow();
+        if (!isActiveOrPending(user)) {
+            throw new ResourceNotFoundException("Invalid or expired code.");
+        }
+        user.setLastLoginAt(java.time.Instant.now());
+        users.save(user);
+        String tenantSlug = tenants.requireTenantSlug(applicationId);
+        UserDetails details = userDetailsService.buildSessionPrincipal(tenantSlug, user);
+        Authentication authentication = SignedInAuthentication.of(details, FactorGrantedAuthority.OTT_AUTHORITY);
+        try {
+            return mfaLogin.completePasswordLogin(authentication, applicationId, request, response);
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage()));
+        }
+    }
+
     private static boolean isActiveOrPending(UserAccount user) {
         return "ACTIVE".equalsIgnoreCase(user.getStatus()) || "PENDING".equalsIgnoreCase(user.getStatus());
     }

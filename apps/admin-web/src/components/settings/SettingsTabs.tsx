@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useDeferredEffect } from "@/lib/react/useDeferredEffect";
 import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ApplicationAppearanceSettings } from "@/components/settings/ApplicationAppearanceSettings";
+import { SignInThemesCard } from "@/components/settings/SignInThemesCard";
 import { AppExposureSettings } from "@/components/settings/AppExposureSettings";
 import { AttackProtectionSettings } from "@/components/settings/AttackProtectionSettings";
 import { LogStreamingSettings } from "@/components/settings/LogStreamingSettings";
@@ -459,7 +460,12 @@ export function SettingsTabs({
           <ApplicationAppearanceSettings key={resetNonce} applicationId={applicationId} />
         </>
       )}
-      {exposureReady && tab === "appearance" && !applicationId && <AppearanceSettings />}
+      {exposureReady && tab === "appearance" && !applicationId && (
+        <div className="space-y-6">
+          <AppearanceSettings />
+          <SignInThemesCard />
+        </div>
+      )}
       {exposureReady && tab === "users" && applicationId && (
         <>
           <PolicySourceBar applicationId={applicationId} exposureKeys={["user-directory"]} label="User directory" onReset={bumpReset} />

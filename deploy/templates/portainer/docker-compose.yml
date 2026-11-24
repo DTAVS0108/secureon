@@ -23,6 +23,8 @@ services:
     # The encryption key is created here on the first start: back up this volume.
     volumes:
       - secureone-data:/var/lib/secureone
+      # Optional sign-in page themes, one folder per theme (see the Sign-in themes guide):
+      # - /opt/secureone-themes:/opt/secureone/themes:ro
 
   postgres:
     image: postgres:16-alpine

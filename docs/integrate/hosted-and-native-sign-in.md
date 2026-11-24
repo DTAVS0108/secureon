@@ -77,6 +77,10 @@ GET /.well-known/openid-configuration
 4. Your backend or SPA exchanges the code at `/oauth2/token` for `access_token`, `id_token`, and optionally `refresh_token`.
 5. Call `/userinfo` with the bearer token for claims.
 
+The hosted pages carry the application's **Appearance** (name, logo, colours, language). For a design of your own
+(styles, wording, extra languages, or whole pages) install a [sign-in theme](../guide/sign-in-themes.md) and choose it
+under **Application → Settings → Appearance → Sign-in page theme**: no change in your app, and no image rebuild.
+
 Pass `applicationId` on hosted pages when you want app-scoped context in links:
 
 ```text

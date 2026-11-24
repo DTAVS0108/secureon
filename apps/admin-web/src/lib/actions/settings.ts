@@ -82,7 +82,7 @@ export async function loadAdminRecipientOptionsAction(): Promise<{
       listRoles({}),
     ]);
     const roleNameById = new Map(roles.map((r) => [r.id, r.name]));
-    const adminOptions: AdminRecipientOption[] = adminUsers.map((u) => {
+    const adminOptions: AdminRecipientOption[] = adminUsers.filter((u) => u.email).map((u) => {
       const name = `${u.firstName} ${u.lastName}`.trim();
       return {
         id: u.id,
@@ -93,7 +93,9 @@ export async function loadAdminRecipientOptionsAction(): Promise<{
           .filter((n): n is string => Boolean(n)),
       };
     });
+    // Email recipients only: an account created with a phone number has no address to send to.
     const allUsers: RecipientUserOption[] = allAccounts
+      .filter((u) => u.email)
       .map((u) => {
         const name = `${u.firstName} ${u.lastName}`.trim();
         return {

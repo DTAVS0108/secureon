@@ -45,6 +45,7 @@ public class AuthPublicController {
                     // Without an application: the platform defaults (code sign-in from Passwordless modes).
                     boolean enabled = applicationId != null
                                     || ApplicationEffectiveSettingsService.CODE_SIGN_IN_METHODS.containsKey(id)
+                                    || ApplicationEffectiveSettingsService.MAGIC_LINK_METHOD.equals(id)
                             ? effectiveSettings.isMethodAvailable(applicationId, id)
                             : Boolean.TRUE.equals(m.get("enabled"));
                     return Map.<String, Object>of(

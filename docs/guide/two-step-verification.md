@@ -1,7 +1,7 @@
 ---
 title: Two-step verification
 summary: Options, setup, settings, reset, extend and exempt
-order: 12
+order: 13
 audience: public
 ---
 
@@ -50,6 +50,14 @@ When an application suggests or requires two-step verification and the user has 
 | **Required, deadline passed** | *Set it up now to continue.* No skip. |
 
 After the first option is added the user gets **Save your backup codes** and continues with **I saved them, continue**.
+
+### Moving between applications (single sign-on)
+
+A user signed in to one application opens the others without signing in again, but each application's own
+two-step setting still applies. When the user signed in with a password at an application that doesn't ask for a
+second step and then opens one that requires it, that application shows **Verify it's you** (or **Set up two-step
+verification**) first, then lets them in. Each application asks once per sign-in; after that, moving between them
+needs nothing more.
 
 ### Account › Security (`/account/security.html`)
 

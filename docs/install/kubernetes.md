@@ -122,6 +122,8 @@ running. See [Configuration as code and upgrades](configuration-and-upgrades.md)
 | `env` | `SECUREONE_TRUSTED_PROXIES` | Any other setting from [Deployment](deployment.md#all-settings) |
 | `migrationJob.enabled` | `true` | Upgrade the database in a job before the pods start |
 | `resources` | 768 MiB to 1.5 GiB memory | Per pod |
+| `themes.configMaps`, `themes.existingClaim` | none | [Sign-in page themes](../guide/sign-in-themes.md#kubernetes): one ConfigMap per theme, or a volume with all of them |
+| `themes.default`, `themes.cache` | built-in pages, cache on | The default theme (`SECUREONE_THEME`) and whether themes are read once (`SECUREONE_THEME_CACHE`) |
 
 The health, info and metrics endpoints are on port `9001` inside the cluster (`/actuator/health`,
 `/actuator/prometheus`), never on the ingress.

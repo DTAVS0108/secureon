@@ -101,6 +101,15 @@ secureone:
     migrate: ${SECUREONE_DB_MIGRATE:auto}
   # Tenant configuration files (YAML/JSON, a file or a directory) applied at every start-up. See docs/install/configuration-and-upgrades.md.
   config-import: ${SECUREONE_CONFIG_IMPORT:}
+  # Sign-in page themes (docs/guide/sign-in-themes.md): a folder with one sub-folder per theme. Empty: only the
+  # built-in theme "base". The image sets /opt/secureone/themes (mount a volume or ConfigMaps there).
+  themes:
+    dir: ${SECUREONE_THEMES_DIR:}
+    # Theme of applications that do not choose one (Application → Settings → Appearance → Sign-in page theme).
+    default: ${SECUREONE_THEME:base}
+    # true: themes are read once and reloaded from the console (Platform settings → Appearance → Reload themes).
+    # Default: on when SECUREONE_ENV=production; off otherwise, so edits show on the next page load.
+    cache: ${SECUREONE_THEME_CACHE:${secureone.defaults.theme-cache:false}}
   # Reverse proxies / load balancers whose X-Forwarded-For is believed: addresses or IPv4 /8 /16 /24 /32 ranges.
   trusted-proxies: ${SECUREONE_TRUSTED_PROXIES:}
   # API docs (Swagger UI, /v3/api-docs): off when SECUREONE_ENV=production, on otherwise (SecureOneEnvironmentDefaults).

@@ -107,7 +107,7 @@ public class RoleAdminService {
                 .map(u ->
                         new RoleAdminDtos.RoleAssignedUserResponse(
                                 u.getId(),
-                                u.getEmail(),
+                                u.getLoginKey(),
                                 u.getUsername(),
                                 u.getDisplayName(),
                                 u.getStatus(),

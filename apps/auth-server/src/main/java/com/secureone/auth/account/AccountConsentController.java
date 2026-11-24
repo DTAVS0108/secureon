@@ -94,7 +94,7 @@ public class AccountConsentController {
         if (removed == 0) {
             return ResponseEntity.notFound().build();
         }
-        audit.record(user.getTenantId(), null, user.getEmail(), "user.consent_revoked", "oauth_client", null,
+        audit.record(user.getTenantId(), null, user.getLoginKey(), "user.consent_revoked", "oauth_client", null,
                 registeredClientId, true);
         return ResponseEntity.noContent().build();
     }

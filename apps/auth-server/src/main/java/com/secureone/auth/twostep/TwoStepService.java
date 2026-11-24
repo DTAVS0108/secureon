@@ -166,6 +166,11 @@ public class TwoStepService {
     }
 
     /** Methods a user may set up in this application. */
+    /** Whether sign-in to this application can ask for a second step at all (its two-step mode is not Off). */
+    public boolean inUse(UUID applicationId) {
+        return !"off".equals(policy.loginMfaRequired(applicationId));
+    }
+
     public List<TwoStepMethod> offered(UUID applicationId, boolean forRequired) {
         TwoStepMethod.Strength minimum = policy.minimumStrength(applicationId);
         return policy.allowedMethods(applicationId).stream()
@@ -319,10 +324,10 @@ public class TwoStepService {
     private void auditChange(UserAccount user, UUID applicationId, String action, TwoStepMethod method) {
         if (audit != null) audit.ifAvailable(a -> {
             try {
-                a.recordIndependently(user.getTenantId(), applicationId, user.getEmail(), action,
+                a.recordIndependently(user.getTenantId(), applicationId, user.getLoginKey(), action,
                         "user_account", user.getId(), method.label(), true);
             } catch (RuntimeException e) {
-                log.warn("Could not audit {} for {}: {}", action, user.getEmail(), e.getMessage());
+                log.warn("Could not audit {} for {}: {}", action, user.getLoginKey(), e.getMessage());
             }
         });
     }
@@ -446,7 +451,9 @@ public class TwoStepService {
         Instant now = Instant.now();
         TwoStepStateStore.State ex = exemption(user.getId(), applicationId, now);
         String status;
-        if (!qualifying.isEmpty()) {
+        if ("off".equals(mode)) {
+            status = "off"; // options added earlier are not asked for while two-step is off
+        } else if (!qualifying.isEmpty()) {
             status = "enabled";
         } else if (ex.exempt(now)) {
             status = "exempt";
@@ -481,16 +488,16 @@ public class TwoStepService {
             String link = publicBaseUrl + "/account/security.html" + (applicationId != null ? "?applicationId=" + applicationId : "");
             mail.getObject().sendSecurityNotice(applicationId, user, event, link);
         } catch (RuntimeException ex) {
-            log.warn("Could not send security notice to {}: {}", user.getEmail(), ex.getMessage());
+            log.warn("Could not send security notice to {}: {}", user.getLoginKey(), ex.getMessage());
         }
     }
 
     public void endSessions(UserAccount user) {
         try {
-            String principal = tenantSlugs.slugForTenant(user.getTenantId()) + ":" + user.getEmail();
+            String principal = tenantSlugs.slugForTenant(user.getTenantId()) + ":" + user.getLoginKey();
             sessions.getObject().revokeOthers(principal, null);
         } catch (RuntimeException ex) {
-            log.warn("Could not end sessions of {}: {}", user.getEmail(), ex.getMessage());
+            log.warn("Could not end sessions of {}: {}", user.getLoginKey(), ex.getMessage());
         }
     }
 

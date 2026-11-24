@@ -9,7 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.secureone.auth.application.Application;
 import com.secureone.auth.application.ApplicationMembershipService;
+import com.secureone.auth.application.ApplicationRepository;
+import com.secureone.auth.application.ApplicationSchemaService;
 import com.secureone.auth.audit.AuditService;
 import com.secureone.auth.rbac.Role;
 import com.secureone.auth.rbac.RoleRepository;
@@ -29,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,13 +52,19 @@ class AccessRequestGrantServiceTest {
     private ApplicationMembershipService memberships;
     @Mock
     private AuditService auditService;
+    @Mock
+    private ApplicationRepository applications;
+    @Mock
+    private ObjectProvider<ApplicationSchemaService> schemas;
+    @Mock
+    private ApplicationSchemaService schema;
 
     private AccessRequestGrantService service;
 
     @BeforeEach
     void setUp() {
         service = new AccessRequestGrantService(
-                users, tenantRoles, tenantRbac, applicationRoles, userRoles, memberships, auditService);
+                users, tenantRoles, tenantRbac, applicationRoles, userRoles, memberships, auditService, applications, schemas);
     }
 
     @Test
@@ -93,6 +103,8 @@ class AccessRequestGrantServiceTest {
         request.setApplicationId(applicationId);
 
         stubTenantUser(tenantId, userId);
+        stubApplications(tenantId, applicationId);
+        when(schemas.getIfAvailable()).thenReturn(schema);
         when(applicationRoles.findById(roleId)).thenReturn(Optional.of(role));
         when(userRoles.findByUserId(userId)).thenReturn(List.of());
 
@@ -101,7 +113,10 @@ class AccessRequestGrantServiceTest {
         assertTrue((Boolean) result.get("grantApplied"));
         assertEquals("application_role", result.get("grantType"));
         verify(memberships).ensureMember(applicationId, userId);
-        verify(userRoles).save(any(UserRole.class));
+        verify(userRoles).saveAndFlush(any(UserRole.class));
+        // Looked up and granted in the application's own schema, then back to the platform schema
+        verify(schema, org.mockito.Mockito.atLeastOnce()).applySearchPathForApplicationId(applicationId);
+        verify(schema).applySearchPathForApplicationId(null);
     }
 
     @Test
@@ -144,7 +159,10 @@ class AccessRequestGrantServiceTest {
         request.setResourceId("Member");
 
         stubTenantUser(tenantId, userId);
-        when(applicationRoles.findByTenantIdOrderByNameAsc(tenantId)).thenReturn(List.of(a, b));
+        when(applications.findByTenantIdOrderByCreatedAtDesc(tenantId))
+                .thenReturn(List.of(app(tenantId, a.getApplicationId()), app(tenantId, b.getApplicationId())));
+        when(applicationRoles.findByApplicationIdAndName(a.getApplicationId(), "Member")).thenReturn(Optional.of(a));
+        when(applicationRoles.findByApplicationIdAndName(b.getApplicationId(), "Member")).thenReturn(Optional.of(b));
 
         assertThrows(ResponseStatusException.class, () -> service.applyGrant(request, UUID.randomUUID()));
     }
@@ -187,13 +205,64 @@ class AccessRequestGrantServiceTest {
         existing.setRoleId(roleId);
 
         stubTenantUser(tenantId, userId);
+        when(applications.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of(app(tenantId, applicationId)));
         when(applicationRoles.findById(roleId)).thenReturn(Optional.of(role));
         when(userRoles.findByUserId(userId)).thenReturn(List.of(existing));
 
         service.applyGrant(request, UUID.randomUUID());
 
-        verify(userRoles, never()).save(any());
+        verify(userRoles, never()).saveAndFlush(any());
         verify(memberships).ensureMember(applicationId, userId);
+    }
+
+    @Test
+    void approveFindsApplicationRoleByNameInTheApplicationSchema() {
+        UUID tenantId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID applicationId = UUID.randomUUID();
+        Role role = applicationRole(tenantId, applicationId, UUID.randomUUID(), "Invoice submitter");
+
+        AccessRequest request = baseRequest(tenantId, userId);
+        request.setResourceType("application_role");
+        request.setResourceId("Invoice submitter");
+        request.setApplicationId(applicationId);
+
+        stubTenantUser(tenantId, userId);
+        stubApplications(tenantId, applicationId);
+        when(applicationRoles.findByApplicationIdAndName(applicationId, "Invoice submitter")).thenReturn(Optional.of(role));
+        when(userRoles.findByUserId(userId)).thenReturn(List.of());
+
+        Map<String, Object> result = service.applyGrant(request, UUID.randomUUID());
+
+        assertEquals(role.getId().toString(), result.get("grantedRoleId"));
+        verify(userRoles).saveAndFlush(any(UserRole.class));
+    }
+
+    @Test
+    void approveRefusesRoleOfAnotherTenantsApplication() {
+        UUID tenantId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID otherApp = UUID.randomUUID();
+        AccessRequest request = baseRequest(tenantId, userId);
+        request.setResourceType("application_role");
+        request.setResourceId(UUID.randomUUID().toString());
+        request.setApplicationId(otherApp);
+
+        stubTenantUser(tenantId, userId);
+        when(applications.findById(otherApp)).thenReturn(Optional.of(app(UUID.randomUUID(), otherApp)));
+
+        assertThrows(com.secureone.auth.admin.ResourceNotFoundException.class, () -> service.applyGrant(request, UUID.randomUUID()));
+    }
+
+    private void stubApplications(UUID tenantId, UUID applicationId) {
+        when(applications.findById(applicationId)).thenReturn(Optional.of(app(tenantId, applicationId)));
+    }
+
+    private static Application app(UUID tenantId, UUID applicationId) {
+        Application app = new Application();
+        app.setId(applicationId);
+        app.setTenantId(tenantId);
+        return app;
     }
 
     private void stubTenantUser(UUID tenantId, UUID userId) {

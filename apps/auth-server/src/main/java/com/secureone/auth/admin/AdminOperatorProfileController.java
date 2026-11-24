@@ -127,7 +127,7 @@ public class AdminOperatorProfileController {
                 tenant.getId(),
                 tenant.getSlug(),
                 tenant.getName(),
-                user.getEmail(),
+                user.getLoginKey(),
                 user.getUsername(),
                 user.getDisplayName(),
                 user.isEmailVerified(),

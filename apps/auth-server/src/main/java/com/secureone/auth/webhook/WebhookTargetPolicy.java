@@ -85,10 +85,21 @@ public class WebhookTargetPolicy {
     }
 
     private void assertPublic(String host) throws UnknownHostException {
+        String h = host.toLowerCase(Locale.ROOT);
         if (allowPrivateTargets) {
+            // Private networks are allowed, but never the cloud metadata service (instance credentials) or other
+            // link-local addresses.
+            if (h.equals("metadata.google.internal") || h.equals("metadata") || h.endsWith(".metadata.google.internal")) {
+                throw bad("url points to the cloud metadata service.");
+            }
+            for (InetAddress address : InetAddress.getAllByName(h.replace("[", "").replace("]", ""))) {
+                if (isMetadataOrLinkLocal(address)) {
+                    throw bad("url points to the cloud metadata service or a link-local address ("
+                            + address.getHostAddress() + ").");
+                }
+            }
             return;
         }
-        String h = host.toLowerCase(Locale.ROOT);
         if (h.equals("localhost") || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) {
             throw bad("url points to an internal host.");
         }
@@ -97,6 +108,26 @@ public class WebhookTargetPolicy {
                 throw bad("url resolves to an internal address (" + address.getHostAddress() + ").");
             }
         }
+    }
+
+    /**
+     * Link-local addresses (169.254.0.0/16, fe80::/10: the metadata service of AWS, Google Cloud, Azure and others),
+     * Azure's host address 168.63.129.16 and AWS's IPv6 metadata address fd00:ec2::254. Refused even when private
+     * targets are allowed.
+     */
+    static boolean isMetadataOrLinkLocal(InetAddress address) {
+        if (address.isLinkLocalAddress()) {
+            return true;
+        }
+        byte[] b = address.getAddress();
+        if (address instanceof Inet4Address) {
+            return (b[0] & 0xff) == 168 && (b[1] & 0xff) == 63 && (b[2] & 0xff) == 129 && (b[3] & 0xff) == 16;
+        }
+        if (address instanceof Inet6Address) {
+            byte[] awsMetadata = {(byte) 0xfd, 0, 0x0e, (byte) 0xc2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02, 0x54};
+            return java.util.Arrays.equals(b, awsMetadata);
+        }
+        return false;
     }
 
     static boolean isInternal(InetAddress address) {

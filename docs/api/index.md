@@ -33,9 +33,9 @@ Every SecureOne HTTP endpoint, section by section, each with a ready-to-run **cu
 | [Admin API: tenants](admin-tenants.md) | 57 | Tenants and everything inside one: the tenant workspace (roster, application access), tenant roles, console roles and access, access requests and the tenant's SCIM token. |
 | [Admin API: users](admin-users.md) | 29 | User accounts across tenants: create, edit, suspend, delete, passwords, email verification, MFA reset, unlock and impersonation. |
 | [Admin API: applications and OAuth clients](admin-applications-and-clients.md) | 21 | Application products, their OAuth clients, and changes that wait for a second admin (deleting an OAuth client returns 202 with a change request; another admin approves it). |
-| [Admin API: application console](admin-application-console.md) | 127 | Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, permissions, groups, settings and logs. |
+| [Admin API: application console](admin-application-console.md) | 128 | Everything under /api/admin/v1/applications/{applicationId}/…: the application's users, roles, permissions, groups, settings and logs. |
 | [Admin API: security and governance](admin-security-and-governance.md) | 49 | Platform operators, access review, platform roles, sign-in federation providers, service accounts, webhooks, the audit log (search and CSV export), sessions and the console overview. |
-| [Admin API: platform settings](admin-platform-settings.md) | 40 | Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply). |
+| [Admin API: platform settings](admin-platform-settings.md) | 42 | Platform-wide settings (sign-in methods, password, MFA and token policies, email, SMS, appearance, feature flags, attack protection, log retention and streaming) and configuration files (export, preview, apply). |
 | [Data models](data-models.md) | 134 | Every request and response type with its fields. |
 <!-- sections:end -->
 

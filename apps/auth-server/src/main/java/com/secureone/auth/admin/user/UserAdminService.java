@@ -142,7 +142,7 @@ public class UserAdminService {
         }
         return users.stream()
                 .filter(u -> tenantId == null || tenantId.equals(u.getTenantId()))
-                .sorted(Comparator.comparing(UserAccount::getEmail))
+                .sorted(Comparator.comparing(UserAccount::getLoginKey))
                 .map(this::toResponse)
                 .toList();
     }
@@ -176,7 +176,7 @@ public class UserAdminService {
         user.setAttributes(UserAuthPreferences.write(user.getAttributes(), merged));
         userRepository.save(user);
         auditService.record(
-                user.getTenantId(), "admin", "user.auth_methods_updated", "user_account", user.getId(), user.getEmail(), true);
+                user.getTenantId(), "admin", "user.auth_methods_updated", "user_account", user.getId(), user.getLoginKey(), true);
         return toResponse(user, merged);
     }
 
@@ -265,7 +265,7 @@ public class UserAdminService {
         } else {
             tenantUserRoster.addToRoster(tenantId, user.getId());
         }
-        auditService.record(user.getTenantId(), "admin", "user.created", "user_account", user.getId(), user.getEmail(), true);
+        auditService.record(user.getTenantId(), "admin", "user.created", "user_account", user.getId(), user.getLoginKey(), true);
         userLifecycleWebhooks.userCreated(user, request.applicationId(), "admin");
         accountNotifications.onUserInvited(request.applicationId(), user);
         return toResponse(user);
@@ -292,7 +292,7 @@ public class UserAdminService {
                 "user.application_access_granted",
                 "user_account",
                 user.getId(),
-                user.getEmail(),
+                user.getLoginKey(),
                 true);
         accountNotifications.onUserInvited(applicationId, user);
         return toResponse(user);
@@ -306,7 +306,7 @@ public class UserAdminService {
         if ("LOCKED".equalsIgnoreCase(user.getStatus())) {
             user.setStatus("ACTIVE");
         }
-        auditService.record(user.getTenantId(), "admin", "user.unlocked", "user_account", user.getId(), user.getEmail(), true);
+        auditService.record(user.getTenantId(), "admin", "user.unlocked", "user_account", user.getId(), user.getLoginKey(), true);
         return toResponse(user);
     }
 
@@ -324,12 +324,12 @@ public class UserAdminService {
         passwords.setPassword(user.getId(), plainPassword, applicationId, temporary);
         auditService.record(
                 user.getTenantId(), "admin", "user.password_set", "user_account", user.getId(),
-                user.getEmail() + (temporary ? " (temporary: must change at next sign-in)" : ""), true);
+                user.getLoginKey() + (temporary ? " (temporary: must change at next sign-in)" : ""), true);
         emailService.sendAdminSecurityAlert(
                 applicationId,
                 user,
                 "Password set by admin",
-                "An administrator set a new password for " + user.getEmail() + ".");
+                "An administrator set a new password for " + user.getLoginKey() + ".");
     }
 
     public void sendPasswordResetEmail(UUID id) {
@@ -343,7 +343,7 @@ public class UserAdminService {
         }
         accountNotifications.sendPasswordResetEmail(applicationId, user, "admin");
         auditService.record(
-                user.getTenantId(), "admin", "user.password_reset_sent", "user_account", user.getId(), user.getEmail(), true);
+                user.getTenantId(), "admin", "user.password_reset_sent", "user_account", user.getId(), user.getLoginKey(), true);
     }
 
     public void adminRemovePassword(UUID id) {
@@ -360,12 +360,12 @@ public class UserAdminService {
         }
         passwords.removePassword(user.getId());
         auditService.record(
-                user.getTenantId(), "admin", "user.password_removed", "user_account", user.getId(), user.getEmail(), true);
+                user.getTenantId(), "admin", "user.password_removed", "user_account", user.getId(), user.getLoginKey(), true);
         emailService.sendAdminSecurityAlert(
                 applicationId,
                 user,
                 "Password removed",
-                "An administrator removed the password credential for " + user.getEmail() + ".");
+                "An administrator removed the password credential for " + user.getLoginKey() + ".");
     }
 
     public void sendSetPasswordInviteEmail(UUID id) {
@@ -384,7 +384,7 @@ public class UserAdminService {
                 "user.set_password_invite_sent",
                 "user_account",
                 user.getId(),
-                user.getEmail(),
+                user.getLoginKey(),
                 true);
     }
 
@@ -433,7 +433,7 @@ public class UserAdminService {
                     applicationId,
                     user,
                     "Email marked unverified",
-                    "Admin cleared email verification for " + user.getEmail() + ".");
+                    "Admin cleared email verification for " + user.getLoginKey() + ".");
         }
         UserAccount updated = require(id);
         return toResponse(updated, effectiveAuthMethods(updated, applicationId), applicationId);
@@ -443,8 +443,8 @@ public class UserAdminService {
     public void resetMfa(UUID id) {
         UserAccount user = require(id);
         twoStep.getObject().reset(user, null, null, "admin");
-        auditService.record(user.getTenantId(), "admin", "user.mfa_reset", "user_account", user.getId(), user.getEmail(), true);
-        emailService.sendAdminSecurityAlert(null, user, "MFA reset", "Admin cleared MFA factors for " + user.getEmail() + ".");
+        auditService.record(user.getTenantId(), "admin", "user.mfa_reset", "user_account", user.getId(), user.getLoginKey(), true);
+        emailService.sendAdminSecurityAlert(null, user, "MFA reset", "Admin cleared MFA factors for " + user.getLoginKey() + ".");
     }
 
     public UserResponse update(UUID id, UserUpdateRequest request) {
@@ -480,7 +480,7 @@ public class UserAdminService {
         }
         UserAccount updated = require(id);
         auditService.record(
-                updated.getTenantId(), "admin", "user.updated", "user_account", updated.getId(), updated.getEmail(), true);
+                updated.getTenantId(), "admin", "user.updated", "user_account", updated.getId(), updated.getLoginKey(), true);
         return toResponse(updated);
     }
 
@@ -492,7 +492,7 @@ public class UserAdminService {
         mfaFactors.deleteByUserId(id);
         passwords.removePassword(id);
         userRepository.delete(user);
-        auditService.record(user.getTenantId(), "admin", "user.deleted", "user_account", id, user.getEmail(), true);
+        auditService.record(user.getTenantId(), "admin", "user.deleted", "user_account", id, user.getLoginKey(), true);
     }
 
     public UserResponse setStatus(UUID id, String status) {
@@ -501,10 +501,10 @@ public class UserAdminService {
         String nextStatus = normalizeStatus(status, user.getStatus());
         user.setStatus(nextStatus);
         userRepository.save(user);
-        auditService.record(user.getTenantId(), "admin", "user.status_changed", "user_account", user.getId(), user.getEmail(), true);
+        auditService.record(user.getTenantId(), "admin", "user.status_changed", "user_account", user.getId(), user.getLoginKey(), true);
         notifyStatusChange(user, previousStatus, nextStatus, null);
         if (!"ACTIVE".equalsIgnoreCase(nextStatus)) {
-            endAccess(user, user.getEmail());
+            endAccess(user, user.getLoginKey());
         }
         return toResponse(user);
     }
@@ -623,13 +623,13 @@ public class UserAdminService {
         user.setAttributes(next);
         userRepository.save(user);
         auditService.record(user.getTenantId(), "admin", "user.attributes_changed", "user_account", user.getId(),
-                user.getEmail() + ": " + String.join(", ", new java.util.TreeSet<>(given.keySet())), true);
+                user.getLoginKey() + ": " + String.join(", ", new java.util.TreeSet<>(given.keySet())), true);
         return profileAttributes(id);
     }
 
     private String principalOf(UserAccount user) {
         String slug = tenantRepository.findById(user.getTenantId()).map(t -> t.getSlug()).orElse("?");
-        return slug + ":" + user.getEmail();
+        return slug + ":" + user.getLoginKey();
     }
 
     /**
@@ -655,7 +655,7 @@ public class UserAdminService {
             signOutOfApplications(user);
             return;
         }
-        String principal = slug + ":" + user.getEmail();
+        String principal = slug + ":" + user.getLoginKey();
         var logout = backchannelLogout != null ? backchannelLogout.getIfAvailable() : null;
         java.util.List<com.secureone.auth.oauth.OAuthClient> toNotify =
                 logout != null ? logout.clientsToNotify(principal) : java.util.List.of();
@@ -687,7 +687,7 @@ public class UserAdminService {
     /** Back-channel logout: applications end the sessions of a user who is suspended or deleted. */
     private void signOutOfApplications(UserAccount user) {
         if (backchannelLogout != null) backchannelLogout.ifAvailable(b -> tenantRepository.findById(user.getTenantId())
-                .ifPresent(t -> b.signedOut(t.getSlug(), user.getEmail(), user.getId())));
+                .ifPresent(t -> b.signedOut(t.getSlug(), user.getLoginKey(), user.getId())));
     }
 
     private void notifyStatusChange(
@@ -701,7 +701,7 @@ public class UserAdminService {
                     applicationId,
                     user,
                     "Account suspended",
-                    "Administrator suspended the account for " + user.getEmail() + ".");
+                    "Administrator suspended the account for " + user.getLoginKey() + ".");
             return;
         }
         if ("SUSPENDED".equalsIgnoreCase(previousStatus) && "ACTIVE".equalsIgnoreCase(nextStatus)) {
@@ -710,7 +710,7 @@ public class UserAdminService {
                     applicationId,
                     user,
                     "Account reactivated",
-                    "Administrator reactivated the account for " + user.getEmail() + ".");
+                    "Administrator reactivated the account for " + user.getLoginKey() + ".");
         }
     }
 
@@ -778,11 +778,11 @@ public class UserAdminService {
                     action,
                     "user_account",
                     user.getId(),
-                    user.getEmail(),
+                    user.getLoginKey(),
                     success);
         } else {
             auditService.record(
-                    user.getTenantId(), "admin", action, "user_account", user.getId(), user.getEmail(), success);
+                    user.getTenantId(), "admin", action, "user_account", user.getId(), user.getLoginKey(), success);
         }
     }
 
@@ -928,7 +928,7 @@ public class UserAdminService {
         grant.setExpiresAt(expiresAt);
         userRoleRepository.save(grant);
         auditService.record(user.getTenantId(), applicationId, "admin", "user.role_granted", "user_account", userId,
-                user.getEmail() + ": " + role.getName() + (expiresAt != null ? " until " + expiresAt : ""), true);
+                user.getLoginKey() + ": " + role.getName() + (expiresAt != null ? " until " + expiresAt : ""), true);
         java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
         out.put("roleId", roleId);
         out.put("roleName", role.getName());
@@ -945,7 +945,7 @@ public class UserAdminService {
                 .filter(g -> roleId.equals(g.getRoleId()))
                 .forEach(userRoleRepository::delete);
         auditService.record(user.getTenantId(), applicationId, "admin", "user.role_revoked", "user_account", userId,
-                user.getEmail() + ": " + role.getName(), true);
+                user.getLoginKey() + ": " + role.getName(), true);
     }
 
     /** The user's roles in the application with their end dates (none: for good). */

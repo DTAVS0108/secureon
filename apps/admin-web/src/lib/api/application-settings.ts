@@ -141,6 +141,18 @@ export async function saveApplicationAppearance(
   );
 }
 
+export type SignInThemeChoice = { name: string; description?: string | null; builtIn: boolean };
+
+/** Sign-in page themes installed on the server, and the one used when an application picks none. */
+export async function fetchApplicationThemes(
+  appId: string,
+): Promise<{ defaultTheme: string; themes: SignInThemeChoice[] }> {
+  return apiFetch<{ defaultTheme: string; themes: SignInThemeChoice[] }>(
+    `${base(appId)}/appearance/themes`,
+    scoped(appId),
+  );
+}
+
 export async function resetApplicationAppearance(appId: string): Promise<void> {
   await apiFetch<void>(`${base(appId)}/appearance`, scoped(appId, { method: "DELETE" }));
 }

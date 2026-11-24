@@ -8,6 +8,7 @@ const faqs = [
   ["What do I need to run it?", "Docker (or Kubernetes), PostgreSQL 16 or later and Redis 7 or later. SecureOne is one container; the admin console is built in at /admin."],
   ["Does my application need a special SDK?", "No. Any OAuth 2.1 or OpenID Connect library works. SAML 2.0 is available for applications that only speak SAML, and SCIM 2.0 for user provisioning."],
   ["Can users sign in on screens I design myself?", "Yes. Use the hosted pages for the least code, or draw your own screens and call the sign-in APIs; both end with the same tokens."],
+  ["Can I change how the hosted pages look?", "Yes. Each application sets its name, logo and colours in the console. For more, a sign-in theme (a folder you mount into the container) changes styles, wording, languages or whole pages, without rebuilding the image."],
   ["How are organisations kept apart?", "Each organisation is a tenant. Database row-level security limits every request to its tenant's rows, and each tenant can have its own domain, settings and administrators."],
   ["Which multi-factor methods are supported?", "Passkeys and security keys, authenticator apps, email and SMS codes, and recovery codes. Each application decides whether a second step is required or optional."],
   ["How do upgrades work?", "Back up the database, change the image tag and start it. The database is upgraded at start-up; an older image refuses a database a newer release has upgraded."],

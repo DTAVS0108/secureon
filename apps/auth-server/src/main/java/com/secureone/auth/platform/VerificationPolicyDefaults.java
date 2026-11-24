@@ -93,6 +93,8 @@ public final class VerificationPolicyDefaults {
         signup.put("defaultMode", "link");
         signup.put("allowedModes", List.of("link", "otp"));
         signup.put("allowUserChannelChoice", false);
+        // Sign-up with a phone number only (no email, password optional): verified by a text-message code.
+        signup.put("phoneSignup", false);
         signup.put("otpLength", 6);
         signup.put("otpTtlSeconds", 600);
         signup.put("maxAttempts", 5);

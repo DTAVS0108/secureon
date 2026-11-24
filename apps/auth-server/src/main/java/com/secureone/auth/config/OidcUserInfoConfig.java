@@ -49,6 +49,7 @@ public class OidcUserInfoConfig {
         Set<String> scopes = principal instanceof JwtAuthenticationToken jwtAuth ? scopes(jwtAuth.getToken()) : Set.of();
         boolean email = scopes.contains("email");
         boolean profile = scopes.contains("profile");
+        boolean phoneScope = scopes.contains("phone");
         if (principal instanceof JwtAuthenticationToken jwtAuth) {
             Jwt jwt = jwtAuth.getToken();
             if (jwt.hasClaim("amr")) {
@@ -66,9 +67,13 @@ public class OidcUserInfoConfig {
             }
         }
         resolveUser(subject, users, tenants).ifPresent(user -> {
-            if (email) {
+            if (email && user.hasEmail()) {
                 builder.email(user.getEmail());
                 builder.emailVerified(user.isEmailVerified());
+            }
+            if (phoneScope && user.getPhone() != null && !user.getPhone().isBlank()) {
+                builder.phoneNumber(user.getPhone());
+                builder.phoneNumberVerified(user.isPhoneVerified());
             }
             if (profile) {
                 if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
@@ -130,6 +135,6 @@ public class OidcUserInfoConfig {
         }
         String tenantSlug = subject.substring(0, sep).trim().toLowerCase(Locale.ROOT);
         String email = subject.substring(sep + 1).trim().toLowerCase(Locale.ROOT);
-        return tenants.findBySlug(tenantSlug).flatMap(tenant -> users.findByTenantIdAndEmail(tenant.getId(), email));
+        return tenants.findBySlug(tenantSlug).flatMap(tenant -> users.findByTenantIdAndLoginKey(tenant.getId(), email));
     }
 }

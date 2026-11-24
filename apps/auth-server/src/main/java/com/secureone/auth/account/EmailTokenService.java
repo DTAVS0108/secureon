@@ -24,11 +24,17 @@ public class EmailTokenService {
     }
 
     public IssuedToken issue(UserAccount user, EmailTokenType type) {
+        return issue(user, type, null);
+    }
+
+    /** As {@link #issue(UserAccount, EmailTokenType)}, remembering the application the link is sent for. */
+    public IssuedToken issue(UserAccount user, EmailTokenType type, UUID applicationId) {
         tokens.deleteActiveByUserIdAndType(user.getId(), type);
         String raw = TokenHasher.generateRawToken();
         EmailToken token = new EmailToken();
         token.setUserId(user.getId());
         token.setType(type);
+        token.setApplicationId(applicationId);
         token.setTokenHash(TokenHasher.hash(raw));
         token.setExpiresAt(Instant.now().plus(ttlHours(type), ChronoUnit.HOURS));
         tokens.save(token);

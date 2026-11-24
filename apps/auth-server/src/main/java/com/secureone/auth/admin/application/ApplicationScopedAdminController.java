@@ -644,6 +644,28 @@ public class ApplicationScopedAdminController {
         settings.clearOverride(applicationId, "appearance");
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.theme.ThemeRegistry themes;
+
+    /** The sign-in page themes this application can choose (Appearance → Sign-in page theme). */
+    @io.swagger.v3.oas.annotations.Operation(summary = "List sign-in themes")
+    @GetMapping("/settings/appearance/themes")
+    public Map<String, Object> getAppearanceThemes(@PathVariable UUID applicationId) {
+        settings.requireApplication(applicationId);
+        java.util.List<Map<String, Object>> list = new java.util.ArrayList<>();
+        for (var theme : themes.themes()) {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("name", theme.name());
+            row.put("description", theme.description());
+            row.put("builtIn", theme.builtIn());
+            list.add(row);
+        }
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("defaultTheme", themes.defaultTheme());
+        out.put("themes", list);
+        return out;
+    }
+
     @GetMapping("/settings/public-manifest")
     public Map<String, Object> getPublicManifestSettings(@PathVariable UUID applicationId) {
         return publicManifest.getManifestConfig(applicationId);

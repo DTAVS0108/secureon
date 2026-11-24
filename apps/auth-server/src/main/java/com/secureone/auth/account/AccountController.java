@@ -1,6 +1,7 @@
 package com.secureone.auth.account;
 
 import com.secureone.auth.authn.MagicLinkAuthService;
+import com.secureone.auth.theme.ThemePages;
 import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
@@ -23,16 +24,19 @@ public class AccountController {
     private final AccountVerificationService verification;
     private final PasswordRecoveryService passwordRecovery;
     private final MagicLinkAuthService magicLinkAuth;
+    private final ThemePages pages;
 
     public AccountController(
             AccountNotificationService accounts,
             AccountVerificationService verification,
             PasswordRecoveryService passwordRecovery,
-            MagicLinkAuthService magicLinkAuth) {
+            MagicLinkAuthService magicLinkAuth,
+            ThemePages pages) {
         this.accounts = accounts;
         this.verification = verification;
         this.passwordRecovery = passwordRecovery;
         this.magicLinkAuth = magicLinkAuth;
+        this.pages = pages;
     }
 
     /**
@@ -73,28 +77,22 @@ public class AccountController {
         return accounts.resendVerification(request.tenantSlug(), request.email());
     }
 
+    /** In the sign-in theme (templates/email-verified.html, templates/email-verify-failed.html or the layout). */
     @GetMapping(value = "/email/verify", produces = MediaType.TEXT_HTML_VALUE)
-    public String verifyEmailHtml(@RequestParam String token) {
+    public String verifyEmailHtml(@RequestParam String token, jakarta.servlet.http.HttpServletRequest request) {
+        String email;
         try {
-            var user = accounts.verifyEmail(token);
-            return """
-                    <!DOCTYPE html><html><head><meta charset="utf-8"><title>Email verified</title></head>
-                    <body style="font-family:system-ui,sans-serif;padding:2rem">
-                    <h1>Email verified</h1>
-                    <p>Thank you. <strong>%s</strong> is now verified.</p>
-                    <p>You can close this window and sign in.</p>
-                    </body></html>
-                    """
-                    .formatted(escapeHtml(user.getEmail()));
+            email = accounts.verifyEmail(token).getEmail();
         } catch (Exception ex) {
-            return """
-                    <!DOCTYPE html><html><head><meta charset="utf-8"><title>Verification failed</title></head>
-                    <body style="font-family:system-ui,sans-serif;padding:2rem">
-                    <h1>Verification failed</h1>
-                    <p>This link is invalid or has expired. Request a new verification email from your administrator.</p>
-                    </body></html>
-                    """;
+            return pages.render(request, new ThemePages.Page("email-verify-failed", "Verification failed", "Verification failed",
+                    "<p>This link is invalid or has expired. Request a new verification email from your administrator.</p>",
+                    true));
         }
+        String shown = email == null ? "" : email;
+        return pages.render(request, new ThemePages.Page("email-verified", "Email verified", "Email verified",
+                "<p>Thank you. <strong>" + escapeHtml(shown) + "</strong> is now verified.</p>"
+                        + "<p>You can close this window and sign in.</p>",
+                true, Map.of("email", shown)));
     }
 
     /**
@@ -120,14 +118,13 @@ public class AccountController {
         try {
             return magicLinkAuth.completeInBrowser(token, applicationId, request, response);
         } catch (Exception ex) {
+            String login = applicationId == null ? "/login.html" : "/login.html?applicationId=" + applicationId;
             return ResponseEntity.status(org.springframework.http.HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("""
-                            <!DOCTYPE html><html><body style="font-family:system-ui;padding:2rem">
-                            <h1>Invalid or expired sign-in link</h1>
-                            <p>Request a new link, or <a href="/login.html">sign in another way</a>.</p>
-                            </body></html>
-                            """);
+                    .contentType(new MediaType(MediaType.TEXT_HTML, java.nio.charset.StandardCharsets.UTF_8))
+                    .body(pages.render(request, new ThemePages.Page("magic-link-invalid", "Invalid sign-in link",
+                            "Invalid or expired sign-in link",
+                            "<p>Request a new link, or <a href=\"" + escapeHtml(login) + "\">sign in another way</a>.</p>",
+                            true, Map.of("loginUrl", login))));
         }
     }
 
@@ -161,7 +158,12 @@ public class AccountController {
         var user = "phone".equalsIgnoreCase(channel) || "sms".equalsIgnoreCase(channel)
                 ? verification.confirmPhoneOtp(id, code)
                 : verification.confirmEmailOtp(id, code);
-        return Map.of("verified", true, "email", user.getEmail(), "phoneVerified", user.isPhoneVerified());
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("verified", true);
+        out.put("email", user.getEmail());
+        out.put("phone", user.getPhone());
+        out.put("phoneVerified", user.isPhoneVerified());
+        return out;
     }
 
     @GetMapping("/verify/options")

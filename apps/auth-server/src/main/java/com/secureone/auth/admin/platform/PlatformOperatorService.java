@@ -76,7 +76,7 @@ public class PlatformOperatorService {
         }
         operators.setRole(userId, role);
         audit.record(user.getTenantId(), actor, "platform_operator.role_changed", "user_account", userId,
-                user.getEmail() + ": " + current + " → " + role, true);
+                user.getLoginKey() + ": " + current + " → " + role, true);
         return operators.list().stream().filter(r -> r.userId().equals(userId)).findFirst().orElseThrow();
     }
 
@@ -130,7 +130,7 @@ public class PlatformOperatorService {
         if (!operators.revoke(userId)) {
             throw new ResourceNotFoundException("Platform operator not found");
         }
-        audit.record(user.getTenantId(), actor, "platform_operator.revoked", "user_account", userId, user.getEmail(), true);
+        audit.record(user.getTenantId(), actor, "platform_operator.revoked", "user_account", userId, user.getLoginKey(), true);
     }
 
     private Tenant platformTenant() {

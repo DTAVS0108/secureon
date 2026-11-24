@@ -40,7 +40,7 @@ public class UserAccessTermination {
 
     /** Same, for an account signed in with its current email. */
     public int endEverywhere(UserAccount user) {
-        return endEverywhere(user, user.getEmail());
+        return endEverywhere(user, user.getLoginKey());
     }
 
     /** Same, for an account signed in with {@code email} (its address before a change saved with it). */
@@ -80,7 +80,7 @@ public class UserAccessTermination {
         if (slug == null) {
             return 0;
         }
-        String principal = slug + ":" + user.getEmail();
+        String principal = slug + ":" + user.getLoginKey();
         try {
             return RlsScope.asPlatform(() -> {
                 List<OAuthClient> clients = backchannel.clientsToNotify(principal).stream()

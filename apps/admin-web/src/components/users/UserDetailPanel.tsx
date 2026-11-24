@@ -67,7 +67,7 @@ export function UserDetailPanel({
   // Off when the application turned Two Factor Authentication off (no second step, nothing to manage here).
   const [twoFactorOn, setTwoFactorOn] = useState(true);
 
-  const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email;
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || user.email || user.phone || "";
   const roleById = new Map(roles.map((r) => [r.id, r]));
 
   const enabledAppMethods = authMethods.filter((m) => m.enabled);
@@ -188,9 +188,9 @@ export function UserDetailPanel({
                 <Badge tone="warning">Unverified</Badge>
               )}
             </div>
-            <p className="text-sm text-muted">{user.email}</p>
+            <p className="text-sm text-muted">{user.email || `${user.phone ?? ""} · no email (signs in with a text-message code)`}</p>
             <p className="text-xs text-faint">
-              @{user.username} · {tenantName} · {appName}
+              {user.username ? `@${user.username} · ` : ""}{tenantName} · {appName}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">

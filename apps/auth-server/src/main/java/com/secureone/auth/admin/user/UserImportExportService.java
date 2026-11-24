@@ -224,7 +224,7 @@ public class UserImportExportService {
                 : splitDisplayName(u.getDisplayName());
         return String.join(
                 ",",
-                escape(u.getEmail()),
+                escape(u.getEmail() != null ? u.getEmail() : ""),
                 escape(u.getUsername() != null ? u.getUsername() : ""),
                 escape(parts.firstName()),
                 escape(parts.lastName()),

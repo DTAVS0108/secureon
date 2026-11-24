@@ -252,7 +252,7 @@ installation with a read-only mount, e.g. `-v /opt/secureone/brand:/opt/secureon
 
 Point `id.example.com` → `:9000` (Nginx, Traefik, or cloud LB). Use HTTPS. The console is the `/admin` path on the same host; no second host, port or route is needed.
 
-- Forward `X-Forwarded-Proto/Host/For` (the auth-server trusts them: `server.forward-headers-strategy: native`) so the issuer, SAML entity IDs, ACS/SLO URLs and the device `verification_uri` come out as `https://id.example.com/…`.
+- Forward `X-Forwarded-Proto/Host/For` and set `SECUREONE_TRUSTED_PROXIES` to the proxy's address or range (SecureOne reads those headers only from it) so the issuer, SAML entity IDs, ACS/SLO URLs and the device `verification_uri` come out as `https://id.example.com/…`.
 - **Do not add CORS or origin rules in front of** `/api/v1/auth/federation/saml/acs/*` and `/api/v1/auth/federation/saml/slo/*`: the company IdP's page posts there cross-site (any `Origin`, often `null`). The SAML signatures authenticate those requests.
 - WAFs: allow form POSTs with large `SAMLResponse` bodies (encrypted assertions can exceed 20 KB).
 
@@ -520,7 +520,8 @@ database. With several replicas, pass the key as `SECUREONE_ENCRYPTION_KEY` (or 
 | `SECUREONE_DB_MIGRATION_USERNAME`, `_PASSWORD` | the DB user | A separate user that may change tables; the normal user then needs no DDL rights |
 | `SECUREONE_DB_MIGRATE` | `auto` | `only` (upgrade and exit, for an upgrade job), `validate` (refuse to start if an upgrade is missing) |
 | `SECUREONE_SAML_SP_KEY_PEM`, `SECUREONE_SAML_SP_CERT_PEM` | generated and stored | SAML sign-in with a certificate you control |
-| `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` | private address ranges | Your proxy is not on a private network (e.g. a CDN): a regular expression of its addresses, so client addresses and https are read from `X-Forwarded-*` |
+| `SECUREONE_TRUSTED_PROXIES` | none (loopback only) | **Required behind a reverse proxy or load balancer.** Its addresses or IPv4 ranges, comma-separated (for example `10.0.16.0/20,10.0.0.5`; any prefix length). Only from these (and loopback) are `X-Forwarded-For` and `X-Forwarded-Proto` read, so client addresses (rate limits, IP rules) and https are right, and nobody else can choose their own address. See [Custom domain](runbooks/custom-domain.md) |
+| `SECUREONE_WEBHOOKS_ALLOW_PRIVATE_TARGETS` | `false` | Webhooks may call addresses on your private network (an internal CRM, for example). Link-local and cloud metadata addresses (`169.254.0.0/16`, `fe80::/10`, `168.63.129.16`, `fd00:ec2::254`, `metadata.google.internal`) stay refused |
 | `SECUREONE_ADMIN_SESSION_IDLE`, `_MAX` | `30m`, `8h` | Console session lengths |
 | `SECUREONE_ADMIN_MFA_REQUIRED` | `true` | Console sign-in with an authenticator app |
 | `SECUREONE_SWAGGER_ENABLED` | `false` | API docs: Swagger UI at `/docs` (`/swagger-ui.html`), OpenAPI at `/v3/api-docs/all` (groups: `/v3/api-docs/{group}`) |
@@ -530,6 +531,9 @@ database. With several replicas, pass the key as `SECUREONE_ENCRYPTION_KEY` (or 
 | `SECUREONE_OAUTH_EXPIRED_RETENTION` | `1d` | Fully expired authorizations (all their tokens) are deleted this long after expiry, every 15 minutes |
 | `SECUREONE_RATE_LIMIT_*` | e.g. 20 sign-ins / min | `_LOGIN_PER_MINUTE`, `_TOKEN_PER_MINUTE`, `_ADMIN_LOGIN_PER_MINUTE`, … |
 | `SECUREONE_BREAK_GLASS_ENABLED`, `SECUREONE_DEV_USER`, `SECUREONE_DEV_PASSWORD` | off | Emergency access only; the password must be a bcrypt hash in production |
+| `SECUREONE_THEMES_DIR` | `/opt/secureone/themes` | Folder of [sign-in page themes](../guide/sign-in-themes.md), one sub-folder per theme. Mount a volume (read-only is enough) here |
+| `SECUREONE_THEME` | `base` (built-in pages) | Theme of applications that choose none |
+| `SECUREONE_THEME_CACHE` | `true` in production | `true`: themes are read once (console: **Reload themes**); `false`: theme edits show on the next page load |
 | `SECUREONE_SECRETS_DIR` | `/run/secrets` | Another folder for secret files |
 | `LOGGING_LEVEL_ROOT`, `LOGGING_LEVEL_COM_SECUREONE` | `INFO` | Log detail |
 | `SECUREONE_MANAGEMENT_PORT` | `9001` | Health and metrics port (keep it internal) |

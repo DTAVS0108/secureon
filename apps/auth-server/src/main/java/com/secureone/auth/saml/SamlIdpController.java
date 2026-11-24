@@ -285,12 +285,12 @@ public class SamlIdpController {
         SamlIdpMessages.Assertion assertion = new SamlIdpMessages.Assertion(
                 entityId(tenant.get().getSlug()), sp.entityId(), sp.acsUrl(), pending.requestId(),
                 SamlServiceProviderService.NAME_ID_FORMATS.get(pending.nameIdFormat()),
-                "persistent".equals(pending.nameIdFormat()) ? user.get().getId().toString() : user.get().getEmail(),
+                "persistent".equals(pending.nameIdFormat()) ? user.get().getId().toString() : user.get().getLoginKey(),
                 signedInAt, sessionIndex(session), twoStep,
                 attributes(sp, user.get(), tenant.get(), app.get()), sp.assertionLifetimeSeconds());
         String samlResponse = SamlIdpMessages.successResponse(
                 assertion, credentials.credential(tenant.get().getId()), sp.signResponse(), sp.signAssertion());
-        audit.ifAvailable(a -> a.recordIndependently(tenant.get().getId(), sp.applicationId(), user.get().getEmail(),
+        audit.ifAvailable(a -> a.recordIndependently(tenant.get().getId(), sp.applicationId(), user.get().getLoginKey(),
                 "user.saml_sso", "saml_service_provider", sp.id(), sp.name(), true));
         autoPost(response, sp.acsUrl(), "SAMLResponse", samlResponse, pending.relayState());
     }
@@ -346,7 +346,7 @@ public class SamlIdpController {
             session.invalidate();
             SecurityContextHolder.clearContext();
             backchannelLogout.ifAvailable(b -> b.signedOut(principal));
-            audit.ifAvailable(a -> a.recordIndependently(tenant.get().getId(), sp.get().applicationId(), user.get().getEmail(),
+            audit.ifAvailable(a -> a.recordIndependently(tenant.get().getId(), sp.get().applicationId(), user.get().getLoginKey(),
                     "user.saml_logout", "saml_service_provider", sp.get().id(), sp.get().name(), true));
         }
         if (sp.get().sloUrl() == null) {
@@ -456,7 +456,7 @@ public class SamlIdpController {
             return Optional.empty();
         }
         String email = name.substring(sep + 1).trim().toLowerCase(Locale.ROOT);
-        return RlsScope.asPlatform(() -> users.findByTenantIdAndEmail(tenant.getId(), email));
+        return RlsScope.asPlatform(() -> users.findByTenantIdAndLoginKey(tenant.getId(), email));
     }
 
     private Optional<Tenant> activeTenant(String slug) {
@@ -503,8 +503,17 @@ public class SamlIdpController {
         autoPost(response, sp.acsUrl(), "SAMLResponse", samlResponse, relayState);
     }
 
-    /** A page that POSTs the message to the SP at once (HTTP-POST binding), with a button when scripts are off. */
-    private static void autoPost(HttpServletResponse response, String action, String field, String value, String relayState)
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.theme.ThemePages themePages;
+
+    /** Theme stylesheets and images may load; scripts only with the page's nonce. */
+    private static final String THEMED_STYLES = "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:";
+
+    /**
+     * A page that POSTs the message to the SP at once (HTTP-POST binding), with a button when scripts are off. In the
+     * sign-in theme (templates/saml-post.html or the layout), without SecureOne's page scripts.
+     */
+    private void autoPost(HttpServletResponse response, String action, String field, String value, String relayState)
             throws IOException {
         byte[] nonceBytes = new byte[16];
         RANDOM.nextBytes(nonceBytes);
@@ -513,28 +522,29 @@ public class SamlIdpController {
         response.setContentType("text/html;charset=UTF-8");
         response.setHeader("Cache-Control", "no-store");
         response.setHeader("Content-Security-Policy",
-                "default-src 'none'; script-src 'nonce-" + nonce + "'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
+                "default-src 'none'; script-src 'nonce-" + nonce + "'; " + THEMED_STYLES + "; base-uri 'none'; frame-ancestors 'none'");
         response.setHeader("Referrer-Policy", "no-referrer");
         StringBuilder html = new StringBuilder()
-                .append("<!doctype html><html><head><meta charset=\"utf-8\"><title>Signing in</title></head><body>")
                 .append("<form method=\"post\" action=\"").append(escape(action)).append("\">")
                 .append("<input type=\"hidden\" name=\"").append(field).append("\" value=\"").append(escape(value)).append("\">");
         if (relayState != null && !relayState.isEmpty()) {
             html.append("<input type=\"hidden\" name=\"RelayState\" value=\"").append(escape(relayState)).append("\">");
         }
         html.append("<noscript><p>Continue to the application:</p><button type=\"submit\">Continue</button></noscript></form>")
-                .append("<script nonce=\"").append(nonce).append("\">document.forms[0].submit();</script></body></html>");
-        response.getWriter().write(html.toString());
+                .append("<script nonce=\"").append(nonce).append("\">document.forms[0].submit();</script>");
+        response.getWriter().write(themePages.renderDefault(
+                new com.secureone.auth.theme.ThemePages.Page("saml-post", "Signing in", "Signing in…", html.toString(), false)));
     }
 
-    private static void page(HttpServletResponse response, int status, String title, String message) throws IOException {
+    /** A message page (errors, signed out) in the sign-in theme (templates/saml-error.html or the layout). */
+    private void page(HttpServletResponse response, int status, String title, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("text/html;charset=UTF-8");
         response.setHeader("Cache-Control", "no-store");
-        response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'");
-        response.getWriter().write("<!doctype html><html><head><meta charset=\"utf-8\"><title>" + escape(title)
-                + "</title></head><body style=\"font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem\"><h1>"
-                + escape(title) + "</h1><p>" + escape(message) + "</p></body></html>");
+        response.setHeader("Content-Security-Policy",
+                "default-src 'none'; script-src 'self'; connect-src 'self'; " + THEMED_STYLES + "; frame-ancestors 'none'");
+        response.getWriter().write(themePages.renderDefault(new com.secureone.auth.theme.ThemePages.Page(
+                "saml-error", title, title, "<p>" + escape(message) + "</p>", true, java.util.Map.of("message", message == null ? "" : message))));
     }
 
     /** A stable, opaque session index for this browser session (never the session ID itself). */

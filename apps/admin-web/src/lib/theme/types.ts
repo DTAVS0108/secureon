@@ -86,6 +86,8 @@ export type ClientBranding = {
   logoUrl: string;
   /** Default language of the hosted sign-in pages. */
   language: string;
+  /** Sign-in page theme installed on the server (SECUREONE_THEMES_DIR); "" = the server's default theme. */
+  theme: string;
 };
 
 export type ClientAppearance = UiPreferences & ClientWidgetColors & ClientBranding;
@@ -107,6 +109,7 @@ export const DEFAULT_CLIENT_BRANDING: ClientBranding = {
   appName: "",
   logoUrl: "",
   language: "auto",
+  theme: "",
 };
 
 export const DEFAULT_UI_PREFERENCES: UiPreferences = {

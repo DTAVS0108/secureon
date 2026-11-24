@@ -14,6 +14,20 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 
     Optional<UserAccount> findByTenantIdAndPhone(UUID tenantId, String phone);
 
+    /**
+     * The account a session name's key belongs to ({@link UserAccount#getLoginKey()}): an email when it
+     * has an @, otherwise a phone number.
+     */
+    default Optional<UserAccount> findByTenantIdAndLoginKey(UUID tenantId, String key) {
+        if (key == null || key.isBlank()) {
+            return Optional.empty();
+        }
+        String trimmed = key.trim();
+        return trimmed.contains("@")
+                ? findByTenantIdAndEmail(tenantId, trimmed.toLowerCase(java.util.Locale.ROOT))
+                : findByTenantIdAndPhone(tenantId, trimmed);
+    }
+
     long countByTenantId(UUID tenantId);
 
     List<UserAccount> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);

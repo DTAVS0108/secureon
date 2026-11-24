@@ -139,7 +139,7 @@ public class MfaLoginService {
         UserAccount user = resolveUser(authentication);
         TwoStepService.Decision decision = twoStep.decide(user, applicationId, firstFactor(authentication), request);
         if (decision instanceof TwoStepService.SignedIn) {
-            establishSession(authentication, request, response);
+            establishSession(authentication, applicationId, request, response);
             loginSuccessHandler.recordSuccessfulLogin(request, authentication, applicationId);
             return ResponseEntity.noContent().build();
         }
@@ -162,7 +162,7 @@ public class MfaLoginService {
         UserAccount user = resolveUser(authentication);
         TwoStepService.Decision decision = twoStep.decide(user, applicationId, firstFactor(authentication), request);
         if (decision instanceof TwoStepService.SignedIn) {
-            establishSession(authentication, request, response);
+            establishSession(authentication, applicationId, request, response);
             loginSuccessHandler.recordSuccessfulLogin(request, authentication, applicationId);
             return null;
         }
@@ -189,7 +189,7 @@ public class MfaLoginService {
             UserAccount user, Authentication authentication, UUID applicationId, TwoStepService.Decision decision) {
         String stage = decision instanceof TwoStepService.Setup ? "setup" : "verify";
         MfaPendingChallenge pending = new MfaPendingChallenge(
-                UUID.randomUUID(), user.getId(), tenantSlugFromPrincipal(authentication.getName()), user.getEmail(),
+                UUID.randomUUID(), user.getId(), tenantSlugFromPrincipal(authentication.getName()), user.getLoginKey(),
                 applicationId, firstFactor(authentication), stage, null, null, null);
         challenges.save(pending, Duration.ofSeconds(policy.challengeTtlSeconds(applicationId)));
         return pending;
@@ -349,7 +349,7 @@ public class MfaLoginService {
         }
         endChallenge(challengeId);
         Authentication authentication = rebuildAuthentication(pending, false);
-        establishSession(authentication, request, response);
+        establishSession(authentication, pending.applicationId(), request, response);
         loginSuccessHandler.recordSuccessfulLogin(request, authentication, pending.applicationId());
         return ResponseEntity.noContent().build();
     }
@@ -475,7 +475,7 @@ public class MfaLoginService {
         endChallenge(pending.challengeId());
         // Setting up and confirming a method during sign-in proves it: the session counts as two steps.
         Authentication authentication = rebuildAuthentication(pending, true);
-        establishSession(authentication, request, response);
+        establishSession(authentication, pending.applicationId(), request, response);
         loginSuccessHandler.recordSuccessfulLogin(request, authentication, pending.applicationId());
         return ResponseEntity.ok(Map.of("signedIn", true, "recoveryCodes", codes != null ? codes : List.of()));
     }
@@ -561,7 +561,7 @@ public class MfaLoginService {
         auditAnotherWay(pending, used);
         endChallenge(challengeId);
         Authentication authentication = rebuildAuthentication(pending, true);
-        establishSession(authentication, request, response);
+        establishSession(authentication, pending.applicationId(), request, response);
         int rememberDays = policy.rememberDeviceDays(pending.applicationId());
         if (remember && rememberDays > 0) {
             trustedDevices.issue(pending.userId(), pending.applicationId(), rememberDays, request, response);
@@ -666,11 +666,67 @@ public class MfaLoginService {
         return FactorGrantedAuthority.PASSWORD_AUTHORITY;
     }
 
-    private void establishSession(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
+    private void establishSession(
+            Authentication authentication, UUID applicationId, HttpServletRequest request, HttpServletResponse response) {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
+        markDecided(request, authentication, applicationId);
+    }
+
+    /**
+     * Session attribute: per signed-in user, the applications whose two-step rule this session has met (signed in
+     * there, or its second step, setup or permitted skip done). Other applications check their own rule on SSO.
+     */
+    static final String DECIDED_APPLICATIONS = MfaLoginService.class.getName() + ".DECIDED_APPLICATIONS";
+    private static final String NO_APPLICATION = "-";
+
+    static void markDecided(HttpServletRequest request, Authentication authentication, UUID applicationId) {
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        if (session == null || authentication == null) {
+            return;
+        }
+        Map<String, java.util.Set<String>> decided = new HashMap<>(decidedMap(session));
+        java.util.Set<String> apps = new java.util.HashSet<>(decided.getOrDefault(authentication.getName(), java.util.Set.of()));
+        apps.add(applicationId == null ? NO_APPLICATION : applicationId.toString());
+        // Only the current user's entry: another user signing in in this browser starts from nothing.
+        session.setAttribute(DECIDED_APPLICATIONS, new HashMap<>(Map.of(authentication.getName(), apps)));
+    }
+
+    /** Whether this session already met the application's two-step rule for the signed-in user. */
+    public static boolean decidedFor(HttpServletRequest request, Authentication authentication, UUID applicationId) {
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        if (session == null || authentication == null || applicationId == null) {
+            return false;
+        }
+        return decidedMap(session).getOrDefault(authentication.getName(), java.util.Set.of()).contains(applicationId.toString());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, java.util.Set<String>> decidedMap(jakarta.servlet.http.HttpSession session) {
+        Object raw = session.getAttribute(DECIDED_APPLICATIONS);
+        return raw instanceof Map<?, ?> map ? (Map<String, java.util.Set<String>>) map : Map.of();
+    }
+
+    /** The signed-in user's id ("tenant:login" principal). */
+    public UUID userIdOf(Authentication authentication) {
+        return resolveUser(authentication).getId();
+    }
+
+    /**
+     * Single sign-on into an application the session has not signed in to: that application's own two-step rule
+     * (TwoStepService#decide) applies to the session's sign-in. Returns the challenge for its second step or its
+     * required setup, or null when the session is enough. An optional setup prompt is not shown on SSO.
+     */
+    public UUID issueForApplication(Authentication authentication, UUID applicationId, HttpServletRequest request) {
+        UserAccount user = resolveUser(authentication);
+        TwoStepService.Decision decision = twoStep.decide(user, applicationId, firstFactor(authentication), request);
+        if (decision instanceof TwoStepService.SignedIn
+                || (decision instanceof TwoStepService.Setup setup && !setup.required())) {
+            return null;
+        }
+        return issue(user, authentication, applicationId, decision).challengeId();
     }
 
     private UserAccount resolveUser(Authentication authentication) {

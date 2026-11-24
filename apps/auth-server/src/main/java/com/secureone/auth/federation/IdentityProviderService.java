@@ -180,7 +180,30 @@ public class IdentityProviderService {
         return effectiveSettings.getObject().isMethodAvailable(applicationId, FederationPresets.authMethodId(type));
     }
 
+    /** A PKCE code verifier (also used for nonces): 32 random bytes, base64url (43 characters). */
+    public static String newCodeVerifier() {
+        byte[] bytes = new byte[32];
+        new java.security.SecureRandom().nextBytes(bytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /** The S256 code challenge of a verifier (RFC 7636). */
+    public static String codeChallenge(String verifier) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(verifier.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     public String buildAuthorizationRedirect(IdentityProvider provider, String state) {
+        return buildAuthorizationRedirect(provider, state, null, null);
+    }
+
+    /** The identity provider's authorize URL, with PKCE and (OpenID Connect providers) a nonce when given. */
+    public String buildAuthorizationRedirect(IdentityProvider provider, String state, String codeVerifier, String nonce) {
         Map<String, Object> config = provider.getConfig();
         String clientId = string(config.get("clientId"));
         if (clientId.isBlank()) {
@@ -196,6 +219,13 @@ public class IdentityProviderService {
         url.append("&response_type=code");
         url.append("&scope=").append(enc(scopes.replace(",", " ")));
         url.append("&state=").append(enc(state));
+        if (codeVerifier != null) {
+            url.append("&code_challenge=").append(enc(codeChallenge(codeVerifier)));
+            url.append("&code_challenge_method=S256");
+        }
+        if (nonce != null && !FederationProviderType.GITHUB.name().equals(provider.getType())) {
+            url.append("&nonce=").append(enc(nonce));
+        }
         if (FederationProviderType.GOOGLE.name().equals(provider.getType())) {
             url.append("&access_type=online&prompt=select_account");
         }
@@ -203,6 +233,16 @@ public class IdentityProviderService {
     }
 
     public FederationUserProfile exchangeCode(IdentityProvider provider, String code) {
+        return exchangeCode(provider, code, null, null);
+    }
+
+    /**
+     * Exchanges the code (with the PKCE verifier) and reads the user's profile. When the provider returns an ID
+     * token, its nonce must be the one sent with this sign-in. The ID token comes straight from the provider's token
+     * endpoint over TLS with client authentication, so its signature need not be checked here (OpenID Connect Core
+     * 3.1.3.7); the profile itself comes from the userinfo endpoint.
+     */
+    public FederationUserProfile exchangeCode(IdentityProvider provider, String code, String codeVerifier, String nonce) {
         Map<String, Object> config = provider.getConfig();
         String clientId = string(config.get("clientId"));
         String clientSecret = decryptSecret(string(config.get("clientSecretEncrypted")));
@@ -212,10 +252,14 @@ public class IdentityProviderService {
                 .uri(tokenUri)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .accept(MediaType.APPLICATION_JSON)
-                .body(buildTokenRequestBody(provider.getType(), clientId, clientSecret, code, redirectUri))
+                .body(buildTokenRequestBody(provider.getType(), clientId, clientSecret, code, redirectUri)
+                        + (codeVerifier != null ? "&code_verifier=" + enc(codeVerifier) : ""))
                 .retrieve()
                 .body(String.class);
         String accessToken = parseAccessToken(tokenBody);
+        if (nonce != null && !FederationProviderType.GITHUB.name().equals(provider.getType())) {
+            requireNonce(tokenBody, nonce);
+        }
         return fetchProfile(provider, accessToken);
     }
 
@@ -310,6 +354,33 @@ public class IdentityProviderService {
             }
         }
         return null;
+    }
+
+    /** An ID token in the token response must carry this sign-in's nonce. */
+    void requireNonce(String tokenBody, String expected) {
+        String idToken;
+        try {
+            idToken = mapper.readTree(tokenBody).path("id_token").asText(null);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to parse token response.", ex);
+        }
+        if (idToken == null || idToken.isBlank()) {
+            return; // plain OAuth provider, or an OIDC provider that sends no ID token: the profile comes from userinfo
+        }
+        String[] parts = idToken.split("\\.");
+        String actual = null;
+        if (parts.length >= 2) {
+            try {
+                byte[] payload = java.util.Base64.getUrlDecoder().decode(parts[1]);
+                actual = mapper.readTree(payload).path("nonce").asText(null);
+            } catch (Exception ex) {
+                actual = null;
+            }
+        }
+        if (actual == null || !java.security.MessageDigest.isEqual(
+                actual.getBytes(java.nio.charset.StandardCharsets.UTF_8), expected.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            throw new IllegalStateException("The identity provider's ID token does not belong to this sign-in (nonce).");
+        }
     }
 
     private String parseAccessToken(String tokenBody) {

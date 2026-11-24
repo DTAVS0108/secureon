@@ -56,7 +56,9 @@ public final class ClientAppearanceDefaults {
                     "inputPlaceholder",
                     "mutedText",
                     "dividerColor",
-                    "language"));
+                    "language",
+                    // Sign-in page theme (SECUREONE_THEMES_DIR); "" = the server's default theme.
+                    "theme"));
 
     /** Languages the hosted sign-in pages are translated into ("auto": the person's browser language). */
     public static final java.util.Set<String> LANGUAGES = java.util.Set.of("auto", "en", "es", "fr", "de", "pt", "hi");
@@ -102,6 +104,7 @@ public final class ClientAppearanceDefaults {
         root.put("mutedText", "#6b7280");
         root.put("dividerColor", "#e5e7eb");
         root.put("language", "auto");
+        root.put("theme", "");
         return root;
     }
 
@@ -126,6 +129,7 @@ public final class ClientAppearanceDefaults {
     private static final java.util.Set<String> GRADIENT_PRESETS =
             java.util.Set.of("none", "brand", "sunset", "ocean", "violet", "custom");
     private static final java.util.Set<String> GRADIENT_SCOPES = java.util.Set.of("page", "brand", "both");
+    private static final java.util.regex.Pattern THEME_NAME = java.util.regex.Pattern.compile("^[a-z0-9][a-z0-9_-]{0,39}$");
 
     /**
      * Why a value cannot be used, or null. Client apps put these values into their pages and styles, so only
@@ -143,6 +147,8 @@ public final class ClientAppearanceDefaults {
             case "appName" -> value instanceof String s && s.length() <= 80 && s.chars().noneMatch(c -> c < 32 || c == '<' || c == '>')
                     ? null : "must be up to 80 characters, without < or >";
             case "logoUrl" -> value instanceof String s && (s.isBlank() || isHttpsUrl(s)) ? null : "must be an https:// address";
+            case "theme" -> value instanceof String s && (s.isEmpty() || THEME_NAME.matcher(s).matches())
+                    ? null : "must be a theme name (lowercase letters, digits, '-' and '_'), or empty for the default";
             default -> value instanceof String s && HEX_COLOR.matcher(s.trim()).matches()
                     ? null : "must be a colour such as #4f46e5";
         };

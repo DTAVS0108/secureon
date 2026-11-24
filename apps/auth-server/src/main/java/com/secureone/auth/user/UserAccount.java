@@ -27,7 +27,8 @@ public class UserAccount {
     @Column(name = "tenant_id", nullable = false)
     private UUID tenantId;
 
-    @Column(name = "email", nullable = false)
+    /** Null for an account created with a phone number only (it then signs in with its phone). */
+    @Column(name = "email")
     private String email;
 
     @Column(name = "email_verified", nullable = false)
@@ -56,6 +57,31 @@ public class UserAccount {
     public void setNames(String given, String family) {
         givenName = blankToNull(given);
         familyName = blankToNull(family);
+    }
+
+    /**
+     * What the account signs in as, after {@code tenantSlug:} in its session name: the email, or the
+     * phone number (E.164, starts with +) when the account has no email.
+     */
+    public String getLoginKey() {
+        return email != null && !email.isBlank() ? email : phone;
+    }
+
+    /**
+     * A signed-in user's session name ({@code tenantSlug:email} or {@code tenantSlug:+phone}), not a
+     * client's or an operator's.
+     */
+    public static boolean isUserSessionName(String name) {
+        int sep = name == null ? -1 : name.indexOf(':');
+        if (sep <= 0 || sep == name.length() - 1) {
+            return false;
+        }
+        String key = name.substring(sep + 1);
+        return key.contains("@") || key.startsWith("+");
+    }
+
+    public boolean hasEmail() {
+        return email != null && !email.isBlank();
     }
 
     private static String blankToNull(String value) {

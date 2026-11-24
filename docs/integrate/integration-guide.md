@@ -125,13 +125,42 @@ The `account` block lists every API path and hosted page URL. When `clientUrls` 
 
 ## Step 1 — Enable public discovery
 
-Your frontend needs the manifest. An operator must:
+Before your app draws a sign-in or sign-up screen, it reads the application's **public manifest**: one call, no
+login, that says what this application allows (sign-in methods, whether sign-up is open, the password rules, the
+"Continue with…" buttons) and which endpoints to call. Build the screens from it instead of hard-coding them, so
+an operator's change in the console shows up in your app at once.
 
-1. **Platform settings** → expose **Public manifest** to applications
-2. **Application settings** → **Public manifest** → enabled
-3. **Feature flags** → enable **Self Registration** if you offer signup
+**Turn it on (operator):**
 
-Test:
+1. **Platform settings → For applications**: **Public manifest** is open to applications (on by default).
+2. **Application → Settings → Public API**: switch on **Enable public manifest** (while it is off the endpoint
+   answers `404`), tick the sections to include, and keep **Auth methods: enabled only** on for sign-in pages.
+3. **Feature flags → Self Registration** if the app offers sign-up.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant OP as Operator (console)
+  participant A as Your app (sign-in screen)
+  participant S as SecureOne
+  OP->>S: Settings → Public API → Enable public manifest, choose sections
+  opt the app knows only its OAuth client ID
+    A->>S: GET /api/v1/applications/resolve?clientId=…
+    S-->>A: applicationId
+  end
+  A->>S: GET /api/v1/applications/{applicationId} (no login)
+  alt manifest off
+    S-->>A: 404
+  else manifest on
+    S-->>A: application, authMethods, featureFlags, passwordPolicy, verification, federation, signup, account, authUiMode
+  end
+  A->>A: build the screen from it
+  opt sign-up form with extra fields
+    A->>S: GET /api/v1/applications/{applicationId}/signup
+    S-->>A: fields, allowed email domains, verification modes
+  end
+  A->>S: sign-in or sign-up with the endpoints the manifest names (Step 2)
+```
 
 ```http
 GET $SECUREONE_URL/api/v1/applications/{applicationId}
@@ -143,44 +172,63 @@ Example response (trimmed):
 {
   "applicationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   "manifestEnabled": true,
-  "application": {
-    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    "name": "Example App Web",
-    "slug": "exampleapp-web",
-    "status": "active"
-  },
+  "application": { "id": "aaaaaaaa-…", "name": "Example Shop", "slug": "example-shop", "status": "active" },
   "authMethods": [
-    { "key": "m_password", "enabled": true, "implemented": true },
-    { "key": "m_email_otp", "enabled": true, "implemented": true }
+    { "id": "m_password", "category": "primary", "enabled": true, "available": true },
+    { "id": "m_magic", "category": "primary", "enabled": true, "available": true },
+    { "id": "m_email_otp", "category": "mfa", "enabled": true, "available": true }
   ],
-  "featureFlags": [
-    { "key": "self_registration", "enabled": true }
-  ],
-  "verification": {
-    "signup": { "defaultMode": "link", "allowedModes": ["link", "otp"] },
-    "login": { "identifierTypes": ["email", "phone"], "passwordlessModes": ["email_otp", "magic_link"] }
+  "featureFlags": [ { "key": "self_registration", "enabled": true }, { "key": "self_service_recovery", "enabled": true } ],
+  "passwordPolicy": {
+    "minLength": 12, "requireUppercase": true, "requireNumber": true, "requireSymbol": true,
+    "requirements": [ { "key": "minLength", "label": "At least 12 characters" } ]
   },
+  "verification": {
+    "signup": { "defaultMode": "link", "allowedModes": ["link", "otp"], "requiredChannels": ["email"] },
+    "login": { "identifierTypes": ["email", "phone"], "passwordlessModes": ["email_otp", "magic_link"], "mfaRequired": "off" }
+  },
+  "federation": {
+    "providers": [ { "alias": "google", "displayName": "Continue with Google", "startUrl": "/api/v1/auth/federation/google/start" } ]
+  },
+  "authUiMode": "hosted",
   "signup": {
     "enabled": true,
-    "endpoint": "/api/v1/applications/aaaaaaaa-…/signup"
+    "endpoint": "/api/v1/applications/aaaaaaaa-…/signup",
+    "hostedPagePath": "/account/signup.html?applicationId=aaaaaaaa-…"
   },
   "account": {
     "sessionLoginEndpoint": "/api/v1/applications/aaaaaaaa-…/auth/session/login",
     "otpLoginRequestEndpoint": "/api/v1/applications/aaaaaaaa-…/auth/otp/request",
     "otpLoginVerifyEndpoint": "/api/v1/applications/aaaaaaaa-…/auth/otp/verify",
+    "magicLinkRequestEndpoint": "/api/v1/applications/aaaaaaaa-…/account/magic-link/request",
     "forgotPasswordEndpoint": "/api/v1/applications/aaaaaaaa-…/account/password/forgot",
-    "verifyOtpConfirmEndpoint": "/api/v1/applications/aaaaaaaa-…/account/verify/otp/confirm",
-    "hostedLoginPage": "/login.html?applicationId=aaaaaaaa-…",
-    "hostedSignupPage": "/account/signup.html?applicationId=aaaaaaaa-…",
-    "clientUrls": {
-      "forgotPassword": "https://shop.example.com/account/forgot",
-      "passwordReset": "https://shop.example.com/account/reset"
-    }
+    "passwordResetEndpoint": "/api/v1/account/password/reset",
+    "resendVerificationEndpoint": "/api/v1/applications/aaaaaaaa-…/account/email/resend-verification"
   }
 }
 ```
 
-**Call this once at app startup** (or cache with TTL). Use the returned paths — do not hardcode URLs in production.
+**What to build from each section:**
+
+| Section | Use it for |
+|---------|------------|
+| `authMethods` | Which sign-in options to show (password, passkey, magic link, email or text-message code). With **enabled only** on, switched-off methods are left out; otherwise they appear with `enabled: false` |
+| `featureFlags` | `self_registration` (sign-up), `self_service_recovery` (forgot password), `mfa_try_another_way` |
+| `passwordPolicy` | The live checklist under the password field: show each `requirements[].label` |
+| `verification` | Sign-up: link or code, required channels. Sign-in: email/phone identifiers, `passwordlessModes` (show "Email me a code" or "Email me a link" only when listed), whether two-step is required. Code length, lifetime and resend wait |
+| `federation` | One button per provider: its `displayName`, linking to its `startUrl` (add `applicationId` and `continue`) |
+| `signup` | Show the sign-up link only when `enabled`; post the form to `endpoint`. `identifiers` says what people can sign up with: `email` (email and password) and `phone` (a mobile number only, see [Sign-up with a phone number](#sign-up-with-a-phone-number)); `phoneSignup` is `true` when the second is offered |
+| `account` | The endpoints for sign-in, codes, magic link, forgot and reset password, and resending the verification email |
+| `authUiMode` | `hosted` (SecureOne's pages) or `native` (your own forms) |
+
+**Other calls that need no login:** `GET /api/v1/applications/resolve?clientId=…` (application ID from an OAuth
+client ID), `GET /api/v1/applications/{id}/signup` (extra sign-up fields and allowed email domains),
+`GET /api/v1/account/verify/options?applicationId=…`, `GET /api/v1/auth/federation/providers?applicationId=…`.
+
+- The manifest never contains secrets: no client secrets, SMTP or LDAP passwords, or the mail server's address.
+- Browsers may read it from your app's registered origins (CORS); other websites may not.
+- Changes in the console apply at once. **Call it once at app start-up** (or cache it for a few minutes) and use the
+  returned paths instead of hard-coding URLs.
 
 OIDC discovery (issuer-level):
 
@@ -284,7 +332,9 @@ Content-Type: application/json
 
 - `identifier` = email or phone (E.164, e.g. `+919876543210`)
 - Success: `204 No Content` + `Set-Cookie: JSESSIONID=…` (session in Redis)
-- **MFA:** `428` with `{ "mfaChallengeId": "…" }` when the user has an authenticator (or the app requires MFA).
+- **MFA:** `428` with `{ "mfaChallengeId": "…" }` when the user has an authenticator (or the app requires MFA), unless
+  two-step is off for the app. While it is off, users cannot add an authenticator or other second-step option for
+  that app (the account API answers `400`), so nobody holds one that is never asked for.
   Finish with `POST /api/v1/auth/mfa/totp/verify` `{ "mfaChallengeId", "code" }` (or `/api/v1/auth/mfa/recovery/verify`
   with a recovery code) → `204` and the session.
 - Failure: `401` with the same message whether the email is unknown, unverified or the password is wrong
@@ -323,8 +373,10 @@ number as `identifier`.
 #### Magic link
 
 `POST /api/v1/applications/{id}/account/magic-link/request` `{ "email" }` (same answer for unknown emails), then
-`POST /api/v1/account/magic-link/verify` `{ "token" }` → session. Links are single use and do not work for
-suspended accounts.
+`POST /api/v1/account/magic-link/verify` `{ "token" }` → session (`428` with an `mfaChallengeId` when the app asks a
+second step). The link remembers the application it was requested for, so that application's sign-in rules (its
+two-step setting) apply; an `applicationId` in the body is used only for older links. Links are single use and do
+not work for suspended accounts.
 
 ---
 
@@ -353,9 +405,9 @@ Content-Type: application/json
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `email` | Yes | |
-| `password` | Yes | Must meet `passwordPolicy` from manifest |
-| `phone` | No | E.164 format |
+| `email` | Yes, except for a [phone sign-up](#sign-up-with-a-phone-number) | |
+| `password` | Yes, except for a phone sign-up (optional there) | Must meet `passwordPolicy` from manifest |
+| `phone` | No (the only identifier of a phone sign-up) | E.164 format, or a national number in the app's default phone country |
 | `verificationMode` | No | `link` (email URL) or `otp` |
 | `verificationChannel` | No | `email` or `phone` when mode is `otp`. Only honoured when the app allows channel choice (`verification.signup.allowUserChannelChoice`); otherwise a different channel than the policy's is `400` |
 
@@ -379,6 +431,59 @@ POST /api/v1/applications/{applicationId}/account/verify/otp/confirm
 ```
 
 Full detail: [Verification & OTP](verification-and-one-time-codes.md).
+
+### Sign-up with a phone number
+
+For apps whose customers sign up with a mobile number and a texted code (no email, no password). The operator
+turns on **Verification & OTP → Signup verification → Allow sign-up with a phone number only**. It is offered
+(`signup.phoneSignup: true` in the manifest) only when the app also allows **sign-in by text-message code**
+(`phone_otp` in **Passwordless modes**) and has an **SMS provider**: otherwise such an account could not sign in.
+Sign-up limited to email domains refuses phone sign-ups (`403`), since a number shows no organization.
+
+```mermaid
+sequenceDiagram
+    participant U as Shopper
+    participant A as Your app
+    participant S as SecureOne
+    A->>S: GET /api/v1/applications/{applicationId}
+    S-->>A: signup.identifiers ["email", "phone"], phoneSignup true
+    U->>A: mobile number (and name, extra fields)
+    A->>S: POST …/signup { "phone": "+919876543210" }
+    S-->>U: text message with a code
+    S-->>A: challengeId, channel "sms", maskedDestination
+    U->>A: the code
+    A->>S: POST …/account/verify/otp/confirm { challengeId, code, "channel": "sms", "signIn": true }
+    S-->>A: 204 and a session (or 428 when two-step is required)
+    A->>S: GET /oauth2/authorize (PKCE) → code → POST /oauth2/token
+```
+
+```http
+POST /api/v1/applications/{applicationId}/signup
+Content-Type: application/json
+
+{ "phone": "+919876543210", "firstName": "Asha", "lastName": "Rao" }
+```
+
+- Leave `email` out. A `password` is optional: with one, the person can also sign in with number and password.
+  `verificationMode` must be `otp` or left out (a number is always confirmed by a code).
+- **Response** (`200`): `message`, `loginPhone`, `phoneVerificationRequired`, `mode: "otp"`, `channel: "sms"`,
+  `challengeId`, `maskedDestination`, `expiresIn`.
+- **Confirm and sign in with one code:** post the code to `…/account/verify/otp/confirm` with `"channel": "sms"`
+  and `"signIn": true`. The answer is the same as a code sign-in: `204` with a session (then run
+  `/oauth2/authorize`), or `428` with `mfaChallengeId` when the app requires two-step. Without `signIn` the
+  number is only confirmed (`200`, `phoneVerified: true`), and the person signs in afterwards.
+- **Later sign-ins:** the number and a text-message code (`account.otpLoginRequestEndpoint` with
+  `"channel": "phone"`).
+- **Number already in use:** the answer looks exactly like a new sign-up. If the number belongs to an account
+  that confirmed it, that account's owner gets the code and the confirm step signs them in to their existing
+  account (the new sign-up's name and fields are not applied). An unconfirmed number gets no text.
+- **Tokens:** a phone account has no `email` claim. Ask for `scope=phone` to get `phone_number` and
+  `phone_number_verified`; key users on `user_id`.
+- People can add an email later from the hosted **Account security** page (confirmed by a link); they can
+  then sign in with either.
+
+The hosted sign-up page (`/account/signup.html`) shows an **Email / Phone number** choice when both are
+offered; `&with=phone` opens it on the phone form.
 
 ---
 
@@ -418,11 +523,13 @@ password changes.
 
 Key your users on the account UUID. It is always in **`user_id`** (ID token, access token, `/userinfo`), and it
 is also **`sub`** for OAuth clients whose **token subject** is `user_id`, the default for clients created now.
-Clients registered earlier keep the legacy subject `tenant-slug:email` (which changes if the user changes email)
+Clients registered earlier keep the legacy subject `tenant-slug:email` (`tenant-slug:+phone` for an account
+without an email; it changes if the user changes or adds an email)
 until an operator switches them: **Admin → OAuth client → Token subject**, or
 `PUT /api/admin/v1/oauth-clients/{id}` with `"subjectType": "user_id"` (or `"legacy"`). Switch only once your app
 looks users up by `user_id`, since existing `sub` values change. With `scope=email` the ID token and user access
-tokens also have `email` and `email_verified`; with `scope=profile`, `name` and `preferred_username`. So an API can
+tokens also have `email` and `email_verified` (left out for an account created with a phone number only); with
+`scope=phone`, `phone_number` and `phone_number_verified`; with `scope=profile`, `name` and `preferred_username`. So an API can
 tell who is calling from the access token alone (client-credentials tokens have no user and none of these claims).
 
 ### Phone numbers without a country code
@@ -502,7 +609,7 @@ In development, `localhost` origins are allowed too.
 |--------|------|---------|
 | GET | `/api/v1/applications/{id}/signup` | Signup options + verification policy |
 | POST | `/api/v1/applications/{id}/signup` | Create account |
-| POST | `/api/v1/applications/{id}/account/verify/otp/confirm` | Confirm signup OTP |
+| POST | `/api/v1/applications/{id}/account/verify/otp/confirm` | Confirm signup OTP (`"signIn": true` also signs in) |
 | POST | `/api/v1/applications/{id}/account/password/forgot` | Request password reset |
 | POST | `/api/v1/applications/{id}/account/password/reset/otp` | Reset with OTP |
 | POST | `/api/v1/applications/{id}/account/magic-link/request` | Send magic link |
@@ -675,7 +782,12 @@ For business customers whose employees sign in with their company IdP (any SAML 
 | Email trust | `trustEmail` (default on): the IdP is the company directory, so its email counts as verified. Turn it off for IdPs that let users set arbitrary emails |
 | Access, MFA | The app's access rules and MFA policy apply exactly as for password sign-in |
 | Failures | The browser goes back to `/login.html?error=federation&reason=…` (`expired`, `failed`, `not_allowed`, `unverified_email`) |
-| Not supported | SecureOne acting as a SAML **IdP**; SOAP back-channel logout; artifact binding |
+| PKCE and nonce | Sign-in through Google, GitHub and external OIDC providers sends a PKCE code challenge (S256) and, to OpenID Connect providers, a nonce; an ID token returned with the wrong nonce is refused. IdPs that require PKCE work as they are |
+| Not supported | SOAP back-channel logout; artifact binding |
+
+SecureOne can also be the **identity provider** for software that speaks only SAML 2.0 (an older partner portal,
+for example): **Settings → Integration → SAML apps** lists the IdP's entity ID, SSO URL and metadata, and each SAML
+app you add there signs users in with the application's methods and two-step rules.
 
 ## Device sign-in (TVs, consoles, CLIs) — RFC 8628
 

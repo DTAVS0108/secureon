@@ -25,6 +25,9 @@ apps/admin-web/*.tsbuildinfo
 # The licence: shipped in the image and shown on the website
 !LICENSE
 
+# Starter sign-in theme, copied into the image (/opt/secureone/theme-example)
+!deploy/themes/
+
 !docs/
 !scripts/docs/user-docs.mjs
 

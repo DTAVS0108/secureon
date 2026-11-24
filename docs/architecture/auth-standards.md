@@ -119,7 +119,11 @@ Data model: see `mfa_factor` and `mfa_policy` in [Data Model](../developer/data-
   - **single logout** both ways: `/connect/logout` continues to the IdP, and an IdP's LogoutRequest ends every SecureOne session of that user;
   - just-in-time accounts or link-by-email, MFA and app-access rules applied as for any sign-in.
   See [Integration guide](../integrate/integration-guide.md#enterprise-sso-saml-20) and the [SAML flows diagram](../diagrams/auth-flow-saml.drawio).
-- **Not yet:** SecureOne as a SAML **IdP** (issuing assertions to SAML-only apps), artifact binding, SOAP back-channel logout.
+- **SecureOne as a SAML identity provider** for SAML-only apps (Application → Settings → SAML apps): metadata at
+  `/saml2/idp/<tenant>/metadata`, SP- and IdP-initiated sign-in (`/sso`, `/init?sp=`), signed responses and assertions,
+  email or persistent NameID, signed requests when required, ForceAuthn and IsPassive, single logout (`/slo`). It
+  shares the browser session with OIDC, so one sign-in serves both.
+- **Not yet:** artifact binding, SOAP back-channel logout.
 - **Identity brokering** from many external IdPs (enterprise OIDC, SAML, social) with **home-realm discovery** and **JIT provisioning**.
 - **LDAP / Active Directory** user federation (sync or on-demand, group→role mapping).
 - External IdP logins link to `user_identity`. Full detail in [Enterprise Capabilities](enterprise.md#1-identity-federation--brokering).

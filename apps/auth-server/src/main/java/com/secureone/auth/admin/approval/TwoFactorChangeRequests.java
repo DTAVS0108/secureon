@@ -182,9 +182,9 @@ public class TwoFactorChangeRequests {
         values.put("applicationId", applicationId != null ? applicationId.toString() : null);
         values.put("until", until.toString());
         values.put("reason", exemptReason);
-        return submit(USER_EXEMPT, user.getTenantId(), applicationId, user.getId(), user.getEmail(),
+        return submit(USER_EXEMPT, user.getTenantId(), applicationId, user.getId(), user.getLoginKey(),
                 payload(values, Map.of()),
-                "Exempt " + user.getEmail() + " from Two Factor Authentication in " + where + " until "
+                "Exempt " + user.getLoginKey() + " from Two Factor Authentication in " + where + " until "
                         + until.toString().substring(0, 10) + ": " + exemptReason,
                 requester, exemptReason, request,
                 () -> applyExempt(user, applicationId, until, exemptReason, requester));

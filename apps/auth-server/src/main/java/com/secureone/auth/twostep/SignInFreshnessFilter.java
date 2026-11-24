@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
@@ -102,14 +103,38 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
                 response.sendRedirect("/login.html?continue=" + encode(here));
                 return;
             }
+            // prompt=none naming another user (id_token_hint) than the one signed in: no silent code for the wrong
+            // person (OIDC Core 3.1.2.1). The hint is only read to refuse, never to sign anyone in.
+            String hint = request.getParameter("id_token_hint");
+            if (prompt.contains("none") && hint != null && !hint.isBlank() && !hintMatches(hint, auth)
+                    && oauthError(request, response, "login_required",
+                            "The signed-in user is not the one named by id_token_hint.")) {
+                return;
+            }
+            UUID applicationId = applicationOf(request.getParameter("client_id"));
             String acrValues = request.getParameter("acr_values");
             if (acrValues != null && AuthContextAttributes.acrLevel(request) < 2 && wantsTwoSteps(acrValues)) {
-                UUID applicationId = applicationOf(request.getParameter("client_id"));
                 UUID challenge = mfaLogin.getObject().issueStepUp(auth, applicationId);
                 if (challenge != null) {
-                    response.sendRedirect("/login.html?mfa=1&mfaChallengeId=" + challenge
-                            + (applicationId != null ? "&applicationId=" + applicationId : "")
-                            + "&continue=" + encode(here));
+                    if (prompt.contains("none") && oauthError(request, response, "interaction_required",
+                            "The user must complete two-step verification; prompt=none shows no page.")) {
+                        return;
+                    }
+                    response.sendRedirect(secondStepPage(challenge, applicationId, here));
+                    return;
+                }
+            }
+            // Single sign-on into an application this session did not sign in to: that application's own
+            // two-step rule applies (a session from an application without two-step cannot skip it here).
+            if (applicationId != null && AuthContextAttributes.acrLevel(request) < 2
+                    && !MfaLoginService.decidedFor(request, auth, applicationId)) {
+                UUID challenge = mfaLogin.getObject().issueForApplication(auth, applicationId, request);
+                if (challenge != null) {
+                    if (prompt.contains("none") && oauthError(request, response, "interaction_required",
+                            "This application requires two-step verification; prompt=none shows no page.")) {
+                        return;
+                    }
+                    response.sendRedirect(secondStepPage(challenge, applicationId, here));
                     return;
                 }
             }
@@ -150,6 +175,56 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
      * or redirect URI): the authorization server then explains the error itself.
      */
     private boolean loginRequired(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        return oauthError(request, response, "login_required", "The user must sign in; prompt=none does not show the sign-in page.");
+    }
+
+    /**
+     * Whether an ID token hint names the signed-in user: its user_id (or its sub: the user id, or "tenant:login" for
+     * clients with the legacy subject). An unreadable hint is not judged here (the authorization server checks it).
+     */
+    boolean hintMatches(String idTokenHint, Authentication auth) {
+        Map<String, Object> claims = unverifiedClaims(idTokenHint);
+        if (claims == null) {
+            return true;
+        }
+        Object hinted = claims.get("user_id") != null ? claims.get("user_id") : claims.get("sub");
+        if (!(hinted instanceof String who) || who.isBlank()) {
+            return true;
+        }
+        if (who.equalsIgnoreCase(auth.getName())) {
+            return true;
+        }
+        try {
+            UUID current = mfaLogin.getObject().userIdOf(auth);
+            return current != null && who.equals(current.toString());
+        } catch (RuntimeException e) {
+            return true;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> unverifiedClaims(String jwt) {
+        String[] parts = jwt.split("\\.");
+        if (parts.length < 2) {
+            return null;
+        }
+        try {
+            byte[] json = java.util.Base64.getUrlDecoder().decode(parts[1]);
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, Map.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String secondStepPage(UUID challenge, UUID applicationId, String continueUrl) {
+        return "/login.html?mfa=1&mfaChallengeId=" + challenge
+                + (applicationId != null ? "&applicationId=" + applicationId : "")
+                + "&continue=" + encode(continueUrl);
+    }
+
+    /** An OIDC error back to the app (see {@link #loginRequired}). */
+    private boolean oauthError(HttpServletRequest request, HttpServletResponse response, String error, String description)
+            throws IOException {
         String clientId = request.getParameter("client_id");
         String redirectUri = request.getParameter("redirect_uri");
         if (clientId == null || redirectUri == null || redirectUri.isBlank()) {
@@ -163,8 +238,8 @@ public class SignInFreshnessFilter extends OncePerRequestFilter {
         }
         StringBuilder target = new StringBuilder(redirectUri)
                 .append(redirectUri.contains("?") ? '&' : '?')
-                .append("error=login_required&error_description=")
-                .append(encode("The user must sign in; prompt=none does not show the sign-in page."));
+                .append("error=").append(error).append("&error_description=")
+                .append(encode(description));
         String state = request.getParameter("state");
         if (state != null && !state.isEmpty()) {
             target.append("&state=").append(encode(state));

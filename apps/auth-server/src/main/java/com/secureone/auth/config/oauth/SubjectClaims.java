@@ -47,7 +47,7 @@ public final class SubjectClaims {
     /** "tenant-slug:email" principal → account. */
     public static Optional<UserAccount> resolve(String principalName, TenantUserDetailsService users) {
         int sep = principalName == null ? -1 : principalName.indexOf(':');
-        if (sep <= 0 || !principalName.contains("@")) {
+        if (sep <= 0 || !com.secureone.auth.user.UserAccount.isUserSessionName(principalName)) {
             return Optional.empty();
         }
         try {

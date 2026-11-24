@@ -170,6 +170,31 @@ public class SettingsAdminController {
         return platformSettings.saveMap("appearance", body);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.theme.ThemeRegistry themes;
+
+    /** Sign-in page themes installed on this server (SECUREONE_THEMES_DIR) and what is wrong with them. */
+    @io.swagger.v3.oas.annotations.Operation(summary = "List sign-in themes")
+    @GetMapping("/themes")
+    public Map<String, Object> getThemes() {
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("dir", themes.themesDir());
+        out.put("configuredDefault", themes.configuredDefault());
+        out.put("defaultTheme", themes.defaultTheme());
+        out.put("cache", themes.cacheEnabled());
+        out.put("problems", themes.problems());
+        out.put("themes", themes.describe());
+        return out;
+    }
+
+    /** Reads the themes folder again (needed with the theme cache on, the production default). */
+    @io.swagger.v3.oas.annotations.Operation(summary = "Reload sign-in themes")
+    @PostMapping("/themes/reload")
+    public Map<String, Object> reloadThemes() {
+        themes.reload();
+        return getThemes();
+    }
+
     @GetMapping("/auth-methods")
     public List<Map<String, Object>> getAuthMethods() {
         return authSettings.getAuthMethods();

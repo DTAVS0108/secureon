@@ -22,7 +22,18 @@ public class FederationStateStore {
         this.mapper = mapper;
     }
 
-    public record PendingState(UUID providerId, UUID tenantId, UUID applicationId, String continueUrl) {}
+    /**
+     * What a sign-in started here needs at the callback. {@code codeVerifier} (PKCE, RFC 7636) and {@code nonce}
+     * (OpenID Connect) are kept server side with the state and never leave SecureOne except as the code challenge
+     * and nonce sent to the identity provider; both are null for SAML.
+     */
+    public record PendingState(
+            UUID providerId, UUID tenantId, UUID applicationId, String continueUrl, String codeVerifier, String nonce) {
+
+        public PendingState(UUID providerId, UUID tenantId, UUID applicationId, String continueUrl) {
+            this(providerId, tenantId, applicationId, continueUrl, null, null);
+        }
+    }
 
     public String issue(PendingState state) {
         String token = UUID.randomUUID().toString().replace("-", "");

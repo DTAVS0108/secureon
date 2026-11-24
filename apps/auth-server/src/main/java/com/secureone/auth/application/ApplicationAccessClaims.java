@@ -99,7 +99,7 @@ public class ApplicationAccessClaims {
         String slug = principalName.substring(0, sep).trim().toLowerCase(Locale.ROOT);
         String email = principalName.substring(sep + 1).trim().toLowerCase(Locale.ROOT);
         return tenants.findBySlug(slug)
-                .flatMap(t -> users.findByTenantIdAndEmail(t.getId(), email))
+                .flatMap(t -> users.findByTenantIdAndLoginKey(t.getId(), email))
                 .map(u -> u.getId());
     }
 

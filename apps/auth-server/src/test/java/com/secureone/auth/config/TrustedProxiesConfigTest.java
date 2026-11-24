@@ -35,8 +35,30 @@ class TrustedProxiesConfigTest {
     }
 
     @Test
+    void rangesOfAnyPrefixLength() {
+        // A typical cloud subnet (/20) and the private 172.16.0.0/12 block
+        assertThat(trusted("10.0.16.0/20", "10.0.16.1")).isTrue();
+        assertThat(trusted("10.0.16.0/20", "10.0.31.254")).isTrue();
+        assertThat(trusted("10.0.16.0/20", "10.0.32.1")).isFalse();
+        assertThat(trusted("10.0.16.0/20", "10.0.15.255")).isFalse();
+        assertThat(trusted("172.16.0.0/12", "172.31.255.1")).isTrue();
+        assertThat(trusted("172.16.0.0/12", "172.32.0.1")).isFalse();
+        assertThat(trusted("172.16.0.0/12", "172.15.0.1")).isFalse();
+        // Host bits in the given address are ignored
+        assertThat(trusted("10.0.20.7/20", "10.0.16.9")).isTrue();
+        assertThat(trusted("10.0.0.0/27", "10.0.0.31")).isTrue();
+        assertThat(trusted("10.0.0.0/27", "10.0.0.32")).isFalse();
+        assertThat(trusted("10.0.0.9/32", "10.0.0.9")).isTrue();
+        assertThat(trusted("10.0.0.9/32", "10.0.0.10")).isFalse();
+    }
+
+    @Test
     void unsupportedEntriesStopStartUp() {
-        assertThatThrownBy(() -> TrustedProxiesConfig.pattern("10.0.0.0/12"))
+        assertThatThrownBy(() -> TrustedProxiesConfig.pattern("10.0.0.0/33"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> TrustedProxiesConfig.pattern("10.0.0/16"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> TrustedProxiesConfig.pattern("10.0.0.256/24"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> TrustedProxiesConfig.pattern("proxy.example.com"))
                 .isInstanceOf(IllegalArgumentException.class);

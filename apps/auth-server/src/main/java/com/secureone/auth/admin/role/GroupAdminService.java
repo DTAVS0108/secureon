@@ -178,10 +178,10 @@ public class GroupAdminService {
         List<GroupAdminDtos.GroupMemberResponse> members = memberIds.stream()
                 .map(userAccountRepository::findById)
                 .flatMap(java.util.Optional::stream)
-                .sorted(Comparator.comparing(UserAccount::getEmail, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(UserAccount::getLoginKey, String.CASE_INSENSITIVE_ORDER))
                 .map(u -> new GroupAdminDtos.GroupMemberResponse(
                         u.getId(),
-                        u.getEmail(),
+                        u.getLoginKey(),
                         u.getUsername(),
                         u.getDisplayName(),
                         u.getStatus(),

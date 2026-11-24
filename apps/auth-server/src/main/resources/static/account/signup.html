@@ -58,6 +58,20 @@
       a {
         color: #4f46e5;
       }
+      .choice {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .choice button {
+        background: #fff;
+        color: #4f46e5;
+        border: 1px solid #4f46e5;
+      }
+      .choice button[aria-pressed="true"] {
+        background: #4f46e5;
+        color: #fff;
+      }
     </style>
     <script src="/account/password-policy-ui.js"></script>
     <script src="/account/i18n.js"></script>
@@ -67,8 +81,14 @@
     <h1 id="heading">Create account</h1>
     <p id="intro">Loading…</p>
     <form id="form" hidden>
-      <label for="email">Email</label>
-      <input id="email" type="email" required autocomplete="email" />
+      <div id="choice" class="choice" role="group" aria-label="Sign up with" hidden>
+        <button type="button" id="use-email" aria-pressed="true">Email</button>
+        <button type="button" id="use-phone" aria-pressed="false">Phone number</button>
+      </div>
+      <div id="email-wrap">
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="email" />
+      </div>
       <div id="phone-wrap" hidden>
         <label for="phone">Mobile number <span id="phone-optional" class="hint">(optional)</span></label>
         <input id="phone" type="tel" autocomplete="tel" placeholder="Mobile number" />
@@ -78,10 +98,13 @@
       <label for="last">Last name</label>
       <input id="last" autocomplete="family-name" />
       <div id="extra-fields"></div>
-      <label for="password">Password</label>
-      <input id="password" type="password" required autocomplete="new-password" />
-      <div id="checklist"></div>
-      <p id="policy" class="hint"></p>
+      <div id="password-wrap">
+        <label for="password">Password</label>
+        <input id="password" type="password" required autocomplete="new-password" />
+        <div id="checklist"></div>
+        <p id="policy" class="hint"></p>
+      </div>
+      <p id="phone-hint" class="hint" hidden>We'll text you a code to confirm your number. You sign in with a code, no password needed.</p>
       <button type="submit">Create account</button>
     </form>
     <form id="verify-form" hidden>
@@ -105,7 +128,26 @@
       const loginHref = "/login.html?applicationId=" + encodeURIComponent(applicationId || "");
       let passwordPolicy = null;
       let phoneRequired = false;
+      let phoneShown = false;
       let challenge = null;
+      // "email": email and password; "phone": a phone number only, confirmed by a text-message code.
+      let mode = "email";
+      const emailInput = document.getElementById("email");
+
+      function setMode(next) {
+        mode = next;
+        const phone = next === "phone";
+        document.getElementById("use-email").setAttribute("aria-pressed", String(!phone));
+        document.getElementById("use-phone").setAttribute("aria-pressed", String(phone));
+        document.getElementById("email-wrap").hidden = phone;
+        emailInput.required = !phone;
+        document.getElementById("password-wrap").hidden = phone;
+        passwordInput.required = !phone;
+        document.getElementById("phone-hint").hidden = !phone;
+        document.getElementById("phone-wrap").hidden = !(phone || phoneShown);
+        document.getElementById("phone-optional").hidden = phone || phoneRequired;
+        phoneInput.required = phone || phoneRequired;
+      }
 
       // Messages are built from text nodes: server text and the typed email are never parsed as HTML.
       function showStatus(kind, text, withSignInLink) {
@@ -191,11 +233,16 @@
             const required = signup.requiredChannels || ["email"];
             const optional = signup.optionalChannels || [];
             phoneRequired = required.includes("phone");
-            if (phoneRequired || optional.includes("phone")) {
-              document.getElementById("phone-wrap").hidden = false;
-              document.getElementById("phone-optional").hidden = phoneRequired;
-              phoneInput.required = phoneRequired;
+            phoneShown = phoneRequired || optional.includes("phone");
+            const identifiers = opts.identifiers || ["email"];
+            const byEmail = identifiers.includes("email");
+            const byPhone = Boolean(opts.phoneSignup) && identifiers.includes("phone");
+            if (byEmail && byPhone) {
+              document.getElementById("choice").hidden = false;
+              document.getElementById("use-email").addEventListener("click", () => setMode("email"));
+              document.getElementById("use-phone").addEventListener("click", () => setMode("phone"));
             }
+            setMode(byPhone && (!byEmail || params.get("with") === "phone") ? "phone" : "email");
             renderExtraFields(opts.fields || []);
             form.hidden = false;
           })
@@ -207,17 +254,19 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const pwd = passwordInput.value;
-        if (passwordPolicy && !SecureOnePasswordPolicy.meetsPolicy(pwd, passwordPolicy)) {
+        if (mode === "email" && passwordPolicy && !SecureOnePasswordPolicy.meetsPolicy(pwd, passwordPolicy)) {
           showStatus("err", "Password does not meet all requirements.");
           return;
         }
         showStatus("", "Creating account…");
         const payload = {
-          email: document.getElementById("email").value,
-          password: pwd,
           firstName: document.getElementById("first").value,
           lastName: document.getElementById("last").value,
         };
+        if (mode === "email") {
+          payload.email = emailInput.value;
+          payload.password = pwd;
+        }
         if (phoneInput.value.trim()) payload.phone = phoneInput.value.trim();
         if (extraFields.length) payload.attributes = extraValues();
         const res = await fetch("/api/v1/applications/" + encodeURIComponent(applicationId) + "/signup", {
@@ -250,14 +299,26 @@
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
             body: JSON.stringify({
               challengeId: challenge.id,
               code: document.getElementById("code").value.trim(),
               channel: challenge.channel,
+              // A phone sign-up has no password: the code that confirms the number also signs in.
+              signIn: mode === "phone",
             }),
           }
         );
+        // Signed in: the sign-in page carries on to the application (or asks for the second step).
+        if (res.status === 204) {
+          location.replace(loginHref + "&signedIn=1");
+          return;
+        }
         const data = await res.json().catch(() => ({}));
+        if (res.status === 428 && data.mfaChallengeId) {
+          location.replace(loginHref + "&mfa=1&mfaChallengeId=" + encodeURIComponent(data.mfaChallengeId));
+          return;
+        }
         if (!res.ok) {
           showStatus("err", data.detail || "That code is not valid. Check it and try again.");
           return;

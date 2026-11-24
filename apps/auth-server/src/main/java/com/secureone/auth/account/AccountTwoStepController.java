@@ -142,7 +142,7 @@ public class AccountTwoStepController {
     @PostMapping("/verify/webauthn/options")
     public Map<String, Object> verifyWebauthnOptions(Authentication authentication) {
         UserAccount user = users.requireTenantUser(authentication);
-        return passkeyAuth.beginSecondStep(tenantSlug(authentication), user.getEmail());
+        return passkeyAuth.beginSecondStep(tenantSlug(authentication), user.getLoginKey());
     }
 
     @Operation(summary = "Verify it's you (authenticator, sent code, passkey or backup code) for sensitive changes")
@@ -345,6 +345,11 @@ public class AccountTwoStepController {
     // ---- helpers -------------------------------------------------------------------------------------------
 
     private void requireOffered(UUID applicationId, TwoStepMethod method) {
+        // While two-step is off (the application switched it off, or the policy is Off), sign-in never asks for a
+        // second step: adding one (and getting backup codes) would only make the user believe they are protected.
+        if (!twoStep.inUse(applicationId)) {
+            throw new IllegalArgumentException("Two-step verification is off for this application.");
+        }
         if (!twoStep.offered(applicationId, false).contains(method)) {
             throw new IllegalArgumentException(method.label() + " is not offered for this application.");
         }

@@ -134,7 +134,7 @@ Press **Submit request**. Pending requests show **Approve** and **Deny**; approv
 
 *Outbound HTTPS notifications for login and lifecycle events (HMAC-signed).*
 
-Enter the **Endpoint URL** (for example `https://example.com/hooks/secureone`) and press **Add webhook**. The **Signing secret (copy now)** is shown once; your receiver uses it to verify the HMAC signature of each call. New webhooks receive these events: `user.login.succeeded`, `user.created`, `access_request.created`, `access_request.approved`, `access_request.denied`. Rows can be deleted.
+Enter the **Endpoint URL** (for example `https://example.com/hooks/secureone`) and press **Add webhook**. The **Signing secret (copy now)** is shown once; your receiver uses it to verify the HMAC signature of each call. The endpoint must be a public address: private networks are refused unless the operator sets `SECUREONE_WEBHOOKS_ALLOW_PRIVATE_TARGETS=true`, and cloud metadata addresses are always refused. New webhooks receive these events: `user.login.succeeded`, `user.created`, `access_request.created`, `access_request.approved`, `access_request.denied`. Rows can be deleted.
 
 > The tenant's SCIM token has no screen here; set it through the API or a [configuration file](configuration-as-code.md).
 

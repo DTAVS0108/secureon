@@ -101,9 +101,9 @@ public class AccountLockoutService {
         users.save(account);
         // In the audit log (security events on the home page, the user.locked webhook, log streams).
         if (audit != null) {
-            audit.ifAvailable(a -> a.recordIndependently(account.getTenantId(), applicationId, account.getEmail(),
+            audit.ifAvailable(a -> a.recordIndependently(account.getTenantId(), applicationId, account.getLoginKey(),
                     "user.locked", "user", account.getId(),
-                    account.getEmail() + " (" + lockMinutes + " min, lockout " + level + ")", true));
+                    account.getLoginKey() + " (" + lockMinutes + " min, lockout " + level + ")", true));
         }
         // Often the first sign of someone guessing the password or codes; tell the owner every time.
         try {
@@ -111,7 +111,7 @@ public class AccountLockoutService {
                     + (applicationId != null ? "?applicationId=" + applicationId : "");
             mail.getObject().sendAccountLocked(applicationId, account, (int) lockMinutes, reset);
         } catch (RuntimeException ex) {
-            log.warn("Could not send account-locked email to {}: {}", account.getEmail(), ex.getMessage());
+            log.warn("Could not send account-locked email to {}: {}", account.getLoginKey(), ex.getMessage());
         }
     }
 

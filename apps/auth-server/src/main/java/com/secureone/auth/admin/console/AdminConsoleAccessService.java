@@ -157,7 +157,7 @@ public class AdminConsoleAccessService {
             result.add(new ConsoleAccessAssignment(
                     row.getId(),
                     user.getId(),
-                    user.getEmail(),
+                    user.getLoginKey(),
                     user.getDisplayName(),
                     row.getRoleType(),
                     row.getTenantId(),
@@ -348,7 +348,7 @@ public class AdminConsoleAccessService {
         return new ConsoleAccessAssignment(
                 row.getId(),
                 user.getId(),
-                user.getEmail(),
+                user.getLoginKey(),
                 user.getDisplayName(),
                 row.getRoleType(),
                 row.getTenantId(),

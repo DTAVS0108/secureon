@@ -183,8 +183,9 @@
                 hint.textContent = "Could not load session profile.";
                 json.textContent = String(e);
               });
-          } else if (!params.has("error") && isOAuthContinue(continueUrl)) {
-            // Already signed in: go straight back. Not after a failed attempt, which must show its error.
+          } else if (!params.has("error") && !(params.get("mfa") === "1" && mfaChallengeId) && isOAuthContinue(continueUrl)) {
+            // Already signed in: go straight back. Not after a failed attempt, which must show its error, and not
+            // while a second step is asked (an application or acr_values asking more of a signed-in session).
             fetch("/api/v1/auth/me", { credentials: "same-origin" })
               .then((r) => (r.ok ? r.json() : null))
               .then((body) => {

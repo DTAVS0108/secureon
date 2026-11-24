@@ -93,7 +93,7 @@ public class AdminImpersonationService {
                 "user.impersonate",
                 "user",
                 user.getId(),
-                user.getEmail() + " — reason: " + why,
+                user.getLoginKey() + " — reason: " + why,
                 true);
         return new ImpersonationTokenResponse(
                 token.toString(),
@@ -139,7 +139,7 @@ public class AdminImpersonationService {
                 "user.impersonate.consume",
                 "user",
                 user.getId(),
-                user.getEmail() + " — reason: " + payload.reason(),
+                user.getLoginKey() + " — reason: " + payload.reason(),
                 true);
     }
 

@@ -24,7 +24,10 @@ public class SecureOneEnvironmentDefaults implements EnvironmentPostProcessor, O
                 environment.getProperty("secureone.environment", "development").trim());
         environment.getPropertySources().addLast(new MapPropertySource(SOURCE_NAME, Map.of(
                 "secureone.defaults.admin-mfa-required", production,
-                "secureone.defaults.swagger-enabled", !production)));
+                "secureone.defaults.swagger-enabled", !production,
+                // Sign-in themes: read once (reload from the console) in production; re-read on every page
+                // elsewhere, so a theme being edited shows on the next page load.
+                "secureone.defaults.theme-cache", production)));
     }
 
     /** After the configuration files are loaded, so {@code secureone.environment} is known. */

@@ -41,6 +41,6 @@ public class AccountIdentityController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlink(Authentication authentication, @PathVariable UUID identityId) {
         UserAccount user = sessionUsers.requireTenantUser(authentication);
-        RlsScope.runAsPlatform(() -> identities.unlink(user.getId(), identityId, user.getEmail()));
+        RlsScope.runAsPlatform(() -> identities.unlink(user.getId(), identityId, user.getLoginKey()));
     }
 }

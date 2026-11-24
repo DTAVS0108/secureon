@@ -77,6 +77,31 @@ class SignInFreshnessFilterTest {
         assertTrue(SignInFreshnessFilter.withoutPromptLogin(request).contains("prompt=consent"));
     }
 
+    private static String unsignedJwt(String payloadJson) {
+        java.util.Base64.Encoder b64 = java.util.Base64.getUrlEncoder().withoutPadding();
+        return b64.encodeToString("{\"alg\":\"RS256\"}".getBytes()) + "." + b64.encodeToString(payloadJson.getBytes()) + ".sig";
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void idTokenHintMustNameTheSignedInUser() {
+        java.util.UUID una = java.util.UUID.randomUUID();
+        com.secureone.auth.mfa.MfaLoginService mfa = mock(com.secureone.auth.mfa.MfaLoginService.class);
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.TestingAuthenticationToken("acme:una@acme.test", "x");
+        when(mfa.userIdOf(auth)).thenReturn(una);
+        ObjectProvider<com.secureone.auth.mfa.MfaLoginService> provider = mock(ObjectProvider.class);
+        when(provider.getObject()).thenReturn(mfa);
+        SignInFreshnessFilter f = new SignInFreshnessFilter(Duration.ofHours(24), provider, mock(ObjectProvider.class), mock(ObjectProvider.class));
+
+        assertTrue(f.hintMatches(unsignedJwt("{\"sub\":\"" + una + "\",\"user_id\":\"" + una + "\"}"), auth), "same user");
+        assertTrue(f.hintMatches(unsignedJwt("{\"sub\":\"acme:una@acme.test\"}"), auth), "legacy subject of the same user");
+        assertTrue(!f.hintMatches(unsignedJwt("{\"sub\":\"x\",\"user_id\":\"" + java.util.UUID.randomUUID() + "\"}"), auth), "another user");
+        assertTrue(!f.hintMatches(unsignedJwt("{\"sub\":\"acme:vic@acme.test\"}"), auth), "another user's legacy subject");
+        assertTrue(f.hintMatches("not-a-jwt", auth), "unreadable hints are left to the authorization server");
+        assertNull(SignInFreshnessFilter.unverifiedClaims("a.%%%.c"));
+    }
+
     @Test
     void theSignInPageReturnsToTheRequestWithoutPromptLogin() {
         MockHttpServletRequest request = authorize(CALLBACK, "login consent");

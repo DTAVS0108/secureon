@@ -44,8 +44,9 @@ public final class BackchannelNotifyingLogoutHandler implements AuthenticationSu
                 List<OAuthClient> clients = RlsScope.asPlatform(() -> backchannel.clientsToNotify(principal));
                 String sid = logout.getIdToken() != null ? logout.getIdToken().getClaimAsString("sid") : null;
                 access.endBrowserSession(principal, sid);
-                // The session ID from the id_token_hint goes in the logout tokens too (OIDC Back-Channel Logout sid).
-                backchannel.sessionSignedOut(principal, logout.getSessionId(), clients);
+                // The logout tokens name the session as the ID tokens did (their "sid"), so each application can find
+                // it (OIDC Back-Channel Logout). Never the HTTP session ID: that is the browser's session cookie.
+                backchannel.sessionSignedOut(principal, sid, clients);
             } catch (RuntimeException e) {
                 log.warn("Sign-out of {} not fully completed: {}", user.getName(), e.getMessage());
             }

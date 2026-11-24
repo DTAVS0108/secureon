@@ -19,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ApplicationPublicAccountService {
 
+    /** This bean through its proxy, so a call from a non-transactional method gets its own transaction. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ApplicationPublicAccountService> self;
+
     private final AccountNotificationService accounts;
     private final PasswordRecoveryService passwordRecovery;
     private final AccountVerificationService verification;
@@ -84,13 +88,38 @@ public class ApplicationPublicAccountService {
         return authOtp.verifyLoginOtp(applicationId, UUID.fromString(challengeId), code, request, response);
     }
 
+    /**
+     * Confirms a sign-up code and then signs in (see {@link AuthOtpService#signInVerifiedAccount}). Whether
+     * sign-in by a code is allowed is checked first, so a refused sign-in does not use up the code.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public ResponseEntity<?> confirmSignupOtpAndSignIn(
+            UUID applicationId,
+            String challengeId,
+            String code,
+            String channel,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        tenants.requireActiveApplication(applicationId);
+        authOtp.requireCodeSignInAllowed(applicationId, channel);
+        Map<String, Object> confirmed = self.getObject().confirmSignupOtp(applicationId, challengeId, code, channel);
+        UUID userId = (UUID) confirmed.remove("userId");
+        return authOtp.signInVerifiedAccount(applicationId, userId, request, response);
+    }
+
     public Map<String, Object> confirmSignupOtp(UUID applicationId, String challengeId, String code, String channel) {
         tenants.requireActiveApplication(applicationId);
         var user = "phone".equalsIgnoreCase(channel) || "sms".equalsIgnoreCase(channel)
                 ? verification.confirmPhoneOtp(UUID.fromString(challengeId), code, applicationId)
                 : verification.confirmEmailOtp(UUID.fromString(challengeId), code, applicationId);
         memberships.ensureMemberWithDefaultRole(applicationId, user.getId());
-        return Map.of("verified", true, "email", user.getEmail());
+        Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("verified", true);
+        out.put("email", user.getEmail());
+        out.put("phone", user.getPhone());
+        out.put("phoneVerified", user.isPhoneVerified());
+        out.put("userId", user.getId());
+        return out;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -101,7 +130,7 @@ public class ApplicationPublicAccountService {
         // An unknown identifier goes through the same authentication as a known one, so the status,
         // message and work done do not reveal whether the account exists.
         String loginEmail = tenants.findUserByIdentifier(applicationId, identifier)
-                .map(UserAccount::getEmail)
+                .map(UserAccount::getLoginKey)
                 .orElse(identifier);
         return sessions.sessionLogin(tenantSlug, loginEmail, password, applicationId, request, response);
     }

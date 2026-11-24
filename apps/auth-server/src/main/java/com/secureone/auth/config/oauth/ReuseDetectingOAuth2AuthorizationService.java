@@ -52,6 +52,8 @@ public class ReuseDetectingOAuth2AuthorizationService implements OAuth2Authoriza
 
     @Override
     public void save(OAuth2Authorization authorization) {
+        // The browser session the code is issued in: the ID token's sid (not the user's latest session elsewhere).
+        authorization = BrowserSessionSid.withBrowserSession(authorization);
         retirePreviousRefreshToken(authorization);
         delegate.save(authorization);
     }

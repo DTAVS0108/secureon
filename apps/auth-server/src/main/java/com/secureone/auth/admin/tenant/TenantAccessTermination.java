@@ -34,7 +34,7 @@ public class TenantAccessTermination {
         List<Map<String, Object>> users;
         try {
             users = RlsScope.asPlatform(() -> jdbc.queryForList(
-                    "SELECT id, email FROM platform.user_account WHERE tenant_id = ?", tenantId));
+                    "SELECT id, COALESCE(email, phone) AS email FROM platform.user_account WHERE tenant_id = ?", tenantId));
         } catch (RuntimeException e) {
             log.warn("Access of tenant {} not ended: {}", tenantSlug, e.getMessage());
             return 0;

@@ -61,11 +61,26 @@ public class OAuth2TokenCustomizerConfig {
             if (acr != null && !acr.isBlank() && !"0".equals(acr)) {
                 context.getClaims().claim("acr", acr);
             }
+            useBrowserSessionSid(context);
             applyPolicyLifetime(context);
             addApplicationAccess(context, accessClaims);
             addApiAudiences(context, clientApp, apis);
             addApplicationClaims(context, users, clientApp, settings, tenants);
         };
+    }
+
+    /**
+     * ID tokens name the browser session the sign-in happened in (recorded when the code was issued), not the
+     * user's most recent session, which is another device's when the user is signed in on several.
+     */
+    static void useBrowserSessionSid(JwtEncodingContext context) {
+        if (!OidcParameterNames.ID_TOKEN.equals(context.getTokenType().getValue()) || context.getAuthorization() == null) {
+            return;
+        }
+        String sid = context.getAuthorization().getAttribute(BrowserSessionSid.ATTRIBUTE);
+        if (sid != null) {
+            context.getClaims().claim("sid", sid);
+        }
     }
 
     /** The application (and its tenant) of the client a token is issued to; null when it has none. */
@@ -246,7 +261,7 @@ public class OAuth2TokenCustomizerConfig {
         }
         String name = context.getPrincipal().getName();
         int sep = name == null ? -1 : name.indexOf(':');
-        if (sep <= 0 || !name.contains("@")) {
+        if (sep <= 0 || !com.secureone.auth.user.UserAccount.isUserSessionName(name)) {
             return;
         }
         UserAccount user;
@@ -257,9 +272,13 @@ public class OAuth2TokenCustomizerConfig {
         }
         var scopes = context.getAuthorizedScopes();
         context.getClaims().claim("user_id", user.getId().toString());
-        if (scopes.contains("email")) {
+        if (scopes.contains("email") && user.hasEmail()) {
             context.getClaims().claim("email", user.getEmail());
             context.getClaims().claim("email_verified", user.isEmailVerified());
+        }
+        if (scopes.contains("phone") && user.getPhone() != null && !user.getPhone().isBlank()) {
+            context.getClaims().claim("phone_number", user.getPhone());
+            context.getClaims().claim("phone_number_verified", user.isPhoneVerified());
         }
         if (scopes.contains("profile")) {
             String display = user.getDisplayName();
@@ -285,7 +304,7 @@ public class OAuth2TokenCustomizerConfig {
             return false;
         }
         String name = context.getPrincipal().getName();
-        return name != null && name.indexOf(':') > 0 && name.contains("@");
+        return com.secureone.auth.user.UserAccount.isUserSessionName(name);
     }
 
     private static void requireActiveUser(JwtEncodingContext context, TenantUserDetailsService users) {
@@ -296,7 +315,7 @@ public class OAuth2TokenCustomizerConfig {
         }
         String name = context.getPrincipal().getName();
         int sep = name == null ? -1 : name.indexOf(':');
-        if (sep <= 0 || !name.contains("@")) {
+        if (sep <= 0 || !com.secureone.auth.user.UserAccount.isUserSessionName(name)) {
             return;
         }
         String status;

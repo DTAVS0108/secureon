@@ -79,6 +79,25 @@ migrationJob:
 configImport:
   configMap: ""
 
+# Sign-in page themes (docs/guide/sign-in-themes.md): folders under /opt/secureone/themes, one per theme.
+themes:
+  # Theme of applications that choose none (SECUREONE_THEME). Empty: the built-in theme "base".
+  default: ""
+  # "true": read once, reload from the console; "false": re-read on every page. Empty: on in production.
+  cache: ""
+  # One ConfigMap per theme, mounted as /opt/secureone/themes/<name>. ConfigMap keys cannot contain "/":
+  # files in sub-folders (messages/en.json, assets/logo.svg) need an items entry, for example
+  #   kubectl create configmap acme-theme --from-file=theme.json --from-file=theme.css \
+  #     --from-file=messages-en.json=messages/en.json --from-file=logo.svg=assets/logo.svg
+  # with items: [{key: messages-en.json, path: messages/en.json}, {key: logo.svg, path: assets/logo.svg}, ...]
+  # (when items are given, list every key: keys not listed are not mounted).
+  configMaps: []
+  #  - name: acme
+  #    configMap: acme-theme
+  #    items: []
+  # Or a PersistentVolumeClaim holding all theme folders (ReadOnlyMany or ReadWriteMany with 2+ replicas).
+  existingClaim: ""
+
 ingress:
   enabled: false
   className: nginx

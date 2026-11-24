@@ -122,11 +122,24 @@ TRAIN
 # After the training run, which does not need them: a docs-only change rebuilds in seconds.
 COPY --from=docs /docs /opt/secureone/docs
 
+# Sign-in page themes (docs/guide/sign-in-themes.md): mount a folder of themes at /opt/secureone/themes. To start
+# one: docker cp secureone:/opt/secureone/theme-example ./themes/my-theme. The built-in pages, to copy a page
+# from: /opt/secureone/theme-base (pages/, templates/). Both are references only; SecureOne serves /themes.
+COPY deploy/themes/example /opt/secureone/theme-example
+COPY apps/auth-server/src/main/resources/static/login.html /opt/secureone/theme-base/pages/login.html
+COPY apps/auth-server/src/main/resources/static/account/ /opt/secureone/theme-base/pages/account/
+COPY apps/auth-server/src/main/resources/secureone-theme-base/templates/ /opt/secureone/theme-base/templates/
+RUN rm -f /opt/secureone/theme-base/pages/account/*.js /opt/secureone/theme-base/pages/account/connect-test.html \
+    && printf '{\n  "parent": "base",\n  "secureone": "%s",\n  "description": "Copy of the built-in pages"\n}\n' "${SECUREONE_VERSION}" \
+       > /opt/secureone/theme-base/theme.json \
+    && mkdir -p /opt/secureone/themes && chown 10001:0 /opt/secureone/themes && chmod 775 /opt/secureone/themes
+
 # SECUREONE_MANAGEMENT_PORT: health, info and Prometheus only on 9001 (probes, metrics scraper); never publish it.
 ENV SPRING_PROFILES_ACTIVE=prod \
     SECUREONE_ENV=production \
     SECUREONE_CONSOLE_DIR=/opt/secureone/console/apps/admin-web \
     SECUREONE_DOCS_DIR=/opt/secureone/docs \
+    SECUREONE_THEMES_DIR=/opt/secureone/themes \
     SECUREONE_MANAGEMENT_PORT=9001
 
 USER 10001

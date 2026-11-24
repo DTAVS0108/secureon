@@ -44,6 +44,8 @@ services:
       # SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES: "10\\.\\d+\\.\\d+\\.\\d+|203\\.0\\.113\\.\\d+"  # proxy not on a private network
       # LOGGING_LEVEL_COM_SECUREONE: DEBUG
       # SECUREONE_ADMIN_SESSION_IDLE: 30m
+      # Sign-in page themes (docs/guide/sign-in-themes.md): the theme of apps that choose none.
+      # SECUREONE_THEME: acme
     # Each secret is a file /run/secrets/<name>; the name is the setting it fills.
     secrets:
       - SECUREONE_DB_PASSWORD
@@ -57,6 +59,8 @@ services:
       # - SECUREONE_SAML_SP_CERT_PEM
     volumes:
       - ./tenants:/etc/secureone/tenants:ro
+      # Sign-in page themes, one folder per theme (./themes/acme/theme.css …). Read-only is enough.
+      # - ./themes:/opt/secureone/themes:ro
 
   postgres:
     image: postgres:16-alpine

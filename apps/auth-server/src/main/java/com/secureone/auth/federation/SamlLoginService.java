@@ -233,20 +233,24 @@ public class SamlLoginService {
         };
     }
 
-    private static String autoPostForm(Saml2PostAuthenticationRequest post) {
-        return """
-                <!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing in…</title></head>
-                <body onload="document.forms[0].submit()">
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.theme.ThemePages themePages;
+
+    /** Posts the request to the identity provider at once; in the sign-in theme (templates/saml-post.html). */
+    private String autoPostForm(Saml2PostAuthenticationRequest post) {
+        String form = """
                 <form method="post" action="%s">
                 <input type="hidden" name="SAMLRequest" value="%s">
                 <input type="hidden" name="RelayState" value="%s">
                 <noscript><button type="submit">Continue</button></noscript>
-                </form></body></html>
+                </form><script>document.forms[0].submit()</script>
                 """
                 .formatted(
                         HtmlUtils.htmlEscape(post.getAuthenticationRequestUri()),
                         HtmlUtils.htmlEscape(post.getSamlRequest()),
                         HtmlUtils.htmlEscape(post.getRelayState()));
+        return themePages.renderDefault(
+                new com.secureone.auth.theme.ThemePages.Page("saml-post", "Signing in", "Signing in…", form, false));
     }
 
     private static String enc(String value) {

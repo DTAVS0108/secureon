@@ -107,7 +107,8 @@ public class SecurityConfig {
             SecureOneEnvironmentProperties environment,
             org.springframework.security.crypto.password.PasswordEncoder passwordEncoder,
             ApplicationOAuthClientResolver applications,
-            ObjectProvider<com.secureone.auth.oauth.registration.ClientRegistrationService> clientRegistrations)
+            ObjectProvider<com.secureone.auth.oauth.registration.ClientRegistrationService> clientRegistrations,
+            ObjectProvider<com.secureone.auth.theme.ThemePages> themePages)
             throws Exception {
         // Client secrets are hashed by SecureOne (bcrypt; two during a rotation's overlap) and the client store is
         // read-only: the authorization server must not try to re-hash and save them after a successful check.
@@ -210,7 +211,7 @@ public class SecurityConfig {
                                 .consentPage(com.secureone.auth.oauth.ConsentPageController.PATH)
                                 // Integration mistakes (unregistered redirect_uri, scope, missing PKCE) explained.
                                 .errorResponseHandler(com.secureone.auth.config.oauth.OAuthErrorExplainer
-                                        .authorizationFailureHandler(registeredClients, environment.isProduction()))
+                                        .authorizationFailureHandler(registeredClients, environment.isProduction(), themePages))
                                 .authenticationProviders(providers ->
                                 providers.forEach(provider -> {
                                     if (provider instanceof OAuth2AuthorizationCodeRequestAuthenticationProvider codeProvider) {
@@ -436,6 +437,8 @@ public class SecurityConfig {
                                 "/api/v1/applications/**",
                                 "/api/v1/attack-protection",
                                 "/account/**",
+                                // Sign-in page themes: stylesheets, texts and images of the hosted pages.
+                                "/themes/**",
                                 "/login",
                                 "/login.html",
                                 // SecureOne icon (static/favicon.*): browsers request it on every page.

@@ -117,11 +117,11 @@ public class WebAuthnCredentialRepository implements CredentialRepository {
         }
         String tenantSlug = username.substring(0, sep).trim().toLowerCase(Locale.ROOT);
         String email = username.substring(sep + 1).trim().toLowerCase(Locale.ROOT);
-        return tenants.findBySlug(tenantSlug).flatMap(tenant -> users.findByTenantIdAndEmail(tenant.getId(), email));
+        return tenants.findBySlug(tenantSlug).flatMap(tenant -> users.findByTenantIdAndLoginKey(tenant.getId(), email));
     }
 
     Optional<String> usernameForUser(UserAccount user) {
-        return tenants.findById(user.getTenantId()).map(tenant -> tenant.getSlug() + ":" + user.getEmail());
+        return tenants.findById(user.getTenantId()).map(tenant -> tenant.getSlug() + ":" + user.getLoginKey());
     }
 
     private Optional<UserAccount> findUserByHandle(ByteArray userHandle) {

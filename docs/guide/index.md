@@ -47,6 +47,7 @@ Section access can be narrowed further per person; see [Tenants](tenants.md#tena
 | [Access review and platform operators](access-review-and-operators.md) | Approving OAuth client deletes, who holds privileged roles, CSV export, adding platform operators |
 | [Configuration as code](configuration-as-code.md) | Export, preview and apply configuration files from the console |
 | [End-user pages](end-user-pages.md) | Hosted sign-in, sign-up, password recovery, magic link, device sign-in, account security, privacy |
+| [Sign-in themes](sign-in-themes.md) | Your own design for the hosted pages: styles, wording, languages, whole pages; per application, without rebuilding the image |
 | [Common tasks](common-tasks.md) | Step-by-step recipes and the "Coming soon" list |
 | [Two-step verification](two-step-verification.md) | The options, sign-in and setup for users, platform/tenant/application settings and locks, reset, extend and exempt |
 

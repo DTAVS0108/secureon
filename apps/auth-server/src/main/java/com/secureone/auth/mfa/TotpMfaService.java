@@ -97,7 +97,7 @@ public class TotpMfaService {
         factors.save(factor);
 
         QrData qrData = new QrData.Builder()
-                .label(user.getEmail())
+                .label(user.getLoginKey())
                 .secret(secret)
                 .issuer(issuer)
                 .algorithm(HashingAlgorithm.SHA1)

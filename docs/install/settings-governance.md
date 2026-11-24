@@ -317,7 +317,7 @@ Use `ApplicationEffectiveSettingsService` when wiring login and account flows to
 | **Platform** | `platform_setting.appearance` | SecureOne **admin console** only (`ThemeProvider`, `/settings` → Appearance) |
 | **Application** | `application_setting.appearance` | **Client apps** via public manifest when `sections.appearance` is enabled |
 
-Application appearance includes branding (`appName`, `logoUrl`), the same color/gradient/toast controls as platform, plus widget colors (dialogs, inputs, dividers). It does **not** inherit the platform admin theme.
+Application appearance includes branding (`appName`, `logoUrl`), the [sign-in page theme](../guide/sign-in-themes.md) (`theme`: an installed theme, or empty for the server default), the same color/gradient/toast controls as platform, plus widget colors (dialogs, inputs, dividers). It does **not** inherit the platform admin theme.
 
 ## Access control
 

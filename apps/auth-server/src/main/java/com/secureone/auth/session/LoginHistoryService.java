@@ -54,7 +54,7 @@ public class LoginHistoryService {
         Map<String, Object> geo = new HashMap<>();
         geo.put("location", location != null ? location : "—");
         geo.put("method", method);
-        geo.put("actorEmail", user.getEmail());
+        geo.put("actorEmail", user.getLoginKey());
         if (failureReason != null) {
             geo.put("failureReason", failureReason);
         }
@@ -82,7 +82,7 @@ public class LoginHistoryService {
         Map<String, Object> geo = new HashMap<>();
         geo.put("location", "—");
         geo.put("method", "password");
-        geo.put("actorEmail", user.getEmail());
+        geo.put("actorEmail", user.getLoginKey());
         geo.put("failureReason", reasonCode);
         if (failureDetail != null) {
             geo.put("failureDetail", failureDetail);

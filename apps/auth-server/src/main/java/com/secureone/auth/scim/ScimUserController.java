@@ -92,7 +92,7 @@ public class ScimUserController {
     public Map<String, Object> replace(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         UserAccount user = requireUser(request, id);
         String status = user.getStatus();
-        String email = user.getEmail();
+        String email = user.getLoginKey();
         applyUserFields(user, body);
         UserAccount saved = users.save(user);
         endAccessIfDeactivated(saved, status, email);
@@ -103,7 +103,7 @@ public class ScimUserController {
     public Map<String, Object> patch(HttpServletRequest request, @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         UserAccount user = requireUser(request, id);
         String status = user.getStatus();
-        String email = user.getEmail();
+        String email = user.getLoginKey();
         applyPatchOperations(user, body);
         UserAccount saved = users.save(user);
         endAccessIfDeactivated(saved, status, email);
@@ -116,7 +116,7 @@ public class ScimUserController {
         String status = user.getStatus();
         user.setStatus("DISABLED");
         users.save(user);
-        endAccessIfDeactivated(user, status, user.getEmail());
+        endAccessIfDeactivated(user, status, user.getLoginKey());
         return ResponseEntity.noContent().build();
     }
 
@@ -272,7 +272,7 @@ public class ScimUserController {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("schemas", List.of("urn:ietf:params:scim:schemas:core:2.0:User"));
         out.put("id", user.getId().toString());
-        out.put("userName", user.getEmail());
+        out.put("userName", user.getLoginKey());
         out.put("displayName", user.getDisplayName());
         if (user.getGivenName() != null || user.getFamilyName() != null) {
             Map<String, Object> name = new LinkedHashMap<>();
@@ -282,7 +282,12 @@ public class ScimUserController {
             out.put("name", name);
         }
         out.put("active", "ACTIVE".equalsIgnoreCase(user.getStatus()));
-        out.put("emails", List.of(Map.of("value", user.getEmail(), "primary", true)));
+        if (user.hasEmail()) {
+            out.put("emails", List.of(Map.of("value", user.getEmail(), "primary", true)));
+        }
+        if (user.getPhone() != null && !user.getPhone().isBlank()) {
+            out.put("phoneNumbers", List.of(Map.of("value", user.getPhone(), "type", "mobile", "primary", true)));
+        }
         out.put("meta", Map.of("resourceType", "User"));
         out.put("tenantId", user.getTenantId().toString());
         return out;

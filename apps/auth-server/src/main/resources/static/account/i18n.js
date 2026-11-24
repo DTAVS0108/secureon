@@ -124,6 +124,9 @@
     // Sign-up / set password
     ["Create account", "Crear cuenta", "Créer un compte", "Konto erstellen", "Criar conta", "खाता बनाएँ"],
     ["Mobile number", "Número de móvil", "Numéro de mobile", "Mobilnummer", "Número de celular", "मोबाइल नंबर"],
+    ["Phone number", "Número de teléfono", "Numéro de téléphone", "Telefonnummer", "Número de telefone", "फ़ोन नंबर"],
+    ["We'll text you a code to confirm your number. You sign in with a code, no password needed.", "Te enviaremos un código por SMS para confirmar tu número. Inicias sesión con un código, sin contraseña.", "Nous vous enverrons un code par SMS pour confirmer votre numéro. Vous vous connectez avec un code, sans mot de passe.", "Wir senden Ihnen per SMS einen Code, um Ihre Nummer zu bestätigen. Sie melden sich mit einem Code an, ohne Passwort.", "Enviaremos um código por SMS para confirmar seu número. Você entra com um código, sem senha.", "आपका नंबर पक्का करने के लिए हम SMS से एक कोड भेजेंगे। आप कोड से साइन इन करते हैं, पासवर्ड की ज़रूरत नहीं।"],
+    ["Account created. Enter the verification code sent to your phone.", "Cuenta creada. Introduce el código de verificación enviado a tu teléfono.", "Compte créé. Saisissez le code de vérification envoyé sur votre téléphone.", "Konto erstellt. Geben Sie den an Ihr Telefon gesendeten Bestätigungscode ein.", "Conta criada. Digite o código de verificação enviado para seu telefone.", "खाता बन गया। अपने फ़ोन पर भेजा गया सत्यापन कोड डालें।"],
     ["(optional)", "(opcional)", "(facultatif)", "(optional)", "(opcional)", "(वैकल्पिक)"],
     ["First name", "Nombre", "Prénom", "Vorname", "Nome", "पहला नाम"],
     ["Last name", "Apellidos", "Nom", "Nachname", "Sobrenome", "उपनाम"],

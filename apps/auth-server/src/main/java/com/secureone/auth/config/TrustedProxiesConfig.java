@@ -74,22 +74,46 @@ public class TrustedProxiesConfig implements WebServerFactoryCustomizer<TomcatSe
             }
             return entry.replace(".", "\\.");
         }
-        String[] parts = entry.split("/");
-        String[] octets = parts[0].split("\\.");
+        String[] parts = entry.split("/", -1);
+        String[] octets = parts[0].split("\\.", -1);
         int bits;
         try {
-            bits = Integer.parseInt(parts[1]);
+            bits = parts.length == 2 ? Integer.parseInt(parts[1]) : -1;
         } catch (NumberFormatException e) {
             bits = -1;
         }
-        if (octets.length != 4 || !(bits == 8 || bits == 16 || bits == 24 || bits == 32)) {
-            throw new IllegalArgumentException(
-                    "SECUREONE_TRUSTED_PROXIES: use an address or an IPv4 range ending in /8, /16, /24 or /32: " + entry);
+        int[] value = new int[4];
+        boolean valid = octets.length == 4 && bits >= 0 && bits <= 32;
+        for (int i = 0; valid && i < 4; i++) {
+            try {
+                value[i] = Integer.parseInt(octets[i]);
+                valid = octets[i].matches("\\d{1,3}") && value[i] <= 255;
+            } catch (NumberFormatException e) {
+                valid = false;
+            }
         }
-        int keep = bits / 8;
+        if (!valid) {
+            throw new IllegalArgumentException(
+                    "SECUREONE_TRUSTED_PROXIES: use an IP address or an IPv4 range such as 10.0.0.0/20: " + entry);
+        }
+        // Any prefix length: whole octets are fixed, the octet the prefix ends in becomes the list of values it
+        // allows, the rest match anything. Host bits set in the given address are ignored (10.0.3.7/20 = 10.0.0.0/20).
         List<String> out = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            out.add(i < keep ? octets[i] : ipv4);
+            int fixedBits = Math.max(0, Math.min(8, bits - 8 * i));
+            if (fixedBits == 8) {
+                out.add(Integer.toString(value[i]));
+            } else if (fixedBits == 0) {
+                out.add(ipv4);
+            } else {
+                int size = 1 << (8 - fixedBits);
+                int start = value[i] & ~(size - 1) & 0xff;
+                List<String> allowed = new ArrayList<>();
+                for (int v = start; v < start + size; v++) {
+                    allowed.add(Integer.toString(v));
+                }
+                out.add("(" + String.join("|", allowed) + ")");
+            }
         }
         return String.join("\\.", out);
     }

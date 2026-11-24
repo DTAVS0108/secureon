@@ -11,11 +11,11 @@ import java.util.Map;
  */
 final class DiscoveryMetadata {
 
-    static final List<String> SCOPES = List.of("openid", "profile", "email", "offline_access");
+    static final List<String> SCOPES = List.of("openid", "profile", "email", "phone", "offline_access");
 
     static final List<String> CLAIMS = List.of(
             "sub", "iss", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "sid", "azp",
-            "email", "email_verified", "name", "given_name", "family_name", "preferred_username",
+            "email", "email_verified", "phone_number", "phone_number_verified", "name", "given_name", "family_name", "preferred_username",
             "user_id", "tenant_id", "roles", "permissions");
 
     static final List<String> CLIENT_AUTH = List.of("client_secret_basic", "client_secret_post", "private_key_jwt", "none");

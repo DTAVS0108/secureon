@@ -38,7 +38,7 @@ server {
 
 ```
 SECUREONE_PUBLIC_BASE_URL=https://login.example.com     # also the issuer, unless SECUREONE_ISSUER_URL is set
-# The proxy's address as SecureOne sees it (or its range: /8, /16, /24 or /32), comma-separated.
+# The proxy's address as SecureOne sees it (or its IPv4 range, e.g. 10.0.16.0/20), comma-separated.
 SECUREONE_TRUSTED_PROXIES=10.0.0.5
 ```
 

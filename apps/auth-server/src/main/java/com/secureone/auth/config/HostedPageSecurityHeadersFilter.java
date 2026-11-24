@@ -12,7 +12,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Security headers for the hosted pages end users type passwords and codes into (sign-in, sign-up,
- * reset, security). The pages only use their own inline scripts and same-origin APIs, so the policy
+ * reset, security). The pages, and their sign-in themes (/themes/…, same origin), only use their own scripts and
+ * same-origin APIs, so the policy
  * refuses scripts from anywhere else: an injected third-party script (a compromised CDN, a browser
  * extension or proxy rewriting the page) cannot load or read the form. No {@code form-action}: browsers
  * apply it to the redirects after the sign-in form posts, which end at each app's own callback URL.
@@ -24,7 +25,7 @@ public class HostedPageSecurityHeadersFilter extends OncePerRequestFilter {
     static final String CAPTCHA_SOURCES = "https://challenges.cloudflare.com https://hcaptcha.com https://*.hcaptcha.com"
             + " https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/";
 
-    static final String POLICY = String.join(
+    public static final String POLICY = String.join(
             "; ",
             "default-src 'self'",
             // CAPTCHA providers (Attack protection › Bot protection): their script, frame and checks.

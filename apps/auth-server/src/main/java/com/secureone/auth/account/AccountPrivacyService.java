@@ -99,7 +99,7 @@ public class AccountPrivacyService {
         attributes.keySet().removeAll(INTERNAL_ATTRIBUTES);
         out.put("attributes", attributes);
         if (jdbc != null && tenant != null) {
-            addActivity(out, user, tenant.getSlug() + ":" + user.getEmail());
+            addActivity(out, user, tenant.getSlug() + ":" + user.getLoginKey());
         }
         return out;
     }
@@ -185,7 +185,7 @@ public class AccountPrivacyService {
         log.setIp(ClientIpResolver.fromMdcOrUnknown());
         Map<String, Object> meta = new HashMap<>();
         meta.put("result", success ? "success" : "failure");
-        meta.put("actorEmail", user.getEmail());
+        meta.put("actorEmail", user.getLoginKey());
         log.setMetadata(meta);
         auditLogs.save(log);
     }

@@ -50,6 +50,22 @@ class WebhookTargetPolicyTest {
     void localTestingFlagAllowsPrivateTargets() {
         WebhookTargetPolicy permissive = new WebhookTargetPolicy(true);
         assertDoesNotThrow(() -> permissive.validateForRegistration("http://localhost:4000/hook"));
+        assertDoesNotThrow(() -> permissive.validateForRegistration("http://10.0.0.5/hook"));
+    }
+
+    @Test
+    void cloudMetadataStaysBlockedWhenPrivateTargetsAreAllowed() {
+        WebhookTargetPolicy permissive = new WebhookTargetPolicy(true);
+        for (String metadata : List.of(
+                "http://169.254.169.254/latest/meta-data/",
+                "http://169.254.170.2/v2/credentials",
+                "http://[fe80::1]/hook",
+                "http://[fd00:ec2::254]/latest/meta-data/",
+                "http://168.63.129.16/machine",
+                "http://metadata.google.internal/computeMetadata/v1/")) {
+            assertThrows(ResponseStatusException.class, () -> permissive.validateForRegistration(metadata), metadata);
+            assertNotNull(permissive.deliveryProblem(metadata), metadata);
+        }
     }
 
     @Test

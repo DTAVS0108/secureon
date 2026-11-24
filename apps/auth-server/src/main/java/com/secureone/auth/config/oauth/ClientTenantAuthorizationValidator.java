@@ -134,7 +134,7 @@ public class ClientTenantAuthorizationValidator
             return Optional.empty();
         }
         String email = principalName.substring(sep + 1).trim().toLowerCase(Locale.ROOT);
-        return users.findByTenantIdAndEmail(tenant.getId(), email);
+        return users.findByTenantIdAndLoginKey(tenant.getId(), email);
     }
 
     private static boolean isSignedIn(Authentication principal) {

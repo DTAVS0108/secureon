@@ -1,0 +1,21 @@
+{
+  "_about": "The SecureOne version in which each built-in page (pages/…) and template (templates/…) last changed in a way a theme copy must follow. A theme that overrides a file and says in theme.json it was made for an older version is shown as out of date. Raise a page's version when its element IDs, scripts or form fields change.",
+  "pages/login.html": "0.1.1",
+  "pages/account/signup.html": "0.1.1",
+  "pages/account/forgot-password.html": "0.1.1",
+  "pages/account/reset-password.html": "0.1.1",
+  "pages/account/set-password.html": "0.1.1",
+  "pages/account/magic-link.html": "0.1.1",
+  "pages/account/confirm-email.html": "0.1.1",
+  "pages/account/device.html": "0.1.1",
+  "pages/account/security.html": "0.1.1",
+  "pages/account/privacy.html": "0.1.1",
+  "templates/page.html": "0.1.1",
+  "templates/consent.html": "0.1.1",
+  "templates/oauth-error.html": "0.1.1",
+  "templates/email-verified.html": "0.1.1",
+  "templates/email-verify-failed.html": "0.1.1",
+  "templates/magic-link-invalid.html": "0.1.1",
+  "templates/saml-error.html": "0.1.1",
+  "templates/saml-post.html": "0.1.1"
+}

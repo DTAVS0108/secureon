@@ -62,7 +62,7 @@ public class AccountProfileService {
         if (principal != null && principal.contains(":")) {
             out.put("loginUsername", principal);
         } else {
-            out.put("loginUsername", tenant != null ? tenant.getSlug() + ":" + user.getEmail() : user.getEmail());
+            out.put("loginUsername", tenant != null ? tenant.getSlug() + ":" + user.getLoginKey() : user.getLoginKey());
         }
         if (jwt.getClaimAsString("scope") != null) {
             out.put("scopes", jwt.getClaimAsString("scope"));
@@ -90,8 +90,8 @@ public class AccountProfileService {
     public void changePassword(UserAccount user, String currentPassword, String newPassword, UUID applicationId) {
         passwords.changePassword(user.getId(), currentPassword, newPassword, applicationId);
         if (audit != null) audit.ifAvailable(a -> a.recordIndependently(
-                user.getTenantId(), null, user.getEmail(), "user.password_changed", "user_account", user.getId(),
-                user.getEmail(), true));
+                user.getTenantId(), null, user.getLoginKey(), "user.password_changed", "user_account", user.getId(),
+                user.getLoginKey(), true));
         if (email != null) email.ifAvailable(e -> {
             try {
                 e.sendPasswordChanged(applicationId, user);
@@ -123,12 +123,12 @@ public class AccountProfileService {
         } else if (givenName != null || familyName != null) {
             String joined = ((stored.getGivenName() != null ? stored.getGivenName() : "") + " "
                     + (stored.getFamilyName() != null ? stored.getFamilyName() : "")).trim();
-            stored.setDisplayName(joined.isEmpty() ? stored.getEmail() : joined);
+            stored.setDisplayName(joined.isEmpty() ? stored.getLoginKey() : joined);
         }
         users.save(stored);
         if (audit != null) audit.ifAvailable(a -> a.recordIndependently(
-                stored.getTenantId(), null, stored.getEmail(), "user.profile_updated", "user_account", stored.getId(),
-                stored.getEmail(), true));
+                stored.getTenantId(), null, stored.getLoginKey(), "user.profile_updated", "user_account", stored.getId(),
+                stored.getLoginKey(), true));
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("givenName", stored.getGivenName());
         out.put("familyName", stored.getFamilyName());

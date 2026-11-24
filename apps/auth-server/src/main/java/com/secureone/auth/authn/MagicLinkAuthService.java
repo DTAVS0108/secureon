@@ -58,14 +58,18 @@ public class MagicLinkAuthService {
         String tenantSlug = tenantSlugResolver.slugForTenant(user.getTenantId());
         UserDetails details = userDetailsService.buildSessionPrincipal(tenantSlug, user);
         Authentication authentication = SignedInAuthentication.of(details, FactorGrantedAuthority.OTT_AUTHORITY);
-        // The link names the app it was sent for; only an app of the user's own tenant decides MFA.
-        UUID applicationId = requestedApplicationId != null
-                && applications.findById(requestedApplicationId)
+        // The app the link was sent for decides MFA (an app sending only the token, or naming another app, cannot
+        // pick a weaker policy); older links without one use the app named in the request. Only an app of the
+        // user's own tenant counts.
+        String sentFor = result.get("applicationId");
+        UUID candidate = sentFor != null ? UUID.fromString(sentFor) : requestedApplicationId;
+        UUID applicationId = candidate != null
+                && applications.findById(candidate)
                         .filter(app -> app.getTenantId().equals(user.getTenantId()))
                         .isPresent()
-                ? requestedApplicationId
+                ? candidate
                 : null;
-        return new FirstStep(user, tenantSlug + ":" + user.getEmail(), authentication, applicationId);
+        return new FirstStep(user, tenantSlug + ":" + user.getLoginKey(), authentication, applicationId);
     }
 
     /** Link opened in the browser: to the second step when needed, otherwise signed in on the sign-in page. */

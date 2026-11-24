@@ -26,6 +26,8 @@ public class ApplicationEffectiveSettingsService {
      * provider), not by a sign-in method switch: these catalog entries only report it to login pages and clients.
      */
     public static final Map<String, String> CODE_SIGN_IN_METHODS = Map.of("m_email_otp", "email_otp", "m_sms", "phone_otp");
+    /** Magic link: on only when its Sign-in methods switch is on and Passwordless modes include magic_link. */
+    public static final String MAGIC_LINK_METHOD = "m_magic";
 
     @org.springframework.beans.factory.annotation.Autowired
     private org.springframework.beans.factory.ObjectProvider<com.secureone.auth.platform.VerificationPolicyService> verificationPolicy;
@@ -42,6 +44,11 @@ public class ApplicationEffectiveSettingsService {
         List<Map<String, Object>> methods = applicationId != null
                 ? applicationSettings.resolveAuthMethods(applicationId)
                 : platformAuth.getAuthMethods();
+        if (MAGIC_LINK_METHOD.equals(methodId)) {
+            // Its Sign-in methods switch and Verification & OTP › Passwordless modes must both allow it.
+            return methodEnabled(methods, methodId)
+                    && verificationPolicy.getObject().allowsLoginPasswordlessMode(applicationId, "magic_link");
+        }
         return methodEnabled(methods, methodId);
     }
 

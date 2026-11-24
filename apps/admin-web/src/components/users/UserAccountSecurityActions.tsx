@@ -57,8 +57,8 @@ export function UserAccountSecurityActions({
           <dd className="font-medium text-ui">{user.failedLoginCount ?? 0}</dd>
         </div>
         <div>
-          <dt className="text-muted">Sign-in email</dt>
-          <dd className="truncate font-medium text-ui">{user.email}</dd>
+          <dt className="text-muted">{user.email ? "Sign-in email" : "Signs in with"}</dt>
+          <dd className="truncate font-medium text-ui">{user.email || user.phone}</dd>
         </div>
       </dl>
       <div className="flex flex-wrap gap-2">

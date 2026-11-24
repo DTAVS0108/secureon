@@ -80,7 +80,7 @@ public class AdminStepUpController {
         UserAccount user = operator(authentication, actAs);
         String principal = authentication.getName();
         String slug = principal.contains(":") ? principal.substring(0, principal.indexOf(':')) : "platform";
-        return passkeys.beginSecondStep(slug, user.getEmail());
+        return passkeys.beginSecondStep(slug, user.getLoginKey());
     }
 
     @Operation(summary = "Verify it's you with a passkey or security key")

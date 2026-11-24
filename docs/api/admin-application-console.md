@@ -25,6 +25,7 @@ Set the variables from [Getting started](getting-started.md) first (`SECUREONE_U
   - [GET `/api/admin/v1/applications/{applicationId}/settings/appearance`](#get-appearance) — Get appearance
   - [PUT `/api/admin/v1/applications/{applicationId}/settings/appearance`](#update-appearance) — Update appearance
   - [DELETE `/api/admin/v1/applications/{applicationId}/settings/appearance`](#remove-appearance) — Remove appearance
+  - [GET `/api/admin/v1/applications/{applicationId}/settings/appearance/themes`](#list-sign-in-themes) — List sign-in themes
   - [GET `/api/admin/v1/applications/{applicationId}/settings/auth-methods`](#list-auth-methods) — List auth methods
   - [PUT `/api/admin/v1/applications/{applicationId}/settings/auth-methods`](#update-auth-methods) — Update auth methods
   - [DELETE `/api/admin/v1/applications/{applicationId}/settings/auth-methods`](#remove-auth-methods) — Remove auth methods
@@ -228,6 +229,31 @@ curl -s -X PUT "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/setting
 
 ```bash
 curl -s -X DELETE "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/appearance" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### List sign-in themes
+
+`GET /api/admin/v1/applications/{applicationId}/settings/appearance/themes`
+
+The [sign-in page themes](../guide/sign-in-themes.md) this application can choose (`theme` in its appearance), and the server's default theme.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](getting-started.md#admin-api-get-a-console-session-token)
+
+**Parameters**
+
+| Name | In | Type | Required | Description |
+|---|---|---|---|---|
+| `applicationId` | path | string (uuid) | yes | Application ID (UUID) |
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/applications/{applicationId}/settings/appearance/themes" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 

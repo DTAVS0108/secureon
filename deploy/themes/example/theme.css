@@ -1,0 +1,77 @@
+/*
+ * Starter sign-in theme. Added to every hosted page after the page's own styles, so these rules win.
+ *
+ * With this file, the theme styles the page: SecureOne stops painting the application's colours onto buttons,
+ * links and fields. The colours an application sets under Settings → Appearance are available as CSS variables:
+ *   --so-primary, --so-button-text, --so-bg, --so-surface, --so-text,
+ *   --so-input-bg, --so-input-text, --so-input-border, --so-muted, --so-radius
+ * (the page sets them when the application has colours; the fallbacks below apply otherwise).
+ *
+ * Hosted pages (sign-in, sign-up, password reset, account security…) put their content straight in <body>.
+ * Pages built on the server (consent, errors) have <body class="so-page"> with a <div class="card"> inside.
+ */
+
+:root {
+  --brand: var(--so-primary, #0f766e);
+  --card: var(--so-surface, #ffffff);
+  --ink: var(--so-text, #0f172a);
+}
+
+html {
+  min-height: 100%;
+  background: linear-gradient(135deg, #ccfbf1 0%, #e0e7ff 100%);
+}
+
+/* Hosted pages: the body is the card. */
+body:not(.so-page) {
+  background: var(--card);
+  color: var(--ink);
+  max-width: 26rem;
+  margin: 4rem auto;
+  padding: 2rem 2rem 1.5rem;
+  border-radius: 18px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+}
+
+/* Server-built pages: keep their card, without a second background. */
+body.so-page {
+  background: transparent;
+}
+.so-page .card {
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+}
+
+/* Your logo above every page (replace assets/logo.svg). */
+body::before {
+  content: "";
+  display: block;
+  height: 36px;
+  margin: 0 0 1.25rem;
+  background: url("assets/logo.svg") no-repeat left center / contain;
+}
+
+h1 {
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+
+button:not(.fed-btn):not(.so-plain):not(.secondary) {
+  background: var(--brand);
+  border-radius: 999px;
+}
+
+a {
+  color: var(--brand);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background: linear-gradient(135deg, #042f2e 0%, #1e1b4b 100%);
+  }
+  :root {
+    --card: var(--so-surface, #111827);
+    --ink: var(--so-text, #e5e7eb);
+  }
+}

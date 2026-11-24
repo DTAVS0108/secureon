@@ -436,7 +436,7 @@ public class TenantWorkspaceService {
                     user.getId(),
                     new TenantAdminOperator(
                             user.getId(),
-                            user.getEmail(),
+                            user.getLoginKey(),
                             user.getDisplayName(),
                             user.getStatus(),
                             appIds));
@@ -611,7 +611,7 @@ public class TenantWorkspaceService {
 
             userItems.add(new TenantWorkspaceUser(
                     user.getId(),
-                    user.getEmail(),
+                    user.getLoginKey(),
                     user.getDisplayName(),
                     user.getStatus(),
                     user.isEmailVerified(),
@@ -644,7 +644,7 @@ public class TenantWorkspaceService {
                     if (name != null && !name.isBlank()) {
                         return name;
                     }
-                    return u.getEmail();
+                    return u.getLoginKey();
                 })
                 .orElse(null);
     }
@@ -765,7 +765,7 @@ public class TenantWorkspaceService {
                     applicationId);
             importable.add(new TenantWorkspaceUser(
                     user.getId(),
-                    user.getEmail(),
+                    user.getLoginKey(),
                     user.getDisplayName(),
                     user.getStatus(),
                     user.isEmailVerified(),

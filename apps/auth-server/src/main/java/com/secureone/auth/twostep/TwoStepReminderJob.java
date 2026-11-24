@@ -104,7 +104,7 @@ public class TwoStepReminderJob {
             mail.sendTwoStepReminder(s.applicationId(), user, DATE.format(s.deadline()), signIn);
             sent = true;
         } catch (RuntimeException ex) {
-            log.warn("Two-step reminder to {} failed: {}", user.getEmail(), ex.getMessage());
+            log.warn("Two-step reminder to {} failed: {}", user.getLoginKey(), ex.getMessage());
         }
         // Every reminder day already passed counts as sent, so a late run sends one email, not several.
         days.stream().filter(d -> daysLeft <= d).forEach(d -> already.add(String.valueOf(d)));

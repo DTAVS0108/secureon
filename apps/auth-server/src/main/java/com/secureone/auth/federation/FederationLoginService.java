@@ -74,13 +74,19 @@ public class FederationLoginService {
             HttpServletResponse response) {
         IdentityProvider provider = providers.requireEnabledProvider(tenantId, applicationId, alias);
         String safeContinue = OAuthLoginRedirectSupport.isSafeContinue(request, continueUrl) ? continueUrl.trim() : null;
-        String state = states.issue(new FederationStateStore.PendingState(
-                provider.getId(), tenantId, applicationId, safeContinue));
         if (FederationProviderType.SAML.name().equalsIgnoreCase(provider.getType())) {
+            String state = states.issue(new FederationStateStore.PendingState(
+                    provider.getId(), tenantId, applicationId, safeContinue));
             return saml.start(provider, state, request, response);
         }
+        // PKCE (the code is useless to whoever intercepts it) and an OpenID Connect nonce (the ID token belongs to
+        // this sign-in), as OAuth 2.1 and the OAuth security BCP (RFC 9700) ask of every client.
+        String codeVerifier = IdentityProviderService.newCodeVerifier();
+        String nonce = IdentityProviderService.newCodeVerifier();
+        String state = states.issue(new FederationStateStore.PendingState(
+                provider.getId(), tenantId, applicationId, safeContinue, codeVerifier, nonce));
         return ResponseEntity.status(302)
-                .header("Location", providers.buildAuthorizationRedirect(provider, state))
+                .header("Location", providers.buildAuthorizationRedirect(provider, state, codeVerifier, nonce))
                 .build();
     }
 
@@ -97,7 +103,7 @@ public class FederationLoginService {
         if (!provider.getId().equals(pending.providerId())) {
             throw new IllegalArgumentException("Federation state mismatch.");
         }
-        FederationUserProfile profile = providers.exchangeCode(provider, code);
+        FederationUserProfile profile = providers.exchangeCode(provider, code, pending.codeVerifier(), pending.nonce());
         return completeLogin(provider, pending, profile, request, response);
     }
 

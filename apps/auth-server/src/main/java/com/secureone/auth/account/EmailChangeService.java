@@ -113,9 +113,9 @@ public class EmailChangeService {
         } catch (RuntimeException e) {
             // The confirmation link (above) is what the change needs; a notice that cannot go out is logged only.
             org.slf4j.LoggerFactory.getLogger(EmailChangeService.class)
-                    .warn("Email change notice to {} not sent: {}", user.getEmail(), e.getMessage());
+                    .warn("Email change notice to {} not sent: {}", user.getLoginKey(), e.getMessage());
         }
-        audit.record(user.getTenantId(), applicationId, user.getEmail(), "user.email_change_requested", "user_account",
+        audit.record(user.getTenantId(), applicationId, user.getLoginKey(), "user.email_change_requested", "user_account",
                 user.getId(), newEmail, true);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("message", "We sent a confirmation link to " + newEmail + ". Your email changes when you open it.");
@@ -142,6 +142,8 @@ public class EmailChangeService {
         }
         UUID applicationId = attributes.get(PENDING_APP) instanceof String s ? UUID.fromString(s) : null;
         String oldEmail = user.getEmail();
+        // What the account signed in as before: its old email, or its phone number when it had no email.
+        String oldLogin = user.getLoginKey();
         attributes.remove(PENDING);
         attributes.remove(PENDING_APP);
         user.setAttributes(attributes);
@@ -151,12 +153,12 @@ public class EmailChangeService {
         tokens.consume(token);
         // Apps signed in under the old address end those sessions (their tokens name the old address).
         if (backchannelLogout != null && tenants != null) {
-            String old = oldEmail;
+            String old = oldLogin;
             tenants.ifAvailable(t -> t.findById(user.getTenantId()).ifPresent(tenant ->
                     backchannelLogout.ifAvailable(b -> b.signedOut(tenant.getSlug(), old, user.getId()))));
         }
         audit.record(user.getTenantId(), applicationId, newEmail, "user.email_changed", "user_account", user.getId(),
-                oldEmail + " → " + newEmail, true);
+                oldLogin + " → " + newEmail, true);
         try {
             mail.sendSecurityNoticeTo(applicationId, user, oldEmail,
                     "Your sign-in email was changed to " + newEmail

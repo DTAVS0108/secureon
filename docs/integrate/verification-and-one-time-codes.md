@@ -56,6 +56,7 @@ Expose sections to applications under **Platform → For applications** (Verific
 | **OTP TTL** | Seconds until code expires (default 600) |
 | **Max attempts** | Failed tries before lockout (default 5) |
 | **Allow user channel choice** | Let clients pick email vs phone OTP |
+| **Allow sign-up with a phone number only** | Sign-up with just a mobile number (no email; password optional), confirmed by a text-message code; the confirm call can sign in at once (`"signIn": true`). Needs `phone_otp` in Passwordless modes and an SMS provider. See [Sign-up with a phone number](integration-guide.md#sign-up-with-a-phone-number) |
 
 | Provider | Use |
 |----------|-----|

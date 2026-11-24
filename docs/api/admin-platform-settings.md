@@ -47,6 +47,8 @@ Set the variables from [Getting started](getting-started.md) first (`SECUREONE_U
   - [POST `/api/admin/v1/settings/sms/test`](#send-a-test-sms) — Send a test SMS
   - [GET `/api/admin/v1/settings/smtp`](#get-smtp) — Get SMTP
   - [PUT `/api/admin/v1/settings/smtp`](#update-smtp) — Update SMTP
+  - [GET `/api/admin/v1/settings/themes`](#list-sign-in-themes) — List sign-in themes
+  - [POST `/api/admin/v1/settings/themes/reload`](#reload-sign-in-themes) — Reload sign-in themes
   - [GET `/api/admin/v1/settings/token-policy`](#get-token-policy) — Get token policy
   - [PUT `/api/admin/v1/settings/token-policy`](#update-token-policy) — Update token policy
   - [GET `/api/admin/v1/settings/verification-policy`](#get-verification-policy) — Get verification policy
@@ -541,6 +543,44 @@ curl -s "$SECUREONE_URL/api/admin/v1/settings/smtp" \
 
 ```bash
 curl -s -X PUT "$SECUREONE_URL/api/admin/v1/settings/smtp" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### List sign-in themes
+
+`GET /api/admin/v1/settings/themes`
+
+The [sign-in page themes](../guide/sign-in-themes.md) installed on this server: the themes folder, the default theme, whether the theme cache is on, and for each theme its parent, what it changes, pages that may be out of date and problems.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s "$SECUREONE_URL/api/admin/v1/settings/themes" \
+  -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
+```
+
+### Reload sign-in themes
+
+`POST /api/admin/v1/settings/themes/reload`
+
+Reads the themes folder again (needed after a theme change when `SECUREONE_THEME_CACHE` is on, the production default). Answers like *List sign-in themes*.
+
+**Authentication:** Console session token (`Authorization: SecureOne-Admin-Session …`), see [Getting started](getting-started.md#admin-api-get-a-console-session-token)
+
+**Responses**
+
+| Status | Meaning | Body |
+|---|---|---|
+| `200` | OK | object |
+
+```bash
+curl -s -X POST "$SECUREONE_URL/api/admin/v1/settings/themes/reload" \
   -H "Authorization: SecureOne-Admin-Session $ADMIN_TOKEN"
 ```
 

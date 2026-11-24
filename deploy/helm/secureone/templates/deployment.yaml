@@ -57,11 +57,31 @@ spec:
             - name: SECUREONE_CONFIG_IMPORT
               value: /etc/secureone/config
             {{- end }}
-          {{- if .Values.configImport.configMap }}
+            {{- if .Values.themes.default }}
+            - name: SECUREONE_THEME
+              value: {{ .Values.themes.default | quote }}
+            {{- end }}
+            {{- if .Values.themes.cache }}
+            - name: SECUREONE_THEME_CACHE
+              value: {{ .Values.themes.cache | quote }}
+            {{- end }}
+          {{- if or .Values.configImport.configMap .Values.themes.configMaps .Values.themes.existingClaim }}
           volumeMounts:
+            {{- if .Values.configImport.configMap }}
             - name: tenant-config
               mountPath: /etc/secureone/config
               readOnly: true
+            {{- end }}
+            {{- if .Values.themes.existingClaim }}
+            - name: themes
+              mountPath: /opt/secureone/themes
+              readOnly: true
+            {{- end }}
+            {{- range .Values.themes.configMaps }}
+            - name: theme-{{ .name }}
+              mountPath: /opt/secureone/themes/{{ .name }}
+              readOnly: true
+            {{- end }}
           {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -84,9 +104,26 @@ spec:
             periodSeconds: 20
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      {{- if .Values.configImport.configMap }}
+      {{- if or .Values.configImport.configMap .Values.themes.configMaps .Values.themes.existingClaim }}
       volumes:
+        {{- if .Values.configImport.configMap }}
         - name: tenant-config
           configMap:
             name: {{ .Values.configImport.configMap }}
+        {{- end }}
+        {{- if .Values.themes.existingClaim }}
+        - name: themes
+          persistentVolumeClaim:
+            claimName: {{ .Values.themes.existingClaim }}
+            readOnly: true
+        {{- end }}
+        {{- range .Values.themes.configMaps }}
+        - name: theme-{{ .name }}
+          configMap:
+            name: {{ .configMap }}
+            {{- with .items }}
+            items:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+        {{- end }}
       {{- end }}

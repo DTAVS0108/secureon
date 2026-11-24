@@ -9,7 +9,7 @@ audience: public
 
 [User guide](index.md) › End-user pages
 
-These are the pages SecureOne hosts for the people who sign in to *your* applications. Their look follows the application's **Appearance** settings, and which options appear follows its **Authentication** settings and feature flags. If your app has its own screens, point SecureOne at them in **Settings › Integration › Authentication UI** ([chapter 7](settings.md#integration-application)).
+These are the pages SecureOne hosts for the people who sign in to *your* applications. Their look follows the application's **Appearance** settings and its [sign-in theme](sign-in-themes.md) (your own styles, wording or whole pages), and which options appear follows its **Authentication** settings and feature flags. If your app has its own screens, point SecureOne at them in **Settings › Integration › Authentication UI** ([chapter 7](settings.md#integration-application)).
 
 Most pages take `?applicationId=…` so they show the right application's options and branding.
 

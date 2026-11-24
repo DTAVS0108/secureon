@@ -78,6 +78,16 @@ public class AccountVerificationService {
         return out;
     }
 
+    /** What a phone sign-up's text-message code answers, without sending one (see {@link #decoySignupVerification}). */
+    public Map<String, Object> decoyPhoneVerification(UUID applicationId, String phone) {
+        var challenge = otpChallenges.challengeResponse(new OtpChallengeService.IssuedChallenge(
+                UUID.randomUUID(), null, OtpChallengeService.maskDestination(OtpChannel.SMS, phone),
+                verificationPolicy.otpTtlSeconds(applicationId, OtpPolicySection.SIGNUP)));
+        challenge.put("channel", "sms");
+        challenge.put("verificationSent", true);
+        return challenge;
+    }
+
     public Map<String, Object> sendSignupVerification(
             UUID applicationId, UserAccount user, String initiatedBy, String requestedMode, String requestedChannel) {
         String mode = resolveSignupMode(applicationId, requestedMode);
@@ -189,6 +199,7 @@ public class AccountVerificationService {
         out.put("requiredChannels", signup.getOrDefault("requiredChannels", java.util.List.of("email")));
         out.put("optionalChannels", signup.getOrDefault("optionalChannels", java.util.List.of("phone")));
         out.put("allowUserChannelChoice", signup.getOrDefault("allowUserChannelChoice", false));
+        out.put("phoneSignup", Boolean.TRUE.equals(signup.get("phoneSignup")));
         out.put("otpLength", verificationPolicy.otpLength(applicationId, com.secureone.auth.account.otp.OtpPolicySection.SIGNUP));
         out.put("otpTtlSeconds", verificationPolicy.otpTtlSeconds(applicationId, com.secureone.auth.account.otp.OtpPolicySection.SIGNUP));
         out.put("maxAttempts", verificationPolicy.maxAttempts(applicationId, com.secureone.auth.account.otp.OtpPolicySection.SIGNUP));

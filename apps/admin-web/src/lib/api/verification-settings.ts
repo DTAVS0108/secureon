@@ -7,6 +7,8 @@ export type VerificationPolicySection = {
   requiredChannels?: string[];
   optionalChannels?: string[];
   allowUserChannelChoice?: boolean;
+  /** Sign-up with a phone number only (no email; password optional), verified by a text-message code. */
+  phoneSignup?: boolean;
   otpLength?: number;
   otpTtlSeconds?: number;
   maxAttempts?: number;

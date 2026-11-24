@@ -58,6 +58,7 @@ The console page by page: every button, form and field
 - [Access review and operators](guide/access-review-and-operators.md): Review privileged access and manage platform operators: who can run the whole installation, and how to add them.
 - [Configuration as code](guide/configuration-as-code.md): Export, preview and apply configuration files, so tenants, applications and roles can live in version control.
 - [End-user pages](guide/end-user-pages.md): Hosted sign-in, sign-up, recovery and account security
+- [Sign-in themes](guide/sign-in-themes.md): Your own design for the hosted pages, per application, without rebuilding the image
 - [Common tasks](guide/common-tasks.md): Step-by-step recipes for the admin console, from setting up a new organisation to a leaked secret or a locked-out user.
 - [Two-step verification](guide/two-step-verification.md): Options, setup, settings, reset, extend and exempt
 

@@ -237,7 +237,7 @@ public class ScimGroupService {
             Map<String, Object> member = new LinkedHashMap<>();
             member.put("value", row.getUserId().toString());
             users.findById(row.getUserId()).ifPresent(user -> {
-                member.put("display", user.getEmail());
+                member.put("display", user.getLoginKey());
                 member.put("$ref", "/scim/v2/Users/" + user.getId());
             });
             out.add(member);

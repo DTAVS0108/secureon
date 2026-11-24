@@ -258,6 +258,7 @@ export function UsersWorkspace({
       return (
         name.includes(q) ||
         u.email.toLowerCase().includes(q) ||
+        (u.phone ?? "").includes(q) ||
         u.username.toLowerCase().includes(q) ||
         roleText.includes(q)
       );
@@ -434,7 +435,7 @@ export function UsersWorkspace({
               </thead>
               <tbody className="divide-y divide-ui">
                 {displayed.map((u) => {
-                  const name = `${u.firstName} ${u.lastName}`.trim() || u.email;
+                  const name = `${u.firstName} ${u.lastName}`.trim() || u.email || u.phone || "";
                   return (
                     <tr
                       key={u.id}
@@ -457,7 +458,7 @@ export function UsersWorkspace({
                           </div>
                           <div className="min-w-0">
                             <p className="truncate font-medium text-ui">{name}</p>
-                            <p className="truncate text-xs text-muted">{u.email}</p>
+                            <p className="truncate text-xs text-muted">{u.email || u.phone}</p>
                           </div>
                         </div>
                       </td>

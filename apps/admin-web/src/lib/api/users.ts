@@ -12,8 +12,9 @@ type MfaFactorDto = {
 type UserDto = {
   id: string;
   tenantId: string;
-  email: string;
-  username: string;
+  /** Null for an account created with a phone number only. */
+  email: string | null;
+  username: string | null;
   firstName: string;
   lastName: string;
   status: string;
@@ -38,8 +39,9 @@ function mapUser(dto: UserDto): User {
   return {
     id: dto.id,
     tenantId: dto.tenantId,
-    email: dto.email,
-    username: dto.username,
+    // A phone-only account has no email: "" keeps string handling simple; screens show the phone instead.
+    email: dto.email ?? "",
+    username: dto.username ?? "",
     firstName: dto.firstName,
     lastName: dto.lastName,
     status: normalizedStatus,

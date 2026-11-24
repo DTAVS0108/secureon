@@ -14,7 +14,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Username format: {@code tenantSlug:email} */
+/** Username format: {@code tenantSlug:email}, or {@code tenantSlug:+phone} for an account without an email. */
 @Service
 @Transactional(readOnly = true)
 public class TenantUserDetailsService implements UserDetailsService {
@@ -41,7 +41,7 @@ public class TenantUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Account is not active");
         }
         lockout.assertNotLocked(account);
-        String username = tenantSlug + ":" + account.getEmail();
+        String username = tenantSlug + ":" + account.getLoginKey();
         boolean hasPassword =
                 credentials.findFirstByUserIdAndCurrentTrueOrderByCreatedAtDescIdDesc(account.getId()).isPresent();
         return User.withUsername(username)
@@ -63,7 +63,7 @@ public class TenantUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown tenant: " + tenantSlug));
         assertTenantActive(tenant);
         UserAccount account = users
-                .findByTenantIdAndEmail(tenant.getId(), email)
+                .findByTenantIdAndLoginKey(tenant.getId(), email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
             throw new UsernameNotFoundException("Account is not active");
@@ -102,7 +102,7 @@ public class TenantUserDetailsService implements UserDetailsService {
             return "TENANT_SUSPENDED";
         }
         return users
-                .findByTenantIdAndEmail(tenant.getId(), email.trim().toLowerCase(Locale.ROOT))
+                .findByTenantIdAndLoginKey(tenant.getId(), email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"))
                 .getStatus();
     }
@@ -112,7 +112,7 @@ public class TenantUserDetailsService implements UserDetailsService {
                 .findBySlug(tenantSlug.trim().toLowerCase(Locale.ROOT))
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown tenant"));
         return users
-                .findByTenantIdAndEmail(tenant.getId(), email.trim().toLowerCase(Locale.ROOT))
+                .findByTenantIdAndLoginKey(tenant.getId(), email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 }

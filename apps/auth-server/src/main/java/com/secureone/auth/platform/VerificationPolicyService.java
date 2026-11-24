@@ -114,6 +114,11 @@ public class VerificationPolicyService {
         return boolValue(recoveryPolicy(applicationId), "allowUserChannelChoice", true);
     }
 
+    /** Whether people may sign up with a phone number only (Verification & OTP › Sign-up). */
+    public boolean signupAllowsPhoneOnly(UUID applicationId) {
+        return boolValue(signupPolicy(applicationId), "phoneSignup", false);
+    }
+
     public boolean signupAllowUserChannelChoice(UUID applicationId) {
         return boolValue(signupPolicy(applicationId), "allowUserChannelChoice", false);
     }

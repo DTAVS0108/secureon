@@ -164,6 +164,12 @@ export function VerificationPolicyCards({
               onChange={(checked) => updateSignup({ ...signup, allowUserChannelChoice: checked })}
             />
           </FieldRow>
+          <FieldRow label="Allow sign-up with a phone number only" info={SIGNUP_HELP.phoneSignup}>
+            <Toggle
+              checked={Boolean(signup.phoneSignup)}
+              onChange={(checked) => updateSignup({ ...signup, phoneSignup: checked })}
+            />
+          </FieldRow>
           <OtpFields section={signup} sectionHelp={SIGNUP_HELP} onChange={updateSignup} />
         </div>
       </Card>

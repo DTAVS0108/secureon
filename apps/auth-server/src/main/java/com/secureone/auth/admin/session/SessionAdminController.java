@@ -69,7 +69,7 @@ public class SessionAdminController {
         String email = row.getUserId() != null
                 ? emails.computeIfAbsent(row.getUserId(), id -> userRepository
                         .findById(id)
-                        .map(u -> u.getEmail())
+                        .map(u -> u.getLoginKey())
                         .orElse(id.toString()))
                 : "unknown";
         String result = switch (row.getResult()) {

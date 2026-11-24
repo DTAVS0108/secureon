@@ -51,12 +51,12 @@ public class ApplicationEmailContextFactory {
         if (user == null) {
             return null;
         }
-        return userApplications.findByUserId(user.getId()).stream()
-                .map(UserApplication::getApplicationId)
+        // The applications the user belongs to: their memberships live in each application's own schema.
+        java.util.List<UUID> memberOf = memberApplications(user);
+        return memberOf.stream()
                 .filter(smtpSettings::isConfigured)
                 .findFirst()
-                .orElseGet(() -> userApplications.findByUserId(user.getId()).stream()
-                        .map(UserApplication::getApplicationId)
+                .orElseGet(() -> memberOf.stream()
                         .findFirst()
                         .orElseGet(() -> applications.findByTenantIdOrderByCreatedAtDesc(user.getTenantId()).stream()
                                 .map(Application::getId)
@@ -66,6 +66,40 @@ public class ApplicationEmailContextFactory {
                                         .map(Application::getId)
                                         .findFirst()
                                         .orElse(null))));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /**
+     * The applications of the user's tenant the user is a member of, oldest first: memberships in the platform
+     * schema (applications without their own schema) and in each application's own schema.
+     */
+    java.util.List<UUID> memberApplications(UserAccount user) {
+        java.util.LinkedHashSet<UUID> out = new java.util.LinkedHashSet<>();
+        userApplications.findByUserId(user.getId()).forEach(m -> out.add(m.getApplicationId()));
+        if (jdbc == null) {
+            return java.util.List.copyOf(out);
+        }
+        java.util.List<Application> apps = new java.util.ArrayList<>(applications.findByTenantIdOrderByCreatedAtDesc(user.getTenantId()));
+        java.util.Collections.reverse(apps);
+        for (Application app : apps) {
+            String schema = app.getSchemaName();
+            if (schema == null || !schema.matches("[a-z][a-z0-9_]{0,62}") || out.contains(app.getId())) {
+                continue;
+            }
+            try {
+                Integer member = jdbc.queryForObject(
+                        "SELECT count(*) FROM \"" + schema + "\".user_application WHERE user_id = ? AND application_id = ?",
+                        Integer.class, user.getId(), app.getId());
+                if (member != null && member > 0) {
+                    out.add(app.getId());
+                }
+            } catch (RuntimeException e) {
+                // A schema from an older layout: left out
+            }
+        }
+        return java.util.List.copyOf(out);
     }
 
     public ApplicationEmailContext context(UUID applicationId) {

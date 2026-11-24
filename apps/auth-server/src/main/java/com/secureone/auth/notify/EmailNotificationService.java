@@ -381,6 +381,11 @@ public class EmailNotificationService {
             Map<String, String> vars,
             List<String> cc,
             List<String> bcc) {
+        if (to == null || to.isBlank()) {
+            // An account created with a phone number only has no inbox: its notices go by text message or not at all.
+            log.debug("No email address for {}: not sent", templateKey);
+            return;
+        }
         RenderedEmail rendered = templates
                 .render(ctx.applicationId(), templateKey, vars)
                 .withExtraRecipients(cc, bcc);
@@ -390,12 +395,12 @@ public class EmailNotificationService {
     private void sendAccountStatusEmail(UUID applicationId, UserAccount user, String templateKey) {
         UUID appId = emailContext.resolveApplicationId(applicationId, user);
         if (appId == null) {
-            log.warn("Cannot send {} to {} — no application SMTP context", templateKey, user.getEmail());
+            log.warn("Cannot send {} to {} — no application SMTP context", templateKey, user.getLoginKey());
             return;
         }
         ApplicationEmailContext ctx = emailContext.context(appId);
         if (!ctx.smtpConfigured() && !logLinksWhenUnavailable) {
-            log.warn("Cannot send {} to {} — SMTP not configured for application {}", templateKey, user.getEmail(), appId);
+            log.warn("Cannot send {} to {} — SMTP not configured for application {}", templateKey, user.getLoginKey(), appId);
             return;
         }
         Map<String, String> vars = userVariables(ctx, user, null);
@@ -441,6 +446,9 @@ public class EmailNotificationService {
             String subject,
             String text,
             String html) {
+        if (to == null || to.isBlank()) {
+            return;
+        }
         if (!ctx.smtpConfigured()) {
             if (logLinksWhenUnavailable) {
                 log.warn(
@@ -504,7 +512,7 @@ public class EmailNotificationService {
             ApplicationEmailContext ctx, UserAccount user, String actionLink) {
         Map<String, String> vars = baseVariables(ctx);
         vars.put("userName", displayName(user));
-        vars.put("userEmail", user.getEmail());
+        vars.put("userEmail", user.getEmail() != null ? user.getEmail() : "");
         if (actionLink != null) {
             vars.put("actionLink", actionLink);
         }
@@ -561,7 +569,7 @@ public class EmailNotificationService {
         vars.put("appName", string(email, "fromName", "SecureOne"));
         vars.put("tenantName", "SecureOne");
         vars.put("userName", displayName(user));
-        vars.put("userEmail", user.getEmail());
+        vars.put("userEmail", user.getEmail() != null ? user.getEmail() : "");
         vars.put("actionLink", actionLink);
         RenderedEmail rendered = templates.renderPlatform(templateKey, vars);
         sendPlatformOrLog(email, user.getEmail(), List.of(), List.of(), rendered.subject(), rendered.bodyText(), rendered.bodyHtml());
@@ -598,6 +606,9 @@ public class EmailNotificationService {
             String subject,
             String text,
             String html) {
+        if (to == null || to.isBlank()) {
+            return;
+        }
         if (!platformSmtp.isConfigured()) {
             if (logLinksWhenUnavailable) {
                 log.warn(

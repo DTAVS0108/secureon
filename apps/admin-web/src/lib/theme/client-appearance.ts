@@ -32,6 +32,7 @@ function normalizeBranding(input: Partial<ClientBranding> = {}): ClientBranding 
     appName: coerceString(input.appName, DEFAULT_CLIENT_BRANDING.appName),
     logoUrl: coerceString(input.logoUrl, DEFAULT_CLIENT_BRANDING.logoUrl),
     language: coerceString(input.language, DEFAULT_CLIENT_BRANDING.language),
+    theme: coerceString(input.theme, DEFAULT_CLIENT_BRANDING.theme),
   };
 }
 

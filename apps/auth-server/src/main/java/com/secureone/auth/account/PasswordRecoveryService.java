@@ -153,7 +153,7 @@ public class PasswordRecoveryService {
                 appId,
                 user,
                 "Password reset completed",
-                "User " + user.getEmail() + " reset their password via OTP.");
+                "User " + user.getLoginKey() + " reset their password via OTP.");
         return Map.of("message", "Password updated. You can sign in with your new password.");
     }
 
@@ -165,7 +165,7 @@ public class PasswordRecoveryService {
                 applicationId,
                 user,
                 "Password reset requested",
-                "User triggered password reset for " + user.getEmail() + ".");
+                "User triggered password reset for " + user.getLoginKey() + ".");
     }
 
     /** Issues and delivers the code; throws IllegalStateException when this account cannot receive it. */

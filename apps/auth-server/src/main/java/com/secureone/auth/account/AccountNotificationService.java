@@ -130,11 +130,14 @@ public class AccountNotificationService {
             user.setStatus("ACTIVE");
         }
         mail.sendAdminSecurityAlert(
-                null, user, "Magic link sign-in", "User " + user.getEmail() + " signed in via magic link.");
+                null, user, "Magic link sign-in", "User " + user.getLoginKey() + " signed in via magic link.");
         Map<String, String> result = new java.util.HashMap<>();
         result.put("message", "Signed in successfully.");
-        result.put("loginEmail", user.getEmail());
+        result.put("loginEmail", user.getLoginKey());
         result.put("userId", user.getId().toString());
+        if (token.getApplicationId() != null) {
+            result.put("applicationId", token.getApplicationId().toString());
+        }
         return result;
     }
 
@@ -159,7 +162,7 @@ public class AccountNotificationService {
         users.save(user);
         mail.sendPasswordChanged(applicationId, user);
         if (applicationId != null) {
-            return Map.of("message", "Password set. You can sign in now.", "loginEmail", user.getEmail());
+            return Map.of("message", "Password set. You can sign in now.", "loginEmail", user.getLoginKey());
         }
         return Map.of("message", "Password set. You can sign in now.", "loginUsername", resolveLoginUsername(user));
     }
@@ -179,7 +182,7 @@ public class AccountNotificationService {
                 null,
                 user,
                 "Password reset completed",
-                "User " + user.getEmail() + " reset their password via email link.");
+                "User " + user.getLoginKey() + " reset their password via email link.");
         return Map.of("message", "Password updated. You can sign in with your new password.");
     }
 
@@ -210,7 +213,7 @@ public class AccountNotificationService {
         users.save(user);
         emailTokens.consume(token);
         mail.sendAdminSecurityAlert(
-                null, user, "Email verified", "User " + user.getEmail() + " verified their email address.");
+                null, user, "Email verified", "User " + user.getLoginKey() + " verified their email address.");
         return user;
     }
 
@@ -230,7 +233,7 @@ public class AccountNotificationService {
                     applicationId,
                     user,
                     "Verification email sent",
-                    "Admin resent verification to " + user.getEmail() + ".");
+                    "Admin resent verification to " + user.getLoginKey() + ".");
         }
     }
 
@@ -248,7 +251,7 @@ public class AccountNotificationService {
                 "Password reset requested",
                 ("admin".equals(initiatedBy) ? "Admin" : "User")
                         + " triggered password reset for "
-                        + user.getEmail()
+                        + user.getLoginKey()
                         + ".");
     }
 
@@ -274,7 +277,7 @@ public class AccountNotificationService {
             sendVerificationEmail(applicationId, user, "invite");
         }
         mail.sendAdminNotification(
-                applicationId, user, "User invited", "New user: " + user.getEmail() + " — onboarding email sent.");
+                applicationId, user, "User invited", "New user: " + user.getLoginKey() + " — onboarding email sent.");
     }
 
     public void sendMagicLinkEmail(UserAccount user) {
@@ -282,7 +285,7 @@ public class AccountNotificationService {
     }
 
     public void sendMagicLinkEmail(UUID applicationId, UserAccount user) {
-        String raw = emailTokens.issue(user, EmailTokenType.MAGIC_LINK).rawToken();
+        String raw = emailTokens.issue(user, EmailTokenType.MAGIC_LINK, applicationId).rawToken();
         String link = magicLinkUrl(applicationId, raw);
         mail.sendMagicLink(applicationId, user, link);
     }
@@ -348,7 +351,7 @@ public class AccountNotificationService {
 
     private String resolveLoginUsername(UserAccount user) {
         String slug = tenants.findById(user.getTenantId()).map(t -> t.getSlug()).orElse("tenant");
-        return slug + ":" + user.getEmail();
+        return slug + ":" + user.getLoginKey();
     }
 
     public void adminMarkEmailVerified(UUID userId) {
@@ -363,12 +366,12 @@ public class AccountNotificationService {
         }
         users.save(user);
         mail.sendAdminSecurityAlert(
-                applicationId, user, "Email marked verified", "Admin verified email for " + user.getEmail() + ".");
+                applicationId, user, "Email marked verified", "Admin verified email for " + user.getLoginKey() + ".");
     }
 
     public void onEmailVerified(UserAccount user, UUID applicationId) {
         mail.sendAdminSecurityAlert(
-                applicationId, user, "Email verified", "User " + user.getEmail() + " verified their email address.");
+                applicationId, user, "Email verified", "User " + user.getLoginKey() + " verified their email address.");
     }
 
     public void sendAdminVerificationAlert(UUID applicationId, UserAccount user, String channel) {
@@ -376,7 +379,7 @@ public class AccountNotificationService {
                 applicationId,
                 user,
                 "Verification OTP sent",
-                "Admin resent " + channel + " verification OTP to " + user.getEmail() + ".");
+                "Admin resent " + channel + " verification OTP to " + user.getLoginKey() + ".");
     }
 
     private String passwordResetLink(UUID applicationId, String rawToken) {
@@ -405,7 +408,7 @@ public class AccountNotificationService {
         if (tenantSlug == null || tenantSlug.isBlank() || email == null || email.isBlank()) {
             return java.util.Optional.empty();
         }
-        return tenants.findBySlug(tenantSlug.trim().toLowerCase(Locale.ROOT)).flatMap(tenant -> users.findByTenantIdAndEmail(
-                tenant.getId(), email.trim().toLowerCase(Locale.ROOT)));
+        return tenants.findBySlug(tenantSlug.trim().toLowerCase(Locale.ROOT)).flatMap(tenant -> users.findByTenantIdAndLoginKey(
+                tenant.getId(), email));
     }
 }

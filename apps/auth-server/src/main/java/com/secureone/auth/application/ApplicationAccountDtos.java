@@ -30,8 +30,13 @@ public final class ApplicationAccountDtos {
 
     public record OtpLoginRequest(@NotBlank @Size(min = 1, max = 255) String identifier, String channel) {}
 
+    /**
+     * {@code signIn} (sign-up verification only): also sign in once the code is right, where sign-in by a code
+     * on that channel is allowed, so a phone sign-up needs one code, not two.
+     */
     public record OtpVerifyRequest(
             @NotBlank String challengeId,
             @NotBlank @Size(min = 4, max = 8) String code,
-            String channel) {}
+            String channel,
+            Boolean signIn) {}
 }

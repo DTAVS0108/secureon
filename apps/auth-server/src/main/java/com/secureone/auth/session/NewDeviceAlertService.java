@@ -103,7 +103,7 @@ public class NewDeviceAlertService {
                             + ". If this was you, there is nothing to do. If not, change your password and sign out other devices.",
                     link);
         } catch (RuntimeException e) {
-            log.warn("New-device alert for {} not sent: {}", user.getEmail(), e.getMessage());
+            log.warn("New-device alert for {} not sent: {}", user.getLoginKey(), e.getMessage());
         }
     }
 

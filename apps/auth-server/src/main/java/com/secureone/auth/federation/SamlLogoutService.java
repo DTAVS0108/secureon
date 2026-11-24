@@ -234,7 +234,7 @@ public class SamlLogoutService {
         return identities.findByProviderIdAndProviderSubject(providerId, nameId)
                 .flatMap(link -> users.findById(link.getUserId()))
                 .flatMap(user -> tenants.findById(user.getTenantId())
-                        .map(tenant -> tenant.getSlug() + ":" + user.getEmail()))
+                        .map(tenant -> tenant.getSlug() + ":" + user.getLoginKey()))
                 .map(principal -> sessions.revokeOthers(principal, null))
                 .orElse(0);
     }
@@ -299,21 +299,25 @@ public class SamlLogoutService {
         return ResponseEntity.status(HttpStatus.FOUND).header("Location", location).build();
     }
 
-    private static ResponseEntity<?> autoPost(String location, String field, String value, String relayState) {
-        String html = """
-                <!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing out…</title></head>
-                <body onload="document.forms[0].submit()">
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.secureone.auth.theme.ThemePages themePages;
+
+    /** Posts the message to the identity provider at once; in the sign-in theme (templates/saml-post.html). */
+    private ResponseEntity<?> autoPost(String location, String field, String value, String relayState) {
+        String form = """
                 <form method="post" action="%s">
                 <input type="hidden" name="%s" value="%s">
                 <input type="hidden" name="RelayState" value="%s">
                 <noscript><button type="submit">Continue</button></noscript>
-                </form></body></html>
+                </form><script>document.forms[0].submit()</script>
                 """
                 .formatted(
                         HtmlUtils.htmlEscape(location),
                         field,
                         HtmlUtils.htmlEscape(value),
                         HtmlUtils.htmlEscape(relayState == null ? "" : relayState));
+        String html = themePages.renderDefault(
+                new com.secureone.auth.theme.ThemePages.Page("saml-post", "Signing out", "Signing out…", form, false));
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).header("Cache-Control", "no-store").body(html);
     }
 

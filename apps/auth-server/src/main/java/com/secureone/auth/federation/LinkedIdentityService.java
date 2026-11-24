@@ -73,6 +73,6 @@ public class LinkedIdentityService {
         String provider = providers.findById(link.getProviderId()).map(IdentityProvider::getDisplayName).orElse("provider");
         identities.delete(link);
         audit.record(user.getTenantId(), by, "user.identity_unlinked", "user_account", userId,
-                user.getEmail() + ": " + provider + " (" + link.getEmail() + ")", true);
+                user.getLoginKey() + ": " + provider + " (" + link.getEmail() + ")", true);
     }
 }

@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ApplicationPublicManifestService {
 
     private final ApplicationRepository applications;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ApplicationSignupService> signupService;
     private final ApplicationSettingRepository appSettings;
     private final ApplicationSettingsService settings;
     private final com.secureone.auth.platform.PlatformSettingsService platformSettings;
@@ -133,7 +136,8 @@ public class ApplicationPublicManifestService {
             for (Map<String, Object> m : settings.resolveAuthMethods(applicationId)) {
                 Map<String, Object> row = new LinkedHashMap<>(m);
                 String id = String.valueOf(m.get("id"));
-                if (ApplicationEffectiveSettingsService.CODE_SIGN_IN_METHODS.containsKey(id)) {
+                if (ApplicationEffectiveSettingsService.CODE_SIGN_IN_METHODS.containsKey(id)
+                        || ApplicationEffectiveSettingsService.MAGIC_LINK_METHOD.equals(id)) {
                     row.put("enabled", effectiveSettings.getObject().isAuthMethodEnabled(applicationId, id));
                     row.put("implemented", true);
                 }
@@ -189,6 +193,10 @@ public class ApplicationPublicManifestService {
         signup.put("endpoint", "/api/v1/applications/" + applicationId + "/signup");
         signup.put("optionsEndpoint", "/api/v1/applications/" + applicationId + "/signup");
         signup.put("hostedPagePath", "/account/signup.html?applicationId=" + applicationId);
+        // "email" (email and password) and/or "phone" (a phone number only, verified by a text-message code).
+        boolean phone = enabled && signupService.getObject().phoneSignupAvailable(applicationId);
+        signup.put("identifiers", enabled ? signupService.getObject().signupIdentifiers(applicationId) : java.util.List.of());
+        signup.put("phoneSignup", phone);
         return signup;
     }
 

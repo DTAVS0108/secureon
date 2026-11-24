@@ -32,6 +32,8 @@ public class AccessRequestGrantService {
     private final UserRoleRepository userRoles;
     private final ApplicationMembershipService memberships;
     private final AuditService auditService;
+    private final com.secureone.auth.application.ApplicationRepository applications;
+    private final org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSchemaService> schemas;
 
     public AccessRequestGrantService(
             UserAccountRepository users,
@@ -40,7 +42,9 @@ public class AccessRequestGrantService {
             RoleRepository applicationRoles,
             UserRoleRepository userRoles,
             ApplicationMembershipService memberships,
-            AuditService auditService) {
+            AuditService auditService,
+            com.secureone.auth.application.ApplicationRepository applications,
+            org.springframework.beans.factory.ObjectProvider<com.secureone.auth.application.ApplicationSchemaService> schemas) {
         this.users = users;
         this.tenantRoles = tenantRoles;
         this.tenantRbac = tenantRbac;
@@ -48,6 +52,8 @@ public class AccessRequestGrantService {
         this.userRoles = userRoles;
         this.memberships = memberships;
         this.auditService = auditService;
+        this.applications = applications;
+        this.schemas = schemas;
     }
 
     /**
@@ -72,8 +78,37 @@ public class AccessRequestGrantService {
             }
         }
 
-        Role applicationRole = resolveApplicationRole(request);
-        return grantApplicationRole(request, applicationRole, beneficiaryId, reviewerId);
+        // Application roles, memberships and role grants live in each application's own schema: look the role up
+        // there (in the named application, or in each of the tenant's applications) and grant it in that schema.
+        UUID previous = com.secureone.auth.application.ApplicationSchemaContext.getApplicationId();
+        try {
+            Role applicationRole = resolveApplicationRole(request);
+            return grantApplicationRole(request, applicationRole, beneficiaryId, reviewerId);
+        } finally {
+            enterSchema(previous);
+        }
+    }
+
+    /** Routes this transaction (and repository calls) to the application's schema; null: the platform schema. */
+    private void enterSchema(UUID applicationId) {
+        com.secureone.auth.application.ApplicationSchemaService schema = schemas.getIfAvailable();
+        if (schema != null) {
+            schema.applySearchPathForApplicationId(applicationId);
+        }
+        com.secureone.auth.application.ApplicationSchemaContext.setApplicationId(applicationId);
+    }
+
+    /** The applications whose schema may hold the requested role: the request's, or every application of the tenant. */
+    private List<UUID> candidateApplications(AccessRequest request) {
+        if (request.getApplicationId() != null) {
+            return applications.findById(request.getApplicationId())
+                    .filter(app -> request.getTenantId().equals(app.getTenantId()))
+                    .map(app -> List.of(app.getId()))
+                    .orElse(List.of());
+        }
+        return applications.findByTenantIdOrderByCreatedAtDesc(request.getTenantId()).stream()
+                .map(com.secureone.auth.application.Application::getId)
+                .toList();
     }
 
     private Map<String, Object> grantTenantRole(
@@ -104,7 +139,7 @@ public class AccessRequestGrantService {
             UserRole grant = new UserRole();
             grant.setUserId(beneficiaryId);
             grant.setRoleId(role.getId());
-            userRoles.save(grant);
+            userRoles.saveAndFlush(grant); // written before the transaction leaves the application's schema
         }
         auditService.record(
                 request.getTenantId(),
@@ -127,31 +162,28 @@ public class AccessRequestGrantService {
         return tenantRoles.findByTenantIdAndName(request.getTenantId(), request.getResourceId().trim());
     }
 
+    /**
+     * Finds the role in the candidate applications' schemas and leaves the transaction in the schema of the
+     * application that has it (where the grant is then written).
+     */
     private Role resolveApplicationRole(AccessRequest request) {
         UUID roleId = parseUuid(request.getResourceId());
-        if (roleId != null) {
-            Role role = applicationRoles
-                    .findById(roleId)
-                    .orElseThrow(() -> roleNotFound(request.getResourceId()));
-            if (!request.getTenantId().equals(role.getTenantId())) {
-                throw roleNotFound(request.getResourceId());
-            }
-            return role;
-        }
-
         String roleName = request.getResourceId().trim();
-        if (request.getApplicationId() != null) {
-            return applicationRoles
-                    .findByApplicationIdAndName(request.getApplicationId(), roleName)
+        List<Role> matches = new java.util.ArrayList<>();
+        for (UUID applicationId : candidateApplications(request)) {
+            enterSchema(applicationId);
+            Optional<Role> found = roleId != null
+                    ? applicationRoles.findById(roleId)
+                    : applicationRoles.findByApplicationIdAndName(applicationId, roleName);
+            found.filter(role -> applicationId.equals(role.getApplicationId()))
                     .filter(role -> request.getTenantId().equals(role.getTenantId()))
-                    .orElseThrow(() -> roleNotFound(roleName));
+                    .ifPresent(matches::add);
+            if (roleId != null && !matches.isEmpty()) {
+                break;
+            }
         }
-
-        List<Role> matches = applicationRoles.findByTenantIdOrderByNameAsc(request.getTenantId()).stream()
-                .filter(role -> roleName.equalsIgnoreCase(role.getName()))
-                .toList();
         if (matches.isEmpty()) {
-            throw roleNotFound(roleName);
+            throw roleNotFound(request.getResourceId());
         }
         if (matches.size() > 1) {
             throw new ResponseStatusException(
@@ -160,7 +192,9 @@ public class AccessRequestGrantService {
                             + roleName
                             + "' exist. Set applicationId on the request or use the role UUID.");
         }
-        return matches.getFirst();
+        Role role = matches.getFirst();
+        enterSchema(role.getApplicationId());
+        return role;
     }
 
     private UserAccount requireTenantUser(UUID tenantId, UUID userId) {

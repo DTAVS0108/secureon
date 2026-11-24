@@ -77,12 +77,12 @@ public class PasskeyRegistrationService {
     public Map<String, Object> beginRegistration(
             UserAccount user, String tenantSlug, String label, UUID applicationId, String kind) {
         assertPasskeysAvailable(applicationId);
-        String username = username(tenantSlug, user.getEmail());
+        String username = username(tenantSlug, user.getLoginKey());
         ByteArray userHandle = credentials.ensureUserHandle(user);
         PublicKeyCredentialCreationOptions started = WebAuthnErrors.uncheck(() -> relyingParty.startRegistration(
                 StartRegistrationOptions.builder()
                         .user(UserIdentity.builder()
-                                .name(user.getEmail())
+                                .name(user.getLoginKey())
                                 .displayName(displayName(user))
                                 .id(userHandle)
                                 .build())
@@ -177,6 +177,6 @@ public class PasskeyRegistrationService {
         if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
             return user.getDisplayName().trim();
         }
-        return user.getEmail();
+        return user.getLoginKey();
     }
 }

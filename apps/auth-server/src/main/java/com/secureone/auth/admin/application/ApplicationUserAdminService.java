@@ -158,7 +158,7 @@ public class ApplicationUserAdminService {
                 users.save(user);
             }
             if (accessTermination != null) accessTermination.ifAvailable(t -> t.endInApplication(user, applicationId));
-            label = tenantSlug(user.getTenantId()) + ":" + user.getEmail();
+            label = tenantSlug(user.getTenantId()) + ":" + user.getLoginKey();
         }
         String target = label;
         if (auditLog != null) auditLog.ifAvailable(a -> a.record(app.getTenantId(), applicationId, "admin",

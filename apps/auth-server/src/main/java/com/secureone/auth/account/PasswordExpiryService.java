@@ -99,7 +99,7 @@ public class PasswordExpiryService {
         } catch (RuntimeException ex) {
             log.warn(
                     "Failed to send password expiry warning to {} (application={}): {}",
-                    user.getEmail(),
+                    user.getLoginKey(),
                     applicationId,
                     ex.getMessage());
             return false;
@@ -118,7 +118,7 @@ public class PasswordExpiryService {
         } catch (RuntimeException ex) {
             log.warn(
                     "Failed to send expired-password reset to {} (application={}): {}",
-                    user.getEmail(),
+                    user.getLoginKey(),
                     applicationId,
                     ex.getMessage());
             return false;

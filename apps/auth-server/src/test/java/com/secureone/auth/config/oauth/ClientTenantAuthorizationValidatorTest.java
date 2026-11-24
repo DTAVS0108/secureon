@@ -111,7 +111,7 @@ class ClientTenantAuthorizationValidatorTest {
     @Test
     void tenantUserWithoutAccessIsDenied() {
         stubClientTenant();
-        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndLoginKey(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
         when(access.admit(app.getId(), user.getId())).thenReturn(false);
 
         OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
@@ -124,7 +124,7 @@ class ClientTenantAuthorizationValidatorTest {
     @Test
     void admittedTenantUserPasses() {
         stubClientTenant();
-        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndLoginKey(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
         when(access.admit(app.getId(), user.getId())).thenReturn(true);
 
         assertDoesNotThrow(() -> validator.accept(context(signedIn("TENANT-A:Member@tenant-a.test"))));
@@ -134,7 +134,7 @@ class ClientTenantAuthorizationValidatorTest {
     void suspendedUserWithABrowserSessionGetsNoCode() {
         stubClientTenant();
         user.setStatus("SUSPENDED");
-        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndLoginKey(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
 
         OAuth2AuthorizationCodeRequestAuthenticationException ex = assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,
@@ -148,7 +148,7 @@ class ClientTenantAuthorizationValidatorTest {
     void userOfASuspendedTenantGetsNoCode() {
         stubClientTenant();
         tenant.setStatus("SUSPENDED");
-        when(users.findByTenantIdAndEmail(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
+        when(users.findByTenantIdAndLoginKey(tenant.getId(), "member@tenant-a.test")).thenReturn(Optional.of(user));
 
         assertThrows(
                 OAuth2AuthorizationCodeRequestAuthenticationException.class,

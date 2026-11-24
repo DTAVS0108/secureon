@@ -13,6 +13,40 @@ export async function saveAppearancePrefs(prefs: UiPreferences): Promise<void> {
   });
 }
 
+export type SignInTheme = {
+  name: string;
+  builtIn: boolean;
+  parent: string | null;
+  description: string | null;
+  madeFor: string | null;
+  stylesheet: boolean;
+  pages: string[];
+  templates: string[];
+  messageLanguages: string[];
+  assets: number;
+  outdated: string[];
+  problems: string[];
+};
+
+export type SignInThemes = {
+  dir: string | null;
+  configuredDefault: string;
+  defaultTheme: string;
+  cache: boolean;
+  problems: string[];
+  themes: SignInTheme[];
+};
+
+/** Sign-in page themes on this server (SECUREONE_THEMES_DIR). */
+export async function fetchSignInThemes(): Promise<SignInThemes> {
+  return apiFetch<SignInThemes>("/api/admin/v1/settings/themes");
+}
+
+/** Reads the themes folder again (needed when the theme cache is on). */
+export async function reloadSignInThemes(): Promise<SignInThemes> {
+  return apiFetch<SignInThemes>("/api/admin/v1/settings/themes/reload", { method: "POST" });
+}
+
 export type RecipientGroups = Record<string, string[]>;
 
 export type PlatformNotificationSettings = {
